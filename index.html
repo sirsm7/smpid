@@ -207,7 +207,9 @@
     // --- KONFIGURASI SUPABASE ---
     const SUPABASE_URL = 'https://hbanvnteyncwsnfprahz.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_IEcWCbBmqWLBOBU4rl0FPw_Z97Assvt'; 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // PEMBETULAN: Menggunakan nama variabel 'supabaseClient' untuk elak konflik
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const ADMIN_PIN = "pkgag";
 
     // --- GLOBAL VARIABLES FOR FILTERING ---
@@ -262,7 +264,7 @@
       try {
         // ADMIN DASHBOARD
         if (kod === "M030") {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('sekolah_data')
                 .select('*')
                 .order('nama_sekolah', { ascending: true });
@@ -282,7 +284,7 @@
         } 
         // USER BIASA
         else {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('sekolah_data')
                 .select('*')
                 .eq('kod_sekolah', kod)
@@ -424,7 +426,7 @@
     async function pilihSekolah(kod) {
       toggleLoading(true);
       try {
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('sekolah_data')
             .select('*')
             .eq('kod_sekolah', kod)
@@ -506,7 +508,7 @@
       };
 
       try {
-          const { error } = await supabase
+          const { error } = await supabaseClient
             .from('sekolah_data')
             .update(updateData)
             .eq('kod_sekolah', kod);
@@ -527,7 +529,7 @@
               const kodInput = document.getElementById('inputKodSekolah').value;
               if(kodInput === "M030") {
                    toggleLoading(true);
-                   const { data } = await supabase.from('sekolah_data').select('*').order('nama_sekolah', { ascending: true });
+                   const { data } = await supabaseClient.from('sekolah_data').select('*').order('nama_sekolah', { ascending: true });
                    
                    // Re-format for dashboard
                    const formattedData = data.map(item => ({
@@ -565,7 +567,7 @@
           const kod = document.getElementById('hiddenKodSekolah').value;
           
           try {
-             const { error } = await supabase
+             const { error } = await supabaseClient
                 .from('sekolah_data')
                 .update({
                     nama_gpict: '',
@@ -594,7 +596,7 @@
                const kodInput = document.getElementById('inputKodSekolah').value;
                if(kodInput === "M030") {
                    toggleLoading(true);
-                   const { data } = await supabase.from('sekolah_data').select('*').order('nama_sekolah', { ascending: true });
+                   const { data } = await supabaseClient.from('sekolah_data').select('*').order('nama_sekolah', { ascending: true });
                    const formattedData = data.map(item => ({
                         kod: item.kod_sekolah,
                         nama: item.nama_sekolah,
