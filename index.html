@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Maklumat Penyelaras ICT (SMPID)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body { background-color: #f3f4f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .glass-header { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .loader { border-top-color: #3b82f6; -webkit-animation: spinner 1.5s linear infinite; animation: spinner 1.5s linear infinite; }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <nav class="glass-header fixed w-full z-10 top-0 shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-server text-blue-600 text-2xl"></i>
+                    <h1 class="text-xl font-bold text-gray-900 tracking-tight">SMPID <span class="text-blue-600">Cloud</span></h1>
+                </div>
+                <div class="text-sm text-gray-500 hidden sm:block">
+                    PPD Alor Gajah
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-10">
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium uppercase">Jumlah Sekolah</p>
+                        <p class="text-3xl font-bold text-gray-800" id="count-all">0</p>
+                    </div>
+                    <i class="fa-solid fa-school text-blue-100 text-4xl"></i>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium uppercase">Sekolah Rendah (SK)</p>
+                        <p class="text-3xl font-bold text-gray-800" id="count-sk">0</p>
+                    </div>
+                    <i class="fa-solid fa-child-reaching text-green-100 text-4xl"></i>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm text-gray-500 font-medium uppercase">Sekolah Menengah (SMK)</p>
+                        <p class="text-3xl font-bold text-gray-800" id="count-smk">0</p>
+                    </div>
+                    <i class="fa-solid fa-graduation-cap text-purple-100 text-4xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm mb-6 sticky top-20 z-10 border border-gray-100">
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="relative flex-grow">
+                    <i class="fa-solid fa-search absolute left-3 top-3.5 text-gray-400"></i>
+                    <input type="text" id="searchInput" placeholder="Cari nama sekolah atau kod..." 
+                        class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition">
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="filterType('ALL')" class="filter-btn px-6 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-700 transition shadow-sm font-medium text-sm">Semua</button>
+                    <button onclick="filterType('SK')" class="filter-btn px-6 py-2 rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition shadow-sm font-medium text-sm">SK</button>
+                    <button onclick="filterType('SMK')" class="filter-btn px-6 py-2 rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition shadow-sm font-medium text-sm">SMK</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loader" class="flex justify-center py-20">
+            <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12"></div>
+        </div>
+
+        <div id="schoolGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-6 hidden">
+            </div>
+
+        <div id="emptyState" class="hidden text-center py-20">
+            <i class="fa-regular fa-folder-open text-gray-300 text-6xl mb-4"></i>
+            <p class="text-gray-500 text-lg">Tiada rekod dijumpai.</p>
+        </div>
+
+    </main>
+
+    <div id="editModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onclick="closeModal()"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="modal-title">
+                        <i class="fa-solid fa-pen-to-square text-blue-500 mr-2"></i>Kemaskini Maklumat
+                    </h3>
+                    <form id="updateForm" class="space-y-4">
+                        <input type="hidden" id="editKodSekolah">
+                        
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                            <h4 class="text-xs font-bold text-blue-700 uppercase mb-3">Penyelaras ICT (GPICT)</h4>
+                            <div class="space-y-3">
+                                <input type="text" id="editNamaGpict" placeholder="Nama GPICT" class="w-full p-2 border rounded text-sm">
+                                <input type="text" id="editTelGpict" placeholder="No Telefon" class="w-full p-2 border rounded text-sm">
+                                <input type="email" id="editEmelGpict" placeholder="Emel DELIMa" class="w-full p-2 border rounded text-sm">
+                            </div>
+                        </div>
+
+                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                            <h4 class="text-xs font-bold text-purple-700 uppercase mb-3">Admin DELIMa</h4>
+                            <div class="space-y-3">
+                                <input type="text" id="editNamaAdmin" placeholder="Nama Admin" class="w-full p-2 border rounded text-sm">
+                                <input type="text" id="editTelAdmin" placeholder="No Telefon" class="w-full p-2 border rounded text-sm">
+                                <input type="email" id="editEmelAdmin" placeholder="Emel DELIMa" class="w-full p-2 border rounded text-sm">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" onclick="saveData()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                        Simpan
+                    </button>
+                    <button type="button" onclick="closeModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Batal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- KONFIGURASI SUPABASE ---
+        const SUPABASE_URL = 'https://hbanvnteyncwsnfprahz.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_IEcWCbBmqWLBOBU4rl0FPw_Z97Assvt'; // Anon Key (Public)
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- PEMBOLEHUBAH STATE ---
+        let allSchools = [];
+        let currentFilter = 'ALL';
+        const ADMIN_PIN = 'pkgag';
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchSchools();
+            
+            // Event listener untuk carian masa nyata
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                renderSchools(e.target.value);
+            });
+        });
+
+        // --- FUNGSI DATA (CRUD) ---
+        
+        // 1. Ambil Data
+        async function fetchSchools() {
+            try {
+                const { data, error } = await supabase
+                    .from('sekolah_data')
+                    .select('*')
+                    .order('nama_sekolah', { ascending: true });
+
+                if (error) throw error;
+
+                allSchools = data;
+                updateStats();
+                renderSchools();
+                
+                // Hide loader, show grid
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('schoolGrid').classList.remove('hidden');
+
+            } catch (err) {
+                console.error('Ralat:', err);
+                Swal.fire('Ralat!', 'Gagal memuatkan data dari pangkalan data.', 'error');
+            }
+        }
+
+        // 2. Simpan Data (Update)
+        async function saveData() {
+            const kod = document.getElementById('editKodSekolah').value;
+            const updates = {
+                nama_gpict: document.getElementById('editNamaGpict').value,
+                no_telefon_gpict: document.getElementById('editTelGpict').value,
+                emel_delima_gpict: document.getElementById('editEmelGpict').value,
+                nama_admin_delima: document.getElementById('editNamaAdmin').value,
+                no_telefon_admin_delima: document.getElementById('editTelAdmin').value,
+                emel_delima_admin_delima: document.getElementById('editEmelAdmin').value
+            };
+
+            Swal.fire({
+                title: 'Sedang menyimpan...',
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const { error } = await supabase
+                    .from('sekolah_data')
+                    .update(updates)
+                    .eq('kod_sekolah', kod);
+
+                if (error) throw error;
+
+                // Update local state (optimistic UI update)
+                const index = allSchools.findIndex(s => s.kod_sekolah === kod);
+                if (index !== -1) {
+                    allSchools[index] = { ...allSchools[index], ...updates };
+                }
+
+                closeModal();
+                renderSchools(document.getElementById('searchInput').value);
+                Swal.fire('Berjaya!', 'Maklumat telah dikemaskini.', 'success');
+
+            } catch (err) {
+                Swal.fire('Gagal!', 'Tidak dapat menyimpan perubahan. Sila cuba lagi.', 'error');
+                console.error(err);
+            }
+        }
+
+        // --- FUNGSI UI & LOGIK ---
+
+        function updateStats() {
+            const total = allSchools.length;
+            const sk = allSchools.filter(s => s.jenis_sekolah === 'SK').length;
+            const smk = allSchools.filter(s => s.jenis_sekolah === 'SMK').length;
+
+            animateValue("count-all", 0, total, 1000);
+            animateValue("count-sk", 0, sk, 1000);
+            animateValue("count-smk", 0, smk, 1000);
+        }
+
+        function filterType(type) {
+            currentFilter = type;
+            
+            // Update button styles
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if(btn.innerText.toUpperCase().includes(type === 'ALL' ? 'SEMUA' : type)) {
+                    btn.classList.add('bg-gray-800', 'text-white');
+                    btn.classList.remove('bg-white', 'text-gray-600');
+                } else {
+                    btn.classList.remove('bg-gray-800', 'text-white');
+                    btn.classList.add('bg-white', 'text-gray-600');
+                }
+            });
+
+            renderSchools(document.getElementById('searchInput').value);
+        }
+
+        function renderSchools(searchTerm = '') {
+            const grid = document.getElementById('schoolGrid');
+            const empty = document.getElementById('emptyState');
+            grid.innerHTML = '';
+
+            const term = searchTerm.toLowerCase();
+            
+            const filtered = allSchools.filter(s => {
+                const matchesSearch = s.nama_sekolah.toLowerCase().includes(term) || s.kod_sekolah.toLowerCase().includes(term);
+                const matchesType = currentFilter === 'ALL' ? true : s.jenis_sekolah === currentFilter;
+                return matchesSearch && matchesType;
+            });
+
+            if (filtered.length === 0) {
+                grid.classList.add('hidden');
+                empty.classList.remove('hidden');
+                return;
+            } else {
+                grid.classList.remove('hidden');
+                empty.classList.add('hidden');
+            }
+
+            filtered.forEach(school => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden card-hover transition-all duration-300';
+                card.innerHTML = `
+                    <div class="p-5 border-b border-gray-100 flex justify-between items-start bg-gray-50">
+                        <div>
+                            <span class="inline-block px-2 py-1 text-xs font-semibold rounded ${school.jenis_sekolah === 'SMK' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'} mb-2">
+                                ${school.jenis_sekolah}
+                            </span>
+                            <h3 class="font-bold text-gray-800 text-lg leading-tight">${school.nama_sekolah}</h3>
+                            <p class="text-sm text-gray-500 mt-1"><i class="fa-solid fa-map-pin mr-1"></i> ${school.kod_sekolah} | ${school.daerah}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <p class="text-xs font-bold text-blue-600 uppercase mb-2">Penyelaras ICT</p>
+                            <p class="font-medium text-gray-900">${school.nama_gpict || '-'}</p>
+                            <p class="text-gray-500 mt-1"><i class="fa-solid fa-phone text-xs mr-1"></i> ${school.no_telefon_gpict || '-'}</p>
+                            <p class="text-gray-500 truncate" title="${school.emel_delima_gpict}"><i class="fa-solid fa-envelope text-xs mr-1"></i> ${school.emel_delima_gpict || '-'}</p>
+                        </div>
+                        
+                        <div>
+                            <p class="text-xs font-bold text-purple-600 uppercase mb-2">Admin DELIMa</p>
+                            <p class="font-medium text-gray-900">${school.nama_admin_delima || '-'}</p>
+                            <p class="text-gray-500 mt-1"><i class="fa-solid fa-phone text-xs mr-1"></i> ${school.no_telefon_admin_delima || '-'}</p>
+                            <p class="text-gray-500 truncate" title="${school.emel_delima_admin_delima}"><i class="fa-solid fa-envelope text-xs mr-1"></i> ${school.emel_delima_admin_delima || '-'}</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 px-5 py-3 border-t border-gray-100 flex justify-between items-center">
+                        <button onclick="copyInfo('${school.kod_sekolah}')" class="text-gray-500 hover:text-blue-600 text-sm font-medium transition">
+                            <i class="fa-regular fa-copy mr-1"></i> Salin
+                        </button>
+                        <button onclick="triggerEdit('${school.kod_sekolah}')" class="bg-white border border-gray-300 text-gray-700 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 px-4 py-1.5 rounded-md text-sm font-medium shadow-sm transition">
+                            <i class="fa-solid fa-pen mr-1"></i> Kemaskini
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // --- AUTHENTICATION MOCK (PIN) ---
+        
+        async function triggerEdit(kodSekolah) {
+            const { value: pin } = await Swal.fire({
+                title: 'Akses Terhad',
+                text: 'Sila masukkan PIN Keselamatan untuk mengemaskini data.',
+                input: 'password',
+                inputPlaceholder: 'Masukkan PIN',
+                icon: 'lock',
+                showCancelButton: true,
+                confirmButtonText: 'Sahkan',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#2563eb'
+            });
+
+            if (pin === ADMIN_PIN) {
+                openEditModal(kodSekolah);
+            } else if (pin) {
+                Swal.fire('Akses Ditolak', 'PIN yang dimasukkan salah.', 'error');
+            }
+        }
+
+        function openEditModal(kod) {
+            const school = allSchools.find(s => s.kod_sekolah === kod);
+            if (!school) return;
+
+            document.getElementById('editKodSekolah').value = school.kod_sekolah;
+            document.getElementById('editNamaGpict').value = school.nama_gpict || '';
+            document.getElementById('editTelGpict').value = school.no_telefon_gpict || '';
+            document.getElementById('editEmelGpict').value = school.emel_delima_gpict || '';
+            document.getElementById('editNamaAdmin').value = school.nama_admin_delima || '';
+            document.getElementById('editTelAdmin').value = school.no_telefon_admin_delima || '';
+            document.getElementById('editEmelAdmin').value = school.emel_delima_admin_delima || '';
+
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        // --- UTILITIES ---
+
+        function copyInfo(kod) {
+            const s = allSchools.find(item => item.kod_sekolah === kod);
+            if (!s) return;
+
+            const text = 
+`*MAKLUMAT SEKOLAH SMPID*
+---------------------------
+*Sekolah:* ${s.nama_sekolah} (${s.kod_sekolah})
+*Daerah:* ${s.daerah}
+
+*1. PENYELARAS ICT*
+Nama: ${s.nama_gpict || '-'}
+No Tel: ${s.no_telefon_gpict || '-'}
+Emel: ${s.emel_delima_gpict || '-'}
+
+*2. ADMIN DELIMA*
+Nama: ${s.nama_admin_delima || '-'}
+No Tel: ${s.no_telefon_admin_delima || '-'}
+Emel: ${s.emel_delima_admin_delima || '-'}
+---------------------------
+_dijana oleh SMPID Cloud_`;
+
+            navigator.clipboard.writeText(text).then(() => {
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Maklumat disalin!'
+                });
+            }).catch(err => {
+                Swal.fire('Ralat', 'Gagal menyalin teks', 'error');
+            });
+        }
+
+        function animateValue(id, start, end, duration) {
+            if (start === end) return;
+            const range = end - start;
+            let current = start;
+            const increment = end > start ? 1 : -1;
+            const stepTime = Math.abs(Math.floor(duration / range));
+            const obj = document.getElementById(id);
+            const timer = setInterval(function() {
+                current += increment;
+                obj.innerHTML = current;
+                if (current == end) {
+                    clearInterval(timer);
+                }
+            }, stepTime);
+        }
+
+    </script>
+</body>
+</html>
