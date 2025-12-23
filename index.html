@@ -57,8 +57,23 @@
     
     /* Interactive Filters Styles */
     .cursor-pointer { cursor: pointer; user-select: none; transition: all 0.2s ease; }
-    .filter-badge { opacity: 0.5; transform: scale(0.95); }
-    .filter-badge.active { opacity: 1; transform: scale(1); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    .filter-badge { opacity: 0.6; transform: scale(0.98); border: 2px solid transparent; }
+    .filter-badge:hover { opacity: 0.8; }
+    .filter-badge.active { opacity: 1; transform: scale(1); box-shadow: 0 2px 4px rgba(0,0,0,0.15); border-color: rgba(0,0,0,0.1); }
+    
+    /* Custom Select Style */
+    .custom-select-dashboard {
+        border-radius: 20px;
+        border: 2px solid #e9ecef;
+        padding: 0.375rem 2.5rem 0.375rem 1rem;
+        font-weight: 600;
+        color: #495057;
+        background-position: right 1rem center;
+    }
+    .custom-select-dashboard:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+    }
 
     /* Print Styles */
     @media print {
@@ -68,6 +83,7 @@
       .card { box-shadow: none !important; border: 1px solid #ddd !important; }
       .category-section { break-inside: avoid; page-break-inside: avoid; }
       #dashboardCard { display: block !important; padding: 0 !important; border: none !important; }
+      #filterSectionRow { display: none !important; } /* Hide filters on print */
     }
   </style>
 </head>
@@ -126,7 +142,7 @@
             </div>
           </div>
 
-          <div class="mb-3 d-flex gap-2 flex-wrap" id="filterContainer">
+          <div class="mb-4" id="filterContainer">
              </div>
           
           <div id="schoolGridWrapper"></div>
@@ -214,15 +230,15 @@
     // --- KONFIGURASI SUPABASE ---
     const SUPABASE_URL = 'https://hbanvnteyncwsnfprahz.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_IEcWCbBmqWLBOBU4rl0FPw_Z97Assvt'; 
-    
-    // PEMBETULAN: Menggunakan nama variabel 'supabaseClient' untuk elak konflik
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const ADMIN_PIN = "pkgag";
 
-    // --- GLOBAL VARIABLES FOR FILTERING ---
+    // --- GLOBAL VARIABLES FOR FILTERING & STATE ---
     let storedDashboardData = [];
+    let activeStatusFilter = 'ALL';
+    let activeTypeFilter = 'ALL';
 
-    // --- UTILITI (Kekal Sama) ---
+    // --- UTILITI ---
     function autoFormatPhone(input) {
       let val = input.value.replace(/[^0-9]/g, ''); 
       if (val.length < 5) return; 
@@ -254,6 +270,8 @@
       sessionStorage.removeItem('adminDashboardData');
       
       storedDashboardData = []; 
+      activeStatusFilter = 'ALL';
+      activeTypeFilter = 'ALL';
       
       document.getElementById('formCard').classList.add('hidden');
       document.getElementById('dashboardCard').classList.add('hidden');
@@ -261,7 +279,7 @@
       setTimeout(() => document.getElementById('inputKodSekolah').focus(), 100);
     }
 
-    // --- LOGIK UTAMA (DIGANTI SUPABASE) ---
+    // --- LOGIK UTAMA ---
     async function prosesCarian() {
       const kod = document.getElementById('inputKodSekolah').value.trim().toUpperCase();
       if (!kod) { Swal.fire('Ralat', 'Sila masukkan Kod Sekolah.', 'warning'); return; }
@@ -278,12 +296,11 @@
             
             if (error) throw error;
             
-            // Format data Supabase ke format Dashboard yang sedia ada
             const formattedData = data.map(item => ({
                 kod: item.kod_sekolah,
                 nama: item.nama_sekolah,
                 jenis: item.jenis_sekolah || 'LAIN-LAIN',
-                status: !!(item.nama_gpict && item.nama_gpict.trim() !== "") // Boolean check jika ada data
+                status: !!(item.nama_gpict && item.nama_gpict.trim() !== "")
             }));
 
             sessionStorage.setItem('adminDashboardData', JSON.stringify(formattedData)); 
@@ -295,7 +312,7 @@
                 .from('sekolah_data')
                 .select('*')
                 .eq('kod_sekolah', kod)
-                .single(); // Ambil satu sahaja
+                .single(); 
 
             if (error || !data) {
                 toggleLoading(false);
@@ -317,68 +334,118 @@
       Swal.fire('Ralat Sistem', 'Gagal menyambung ke pangkalan data.', 'error');
     }
 
-    // --- LOGIC DASHBOARD (GROUPING & FILTERING) - UI Kekal Sama ---
-    
+    // --- DASHBOARD LOGIC (ADVANCED FILTERING) ---
+
     function renderAdminDashboard(dataList) {
       toggleLoading(false);
       document.getElementById('loginCard').classList.add('hidden');
       document.getElementById('dashboardCard').classList.remove('hidden');
       
       storedDashboardData = dataList || [];
+      
+      // Reset filters on load
+      activeStatusFilter = 'ALL';
+      activeTypeFilter = 'ALL';
 
-      let totalLengkap = 0;
-      let totalBelum = 0;
-      let totalSemua = storedDashboardData.length;
+      // 1. Extract Unique School Types Dynamically
+      const uniqueTypes = [...new Set(storedDashboardData.map(item => item.jenis))].sort();
 
-      if (storedDashboardData.length > 0) {
-        totalLengkap = storedDashboardData.filter(item => item.status).length;
-        totalBelum = storedDashboardData.filter(item => !item.status).length;
-      }
-
+      // 2. Build Filter UI (Status Badges + Type Dropdown)
       const filterContainer = document.getElementById('filterContainer');
+      
+      let typeOptionsHTML = `<option value="ALL">SEMUA JENIS SEKOLAH</option>`;
+      uniqueTypes.forEach(type => {
+        typeOptionsHTML += `<option value="${type}">${type}</option>`;
+      });
+
       filterContainer.innerHTML = `
-        <span onclick="filterDashboard('ALL')" id="filterAll" class="badge bg-secondary cursor-pointer filter-badge active p-2">
-           <i class="fas fa-list me-1"></i> Semua (${totalSemua})
-        </span>
-        <span onclick="filterDashboard('LENGKAP')" id="filterLengkap" class="badge bg-success cursor-pointer filter-badge p-2">
-           <i class="fas fa-check-circle me-1"></i> Data Lengkap (${totalLengkap})
-        </span>
-        <span onclick="filterDashboard('BELUM')" id="filterBelum" class="badge bg-danger cursor-pointer filter-badge p-2">
-           <i class="fas fa-times-circle me-1"></i> Belum Isi (${totalBelum})
-        </span>
+        <div class="row align-items-center g-3" id="filterSectionRow">
+          <div class="col-md-8 col-12 d-flex flex-wrap gap-2">
+            <span onclick="setFilterStatus('ALL')" id="badgeAll" class="badge bg-secondary cursor-pointer filter-badge active p-2">
+               <i class="fas fa-list me-1"></i> Semua <span id="countAll" class="badge bg-light text-dark ms-1">0</span>
+            </span>
+            <span onclick="setFilterStatus('LENGKAP')" id="badgeLengkap" class="badge bg-success cursor-pointer filter-badge p-2">
+               <i class="fas fa-check-circle me-1"></i> Lengkap <span id="countLengkap" class="badge bg-light text-dark ms-1">0</span>
+            </span>
+            <span onclick="setFilterStatus('BELUM')" id="badgeBelum" class="badge bg-danger cursor-pointer filter-badge p-2">
+               <i class="fas fa-times-circle me-1"></i> Belum <span id="countBelum" class="badge bg-light text-dark ms-1">0</span>
+            </span>
+          </div>
+
+          <div class="col-md-4 col-12">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0"><i class="fas fa-filter text-muted"></i></span>
+                <select id="typeFilterSelect" class="form-select custom-select-dashboard border-start-0" onchange="setFilterType(this.value)">
+                    ${typeOptionsHTML}
+                </select>
+            </div>
+          </div>
+        </div>
       `;
 
-      filterDashboard('ALL');
+      // 3. Initial Run
+      runDashboardFilter();
     }
 
-    function filterDashboard(type) {
+    function setFilterStatus(status) {
+        activeStatusFilter = status;
+        runDashboardFilter();
+    }
+
+    function setFilterType(type) {
+        activeTypeFilter = type;
+        runDashboardFilter();
+    }
+
+    function runDashboardFilter() {
+      // 1. Filter Data based on BOTH Status AND Type
+      let filteredData = storedDashboardData.filter(item => {
+        const matchStatus = (activeStatusFilter === 'ALL') 
+                            || (activeStatusFilter === 'LENGKAP' && item.status) 
+                            || (activeStatusFilter === 'BELUM' && !item.status);
+        
+        const matchType = (activeTypeFilter === 'ALL') 
+                          || (item.jenis === activeTypeFilter);
+
+        return matchStatus && matchType;
+      });
+
+      // 2. Update Badge UI (Active State)
+      document.querySelectorAll('.filter-badge').forEach(el => el.classList.remove('active'));
+      if(activeStatusFilter === 'ALL') document.getElementById('badgeAll').classList.add('active');
+      if(activeStatusFilter === 'LENGKAP') document.getElementById('badgeLengkap').classList.add('active');
+      if(activeStatusFilter === 'BELUM') document.getElementById('badgeBelum').classList.add('active');
+
+      // 3. Update Badge Counts (Contextual to the selected Type)
+      //    Logic: "Counts" should reflect the totals for the CURRENT selected Type.
+      let contextData = storedDashboardData;
+      if (activeTypeFilter !== 'ALL') {
+         contextData = storedDashboardData.filter(item => item.jenis === activeTypeFilter);
+      }
+      
+      const totalAll = contextData.length;
+      const totalLengkap = contextData.filter(i => i.status).length;
+      const totalBelum = contextData.filter(i => !i.status).length;
+
+      document.getElementById('countAll').innerText = totalAll;
+      document.getElementById('countLengkap').innerText = totalLengkap;
+      document.getElementById('countBelum').innerText = totalBelum;
+
+      // 4. Render Grid
+      renderGrid(filteredData);
+    }
+
+    function renderGrid(dataToRender) {
       const wrapper = document.getElementById('schoolGridWrapper');
       wrapper.innerHTML = "";
-      
-      document.querySelectorAll('.filter-badge').forEach(el => el.classList.remove('active'));
-      
-      let filteredData = [];
-      
-      if (type === 'ALL') {
-        document.getElementById('filterAll').classList.add('active');
-        filteredData = storedDashboardData;
-      } 
-      else if (type === 'LENGKAP') {
-        document.getElementById('filterLengkap').classList.add('active');
-        filteredData = storedDashboardData.filter(item => item.status);
-      } 
-      else if (type === 'BELUM') {
-        document.getElementById('filterBelum').classList.add('active');
-        filteredData = storedDashboardData.filter(item => !item.status);
-      }
 
-      if (!filteredData || filteredData.length === 0) {
-        wrapper.innerHTML = `<div class="alert alert-secondary text-center mt-3">Tiada data untuk paparan ini.</div>`;
+      if (!dataToRender || dataToRender.length === 0) {
+        wrapper.innerHTML = `<div class="alert alert-secondary text-center mt-3"><i class="fas fa-info-circle me-2"></i>Tiada data untuk paparan ini.</div>`;
         return;
       }
 
-      // Grouping Logic
-      const groups = filteredData.reduce((acc, item) => {
+      // Grouping Logic (Still group by Type for clarity)
+      const groups = dataToRender.reduce((acc, item) => {
         const key = item.jenis || "LAIN-LAIN";
         if (!acc[key]) acc[key] = [];
         acc[key].push(item);
@@ -454,11 +521,8 @@
       document.getElementById('loginCard').classList.add('hidden');
       document.getElementById('formCard').classList.remove('hidden');
 
-      // Map Supabase Columns to UI
       document.getElementById('dispNamaSekolah').innerText = d.nama_sekolah;
       document.getElementById('dispKodDaerah').innerText = `Kod: ${d.kod_sekolah} | Daerah: ${d.daerah}`;
-      
-      // Simpan PK dalam hidden input
       document.getElementById('hiddenKodSekolah').value = d.kod_sekolah;
 
       document.getElementById('gpictNama').value = d.nama_gpict || "";
@@ -468,7 +532,6 @@
       document.getElementById('adminTel').value = d.no_telefon_admin_delima || "";
       document.getElementById('adminEmel').value = d.emel_delima_admin_delima || "";
 
-      // Logic Navigasi
       const btnNav = document.getElementById('btnNavigasiKeluar');
       const isAdmin = sessionStorage.getItem('adminDashboardData');
 
@@ -491,7 +554,6 @@
       }
     }
 
-    // --- FUNGSI UPDATE/SAVE KE SUPABASE ---
     async function prosesSimpan() {
       const kod = document.getElementById('hiddenKodSekolah').value;
       const gpictEmel = document.getElementById('gpictEmel').value;
@@ -523,8 +585,6 @@
           if (error) throw error;
 
           toggleLoading(false);
-          
-          // Clear session to force refresh when going back to dashboard
           sessionStorage.removeItem('adminDashboardData'); 
 
           Swal.fire({
@@ -532,20 +592,16 @@
             text: 'Data telah disimpan.', 
             icon: 'success'
           }).then(async () => {
-              // Jika dalam mode Admin, refresh data dashboard
               const kodInput = document.getElementById('inputKodSekolah').value;
               if(kodInput === "M030") {
                    toggleLoading(true);
                    const { data } = await supabaseClient.from('sekolah_data').select('*').order('nama_sekolah', { ascending: true });
-                   
-                   // Re-format for dashboard
                    const formattedData = data.map(item => ({
                         kod: item.kod_sekolah,
                         nama: item.nama_sekolah,
                         jenis: item.jenis_sekolah || 'LAIN-LAIN',
                         status: !!(item.nama_gpict && item.nama_gpict.trim() !== "")
                    }));
-
                    sessionStorage.setItem('adminDashboardData', JSON.stringify(formattedData)); 
                    renderAdminDashboard(formattedData);
               }
@@ -556,7 +612,6 @@
       }
     }
 
-    // --- FUNGSI PADAM (RESET DATA) ---
     function mintaPinPadam() {
       Swal.fire({
         title: 'Pengesahan Admin',
@@ -598,8 +653,6 @@
             sessionStorage.removeItem('adminDashboardData');
             Swal.fire('Terpadam!', 'Data guru telah dikosongkan.', 'success').then(async () => {
               document.getElementById('dataForm').reset();
-              
-               // Refresh Dashboard logic if Admin
                const kodInput = document.getElementById('inputKodSekolah').value;
                if(kodInput === "M030") {
                    toggleLoading(true);
@@ -618,7 +671,6 @@
       });
     }
 
-    // --- FUNGSI KHAS TELEGRAM (Kekal Sama) ---
     function janaSenaraiTelegram() {
       const rawData = sessionStorage.getItem('adminDashboardData');
       if (!rawData) {
@@ -626,10 +678,18 @@
         return;
       }
       const dataList = JSON.parse(rawData);
-      const belumIsi = dataList.filter(item => !item.status);
+      
+      // Filter based on Current View (Active Type Filter)
+      // If user selected "SJKC" filter, telegram list should only contain "SJKC" that are incomplete.
+      let contextData = dataList;
+      if (activeTypeFilter !== 'ALL') {
+          contextData = dataList.filter(item => item.jenis === activeTypeFilter);
+      }
+
+      const belumIsi = contextData.filter(item => !item.status);
 
       if (belumIsi.length === 0) {
-        Swal.fire('Tahniah!', 'Semua sekolah telah mengisi maklumat.', 'success');
+        Swal.fire('Tahniah!', 'Semua sekolah (dalam paparan semasa) telah mengisi maklumat.', 'success');
         return;
       }
 
@@ -642,6 +702,7 @@
 
       const tarikh = new Date().toLocaleDateString('ms-MY');
       let teksTelegram = `**SENARAI SEKOLAH BELUM ISI MAKLUMAT**\n`;
+      if(activeTypeFilter !== 'ALL') teksTelegram += `Kategori: ${activeTypeFilter}\n`;
       teksTelegram += `Tarikh: ${tarikh}\n\n`;
       teksTelegram += `Mohon tindakan sekolah berikut untuk mengisi maklumat Penyelaras ICT & Admin DELIMa:\n`;
 
@@ -668,7 +729,6 @@
           const copyText = document.getElementById("telegramText");
           copyText.select();
           copyText.setSelectionRange(0, 99999); 
-
           try {
             navigator.clipboard.writeText(copyText.value)
                  .then(() => Swal.fire('Berjaya!', 'Teks disalin ke clipboard.', 'success'))
