@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SMPID</title>
+  <title>SMPID - Sistem Maklumat Penyelaras ICT</title>
   
   <link rel="icon" href="icoppdag.png">
 
@@ -11,6 +11,7 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <style>
     body { background-color: #f0f2f5; font-family: 'Inter', sans-serif; }
@@ -35,31 +36,43 @@
     }
     .hidden { display: none !important; }
 
-    /* CSS Dashboard */
+    /* CSS Dashboard Card */
     .school-card {
       transition: transform 0.2s, box-shadow 0.2s;
       cursor: pointer;
       height: 100%;
-      position: relative;
+      border: 1px solid rgba(0,0,0,0.05);
+      background: white;
     }
     .school-card:hover {
       transform: translateY(-5px);
       box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+      border-color: #0d6efd;
     }
-    /* Indicator Icon for Telegram Bot */
-    .bot-indicator {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: rgba(255,255,255,0.2);
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        backdrop-filter: blur(4px);
+    .school-card .card-body {
+        padding: 1rem;
     }
+    /* Status Badge pada Kad */
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+        border-radius: 20px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Indikator Telegram Baru */
+    .tele-status-row {
+        background-color: #f8f9fa;
+        border-top: 1px solid #eee;
+        padding: 8px 12px;
+        border-radius: 0 0 12px 12px;
+        font-size: 0.8rem;
+    }
+    .tele-icon { margin-right: 4px; }
+    .is-reg { color: #0d6efd; } /* Biru jika daftar */
+    .not-reg { color: #adb5bd; opacity: 0.5; } /* Kelabu pudar jika belum */
 
     .category-header {
       background-color: #e9ecef;
@@ -71,35 +84,22 @@
       border-left: 5px solid #0d6efd;
     }
     
-    /* Interactive Filters Styles */
+    /* Interactive Filters */
     .cursor-pointer { cursor: pointer; user-select: none; transition: all 0.2s ease; }
     .filter-badge { opacity: 0.6; transform: scale(0.98); border: 2px solid transparent; }
     .filter-badge:hover { opacity: 0.8; }
     .filter-badge.active { opacity: 1; transform: scale(1); box-shadow: 0 2px 4px rgba(0,0,0,0.15); border-color: rgba(0,0,0,0.1); }
     
-    /* Custom Select Style */
     .custom-select-dashboard {
         border-radius: 20px;
         border: 2px solid #e9ecef;
         padding: 0.375rem 2.5rem 0.375rem 1rem;
         font-weight: 600;
         color: #495057;
-        background-position: right 1rem center;
     }
     .custom-select-dashboard:focus {
         border-color: #0d6efd;
         box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
-    }
-
-    /* Print Styles */
-    @media print {
-      body { background-color: white !important; -webkit-print-color-adjust: exact; }
-      .header-bg, .btn, .no-print, #loginCard, #formCard { display: none !important; }
-      .main-container { margin-top: 0 !important; }
-      .card { box-shadow: none !important; border: 1px solid #ddd !important; }
-      .category-section { break-inside: avoid; page-break-inside: avoid; }
-      #dashboardCard { display: block !important; padding: 0 !important; border: none !important; }
-      #filterSectionRow { display: none !important; } /* Hide filters on print */
     }
   </style>
 </head>
@@ -107,55 +107,50 @@
 
   <div id="loadingOverlay" class="hidden">
     <div class="text-center">
-      <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;"></div>
-      <p class="mt-2 fw-bold text-success">Sedang Memproses...</p>
+      <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+      <p class="mt-2 fw-bold text-dark">Sedang Memproses...</p>
     </div>
   </div>
 
   <div class="header-bg text-center">
-    <img src="icoppdag.png" 
-         alt="Logo PPD" 
-         class="mb-4" 
-         style="width: 200px; height: auto;">
-         
-    <h2 class="fw-bold px-3">
-      <i class="fas fa-school me-2"></i>Sistem Maklumat Penyelaras ICT dan Admin DELIMa
-    </h2>
-    <p class="opacity-75">Sila lengkapkan maklumat dengan tepat</p>
+    <img src="icoppdag.png" alt="Logo PPD" class="mb-4" style="width: 200px; height: auto;">
+    <h2 class="fw-bold px-3"><i class="fas fa-school me-2"></i>Sistem Maklumat Penyelaras ICT</h2>
+    <p class="opacity-75">Unit ICT, Pejabat Pendidikan Daerah Alor Gajah</p>
   </div>
 
   <div class="container main-container pb-5">
     <div class="row justify-content-center">
-      <div class="col-md-10 col-lg-12">
+      <div class="col-md-12">
 
-        <div id="loginCard" class="card p-4 mx-auto" style="max-width: 600px;">
+        <div id="loginCard" class="card p-4 mx-auto shadow-sm" style="max-width: 500px;">
           <div class="card-body">
-            <h5 class="card-title text-center mb-4">Carian Sekolah</h5>
+            <h5 class="card-title text-center mb-4 fw-bold">Akses Sistem</h5>
             <div class="mb-3">
-              <label class="form-label">KOD SEKOLAH</label>
+              <label class="form-label text-muted">MASUKKAN KOD AKSES</label>
               <div class="input-group">
-                <span class="input-group-text bg-light"><i class="fas fa-key"></i></span>
-                <input type="text" id="inputKodSekolah" class="form-control form-control-lg uppercase-input" 
-                       placeholder="CONTOH: MBA0001" oninput="this.value = this.value.toUpperCase()">
+                <span class="input-group-text bg-light border-end-0"><i class="fas fa-key text-muted"></i></span>
+                <input type="text" id="inputKodSekolah" class="form-control form-control-lg uppercase-input border-start-0" 
+                       placeholder="Contoh: MBA0001" oninput="this.value = this.value.toUpperCase()">
               </div>
+              <div class="form-text mt-2 text-center">Masukkan Kod Sekolah atau Kod Admin (M030).</div>
             </div>
-            <button onclick="prosesCarian()" class="btn btn-success w-100 btn-lg fw-bold">
-              <i class="fas fa-search me-2"></i>CARI
+            <button onclick="prosesLogin()" class="btn btn-primary w-100 btn-lg fw-bold shadow-sm">
+              <i class="fas fa-sign-in-alt me-2"></i>SEMAK STATUS
             </button>
           </div>
         </div>
 
-        <div id="dashboardCard" class="card p-4 hidden">
-          <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
-            <h4 class="mb-0 fw-bold text-primary"><i class="fas fa-tachometer-alt me-2"></i>Dashboard Status</h4>
+        <div id="dashboardCard" class="card p-4 hidden shadow-sm">
+          <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
+            <div>
+                 <h4 class="mb-0 fw-bold text-primary"><i class="fas fa-tachometer-alt me-2"></i>Dashboard Admin</h4>
+                 <small class="text-muted">Status pengisian data sekolah</small>
+            </div>
             <div class="d-flex gap-2">
-              <span class="badge bg-light text-dark border align-self-center me-2 d-none d-md-block">
-                  <i class="fas fa-robot text-primary"></i> = Bot Aktif
-              </span>
               <button onclick="janaSenaraiTelegram()" class="btn btn-warning btn-sm text-dark fw-bold">
-                <i class="fas fa-copy me-1"></i>Salin Senarai (Telegram)
+                <i class="fab fa-telegram-plane me-1"></i>List Telegram
               </button>
-              <button onclick="keluarSistem()" class="btn btn-outline-secondary btn-sm">
+              <button onclick="keluarSistem()" class="btn btn-outline-danger btn-sm">
                 <i class="fas fa-sign-out-alt me-1"></i>Keluar
               </button>
             </div>
@@ -167,83 +162,77 @@
           <div id="schoolGridWrapper"></div>
         </div>
 
-        <div id="formCard" class="card p-4 hidden mx-auto" style="max-width: 800px;">
-          <div class="alert alert-primary d-flex align-items-center" role="alert">
-            <i class="fas fa-building fa-2x me-3"></i>
+        <div id="formCard" class="card p-4 hidden mx-auto shadow-sm" style="max-width: 800px;">
+          <div class="alert alert-primary d-flex align-items-center shadow-sm border-0" role="alert">
+            <i class="fas fa-building fa-2x me-3 opacity-50"></i>
             <div>
               <h5 class="alert-heading mb-0 fw-bold" id="dispNamaSekolah">Nama Sekolah</h5>
-              <small id="dispKodDaerah">Kod: - | Daerah: -</small>
+              <small id="dispKodDaerah" class="text-uppercase">Kod: - | Daerah: -</small>
             </div>
           </div>
 
           <form id="dataForm" onsubmit="event.preventDefault(); prosesSimpan();">
             <input type="hidden" id="hiddenKodSekolah">
 
-            <h6 class="text-success border-bottom pb-2 mb-3 mt-2"><i class="fas fa-user-tie me-2"></i>GURU PENYELARAS ICT (GPICT)</h6>
-            <div class="mb-3">
-              <label class="form-label">NAMA PENUH</label>
-              <input type="text" class="form-control uppercase-input" id="gpictNama" required 
-                     oninput="this.value = this.value.toUpperCase()">
-            </div>
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">NO. TELEFON</label>
-                <input type="tel" class="form-control" id="gpictTel" required 
-                       placeholder="Contoh: 0123456789" onblur="autoFormatPhone(this)">
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">EMEL DELIMA</label>
-                <input type="email" class="form-control" id="gpictEmel" required 
-                       placeholder="g-xxxxxxxx@moe-dl.edu.my">
-              </div>
+            <h6 class="text-primary border-bottom pb-2 mb-3 mt-4"><i class="fas fa-user-tie me-2"></i>MAKLUMAT GURU PENYELARAS ICT</h6>
+            <div class="row g-3">
+                <div class="col-12">
+                  <label class="form-label">NAMA PENUH</label>
+                  <input type="text" class="form-control uppercase-input bg-light" id="gpictNama" required oninput="this.value = this.value.toUpperCase()">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">NO. TELEFON</label>
+                  <input type="tel" class="form-control bg-light" id="gpictTel" required placeholder="0123456789" onblur="autoFormatPhone(this)">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">EMEL DELIMA (@moe-dl.edu.my)</label>
+                  <input type="email" class="form-control bg-light" id="gpictEmel" required placeholder="g-xxxxxxxx@moe-dl.edu.my">
+                </div>
             </div>
 
-            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3 mt-4">
-              <h6 class="text-success mb-0"><i class="fas fa-user-shield me-2"></i>ADMIN DELIMA</h6>
-              <div class="form-check">
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3 mt-5">
+              <h6 class="text-primary mb-0"><i class="fas fa-user-shield me-2"></i>MAKLUMAT ADMIN DELIMA</h6>
+              <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" id="checkSama" onchange="salinData()">
-                <label class="form-check-label small fw-bold" for="checkSama">Sama dengan GPICT?</label>
+                <label class="form-check-label small fw-bold text-muted" for="checkSama">Sama dengan GPICT</label>
               </div>
+            </div>
+            
+            <div class="row g-3">
+                <div class="col-12">
+                  <label class="form-label">NAMA PENUH</label>
+                  <input type="text" class="form-control uppercase-input bg-light" id="adminNama" required oninput="this.value = this.value.toUpperCase()">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">NO. TELEFON</label>
+                  <input type="tel" class="form-control bg-light" id="adminTel" required placeholder="0123456789" onblur="autoFormatPhone(this)">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">EMEL DELIMA (@moe-dl.edu.my)</label>
+                  <input type="email" class="form-control bg-light" id="adminEmel" required placeholder="g-xxxxxxxx@moe-dl.edu.my">
+                </div>
             </div>
 
-            <div class="mb-3">
-              <label class="form-label">NAMA PENUH</label>
-              <input type="text" class="form-control uppercase-input" id="adminNama" required 
-                     oninput="this.value = this.value.toUpperCase()">
-            </div>
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">NO. TELEFON</label>
-                <input type="tel" class="form-control" id="adminTel" required 
-                       placeholder="Contoh: 0123456789" onblur="autoFormatPhone(this)">
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">EMEL DELIMA</label>
-                <input type="email" class="form-control" id="adminEmel" required 
-                       placeholder="g-xxxxxxxx@moe-dl.edu.my">
-              </div>
-            </div>
-
-            <div class="d-grid gap-2 mt-4">
-              <button type="submit" class="btn btn-primary btn-lg fw-bold shadow-sm">
-                <i class="fas fa-save me-2"></i>SIMPAN DATA
+            <div class="d-grid gap-2 mt-5">
+              <button type="submit" class="btn btn-success btn-lg fw-bold shadow">
+                <i class="fas fa-save me-2"></i>KEMASKINI DATA
               </button>
               
-              <button type="button" onclick="mintaPinPadam()" class="btn btn-outline-danger btn-sm mt-2">
-                <i class="fas fa-trash-alt me-2"></i>Padam Data (Admin Sahaja)
-              </button>
-
-              <button type="button" id="btnNavigasiKeluar" onclick="keluarSistem()" class="btn btn-link text-muted btn-sm">
-                <i class="fas fa-sign-out-alt me-1"></i>Keluar
-              </button>
+              <div class="d-flex justify-content-between mt-2">
+                  <button type="button" onclick="mintaPinPadam()" class="btn btn-outline-danger btn-sm border-0">
+                    <i class="fas fa-trash-alt me-2"></i>Padam Data (Admin)
+                  </button>
+                  <button type="button" id="btnNavigasiKeluar" onclick="keluarSistem()" class="btn btn-link text-muted btn-sm text-decoration-none">
+                    <i class="fas fa-arrow-left me-1"></i>Keluar
+                  </button>
+              </div>
             </div>
           </form>
         </div>
+
       </div>
     </div>
   </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <script>
     // --- KONFIGURASI SUPABASE ---
@@ -252,7 +241,7 @@
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const ADMIN_PIN = "pkgag";
 
-    // --- GLOBAL VARIABLES FOR FILTERING & STATE ---
+    // --- STATE MANAGEMENT ---
     let storedDashboardData = [];
     let activeStatusFilter = 'ALL';
     let activeTypeFilter = 'ALL';
@@ -275,19 +264,19 @@
       show ? el.classList.remove('hidden') : el.classList.add('hidden');
     }
 
-    // --- NAVIGATION ---
-    
     function kembaliKeDashboard() {
       document.getElementById('dataForm').reset();
       document.getElementById('formCard').classList.add('hidden');
       document.getElementById('dashboardCard').classList.remove('hidden');
+      // Pastikan grid di-render semula dengan data terkini
+      runDashboardFilter(); 
     }
 
     function keluarSistem() {
       document.getElementById('dataForm').reset();
       document.getElementById('inputKodSekolah').value = "";
+      sessionStorage.removeItem('smpid_auth');
       sessionStorage.removeItem('adminDashboardData');
-      sessionStorage.removeItem('smpid_auth'); // Remove auth token
       
       storedDashboardData = []; 
       activeStatusFilter = 'ALL';
@@ -296,45 +285,39 @@
       document.getElementById('formCard').classList.add('hidden');
       document.getElementById('dashboardCard').classList.add('hidden');
       document.getElementById('loginCard').classList.remove('hidden');
-      setTimeout(() => document.getElementById('inputKodSekolah').focus(), 100);
     }
 
-    // --- LOGIK UTAMA ---
-    async function prosesCarian() {
+    // --- LOGIK LOGIN ---
+    async function prosesLogin() {
       const kod = document.getElementById('inputKodSekolah').value.trim().toUpperCase();
-      if (!kod) { Swal.fire('Ralat', 'Sila masukkan Kod Sekolah.', 'warning'); return; }
+      if (!kod) { Swal.fire('Ralat', 'Sila masukkan kod.', 'warning'); return; }
 
-      // --- LOGIK ADMIN (M030) YANG DIKEMASKINI ---
+      // ADMIN FLOW
       if (kod === "M030") {
-        
-        // Simpan sesi
         sessionStorage.setItem('smpid_auth', 'true');
-
-        // Tanya Pengguna: Dashboard atau Emel?
+        
+        // Pilihan Menu
         Swal.fire({
             title: 'Menu Admin',
-            text: 'Sila pilih modul yang ingin diakses:',
+            text: 'Sila pilih modul akses:',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: '<i class="fas fa-tachometer-alt me-2"></i>Dashboard',
+            confirmButtonText: '<i class="fas fa-columns me-2"></i>Dashboard',
             cancelButtonText: '<i class="fas fa-envelope me-2"></i>Email Blaster',
             confirmButtonColor: '#0d6efd',
             cancelButtonColor: '#198754',
             reverseButtons: true
         }).then((result) => {
             if (result.isConfirmed) {
-                // Ke Dashboard (Logic Asal)
-                fetchAndRenderDashboard();
+                fetchAndRenderDashboard(true); // true = reset filters
             } else if (result.dismiss === Swal.DismissReason.cancel) {
-                // Ke Email Blaster (Fail Baru)
                 window.location.href = 'email.html';
             }
         });
+        return;
+      }
 
-        return; // Berhenti di sini, jangan execute code bawah
-      } 
-
-      // --- LOGIK USER BIASA (SEKOLAH) ---
+      // SCHOOL FLOW
       toggleLoading(true);
       try {
         const { data, error } = await supabaseClient
@@ -345,77 +328,78 @@
 
         if (error || !data) {
             toggleLoading(false);
-            Swal.fire('Maaf', 'Kod Sekolah tidak ditemui.', 'error');
+            Swal.fire('Maaf', 'Kod sekolah tidak dijumpai.', 'error');
             return;
         }
         
         toggleLoading(false);
         paparkanBorangSekolah(data);
       } catch (err) {
-        handleError(err);
+        toggleLoading(false);
+        console.error(err);
+        Swal.fire('Ralat', 'Gagal sambungan server.', 'error');
       }
     }
 
-    // --- FUNGSI FETCH ADMIN DASHBOARD (DIPISAHKAN) ---
-    async function fetchAndRenderDashboard() {
+    // --- DASHBOARD ADMIN ---
+    async function fetchAndRenderDashboard(resetFilters = false) {
         toggleLoading(true);
         try {
             const { data, error } = await supabaseClient
                 .from('sekolah_data')
-                .select('*') // Select * akan tarik telegram_id sekali
+                .select('*')
                 .order('nama_sekolah', { ascending: true });
             
             if (error) throw error;
             
-            // Map data + Check status bot
+            // Map data untuk dashboard
             const formattedData = data.map(item => ({
                 kod: item.kod_sekolah,
                 nama: item.nama_sekolah,
                 jenis: item.jenis_sekolah || 'LAIN-LAIN',
+                // Data dikira lengkap jika nama GPICT diisi
                 status: !!(item.nama_gpict && item.nama_gpict.trim() !== ""),
-                // Check bot status (GPICT or Admin registered)
-                botRegistered: (item.telegram_id_gpict || item.telegram_id_admin) ? true : false
+                // Check telegram ID secara spesifik
+                gpictReg: !!item.telegram_id_gpict,
+                adminReg: !!item.telegram_id_admin
             }));
 
             sessionStorage.setItem('adminDashboardData', JSON.stringify(formattedData)); 
-            renderAdminDashboard(formattedData);
+            
+            // UI Transition
+            document.getElementById('loginCard').classList.add('hidden');
+            document.getElementById('dashboardCard').classList.remove('hidden');
+
+            renderAdminDashboard(formattedData, resetFilters);
+            toggleLoading(false);
+
         } catch (err) {
-            handleError(err);
+            toggleLoading(false);
+            console.error(err);
+            Swal.fire('Ralat', 'Gagal memuatkan data dashboard.', 'error');
         }
     }
 
-    function handleError(err) {
-      toggleLoading(false); 
-      console.error(err);
-      Swal.fire('Ralat Sistem', 'Gagal menyambung ke pangkalan data.', 'error');
-    }
-
-    // --- DASHBOARD LOGIC (ADVANCED FILTERING) ---
-
-    function renderAdminDashboard(dataList) {
-      toggleLoading(false);
-      document.getElementById('loginCard').classList.add('hidden');
-      document.getElementById('dashboardCard').classList.remove('hidden');
-      
+    function renderAdminDashboard(dataList, resetFilters) {
       storedDashboardData = dataList || [];
       
-      // Reset filters on load
-      activeStatusFilter = 'ALL';
-      activeTypeFilter = 'ALL';
+      if (resetFilters) {
+          activeStatusFilter = 'ALL';
+          activeTypeFilter = 'ALL';
+      }
 
-      // 1. Extract Unique School Types Dynamically
+      // Bina Filter Dropdown (Jenis Sekolah)
       const uniqueTypes = [...new Set(storedDashboardData.map(item => item.jenis))].sort();
-
-      // 2. Build Filter UI (Status Badges + Type Dropdown)
       const filterContainer = document.getElementById('filterContainer');
       
       let typeOptionsHTML = `<option value="ALL">SEMUA JENIS SEKOLAH</option>`;
       uniqueTypes.forEach(type => {
-        typeOptionsHTML += `<option value="${type}">${type}</option>`;
+         const selected = (type === activeTypeFilter) ? 'selected' : '';
+         typeOptionsHTML += `<option value="${type}" ${selected}>${type}</option>`;
       });
 
       filterContainer.innerHTML = `
-        <div class="row align-items-center g-3" id="filterSectionRow">
+        <div class="row align-items-center g-3">
           <div class="col-md-8 col-12 d-flex flex-wrap gap-2">
             <span onclick="setFilterStatus('ALL')" id="badgeAll" class="badge bg-secondary cursor-pointer filter-badge active p-2">
                <i class="fas fa-list me-1"></i> Semua <span id="countAll" class="badge bg-light text-dark ms-1">0</span>
@@ -427,7 +411,6 @@
                <i class="fas fa-times-circle me-1"></i> Belum <span id="countBelum" class="badge bg-light text-dark ms-1">0</span>
             </span>
           </div>
-
           <div class="col-md-4 col-12">
             <div class="input-group">
                 <span class="input-group-text bg-white border-end-0"><i class="fas fa-filter text-muted"></i></span>
@@ -439,7 +422,6 @@
         </div>
       `;
 
-      // 3. Initial Run
       runDashboardFilter();
     }
 
@@ -454,6 +436,7 @@
     }
 
     function runDashboardFilter() {
+      // 1. Tapis data
       let filteredData = storedDashboardData.filter(item => {
         const matchStatus = (activeStatusFilter === 'ALL') 
                             || (activeStatusFilter === 'LENGKAP' && item.status) 
@@ -465,23 +448,20 @@
         return matchStatus && matchType;
       });
 
+      // 2. Update UI Filter (Active Class)
       document.querySelectorAll('.filter-badge').forEach(el => el.classList.remove('active'));
       if(activeStatusFilter === 'ALL') document.getElementById('badgeAll').classList.add('active');
       if(activeStatusFilter === 'LENGKAP') document.getElementById('badgeLengkap').classList.add('active');
       if(activeStatusFilter === 'BELUM') document.getElementById('badgeBelum').classList.add('active');
 
+      // 3. Update Count Badge
       let contextData = storedDashboardData;
       if (activeTypeFilter !== 'ALL') {
          contextData = storedDashboardData.filter(item => item.jenis === activeTypeFilter);
       }
-      
-      const totalAll = contextData.length;
-      const totalLengkap = contextData.filter(i => i.status).length;
-      const totalBelum = contextData.filter(i => !i.status).length;
-
-      document.getElementById('countAll').innerText = totalAll;
-      document.getElementById('countLengkap').innerText = totalLengkap;
-      document.getElementById('countBelum').innerText = totalBelum;
+      document.getElementById('countAll').innerText = contextData.length;
+      document.getElementById('countLengkap').innerText = contextData.filter(i => i.status).length;
+      document.getElementById('countBelum').innerText = contextData.filter(i => !i.status).length;
 
       renderGrid(filteredData);
     }
@@ -491,7 +471,7 @@
       wrapper.innerHTML = "";
 
       if (!dataToRender || dataToRender.length === 0) {
-        wrapper.innerHTML = `<div class="alert alert-secondary text-center mt-3"><i class="fas fa-info-circle me-2"></i>Tiada data untuk paparan ini.</div>`;
+        wrapper.innerHTML = `<div class="alert alert-light border text-center mt-3"><i class="fas fa-info-circle me-2"></i>Tiada data.</div>`;
         return;
       }
 
@@ -519,29 +499,31 @@
         rowDiv.className = "row g-3";
 
         groupData.forEach(school => {
-          const bgClass = school.status ? "bg-success" : "bg-danger";
-          const icon = school.status ? "fa-check-circle" : "fa-exclamation-circle";
-          const statusText = school.status ? "Lengkap" : "Belum Isi";
+          const statusBadge = school.status 
+             ? `<span class="badge bg-success status-badge">DATA LENGKAP</span>` 
+             : `<span class="badge bg-danger status-badge">BELUM ISI</span>`;
+             
+          // LOGIK INDIKATOR TELEGRAM (Icon)
+          const gpictIconClass = school.gpictReg ? 'is-reg' : 'not-reg';
+          const adminIconClass = school.adminReg ? 'is-reg' : 'not-reg';
           
-          // Indikator Bot (Hanya tunjuk jika dah daftar)
-          const botIndicator = school.botRegistered 
-            ? `<div class="bot-indicator" title="Bot Telegram Aktif"><i class="fas fa-robot text-white"></i></div>` 
-            : ``;
+          const iconGpict = `<span class="${gpictIconClass} me-2" title="GPICT"><i class="fas fa-user-tie tele-icon"></i> <i class="fas fa-${school.gpictReg ? 'check-circle' : 'times-circle'}"></i></span>`;
+          const iconAdmin = `<span class="${adminIconClass}" title="Admin"><i class="fas fa-user-shield tele-icon"></i> <i class="fas fa-${school.adminReg ? 'check-circle' : 'times-circle'}"></i></span>`;
 
           const colDiv = document.createElement('div');
           colDiv.className = "col-6 col-md-4 col-lg-3";
 
           colDiv.innerHTML = `
-            <div class="card school-card ${bgClass} text-white h-100" onclick="pilihSekolah('${school.kod}')">
-              ${botIndicator}
-              <div class="card-body d-flex flex-column justify-content-between p-3 text-center">
+            <div class="card school-card h-100" onclick="pilihSekolah('${school.kod}')">
+              <div class="card-body d-flex flex-column justify-content-between text-center">
                 <div>
-                  <h5 class="card-title fw-bold mb-2">${school.kod}</h5>
-                  <p class="card-text mb-0" style="font-size: 0.8rem; line-height: 1.25;">${school.nama}</p>
+                  <h6 class="fw-bold mb-1 text-primary">${school.kod}</h6>
+                  <p class="small fw-bold mb-2 text-dark" style="line-height:1.2">${school.nama}</p>
+                  <div class="mb-2">${statusBadge}</div>
                 </div>
-                <div class="mt-3 pt-2 border-top border-light opacity-75 small">
-                  <i class="fas ${icon} me-1"></i> ${statusText}
-                </div>
+              </div>
+              <div class="tele-status-row d-flex justify-content-center">
+                 ${iconGpict} <span class="text-muted mx-2">|</span> ${iconAdmin}
               </div>
             </div>
           `;
@@ -553,23 +535,19 @@
       });
     }
 
+    // --- BORANG SEKOLAH ---
     async function pilihSekolah(kod) {
       toggleLoading(true);
       try {
-        const { data, error } = await supabaseClient
-            .from('sekolah_data')
-            .select('*')
-            .eq('kod_sekolah', kod)
-            .single();
-
+        const { data, error } = await supabaseClient.from('sekolah_data').select('*').eq('kod_sekolah', kod).single();
         if (error) throw error;
-
+        
         document.getElementById('dashboardCard').classList.add('hidden');
-        toggleLoading(false);
         paparkanBorangSekolah(data);
-
+        toggleLoading(false);
       } catch (err) {
-        handleError(err);
+        toggleLoading(false);
+        console.error(err);
       }
     }
 
@@ -578,9 +556,10 @@
       document.getElementById('formCard').classList.remove('hidden');
 
       document.getElementById('dispNamaSekolah').innerText = d.nama_sekolah;
-      document.getElementById('dispKodDaerah').innerText = `Kod: ${d.kod_sekolah} | Daerah: ${d.daerah}`;
+      document.getElementById('dispKodDaerah').innerText = `KOD: ${d.kod_sekolah} | DAERAH: ${d.daerah}`;
       document.getElementById('hiddenKodSekolah').value = d.kod_sekolah;
 
+      // Isi Data
       document.getElementById('gpictNama').value = d.nama_gpict || "";
       document.getElementById('gpictTel').value = d.no_telefon_gpict || "";
       document.getElementById('gpictEmel').value = d.emel_delima_gpict || "";
@@ -588,17 +567,14 @@
       document.getElementById('adminTel').value = d.no_telefon_admin_delima || "";
       document.getElementById('adminEmel').value = d.emel_delima_admin_delima || "";
 
+      // Setup Butang Kembali
       const btnNav = document.getElementById('btnNavigasiKeluar');
-      const isAdmin = sessionStorage.getItem('adminDashboardData');
-
-      if (isAdmin) {
-        btnNav.innerHTML = '<i class="fas fa-arrow-left me-1"></i> Kembali ke Dashboard';
-        btnNav.setAttribute('onclick', 'kembaliKeDashboard()');
-        btnNav.className = 'btn btn-secondary btn-sm mt-2 w-100 shadow-sm';
+      if (sessionStorage.getItem('smpid_auth') === 'true') {
+         btnNav.innerHTML = '<i class="fas fa-arrow-left me-1"></i> Kembali ke Dashboard';
+         btnNav.setAttribute('onclick', 'kembaliKeDashboard()');
       } else {
-        btnNav.innerHTML = '<i class="fas fa-sign-out-alt me-1"></i> Keluar';
-        btnNav.setAttribute('onclick', 'keluarSistem()');
-        btnNav.className = 'btn btn-link text-muted btn-sm';
+         btnNav.innerHTML = '<i class="fas fa-sign-out-alt me-1"></i> Keluar';
+         btnNav.setAttribute('onclick', 'keluarSistem()');
       }
     }
 
@@ -610,6 +586,7 @@
       }
     }
 
+    // --- SIMPAN DATA & REFRESH DASHBOARD ---
     async function prosesSimpan() {
       const kod = document.getElementById('hiddenKodSekolah').value;
       const gpictEmel = document.getElementById('gpictEmel').value;
@@ -618,105 +595,86 @@
       let errorMsg = "";
       if (!checkEmailDomain(gpictEmel)) errorMsg += "Emel GPICT mesti guna @moe-dl.edu.my.<br>";
       if (!checkEmailDomain(adminEmel)) errorMsg += "Emel Admin mesti guna @moe-dl.edu.my.";
-
-      if (errorMsg) { Swal.fire('Format Emel Salah', errorMsg, 'warning'); return; }
+      if (errorMsg) { Swal.fire('Format Emel', errorMsg, 'warning'); return; }
 
       toggleLoading(true);
-
-      const updateData = {
-        nama_gpict: document.getElementById('gpictNama').value, 
-        no_telefon_gpict: document.getElementById('gpictTel').value,   
-        emel_delima_gpict: gpictEmel,
-        nama_admin_delima: document.getElementById('adminNama').value,
-        no_telefon_admin_delima: document.getElementById('adminTel').value,
-        emel_delima_admin_delima: adminEmel
-      };
 
       try {
           const { error } = await supabaseClient
             .from('sekolah_data')
-            .update(updateData)
+            .update({
+              nama_gpict: document.getElementById('gpictNama').value.toUpperCase(), 
+              no_telefon_gpict: document.getElementById('gpictTel').value,   
+              emel_delima_gpict: gpictEmel,
+              nama_admin_delima: document.getElementById('adminNama').value.toUpperCase(),
+              no_telefon_admin_delima: document.getElementById('adminTel').value,
+              emel_delima_admin_delima: adminEmel
+            })
             .eq('kod_sekolah', kod);
 
           if (error) throw error;
 
           toggleLoading(false);
-          sessionStorage.removeItem('adminDashboardData'); 
-
+          
           Swal.fire({
             title: 'Berjaya!', 
-            text: 'Data telah disimpan.', 
-            icon: 'success'
-          }).then(async () => {
-              const kodInput = document.getElementById('inputKodSekolah').value;
-              if(kodInput === "M030") {
-                   fetchAndRenderDashboard(); // Refresh dashboard
+            text: 'Data telah dikemaskini.', 
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+          }).then(() => {
+              // LOGIK PENTING UNTUK ADMIN
+              if(sessionStorage.getItem('smpid_auth') === 'true') {
+                   // Refresh data dashboard tanpa reset filter
+                   fetchAndRenderDashboard(false); 
               }
           });
 
       } catch (err) {
-          handleError(err);
+          toggleLoading(false);
+          Swal.fire('Ralat', err.message, 'error');
       }
     }
 
     function mintaPinPadam() {
       Swal.fire({
-        title: 'Pengesahan Admin',
-        text: "Masukkan PIN Admin:",
+        title: 'Admin Sahaja',
+        text: "Masukkan PIN Keselamatan:",
         input: 'password',
         showCancelButton: true,
-        confirmButtonText: 'Padam',
-        confirmButtonColor: '#d33',
-        showLoaderOnConfirm: true,
+        confirmButtonText: 'Padam Data',
+        confirmButtonColor: '#dc3545',
         preConfirm: async (pin) => {
           if (pin !== ADMIN_PIN) {
-             Swal.showValidationMessage('PIN Admin Salah!');
+             Swal.showValidationMessage('PIN Salah!');
              return false;
           }
           const kod = document.getElementById('hiddenKodSekolah').value;
-          
           try {
-             const { error } = await supabaseClient
-                .from('sekolah_data')
-                .update({
-                    nama_gpict: '',
-                    no_telefon_gpict: '',
-                    emel_delima_gpict: '',
-                    nama_admin_delima: '',
-                    no_telefon_admin_delima: '',
-                    emel_delima_admin_delima: ''
-                })
+             const { error } = await supabaseClient.from('sekolah_data')
+                .update({ nama_gpict: '', no_telefon_gpict: '', emel_delima_gpict: '', nama_admin_delima: '', no_telefon_admin_delima: '', emel_delima_admin_delima: '' })
                 .eq('kod_sekolah', kod);
-             
              if (error) throw error;
              return true;
-
-          } catch (error) {
-             Swal.showValidationMessage(`Ralat: ${error.message}`);
-          }
+          } catch (error) { Swal.showValidationMessage(error.message); }
         }
-      }).then(async (result) => {
+      }).then((result) => {
         if (result.isConfirmed) {
-            sessionStorage.removeItem('adminDashboardData');
-            Swal.fire('Terpadam!', 'Data guru telah dikosongkan.', 'success').then(async () => {
-              document.getElementById('dataForm').reset();
-               const kodInput = document.getElementById('inputKodSekolah').value;
-               if(kodInput === "M030") {
-                   fetchAndRenderDashboard(); // Refresh dashboard
+            Swal.fire('Terpadam!', 'Data telah dikosongkan.', 'success').then(() => {
+               document.getElementById('dataForm').reset();
+               if(sessionStorage.getItem('smpid_auth') === 'true') {
+                   fetchAndRenderDashboard(false);
                }
             });
         }
       });
     }
 
+    // --- TELEGRAM LIST ---
     function janaSenaraiTelegram() {
-      const rawData = sessionStorage.getItem('adminDashboardData');
-      if (!rawData) {
-        Swal.fire('Tiada Data', 'Sila refresh dashboard dahulu.', 'warning');
-        return;
-      }
-      const dataList = JSON.parse(rawData);
+      const dataList = JSON.parse(sessionStorage.getItem('adminDashboardData') || '[]');
       
+      // Ambil data ikut filter semasa
       let contextData = dataList;
       if (activeTypeFilter !== 'ALL') {
           contextData = dataList.filter(item => item.jenis === activeTypeFilter);
@@ -725,7 +683,7 @@
       const belumIsi = contextData.filter(item => !item.status);
 
       if (belumIsi.length === 0) {
-        Swal.fire('Tahniah!', 'Semua sekolah (dalam paparan semasa) telah mengisi maklumat.', 'success');
+        Swal.fire('Syabas!', 'Tiada sekolah yang belum mengisi data dalam kategori ini.', 'success');
         return;
       }
 
@@ -737,42 +695,25 @@
       }, {});
 
       const tarikh = new Date().toLocaleDateString('ms-MY');
-      let teksTelegram = `**SENARAI SEKOLAH BELUM ISI MAKLUMAT**\n`;
-      if(activeTypeFilter !== 'ALL') teksTelegram += `Kategori: ${activeTypeFilter}\n`;
-      teksTelegram += `Tarikh: ${tarikh}\n\n`;
-      teksTelegram += `Mohon tindakan sekolah berikut untuk mengisi maklumat Penyelaras ICT & Admin DELIMa:\n`;
+      let teks = `**SENARAI SEKOLAH BELUM ISI MAKLUMAT**\n`;
+      if(activeTypeFilter !== 'ALL') teks += `Kategori: ${activeTypeFilter}\n`;
+      teks += `Tarikh: ${tarikh}\n\nMohon tindakan sekolah berikut:\n`;
 
-      const sortedKeys = Object.keys(groups).sort();
-      sortedKeys.forEach(jenis => {
-        teksTelegram += `\n**${jenis}**\n`; 
+      Object.keys(groups).sort().forEach(jenis => {
+        teks += `\n**${jenis}**\n`; 
         groups[jenis].forEach((school, index) => {
-          teksTelegram += `${index + 1}. \`${school.kod}\` - ${school.nama}\n`;
+          teks += `${index + 1}. \`${school.kod}\` - ${school.nama}\n`;
         });
       });
-      teksTelegram += `\n__Harap maklum, terima kasih.__`;
 
       Swal.fire({
-        title: 'Senarai Untuk Telegram',
-        html: `
-          <p class="small text-muted mb-2">Salin teks di bawah dan tampal ke Group Telegram:</p>
-          <textarea id="telegramText" class="form-control" rows="12" style="font-size: 0.9rem;">${teksTelegram}</textarea>
-        `,
-        showCancelButton: true,
-        confirmButtonText: '<i class="fas fa-copy me-2"></i>Salin Teks',
-        cancelButtonText: 'Tutup',
-        confirmButtonColor: '#ffc107',
+        title: 'Salin Teks',
+        html: `<textarea id="teleText" class="form-control" rows="10">${teks}</textarea>`,
+        confirmButtonText: 'Salin',
         preConfirm: () => {
-          const copyText = document.getElementById("telegramText");
-          copyText.select();
-          copyText.setSelectionRange(0, 99999); 
-          try {
-            navigator.clipboard.writeText(copyText.value)
-                 .then(() => Swal.fire('Berjaya!', 'Teks disalin ke clipboard.', 'success'))
-                 .catch(() => Swal.fire('Info', 'Sila tekan CTRL+C untuk menyalin.', 'info'));
-          } catch (err) {
-             Swal.fire('Info', 'Sila tekan CTRL+C untuk menyalin.', 'info');
-          }
-          return false; 
+             const copyText = document.getElementById("teleText");
+             copyText.select();
+             navigator.clipboard.writeText(copyText.value);
         }
       });
     }
