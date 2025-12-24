@@ -52,7 +52,6 @@
     .school-card .card-body {
         padding: 1rem;
     }
-    /* Status Badge pada Kad */
     .status-badge {
         font-size: 0.75rem;
         padding: 4px 8px;
@@ -62,7 +61,7 @@
         letter-spacing: 0.5px;
     }
     
-    /* Indikator Telegram Baru */
+    /* Indikator Telegram */
     .tele-status-row {
         background-color: #f8f9fa;
         border-top: 1px solid #eee;
@@ -71,8 +70,8 @@
         font-size: 0.8rem;
     }
     .tele-icon { margin-right: 4px; }
-    .is-reg { color: #0d6efd; } /* Biru jika daftar */
-    .not-reg { color: #adb5bd; opacity: 0.5; } /* Kelabu pudar jika belum */
+    .is-reg { color: #0d6efd; } /* Biru */
+    .not-reg { color: #adb5bd; opacity: 0.5; } /* Kelabu */
 
     .category-header {
       background-color: #e9ecef;
@@ -84,7 +83,7 @@
       border-left: 5px solid #0d6efd;
     }
     
-    /* Interactive Filters */
+    /* Filters */
     .cursor-pointer { cursor: pointer; user-select: none; transition: all 0.2s ease; }
     .filter-badge { opacity: 0.6; transform: scale(0.98); border: 2px solid transparent; }
     .filter-badge:hover { opacity: 0.8; }
@@ -130,10 +129,9 @@
               <div class="input-group">
                 <span class="input-group-text bg-light border-end-0"><i class="fas fa-key text-muted"></i></span>
                 <input type="text" id="inputKodSekolah" class="form-control form-control-lg uppercase-input border-start-0" 
-                       placeholder="Contoh: MBA0001" oninput="this.value = this.value.toUpperCase()">
+                       placeholder="********" oninput="this.value = this.value.toUpperCase()">
               </div>
-              <div class="form-text mt-2 text-center">Masukkan Kod Sekolah atau Kod Admin (M030).</div>
-            </div>
+              </div>
             <button onclick="prosesLogin()" class="btn btn-primary w-100 btn-lg fw-bold shadow-sm">
               <i class="fas fa-sign-in-alt me-2"></i>SEMAK STATUS
             </button>
@@ -264,12 +262,18 @@
       show ? el.classList.remove('hidden') : el.classList.add('hidden');
     }
 
+    // PENTING: Fungsi ini dipanggil bila tekan "Kembali ke Dashboard"
     function kembaliKeDashboard() {
+      // 1. Sembunyikan Borang
       document.getElementById('dataForm').reset();
       document.getElementById('formCard').classList.add('hidden');
+      
+      // 2. Tunjukkan Dashboard
       document.getElementById('dashboardCard').classList.remove('hidden');
-      // Pastikan grid di-render semula dengan data terkini
-      runDashboardFilter(); 
+      
+      // 3. Refresh Data Dashboard (Supaya edit tadi nampak)
+      // Kita panggil fetchAndRenderDashboard tapi set UI supaya jangan reset filter
+      fetchAndRenderDashboard(false); 
     }
 
     function keluarSistem() {
@@ -296,7 +300,6 @@
       if (kod === "M030") {
         sessionStorage.setItem('smpid_auth', 'true');
         
-        // Pilihan Menu
         Swal.fire({
             title: 'Menu Admin',
             text: 'Sila pilih modul akses:',
@@ -343,7 +346,9 @@
 
     // --- DASHBOARD ADMIN ---
     async function fetchAndRenderDashboard(resetFilters = false) {
-        toggleLoading(true);
+        // Jika hanya refresh data (bukan login pertama), tak perlu spinner mengganggu
+        if(resetFilters) toggleLoading(true);
+
         try {
             const { data, error } = await supabaseClient
                 .from('sekolah_data')
@@ -352,29 +357,28 @@
             
             if (error) throw error;
             
-            // Map data untuk dashboard
             const formattedData = data.map(item => ({
                 kod: item.kod_sekolah,
                 nama: item.nama_sekolah,
                 jenis: item.jenis_sekolah || 'LAIN-LAIN',
-                // Data dikira lengkap jika nama GPICT diisi
                 status: !!(item.nama_gpict && item.nama_gpict.trim() !== ""),
-                // Check telegram ID secara spesifik
                 gpictReg: !!item.telegram_id_gpict,
                 adminReg: !!item.telegram_id_admin
             }));
 
             sessionStorage.setItem('adminDashboardData', JSON.stringify(formattedData)); 
             
-            // UI Transition
-            document.getElementById('loginCard').classList.add('hidden');
-            document.getElementById('dashboardCard').classList.remove('hidden');
+            // Jika kita datang dari skrin Login, kita ubah UI
+            if (resetFilters) {
+                document.getElementById('loginCard').classList.add('hidden');
+                document.getElementById('dashboardCard').classList.remove('hidden');
+            }
 
             renderAdminDashboard(formattedData, resetFilters);
-            toggleLoading(false);
+            if(resetFilters) toggleLoading(false);
 
         } catch (err) {
-            toggleLoading(false);
+            if(resetFilters) toggleLoading(false);
             console.error(err);
             Swal.fire('Ralat', 'Gagal memuatkan data dashboard.', 'error');
         }
@@ -388,7 +392,7 @@
           activeTypeFilter = 'ALL';
       }
 
-      // Bina Filter Dropdown (Jenis Sekolah)
+      // Bina Filter Dropdown
       const uniqueTypes = [...new Set(storedDashboardData.map(item => item.jenis))].sort();
       const filterContainer = document.getElementById('filterContainer');
       
@@ -436,7 +440,6 @@
     }
 
     function runDashboardFilter() {
-      // 1. Tapis data
       let filteredData = storedDashboardData.filter(item => {
         const matchStatus = (activeStatusFilter === 'ALL') 
                             || (activeStatusFilter === 'LENGKAP' && item.status) 
@@ -448,13 +451,11 @@
         return matchStatus && matchType;
       });
 
-      // 2. Update UI Filter (Active Class)
       document.querySelectorAll('.filter-badge').forEach(el => el.classList.remove('active'));
       if(activeStatusFilter === 'ALL') document.getElementById('badgeAll').classList.add('active');
       if(activeStatusFilter === 'LENGKAP') document.getElementById('badgeLengkap').classList.add('active');
       if(activeStatusFilter === 'BELUM') document.getElementById('badgeBelum').classList.add('active');
 
-      // 3. Update Count Badge
       let contextData = storedDashboardData;
       if (activeTypeFilter !== 'ALL') {
          contextData = storedDashboardData.filter(item => item.jenis === activeTypeFilter);
@@ -542,6 +543,7 @@
         const { data, error } = await supabaseClient.from('sekolah_data').select('*').eq('kod_sekolah', kod).single();
         if (error) throw error;
         
+        // Sembunyikan Dashboard, Tunjuk Form
         document.getElementById('dashboardCard').classList.add('hidden');
         paparkanBorangSekolah(data);
         toggleLoading(false);
@@ -586,7 +588,7 @@
       }
     }
 
-    // --- SIMPAN DATA & REFRESH DASHBOARD ---
+    // --- SIMPAN DATA (DIPERBAIKI) ---
     async function prosesSimpan() {
       const kod = document.getElementById('hiddenKodSekolah').value;
       const gpictEmel = document.getElementById('gpictEmel').value;
@@ -623,11 +625,10 @@
             timer: 1500,
             showConfirmButton: false
           }).then(() => {
-              // LOGIK PENTING UNTUK ADMIN
-              if(sessionStorage.getItem('smpid_auth') === 'true') {
-                   // Refresh data dashboard tanpa reset filter
-                   fetchAndRenderDashboard(false); 
-              }
+              // PERUBAHAN UTAMA DI SINI:
+              // Kita TIDAK memanggil fetchAndRenderDashboard di sini.
+              // Kita biarkan user di page Borang Sekolah.
+              // Bila user tekan "Kembali ke Dashboard", baru kita refresh data.
           });
 
       } catch (err) {
@@ -662,9 +663,7 @@
         if (result.isConfirmed) {
             Swal.fire('Terpadam!', 'Data telah dikosongkan.', 'success').then(() => {
                document.getElementById('dataForm').reset();
-               if(sessionStorage.getItem('smpid_auth') === 'true') {
-                   fetchAndRenderDashboard(false);
-               }
+               // Sama juga, jangan auto-navigate. Biar user tekan kembali.
             });
         }
       });
@@ -674,7 +673,6 @@
     function janaSenaraiTelegram() {
       const dataList = JSON.parse(sessionStorage.getItem('adminDashboardData') || '[]');
       
-      // Ambil data ikut filter semasa
       let contextData = dataList;
       if (activeTypeFilter !== 'ALL') {
           contextData = dataList.filter(item => item.jenis === activeTypeFilter);
