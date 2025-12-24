@@ -7,8 +7,10 @@
   <link rel="icon" href="icoppdag.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
   <style>
     body { background-color: #f8f9fa; font-family: 'Inter', sans-serif; }
     .header-blast { background: #198754; color: white; padding: 1.5rem 0; margin-bottom: 2rem; }
@@ -98,52 +100,84 @@ Unit ICT, PPD Alor Gajah.</textarea>
   </div>
 
   <script>
+    // --- SEMAKAN LOGIN ADMIN ---
     if (sessionStorage.getItem('smpid_auth') !== 'true') {
         alert("Sila log masuk sebagai Admin terlebih dahulu.");
         window.location.href = 'index.html';
     }
 
-    // --- GUNAKAN KEY YANG SAMA DENGAN INDEX.HTML ---
+    // --- KONFIGURASI SUPABASE ---
+    // PASTIKAN ANDA MASUKKAN URL & KEY ANDA DI SINI
     const SUPABASE_URL = 'https://hbanvnteyncwsnfprahz.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_IEcWCbBmqWLBOBU4rl0FPw_Z97Assvt'; 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // PEMBETULAN: Menggunakan nama 'sbClient' untuk elak konflik 'supabase'
+    const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let rawData = [];
 
+    // --- FUNGSI UTAMA ---
     document.addEventListener("DOMContentLoaded", async () => {
         Swal.fire({title: 'Memuatkan Data...', didOpen: () => Swal.showLoading()});
-        const { data, error } = await supabase.from('sekolah_data').select('kod_sekolah, nama_gpict, emel_delima_gpict, telegram_id_gpict, nama_admin_delima, emel_delima_admin_delima, telegram_id_admin');
-        if (error) { Swal.fire('Ralat', 'Gagal sambungan database.', 'error'); return; }
-        rawData = data;
+        
+        // Gunakan sbClient, bukan supabase
+        const { data, error } = await sbClient
+            .from('sekolah_data')
+            .select('kod_sekolah, nama_gpict, emel_delima_gpict, telegram_id_gpict, nama_admin_delima, emel_delima_admin_delima, telegram_id_admin');
+            
+        if (error) { 
+            console.error(error);
+            Swal.fire('Ralat', 'Gagal sambungan database.', 'error'); 
+            return; 
+        }
+        
+        rawData = data || [];
         document.getElementById('countSchool').innerText = rawData.length;
+        
+        // Panggil fungsi generateList buat kali pertama
         generateList();
+        
         Swal.close();
     });
 
     function generateList() {
+        // Ambil elemen HTML
         const includeGpict = document.getElementById('checkGpict').checked;
         const includeAdmin = document.getElementById('checkAdmin').checked;
         const filterStatus = document.getElementById('statusFilter').value;
         const uniqueEmails = new Set();
 
+        if (!rawData) return;
+
         rawData.forEach(row => {
+            // Logic GPICT
             if (includeGpict && row.emel_delima_gpict) {
                 const email = row.emel_delima_gpict.trim();
-                const hasId = row.telegram_id_gpict != null;
-                if (filterStatus === 'all' || (filterStatus === 'unregistered' && !hasId) || (filterStatus === 'registered' && hasId)) uniqueEmails.add(email);
+                const hasId = row.telegram_id_gpict != null && row.telegram_id_gpict !== ""; // Pastikan tak kosong
+                
+                if (filterStatus === 'all') uniqueEmails.add(email);
+                else if (filterStatus === 'unregistered' && !hasId) uniqueEmails.add(email);
+                else if (filterStatus === 'registered' && hasId) uniqueEmails.add(email);
             }
+            
+            // Logic Admin
             if (includeAdmin && row.emel_delima_admin_delima) {
                 const email = row.emel_delima_admin_delima.trim();
-                const hasId = row.telegram_id_admin != null;
-                if (filterStatus === 'all' || (filterStatus === 'unregistered' && !hasId) || (filterStatus === 'registered' && hasId)) uniqueEmails.add(email);
+                const hasId = row.telegram_id_admin != null && row.telegram_id_admin !== "";
+
+                if (filterStatus === 'all') uniqueEmails.add(email);
+                else if (filterStatus === 'unregistered' && !hasId) uniqueEmails.add(email);
+                else if (filterStatus === 'registered' && hasId) uniqueEmails.add(email);
             }
         });
 
+        // Paparkan Hasil
         const emailArray = Array.from(uniqueEmails);
         document.getElementById('countEmail').innerText = emailArray.length;
         const emailString = emailArray.join(', ');
         document.getElementById('emailOutput').value = emailString;
 
+        // Update Link Mailto
         const subject = encodeURIComponent(document.getElementById('msgSubject').value);
         const body = encodeURIComponent(document.getElementById('msgBody').value);
         document.getElementById('mailtoLink').href = `mailto:?bcc=${emailString}&subject=${subject}&body=${body}`;
@@ -151,9 +185,14 @@ Unit ICT, PPD Alor Gajah.</textarea>
 
     function copyEmails() {
         const copyText = document.getElementById("emailOutput");
+        if (!copyText.value) {
+            Swal.fire('Tiada Data', 'Senarai emel kosong.', 'info');
+            return;
+        }
         copyText.select();
         navigator.clipboard.writeText(copyText.value).then(() => Swal.fire({icon: 'success', title: 'Disalin!', timer: 1500, showConfirmButton: false}));
     }
+
     function copyTemplate() {
         const bodyText = document.getElementById("msgBody");
         navigator.clipboard.writeText(bodyText.value).then(() => Swal.fire({icon: 'success', title: 'Teks Disalin!', timer: 1500, showConfirmButton: false}));
