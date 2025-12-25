@@ -127,7 +127,7 @@
         color: #495057;
     }
     
-    /* --- MODAL QUEUE STYLE (KEMASKINI) --- */
+    /* --- MODAL QUEUE STYLE --- */
     .queue-overlay {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
         background: rgba(0,0,0,0.85); z-index: 10000;
@@ -354,7 +354,7 @@
     let activeStatusFilter = 'ALL';
     let activeTypeFilter = 'ALL';
     
-    // --- STATE UTK QUEUE WHATSAPP (FUNGSI BARU) ---
+    // --- STATE UTK QUEUE WHATSAPP ---
     let reminderQueue = [];
     let currentQueueIndex = 0;
 
@@ -855,12 +855,18 @@
       });
     }
 
-    // --- LOGIK MODUL TINDAKAN PANTAS (CIRI BARU) ---
+    // --- LOGIK MODUL TINDAKAN PANTAS (PEKA KONTEKS) ---
     function mulaTindakanPantas() {
-        const dataList = storedDashboardData;
+        let dataList = storedDashboardData; 
+        
+        // PENTING: Tapis data berdasarkan filter 'Jenis Sekolah' yang aktif
+        if (activeTypeFilter !== 'ALL') {
+            dataList = dataList.filter(item => item.jenis === activeTypeFilter);
+        }
+
         reminderQueue = [];
         
-        // Filter: Hanya yang belum daftar Telegram (ID kosong) TAPI ada nombor telefon
+        // Filter: Hanya yang belum daftar Telegram TAPI ada nombor telefon
         dataList.forEach(item => {
             // Check GPICT
             if (!item.telegram_id_gpict && item.no_telefon_gpict && cleanPhone(item.no_telefon_gpict)) {
@@ -885,7 +891,7 @@
         });
 
         if (reminderQueue.length === 0) {
-            Swal.fire('Tahniah!', 'Semua guru yang mempunyai nombor telefon telah mendaftar bot!', 'success');
+            Swal.fire('Tahniah!', `Semua guru dalam kategori ${activeTypeFilter} telah mendaftar!`, 'success');
             return;
         }
 
