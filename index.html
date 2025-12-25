@@ -545,7 +545,7 @@
           } else if (school.no_telefon_gpict) {
               const cleanNum = cleanPhone(school.no_telefon_gpict);
               if(cleanNum) {
-                  const msg = encodeURIComponent(`Salam Cikgu ${school.nama_gpict || ''}, mohon kerjasama aktifkan notifikasi SMPID PPD. Sila klik pautan ini untuk daftar automatik: https://t.me/smpid_bot?start=${school.kod}`);
+                  const msg = encodeURIComponent(`Assalamualaikum / Salam Sejahtera Cikgu ${school.nama_gpict || ''}, Ini adalah mesej janaan automatik. Mohon kerjasama aktifkan notifikasi SMPID PPD. Sila klik pautan ini untuk daftar automatik: https://t.me/smpid_bot?start=${school.kod}`);
                   gpictHtml = `<a href="https://wa.me/${cleanNum}?text=${msg}" target="_blank" class="wa-btn" onclick="event.stopPropagation()"><i class="fab fa-whatsapp"></i> Hantar Link</a>`;
               } else {
                   gpictHtml = `<span class="text-muted small">-</span>`;
