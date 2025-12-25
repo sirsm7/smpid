@@ -5,7 +5,7 @@
  * Database: Supabase
  */
 
-import { Bot, Context, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";
+import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 // 1. KONFIGURASI ENV
@@ -34,10 +34,36 @@ bot.command("start", async (ctx) => {
   );
 });
 
-// Pengendali input teks (Mencari Kod Sekolah)
+// Pengendali input teks (Mencari Kod Sekolah & Admin Login)
 bot.on("message:text", async (ctx) => {
-  const inputKod = ctx.message.text.trim().toUpperCase();
+  const inputTeks = ctx.message.text.trim();
+  const inputKod = inputTeks.toUpperCase();
+  const telegramId = ctx.from.id;
 
+  // --- LOGIK BARU: SUPER ADMIN (PPD) ---
+  // Langkah 1: Semak jika input adalah "M030"
+  if (inputKod === "M030") {
+    
+    // Langkah 2: Upsert ke tabel admin_users
+    const { error } = await supabase
+      .from("admin_users")
+      .upsert({ telegram_id: telegramId }, { onConflict: "telegram_id" });
+
+    if (error) {
+      console.error("Ralat Pendaftaran Admin:", error);
+      return ctx.reply("❌ Ralat sistem. Sila cuba sebentar lagi.");
+    }
+
+    // Langkah 3: Respon berjaya
+    return ctx.reply(
+      "✅ *Akses Admin Disahkan.*\nID Telegram anda telah direkodkan dalam sistem PPD.",
+      { parse_mode: "Markdown" }
+    );
+  }
+  // -------------------------------------
+
+  // --- LOGIK ASAL: CARIAN SEKOLAH ---
+  
   // Semakan pantas (elak query jika input terlalu panjang/pendek)
   if (inputKod.length < 5 || inputKod.length > 9) {
     return ctx.reply("⚠️ Format kod sekolah tidak sah. Sila cuba lagi (Contoh: MBA0001).");
