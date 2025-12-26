@@ -1,159 +1,175 @@
 /**
- * SMPID Telegram Bot (Deno Deploy)
- * Bahasa: TypeScript
- * Framework: grammY
- * Database: Supabase
+ * MAIN.TS (GABUNGAN)
+ * Mengandungi:
+ * 1. Logik Bot Asal (Pendaftaran ID Telegram)
+ * 2. Logik Baru (API untuk Helpdesk Web)
  */
 
 import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// 1. KONFIGURASI ENV
-// Pastikan variable ini diset dalam Settings -> Environment Variables di Deno Deploy
-const BOT_TOKEN = Deno.env.get("BOT_TOKEN");
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-const SUPABASE_KEY = Deno.env.get("SUPABASE_KEY");
+// --- KONFIGURASI ---
+// Pastikan ENV variables ini wujud di Deno Deploy Project Settings
+const BOT_TOKEN = Deno.env.get("BOT_TOKEN")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_KEY = Deno.env.get("SUPABASE_KEY")!;
 
-if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_KEY) {
-  throw new Error("Sila tetapkan BOT_TOKEN, SUPABASE_URL, dan SUPABASE_KEY.");
-}
-
-// 2. INISIALISASI
 const bot = new Bot(BOT_TOKEN);
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 3. LOGIK BOT
+// ============================================================
+// BAHAGIAN 1: LOGIK BOT ASAL (PENDAFTARAN)
+// ============================================================
 
-// Mesej aluan (/start)
 bot.command("start", async (ctx) => {
   await ctx.reply(
-    "👋 *Selamat Datang ke Bot SMPID*\n\n" +
-    "Sila masukkan **Kod Sekolah** anda untuk memulakan pendaftaran.\n" +
-    "_(Contoh: MBA0001)_",
+    "👋 *Selamat Datang ke Bot SMPID*\\n\\nSila masukkan **Kod Sekolah** anda untuk pendaftaran.\\n_(Contoh: MBA0001)_",
     { parse_mode: "Markdown" }
   );
 });
 
-// Pengendali input teks (Mencari Kod Sekolah & Admin Login)
+// Semak mesej teks untuk Kod Sekolah
 bot.on("message:text", async (ctx) => {
-  const inputTeks = ctx.message.text.trim();
-  const inputKod = inputTeks.toUpperCase();
-  const telegramId = ctx.from.id;
+  const text = ctx.message.text.trim().toUpperCase();
+  // Regex: 3 Huruf + 4 Digit (Contoh: MBA1234 atau MEA0001)
+  const codeRegex = /^[A-Z]{3}\d{4}$/; 
 
-  // --- LOGIK BARU: SUPER ADMIN (PPD) ---
-  // Langkah 1: Semak jika input adalah "M030"
-  if (inputKod === "M030") {
-    
-    // Langkah 2: Upsert ke tabel admin_users
-    const { error } = await supabase
-      .from("admin_users")
-      .upsert({ telegram_id: telegramId }, { onConflict: "telegram_id" });
+  if (codeRegex.test(text)) {
+    // Cari sekolah dalam database
+    const { data: school, error } = await supabase
+        .from("sekolah_data")
+        .select("*")
+        .eq("kod_sekolah", text)
+        .single();
 
-    if (error) {
-      console.error("Ralat Pendaftaran Admin:", error);
-      return ctx.reply("❌ Ralat sistem. Sila cuba sebentar lagi.");
+    if (error || !school) {
+      return ctx.reply("❌ Kod sekolah tidak ditemui dalam sistem. Sila semak semula.");
     }
 
-    // Langkah 3: Respon berjaya
-    return ctx.reply(
-      "✅ *Akses Admin Disahkan.*\nID Telegram anda telah direkodkan dalam sistem PPD.",
-      { parse_mode: "Markdown" }
+    // Paparkan butang pilihan peranan
+    const keyboard = new InlineKeyboard()
+      .text("Guru Penyelaras ICT", `reg_gpict_${text}`).row()
+      .text("Admin DELIMa", `reg_admin_${text}`).row()
+      .text("Kedua-duanya", `reg_both_${text}`);
+
+    await ctx.reply(
+      `🏫 **${school.nama_sekolah}** ditemui.\n\nSila pilih peranan anda untuk pendaftaran ID Telegram:`, 
+      { reply_markup: keyboard, parse_mode: "Markdown" }
     );
   }
-  // -------------------------------------
-
-  // --- LOGIK ASAL: CARIAN SEKOLAH ---
-  
-  // Semakan pantas (elak query jika input terlalu panjang/pendek)
-  if (inputKod.length < 5 || inputKod.length > 9) {
-    return ctx.reply("⚠️ Format kod sekolah tidak sah. Sila cuba lagi (Contoh: MBA0001).");
-  }
-
-  // Cari dalam Supabase
-  const { data, error } = await supabase
-    .from("sekolah_data")
-    .select("kod_sekolah, nama_sekolah")
-    .eq("kod_sekolah", inputKod)
-    .single();
-
-  if (error || !data) {
-    console.error(`Carian gagal untuk ${inputKod}:`, error);
-    return ctx.reply(`❌ Kod sekolah *${inputKod}* tidak dijumpai dalam pangkalan data. Sila semak dan cuba lagi.`, { parse_mode: "Markdown" });
-  }
-
-  // Jika jumpa, bina butang (Stateless: Kita pasang kod sekolah dalam callback_data)
-  // Format data: "role:PILIHAN:KOD_SEKOLAH"
-  const keyboard = new InlineKeyboard()
-    .text("👨‍💻 Saya Guru Penyelaras ICT", `role:gpict:${data.kod_sekolah}`).row()
-    .text("📂 Saya Admin DELIMa", `role:admin:${data.kod_sekolah}`).row()
-    .text("✅ Saya Memegang Kedua-dua Jawatan", `role:both:${data.kod_sekolah}`);
-
-  await ctx.reply(
-    `🏫 **Sekolah Ditemui:**\n${data.nama_sekolah}\n(${data.kod_sekolah})\n\nSila pilih peranan anda di sekolah ini:`,
-    {
-      reply_markup: keyboard,
-      parse_mode: "Markdown"
-    }
-  );
 });
 
-// Pengendali Butang (Callback Query)
+// Handle butang yang ditekan
 bot.on("callback_query:data", async (ctx) => {
-  const dataString = ctx.callbackQuery.data;
-  const telegramId = ctx.from.id;
+  const data = ctx.callbackQuery.data;
 
-  // Pecahkan data string: "role:gpict:MBA0001" -> ["role", "gpict", "MBA0001"]
-  const [prefix, role, kodSekolah] = dataString.split(":");
+  // Format callback: reg_ROLE_KODSEKOLAH
+  if (data.startsWith("reg_")) {
+    const parts = data.split("_");
+    const role = parts[1]; // gpict / admin / both
+    const kodSekolah = parts[2];
+    const telegramId = ctx.callbackQuery.from.id;
 
-  if (prefix !== "role") return; // Abaikan jika bukan data butang peranan
+    let updateData = {};
+    
+    if (role === 'gpict') {
+       updateData = { telegram_id_gpict: telegramId };
+    } else if (role === 'admin') {
+       updateData = { telegram_id_admin: telegramId };
+    } else if (role === 'both') {
+       updateData = { telegram_id_gpict: telegramId, telegram_id_admin: telegramId };
+    }
 
-  let updateData = {};
-  let roleText = "";
+    // Kemaskini DB
+    const { error } = await supabase
+      .from("sekolah_data")
+      .update(updateData)
+      .eq("kod_sekolah", kodSekolah);
 
-  // Tentukan lajur mana nak dikemaskini
-  switch (role) {
-    case "gpict":
-      updateData = { telegram_id_gpict: telegramId };
-      roleText = "Guru Penyelaras ICT";
-      break;
-    case "admin":
-      updateData = { telegram_id_admin: telegramId };
-      roleText = "Admin DELIMa";
-      break;
-    case "both":
-      updateData = { telegram_id_gpict: telegramId, telegram_id_admin: telegramId };
-      roleText = "Guru ICT & Admin DELIMa";
-      break;
-    default:
-      return ctx.answerCallbackQuery({ text: "Ralat data." });
+    if (error) {
+      await ctx.answerCallbackQuery({ text: "Ralat Sistem! Cuba lagi.", show_alert: true });
+    } else {
+      await ctx.answerCallbackQuery({ text: "Pendaftaran Berjaya!" });
+      await ctx.editMessageText(
+        `✅ Tahniah! ID Telegram anda telah direkodkan untuk sekolah **${kodSekolah}**.\n\nTerima kasih.`, 
+        { parse_mode: "Markdown" }
+      );
+    }
   }
-
-  // Lakukan kemaskini ke Supabase
-  const { error } = await supabase
-    .from("sekolah_data")
-    .update(updateData)
-    .eq("kod_sekolah", kodSekolah);
-
-  if (error) {
-    console.error("Supabase Update Error:", error);
-    await ctx.answerCallbackQuery({ text: "Gagal menyimpan data. Sila cuba lagi.", show_alert: true });
-    return;
-  }
-
-  // Beritahu Telegram loading dah habis
-  await ctx.answerCallbackQuery({ text: "Pendaftaran Berjaya!" });
-
-  // Edit mesej asal supaya pengguna tahu proses selesai
-  await ctx.editMessageText(
-    `✅ **Pendaftaran Berjaya!**\n\n` +
-    `Sekolah: *${kodSekolah}*\n` +
-    `Peranan: *${roleText}*\n` +
-    `ID Telegram: \`${telegramId}\`\n\n` +
-    `Terima kasih. Anda kini berdaftar dalam sistem SMPID.`,
-    { parse_mode: "Markdown" }
-  );
 });
 
-// 4. JALANKAN PELAYAN (WEBHOOK)
-// Deno.serve sesuai untuk Deno Deploy
-Deno.serve(webhookCallback(bot, "std/http"));
+// ============================================================
+// BAHAGIAN 2: LOGIK API BARU (UNTUK HELPDESK WEB)
+// ============================================================
+
+const handleUpdate = webhookCallback(bot, "std/http");
+
+serve(async (req) => {
+  const url = new URL(req.url);
+
+  // 1. Endpoint: Web App hantar arahan notifikasi ke sini
+  if (req.method === "POST" && url.pathname === "/api/notify") {
+    try {
+      const body = await req.json();
+      const { target_kod, message, type } = body; 
+
+      // SENARIO A: Sekolah hantar mesej (Notify Admin PPD)
+      if (type === 'to_admin') {
+         // Dapatkan semua Superadmin (atau hardcode ID anda sementara waktu jika table admin_users tiada)
+         const { data: admins } = await supabase.from("admin_users").select("telegram_id");
+         
+         if (admins && admins.length > 0) {
+            const text = `📨 **Mesej Baru Helpdesk**\n\n🏫 Daripada: \`${target_kod}\`\n💬 Mesej: ${message}\n\n_Sila buka Portal Web untuk membalas._`;
+            
+            for (const admin of admins) {
+               // Hantar notifikasi kepada setiap admin
+               try { await bot.api.sendMessage(admin.telegram_id, text, { parse_mode: "Markdown" }); } catch (e) {}
+            }
+         }
+      }
+
+      // SENARIO B: Admin PPD balas mesej (Notify Sekolah)
+      else if (type === 'to_school') {
+         // Cari ID Telegram Guru & Admin sekolah tersebut
+         const { data: school } = await supabase
+            .from("sekolah_data")
+            .select("telegram_id_gpict, telegram_id_admin")
+            .eq("kod_sekolah", target_kod)
+            .single();
+         
+         if (school) {
+            // Gabungkan ID (buang null jika salah seorang belum daftar)
+            const recipientIds = [school.telegram_id_gpict, school.telegram_id_admin].filter(id => id);
+            
+            const text = `🔔 **Maklumbalas PPD**\n\n💬 ${message}\n\n_Sila semak Portal Web Helpdesk._`;
+            
+            for (const id of recipientIds) {
+               try { await bot.api.sendMessage(id, text, { parse_mode: "Markdown" }); } catch (e) {}
+            }
+         }
+      }
+
+      return new Response(JSON.stringify({ success: true }), { 
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } 
+      });
+
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    }
+  }
+
+  // 2. Handle CORS (Wajib untuk browser fetch)
+  if (req.method === "OPTIONS") {
+     return new Response(null, { 
+         headers: { 
+             "Access-Control-Allow-Origin": "*", 
+             "Access-Control-Allow-Methods": "POST", 
+             "Access-Control-Allow-Headers": "Content-Type" 
+         } 
+     });
+  }
+
+  // 3. Fallback: Telegram Webhook Update (Supaya bot reply user biasa)
+  return await handleUpdate(req);
+});
