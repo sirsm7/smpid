@@ -459,23 +459,30 @@
       if (kod === "M030") {
         sessionStorage.setItem('smpid_auth', 'true');
         
-        Swal.fire({
+        // MODAL MENU ADMIN YANG DIKEMASKINI DENGAN 3 PILIHAN
+        const { value: selectedModule } = await Swal.fire({
             title: 'Menu Admin',
             text: 'Sila pilih modul akses:',
-            icon: 'question',
+            icon: 'info',
             showCancelButton: true,
+            showDenyButton: true,
             confirmButtonText: '<i class="fas fa-columns me-2"></i>Dashboard',
+            denyButtonText: '<i class="fab fa-telegram-plane me-2"></i>Tele Blaster', // Butang Baru
             cancelButtonText: '<i class="fas fa-envelope me-2"></i>Email Blaster',
             confirmButtonColor: '#0d6efd',
+            denyButtonColor: '#0088cc', // Warna Biru Telegram
             cancelButtonColor: '#198754',
-            reverseButtons: true
-        }).then((result) => {
-            if (result.isConfirmed) {
-                fetchAndRenderDashboard(true); 
-            } else if (result.dismiss === Swal.DismissReason.cancel) {
-                window.location.href = 'email.html';
-            }
+            width: '600px'
         });
+
+        if (selectedModule === true) { // Butang Confirm (Dashboard)
+             fetchAndRenderDashboard(true);
+        } else if (selectedModule === false) { // Butang Deny (Tele Blaster)
+             window.location.href = 'teleblast.html';
+        } else if (selectedModule === Swal.DismissReason.cancel) { // Butang Cancel (Email)
+             window.location.href = 'email.html';
+        }
+        
         return;
       }
 
