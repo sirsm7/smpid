@@ -73,35 +73,60 @@
         letter-spacing: 0.5px;
     }
     
-    /* --- GAYA WHATSAPP BRIDGE --- */
+    /* --- GAYA WHATSAPP BRIDGE & GRID --- */
     .tele-status-row {
         background-color: #f8f9fa;
         border-top: 1px solid #eee;
-        padding: 10px 12px;
+        padding: 8px 12px;
         border-radius: 0 0 12px 12px;
         font-size: 0.75rem;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 8px;
     }
+    .row-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .action-group {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    /* Butang Hantar Arahan (Hijau) */
     .wa-btn {
         background-color: #25D366;
         color: white !important;
         border: none;
-        padding: 4px 10px;
+        padding: 3px 8px;
         border-radius: 4px;
         text-decoration: none;
         font-weight: bold;
         display: inline-block;
         font-size: 0.7rem;
         transition: background-color 0.2s;
-        text-align: left;
-        white-space: normal; 
         line-height: 1.2;
     }
     .wa-btn:hover { background-color: #128C7E; }
-    .status-active { color: #0d6efd; font-weight: bold; }
-    .role-label { width: 50px; display: inline-block; font-weight: 600; color: #6c757d; min-width: 50px;}
+
+    /* Butang Chat Personal (Kelabu/Biru) */
+    .chat-btn {
+        background-color: #e9ecef;
+        color: #495057 !important;
+        border: 1px solid #ced4da;
+        padding: 3px 6px;
+        border-radius: 4px;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 0.7rem;
+        transition: all 0.2s;
+    }
+    .chat-btn:hover { background-color: #0d6efd; color: white !important; border-color: #0d6efd; }
+
+    .status-active { color: #198754; font-weight: bold; display: flex; align-items: center; gap: 4px;}
+    .role-label { width: 45px; display: inline-block; font-weight: 600; color: #6c757d; font-size: 0.7rem;}
 
     .category-header {
       background-color: #e9ecef;
@@ -195,7 +220,7 @@
           
           <div class="alert alert-light border small text-start mb-3 bg-light">
               <i class="fas fa-info-circle me-1 text-primary"></i> 
-              Tekan butang hijau untuk buka WhatsApp Web.
+              Tekan butang hijau untuk buka WhatsApp Web dan hantar arahan pendaftaran bot.
           </div>
 
           <a href="#" id="qWaBtn" target="_blank" class="btn-wa-big" onclick="nextQueueWithDelay()">
@@ -370,12 +395,17 @@
       return cleaned;
     }
 
-    // Fungsi ini kini di peringkat global agar boleh digunakan oleh Grid dan Queue
-    function generateWhatsAppLink(nama, noTel) {
+    // Fungsi ini dikemaskini untuk terima parameter 'isRaw' (Chat Biasa)
+    function generateWhatsAppLink(nama, noTel, isRaw = false) {
         const cleanNum = cleanPhone(noTel);
         if (!cleanNum) return null;
         
-        // Mesej standard
+        // Jika nak chat biasa sahaja (tanpa teks)
+        if (isRaw) {
+            return `https://wa.me/${cleanNum}`;
+        }
+        
+        // Mesej standard (Arahan)
         const rawMsg = `Assalamualaikum / Salam Sejahtera Cikgu ${nama || ''}, ini adalah mesej yang di jana secara automatik dari sistem.\n\nMohon kerjasama cikgu untuk aktifkan id tele di bot SMPID. Sila klik https://t.me/smpid_bot klik Start atau hantar /start, kemudian masukkan kod sekolah anda dan pilih peranan.\n\nBot akan rekodkan id telegram anda ke dalam sistem SMPID. Terima kasih.`;
         
         return `https://wa.me/${cleanNum}?text=${encodeURIComponent(rawMsg)}`;
@@ -634,27 +664,48 @@
              ? `<span class="badge bg-success status-badge">DATA LENGKAP</span>` 
              : `<span class="badge bg-danger status-badge">BELUM ISI</span>`;
              
-          // Status GPICT
+          // --- LOGIK BUTTON GRID YANG DIPERBAIKI ---
+          // Kita jana pautan CHAT (raw) dan pautan ARAHAN (text) secara berasingan
+
+          // 1. GPICT
+          const gpictLinkScript = generateWhatsAppLink(school.nama_gpict, school.no_telefon_gpict, false);
+          const gpictLinkChat = generateWhatsAppLink(school.nama_gpict, school.no_telefon_gpict, true);
+          
           let gpictHtml = "";
+          let gpictChatBtn = "";
+
+          // Butang Chat sentiasa ada jika nombor wujud
+          if (gpictLinkChat) {
+              gpictChatBtn = `<a href="${gpictLinkChat}" target="_blank" class="chat-btn ms-1" title="Chat Personal" onclick="event.stopPropagation()"><i class="fas fa-comment-dots"></i></a>`;
+          }
+
           if (school.telegram_id_gpict) {
               gpictHtml = `<span class="status-active"><i class="fas fa-check-circle"></i> Aktif</span>`;
           } else {
-              const link = generateWhatsAppLink(school.nama_gpict, school.no_telefon_gpict);
-              if (link) {
-                  gpictHtml = `<a href="${link}" target="_blank" class="wa-btn" onclick="event.stopPropagation()"><i class="fab fa-whatsapp"></i> Hantar Arahan</a>`;
+              if (gpictLinkScript) {
+                  gpictHtml = `<a href="${gpictLinkScript}" target="_blank" class="wa-btn" onclick="event.stopPropagation()"><i class="fab fa-whatsapp"></i> Hantar Arahan</a>`;
               } else {
                   gpictHtml = `<span class="text-muted small">Tiada No. Tel</span>`;
               }
           }
 
-          // Status Admin DELIMa
+          // 2. Admin DELIMa
+          const adminLinkScript = generateWhatsAppLink(school.nama_admin_delima, school.no_telefon_admin_delima, false);
+          const adminLinkChat = generateWhatsAppLink(school.nama_admin_delima, school.no_telefon_admin_delima, true);
+          
           let adminHtml = "";
+          let adminChatBtn = "";
+
+          // Butang Chat sentiasa ada jika nombor wujud
+          if (adminLinkChat) {
+              adminChatBtn = `<a href="${adminLinkChat}" target="_blank" class="chat-btn ms-1" title="Chat Personal" onclick="event.stopPropagation()"><i class="fas fa-comment-dots"></i></a>`;
+          }
+
           if (school.telegram_id_admin) {
               adminHtml = `<span class="status-active"><i class="fas fa-check-circle"></i> Aktif</span>`;
           } else {
-              const link = generateWhatsAppLink(school.nama_admin_delima, school.no_telefon_admin_delima);
-              if (link) {
-                  adminHtml = `<a href="${link}" target="_blank" class="wa-btn" onclick="event.stopPropagation()"><i class="fab fa-whatsapp"></i> Hantar Arahan</a>`;
+              if (adminLinkScript) {
+                  adminHtml = `<a href="${adminLinkScript}" target="_blank" class="wa-btn" onclick="event.stopPropagation()"><i class="fab fa-whatsapp"></i> Hantar Arahan</a>`;
               } else {
                   adminHtml = `<span class="text-muted small">Tiada No. Tel</span>`;
               }
@@ -673,11 +724,13 @@
                 </div>
               </div>
               <div class="tele-status-row">
-                 <div class="d-flex justify-content-between align-items-center">
-                    <span class="role-label">GPICT</span> ${gpictHtml}
+                 <div class="row-item">
+                    <span class="role-label">GPICT</span> 
+                    <div class="action-group">${gpictHtml} ${gpictChatBtn}</div>
                  </div>
-                 <div class="d-flex justify-content-between align-items-center border-top pt-1 mt-1 border-light">
-                    <span class="role-label">Admin</span> ${adminHtml}
+                 <div class="d-flex justify-content-between align-items-center border-top pt-1 mt-1 border-light row-item">
+                    <span class="role-label">Admin</span> 
+                    <div class="action-group">${adminHtml} ${adminChatBtn}</div>
                  </div>
               </div>
             </div>
@@ -915,7 +968,8 @@
         document.getElementById('qCode').innerText = item.kod;
         document.getElementById('qPersonName').innerText = item.nama || "(Tiada Nama)";
         
-        const link = generateWhatsAppLink(item.nama, item.phone);
+        // Panggil dengan isRaw=false untuk tindakan pantas (Hantar Arahan)
+        const link = generateWhatsAppLink(item.nama, item.phone, false);
         document.getElementById('qWaBtn').href = link;
 
         // Logik Butang Navigasi
