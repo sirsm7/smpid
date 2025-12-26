@@ -12,7 +12,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_KEY = Deno.env.get("SUPABASE_KEY");
-// Kunci rahsia untuk menghalang orang luar dari menggunakan API Blast kita
 const SECRET_KEY = Deno.env.get("SECRET_KEY") || "rahsia_ppd_melaka"; 
 
 if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_KEY) {
@@ -24,10 +23,6 @@ const bot = new Bot(BOT_TOKEN);
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // 3. LOGIK BOT (COMMANDS)
-
-// ... (KOD ASAL /start dan on:message DIKEKALKAN 100% DI SINI) ...
-// ... (Sila copy-paste bahagian command bot.command("start") hingga bot.on("callback_query") dari fail asal anda) ...
-// ... (Saya ringkaskan di sini untuk jimat ruang, tetapi dalam fail sebenar kekalkan semua) ...
 
 bot.command("start", async (ctx) => {
   await ctx.reply(
@@ -128,80 +123,75 @@ bot.on("callback_query:data", async (ctx) => {
 });
 
 
-// 4. API HANDLER BARU (UNTUK TELEGRAM BLASTER)
+// 4. API HANDLER (CORS DIPERBAIKI)
 const handleBlastRequest = async (req: Request) => {
+  // HEADER CORS GLOBAL
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*", // Benarkan semua domain (termasuk GitHub Pages)
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  };
+
+  // 1. Handle Preflight Request (OPTIONS)
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  // 2. Hanya benarkan POST
   if (req.method !== "POST") {
-    return new Response("Method Not Allowed", { status: 405 });
+    return new Response("Method Not Allowed", { status: 405, headers: corsHeaders });
   }
 
   try {
     const body = await req.json();
     const { secret, ids, message } = body;
 
-    // Validasi Kunci Rahsia
     if (secret !== SECRET_KEY) {
       return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), { 
         status: 401,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json", ...corsHeaders }
       });
     }
 
-    // Validasi Data
     if (!ids || !Array.isArray(ids) || !message) {
       return new Response(JSON.stringify({ success: false, error: "Invalid Data" }), { 
         status: 400, 
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json", ...corsHeaders }
       });
     }
 
     let successCount = 0;
-
-    // Loop penghantaran mesej
-    // Nota: Telegram ada had laju (rate limit). Untuk senarai besar, ini perlu delay.
-    // Untuk PPD (bawah 100 sekolah), loop biasa biasanya okay.
     for (const id of ids) {
       try {
         await bot.api.sendMessage(id, message, { parse_mode: "Markdown" });
         successCount++;
       } catch (e) {
         console.error(`Gagal hantar ke ${id}:`, e);
-        // Kita teruskan loop walaupun gagal satu
       }
     }
 
     return new Response(JSON.stringify({ success: true, sent_count: successCount }), {
-      headers: { 
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*" // Benarkan akses dari mana-mana web
-      }
+      headers: { "Content-Type": "application/json", ...corsHeaders }
     });
 
   } catch (error) {
-    return new Response(JSON.stringify({ success: false, error: error.message }), { status: 500 });
+    return new Response(JSON.stringify({ success: false, error: error.message }), { 
+      status: 500, 
+      headers: { "Content-Type": "application/json", ...corsHeaders } 
+    });
   }
 };
 
 
-// 5. JALANKAN PELAYAN (WEBHOOK + API ROUTING)
-// Kita guna Deno.serve dengan logik routing mudah
+// 5. JALANKAN PELAYAN
 Deno.serve(async (req) => {
   const url = new URL(req.url);
 
-  // Laluan untuk Blaster API
+  // Laluan API
   if (url.pathname === "/api/blast") {
-    // Handle CORS preflight options
-    if (req.method === "OPTIONS") {
-      return new Response(null, {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "POST",
-          "Access-Control-Allow-Headers": "Content-Type",
-        },
-      });
-    }
     return handleBlastRequest(req);
   }
 
-  // Laluan lalai untuk Telegram Webhook
+  // Laluan Bot Telegram (Webhook)
   return await webhookCallback(bot, "std/http")(req);
 });
