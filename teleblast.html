@@ -128,7 +128,9 @@
                 
                 <div class="d-flex justify-content-end gap-2">
                     <button class="btn btn-secondary" onclick="resetForm()"><i class="fas fa-undo me-2"></i>Reset</button>
-                    <button class="btn btn-primary" onclick="hantarBlast()"><i class="fas fa-paper-plane me-2"></i>Hantar Sekarang</button>
+                    <!-- BUTANG UJI LARI DIKEMASKINI -->
+                    <button class="btn btn-warning" onclick="ujiLari()"><i class="fas fa-vial me-2"></i>Uji Lari (Admin)</button>
+                    <button class="btn btn-primary" onclick="hantarBlast()"><i class="fas fa-paper-plane me-2"></i>Hantar Semua</button>
                 </div>
             </div>
         </div>
@@ -148,7 +150,6 @@
     const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // --- KONFIGURASI BOT API (Endpoint Deno Deploy Anda) ---
-    // PENTING: Pastikan URL ini sepadan dengan projek Deno anda
     const BOT_API_URL = "https://smpid-bot.deno.dev/api/blast"; 
     const BOT_SECRET_KEY = "rahsia_ppd_melaka"; 
 
@@ -159,7 +160,6 @@
     document.addEventListener("DOMContentLoaded", async () => {
         Swal.fire({title: 'Memuatkan Data...', didOpen: () => Swal.showLoading()});
         
-        // Menggunakan select('*') untuk memastikan 'jenis_sekolah' turut diambil
         const { data, error } = await sbClient
             .from('sekolah_data')
             .select('*');
@@ -180,13 +180,9 @@
     });
 
     function populateTypeFilter(data) {
-        // Ambil senarai unik jenis sekolah
         const types = [...new Set(data.map(item => item.jenis_sekolah || 'LAIN-LAIN'))].sort();
         const select = document.getElementById('typeFilter');
-        
-        // Bersihkan pilihan lama kecuali 'ALL'
         select.innerHTML = '<option value="ALL" selected>Semua Jenis</option>';
-        
         types.forEach(type => {
             const opt = document.createElement('option');
             opt.value = type;
@@ -205,16 +201,12 @@
         if (!rawData) return;
 
         rawData.forEach(row => {
-            // Tapis Jenis Sekolah
             const rowJenis = row.jenis_sekolah || 'LAIN-LAIN';
             if (typeFilter !== 'ALL' && rowJenis !== typeFilter) return;
 
-            // Logic GPICT: Pastikan ID wujud dan bukan string kosong
             if (includeGpict && row.telegram_id_gpict && String(row.telegram_id_gpict).trim() !== "") {
                 uniqueIds.add(String(row.telegram_id_gpict));
             }
-            
-            // Logic Admin: Pastikan ID wujud dan bukan string kosong
             if (includeAdmin && row.telegram_id_admin && String(row.telegram_id_admin).trim() !== "") {
                 uniqueIds.add(String(row.telegram_id_admin));
             }
@@ -231,17 +223,9 @@
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
         const text = textarea.value;
-        
-        // Ambil teks yang sedang dipilih (highlighted)
         const selectedText = text.substring(start, end);
-        
-        // Gabungkan tag pembuka + teks + tag penutup
         const replacement = startTag + selectedText + endTag;
-        
-        // Masukkan semula ke dalam textarea
         textarea.value = text.substring(0, start) + replacement + text.substring(end);
-        
-        // Fokus semula dan letakkan kursor di hujung tag
         textarea.focus();
         textarea.selectionStart = start + replacement.length;
         textarea.selectionEnd = start + replacement.length;
@@ -254,7 +238,58 @@
         }
     }
 
-    // --- FUNGSI PENGHANTARAN ---
+    // --- FUNGSI UJI LARI (AUTO ADMIN_USERS) ---
+    async function ujiLari() {
+        const message = document.getElementById('msgBody').value.trim();
+        if (!message) {
+            Swal.fire('Mesej Kosong', 'Sila tulis kandungan mesej dahulu.', 'warning');
+            return;
+        }
+
+        // Papar loading sementara fetch admin IDs
+        Swal.fire({
+            title: 'Mencari Data Admin...',
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            // Tarik semua ID dari table admin_users
+            const { data, error } = await sbClient
+                .from('admin_users')
+                .select('telegram_id');
+
+            if (error) throw error;
+
+            if (!data || data.length === 0) {
+                Swal.fire('Tiada Admin', 'Tiada rekod admin dijumpai dalam sistem (table: admin_users). Sila daftar di Bot Telegram dengan menghantar kod M030.', 'error');
+                return;
+            }
+
+            // Extract IDs ke dalam array string
+            const adminIds = data.map(u => String(u.telegram_id));
+
+            // Sahkan dengan pengguna
+            const confirm = await Swal.fire({
+                title: 'Uji Lari (Admin Mode)',
+                text: `Mesej akan dihantar kepada ${adminIds.length} orang Admin yang berdaftar dalam sistem (termasuk anda). Teruskan?`,
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-paper-plane me-2"></i>Hantar Ujian',
+                confirmButtonColor: '#ffc107', // Warna Kuning
+                cancelButtonColor: '#6c757d'
+            });
+
+            if (confirm.isConfirmed) {
+                laksanaPenghantaran(adminIds, message, true);
+            }
+
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Ralat Sistem', 'Gagal membaca senarai admin dari pangkalan data.', 'error');
+        }
+    }
+
+    // --- FUNGSI PENGHANTARAN SEBENAR ---
     async function hantarBlast() {
         const message = document.getElementById('msgBody').value.trim();
         
@@ -269,25 +304,36 @@
 
         const confirm = await Swal.fire({
             title: 'Sahkan Penghantaran?',
-            text: `Mesej akan dihantar kepada ${targetIds.length} penerima.`,
-            icon: 'question',
+            text: `AMARAN: Mesej akan dihantar kepada ${targetIds.length} orang penerima sebenar (Sekolah).`,
+            icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Ya, Hantar!',
-            confirmButtonColor: '#0088cc'
+            confirmButtonColor: '#0088cc',
+            cancelButtonColor: '#d33'
         });
 
         if (!confirm.isConfirmed) return;
 
-        Swal.fire({title: 'Sedang Menghantar...', text: 'Jangan tutup paparan ini.', didOpen: () => Swal.showLoading()});
+        // Hantar ke semua targetIds
+        laksanaPenghantaran(targetIds, message, false);
+    }
+
+    // --- FUNGSI TERAS API (BACKEND CALL) ---
+    async function laksanaPenghantaran(ids, message, isTest) {
+        Swal.fire({
+            title: isTest ? 'Ujian Sedang Dijalankan...' : 'Sedang Menghantar...', 
+            text: 'Jangan tutup paparan ini.', 
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
 
         try {
-            // Panggil API Bot (Deno) untuk buat kerja penghantaran
             const response = await fetch(BOT_API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     secret: BOT_SECRET_KEY,
-                    ids: targetIds,
+                    ids: ids,
                     message: message
                 })
             });
@@ -295,7 +341,11 @@
             const result = await response.json();
 
             if (result.success) {
-                Swal.fire('Berjaya!', `Mesej berjaya dihantar kepada ${result.sent_count} orang.`, 'success');
+                const msgText = isTest 
+                    ? `Mesej ujian berjaya dihantar kepada ${result.sent_count} orang Admin.` 
+                    : `Mesej berjaya dihantar kepada ${result.sent_count} orang penerima.`;
+
+                Swal.fire('Berjaya!', msgText, 'success');
             } else {
                 throw new Error(result.error || 'Ralat tidak diketahui');
             }
