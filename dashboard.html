@@ -6,15 +6,11 @@
   <title>SMPID - Dashboard Admin</title>
   
   <link rel="icon" href="icoppdag.png">
-  <!-- CSS Library -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  
-  <!-- CSS Custom (Pastikan file style.css wujud dalam folder css) -->
   <link href="css/style.css" rel="stylesheet">
   
-  <!-- JS Library -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
@@ -28,98 +24,148 @@
     </div>
   </div>
 
-  <!-- QUEUE MODAL (Popup Tindakan Pantas) -->
+  <!-- QUEUE MODAL (Tindakan Pantas) -->
   <div id="queueModal" class="queue-overlay hidden">
-      <div class="queue-card shadow-lg">
-          <button class="btn-close-queue" onclick="document.getElementById('queueModal').classList.add('hidden')" title="Tutup tetingkap">&times;</button>
+      <div class="queue-card">
+          <button class="btn-close-queue" onclick="document.getElementById('queueModal').classList.add('hidden')" title="Tutup">&times;</button>
           
-          <div class="queue-progress fw-bold text-muted mb-3" id="qProgress">Sasaran 0 / 0</div>
-          <span class="badge bg-warning text-dark mb-3 px-3 py-2 rounded-pill" id="qRoleBadge">ROLE</span>
+          <div class="queue-progress fw-bold text-muted mb-3" id="qProgress">Sasaran 1 / 10</div>
+          <span class="badge bg-warning text-dark mb-3" id="qRoleBadge" style="font-size: 0.9em;">GPICT</span>
           
-          <h4 class="queue-school fw-bold mb-1 text-dark" id="qSchoolName">NAMA SEKOLAH</h4>
-          <p class="text-muted small mb-3" id="qCode">KOD SEKOLAH</p>
-          <hr class="w-50 mx-auto opacity-25">
-          <h5 class="queue-person text-success fw-bold mb-4" id="qPersonName">NAMA GURU</h5>
+          <h3 class="queue-school fw-bold mb-1" id="qSchoolName">SK CONTOH</h3>
+          <p class="text-muted small mb-1" id="qCode">MBA0000</p>
+          <div class="queue-person text-success fw-bold mb-4 fs-5" id="qPersonName">Cikgu Ali</div>
           
           <div class="alert alert-light border small text-start mb-3 bg-light">
               <i class="fas fa-info-circle me-1 text-primary"></i> 
-              Klik butang WhatsApp di bawah untuk menghantar peringatan pendaftaran bot.
+              Tekan butang hijau untuk buka WhatsApp Web dan hantar arahan pendaftaran bot.
           </div>
 
-          <a href="#" id="qWaBtn" target="_blank" class="btn-wa-big shadow-sm" onclick="setTimeout(nextQueue, 2000)">
-              <i class="fab fa-whatsapp fa-lg"></i> Buka WhatsApp & Hantar
+          <a href="#" id="qWaBtn" target="_blank" class="btn-wa-big" onclick="setTimeout(nextQueue, 1500)">
+              <i class="fab fa-whatsapp fa-lg"></i> Hantar Mesej
           </a>
           
-          <div class="d-flex gap-2 justify-content-center mt-3">
-            <button class="btn btn-light border w-50 fw-bold" onclick="prevQueue()">
+          <div class="d-flex gap-2">
+            <button class="btn btn-light border w-50" onclick="prevQueue()" id="btnPrev">
                 <i class="fas fa-chevron-left me-1"></i> Sebelum
             </button>
-            <button class="btn btn-light border w-50 fw-bold" onclick="nextQueue()">
+            <button class="btn btn-light border w-50" onclick="nextQueue()">
                 Seterusnya <i class="fas fa-chevron-right ms-1"></i>
             </button>
           </div>
       </div>
   </div>
 
-  <!-- HEADER UTAMA -->
+  <!-- HEADER -->
   <div class="header-bg text-center">
-    <img src="icoppdag.png" alt="Logo PPD" class="mb-4" style="width: 180px; height: auto; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">
-    <h2 class="fw-bold px-3 text-white"><i class="fas fa-school me-2"></i>Dashboard Admin</h2>
-    <p class="text-white opacity-75">Unit Sumber Teknologi Pendidikan, PPD Alor Gajah</p>
+    <img src="icoppdag.png" alt="Logo PPD" class="mb-4" style="width: 200px; height: auto;">
+    <h2 class="fw-bold px-3"><i class="fas fa-school me-2"></i>Dashboard Admin</h2>
+    <p class="opacity-75">Unit Sumber Teknologi Pendidikan, Pejabat Pendidikan Daerah Alor Gajah</p>
   </div>
 
-  <!-- KANDUNGAN DASHBOARD -->
   <div class="container main-container pb-5">
     <div class="row justify-content-center">
       <div class="col-md-12">
 
-        <div id="dashboardCard" class="card p-4 shadow-sm bg-white">
-          <!-- Baris Atas: Tajuk & Butang Aksi -->
-          <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-3">
+        <!-- DASHBOARD ADMIN CARD -->
+        <div id="dashboardCard" class="card p-4 shadow-sm">
+          <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
             <div>
-                 <h4 class="mb-1 fw-bold text-primary"><i class="fas fa-tachometer-alt me-2"></i>Status Pendaftaran</h4>
-                 <small class="text-muted">Pantau status pengisian data sekolah dan pendaftaran Bot Telegram.</small>
+                 <h4 class="mb-0 fw-bold text-primary"><i class="fas fa-tachometer-alt me-2"></i>Status Pendaftaran</h4>
+                 <small class="text-muted">Pantau pendaftaran & hantar peringatan</small>
             </div>
-            
             <div class="d-flex gap-2 flex-wrap">
-              <!-- Butang Tindakan Pantas -->
-              <button onclick="mulaTindakanPantas()" class="btn btn-success btn-sm fw-bold shadow-sm px-3">
-                <i class="fab fa-whatsapp me-2"></i>Tindakan Pantas
+              <button onclick="mulaTindakanPantas()" class="btn btn-success btn-sm fw-bold shadow-sm">
+                <i class="fab fa-whatsapp me-1"></i> Modul Tindakan Pantas
               </button>
               
-              <!-- Butang List Telegram (Yang sebelum ini rosak) -->
-              <button onclick="janaSenaraiTelegram()" class="btn btn-primary btn-sm fw-bold shadow-sm px-3">
-                <i class="fab fa-telegram-plane me-2"></i>Salin Senarai Belum Isi
+              <button onclick="janaSenaraiTelegram()" class="btn btn-warning btn-sm text-dark fw-bold">
+                <i class="fab fa-telegram-plane me-1"></i>List Telegram
               </button>
-              
-              <!-- Butang Keluar -->
-              <button onclick="keluarSistem()" class="btn btn-outline-danger btn-sm fw-bold px-3">
-                <i class="fas fa-sign-out-alt me-2"></i>Keluar
+              <button onclick="keluarSistem()" class="btn btn-outline-danger btn-sm">
+                <i class="fas fa-sign-out-alt me-1"></i>Keluar
               </button>
             </div>
           </div>
 
-          <!-- Bahagian Filter -->
-          <div class="mb-4" id="filterContainer">
-             <!-- Kandungan Filter dijana oleh JS -->
-             <div class="placeholder-glow">
-                 <span class="placeholder col-12 bg-secondary rounded py-3"></span>
-             </div>
-          </div>
+          <div class="mb-4" id="filterContainer"></div>
           
-          <!-- Grid Sekolah -->
-          <div id="schoolGridWrapper">
-             <!-- Kandungan Grid dijana oleh JS -->
-          </div>
-
+          <div id="schoolGridWrapper"></div>
         </div>
 
       </div>
     </div>
   </div>
 
-  <!-- Script Luaran -->
   <script src="js/utils.js"></script>
+  <!-- Menambah main.js untuk memastikan fungsi keluarSistem() wujud -->
+  <script src="js/main.js"></script>
   <script src="js/dashboard.js"></script>
+
+  <!-- Logik Pembaikan Khas untuk Senarai Telegram -->
+  <script>
+    // Menggantikan fungsi placeholder dalam dashboard.js dengan logik asal yang betul
+    function janaSenaraiTelegram() {
+        // 'storedData' dan 'activeType' adalah global variable dari dashboard.js
+        if (typeof storedData === 'undefined' || storedData.length === 0) {
+            Swal.fire('Data Belum Sedia', 'Sila tunggu data dimuatkan sepenuhnya.', 'warning');
+            return;
+        }
+
+        // 1. Tapis ikut jenis sekolah yang sedang aktif
+        let list = (typeof activeType === 'undefined' || activeType === 'ALL') ? storedData : storedData.filter(i => i.jenis === activeType);
+        
+        // 2. Cari yang belum lengkap (nama_gpict kosong)
+        // Logik asal: item.nama_gpict && item.nama_gpict.trim() !== "" bermaksud lengkap.
+        // Kita nak yang !lengkap.
+        const belumIsi = list.filter(item => !(item.nama_gpict && item.nama_gpict.trim() !== ""));
+
+        if (belumIsi.length === 0) {
+            Swal.fire('Tahniah', 'Tiada sekolah yang belum mengisi data dalam kategori ini.', 'success');
+            return;
+        }
+
+        // 3. Group by Jenis (SK, SMK, dll)
+        const groups = belumIsi.reduce((acc, item) => {
+            const key = item.jenis || "LAIN-LAIN";
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(item);
+            return acc;
+        }, {});
+
+        // 4. Bina Mesej Format Telegram
+        const tarikh = new Date().toLocaleDateString('ms-MY');
+        let teks = `**SENARAI SEKOLAH BELUM ISI MAKLUMAT**\n`;
+        
+        if (typeof activeType !== 'undefined' && activeType !== 'ALL') {
+            teks += `Kategori: ${activeType}\n`;
+        }
+        
+        teks += `Tarikh: ${tarikh}\n\nMohon tindakan sekolah berikut:\n`;
+
+        Object.keys(groups).sort().forEach(jenis => {
+            teks += `\n**${jenis}**\n`;
+            groups[jenis].forEach((school, index) => {
+                teks += `${index + 1}. \`${school.kod_sekolah}\` - ${school.nama_sekolah}\n`;
+            });
+        });
+
+        teks += `\nSila kemaskini di sistem segera.`;
+
+        // 5. Salin ke Clipboard
+        navigator.clipboard.writeText(teks).then(() => {
+            Swal.fire({
+                title: 'Berjaya Disalin!',
+                text: 'Senarai telah disalin. Boleh terus tampal (Paste) di Telegram.',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        }).catch(err => {
+            console.error(err);
+            Swal.fire('Ralat', 'Gagal menyalin teks.', 'error');
+        });
+    }
+  </script>
 </body>
 </html>
