@@ -6,37 +6,15 @@
   <title>SMPID - Log Masuk</title>
   
   <link rel="icon" href="icoppdag.png">
+  <!-- Pautan CSS Luaran -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
   
-  <!-- Library Penting -->
+  <!-- Library JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-  <style>
-    body { background-color: #f0f2f5; font-family: 'Inter', sans-serif; }
-    .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .header-bg {
-      background: linear-gradient(135deg, #198754 0%, #0d6efd 100%);
-      color: white;
-      padding: 2.5rem 0;
-      margin-bottom: -3rem;
-      padding-bottom: 5rem;
-    }
-    .main-container { margin-top: -2rem; }
-    .form-label { font-weight: 600; color: #344767; font-size: 0.9rem; }
-    .uppercase-input { text-transform: uppercase; }
-    
-    /* Loading Spinner */
-    #loadingOverlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(255,255,255,0.8); z-index: 9999;
-      display: flex; justify-content: center; align-items: center;
-      backdrop-filter: blur(2px);
-    }
-    .hidden { display: none !important; }
-  </style>
 </head>
 <body>
 
@@ -64,7 +42,7 @@
           <div class="card-body">
             <h5 class="card-title text-center mb-4 fw-bold">AKSES SISTEM</h5>
             <div class="mb-3">
-              <label class="form-label text-muted">MASUKKAN KOD SEKOLAH</label>
+              <label class="form-label text-muted" style="font-weight: 600; font-size: 0.9rem;">MASUKKAN KOD SEKOLAH</label>
               <div class="input-group">
                 <span class="input-group-text bg-light border-end-0"><i class="fas fa-key text-muted"></i></span>
                 <input type="text" id="inputKodSekolah" class="form-control form-control-lg uppercase-input border-start-0" 
@@ -81,70 +59,8 @@
     </div>
   </div>
 
-  <!-- Import Utiliti -->
-  <script src="utils.js"></script>
-
-  <script>
-    // Bersihkan session lama bila masuk page login
-    sessionStorage.clear();
-
-    async function prosesLogin() {
-      const kod = document.getElementById('inputKodSekolah').value.trim().toUpperCase();
-      if (!kod) { Swal.fire('Ralat', 'Sila masukkan kod.', 'warning'); return; }
-
-      // ADMIN FLOW
-      if (kod === "M030") {
-        sessionStorage.setItem('smpid_auth', 'true'); // Set Admin Token
-        
-        Swal.fire({
-            title: 'Menu Admin',
-            text: 'Sila pilih modul akses:',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: '<i class="fas fa-columns me-2"></i>Dashboard',
-            cancelButtonText: '<i class="fas fa-envelope me-2"></i>Email Blaster',
-            confirmButtonColor: '#0d6efd',
-            cancelButtonColor: '#198754',
-            reverseButtons: true
-        }).then((result) => {
-            if (result.isConfirmed) {
-                window.location.href = 'dashboard.html'; // Pindah ke Dashboard
-            } else if (result.dismiss === Swal.DismissReason.cancel) {
-                window.location.href = 'email.html'; // Pindah ke Emel
-            }
-        });
-        return;
-      }
-
-      // SCHOOL FLOW
-      toggleLoading(true);
-      try {
-        const { data, error } = await supabaseClient
-            .from('sekolah_data')
-            .select('kod_sekolah')
-            .eq('kod_sekolah', kod)
-            .single(); 
-
-        if (error || !data) {
-            toggleLoading(false);
-            Swal.fire('Maaf', 'Kod sekolah tidak dijumpai.', 'error');
-            return;
-        }
-        
-        // Simpan Kod Sekolah dalam Session
-        sessionStorage.setItem('smpid_user_kod', data.kod_sekolah);
-        toggleLoading(false);
-        
-        // PERUBAHAN UTAMA DI SINI:
-        // Pindah ke Menu Pilihan (Sebelum ini profil.html)
-        window.location.href = 'menu.html';
-
-      } catch (err) {
-        toggleLoading(false);
-        console.error(err);
-        Swal.fire('Ralat', 'Gagal sambungan server.', 'error');
-      }
-    }
-  </script>
+  <!-- Pautan JS Luaran -->
+  <script src="js/utils.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>

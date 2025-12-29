@@ -7,31 +7,39 @@
   <link rel="icon" href="icoppdag.png">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
   
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  
-  <style>
-    body { background-color: #f8f9fa; font-family: 'Inter', sans-serif; }
-    .header-blast { background: #198754; color: white; padding: 1.5rem 0; margin-bottom: 2rem; }
-    .card { border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .email-box { background: #e9ecef; font-family: monospace; font-size: 0.9rem; }
-  </style>
 </head>
 <body>
 
-  <div class="header-blast">
-    <div class="container d-flex justify-content-between align-items-center">
-        <h3 class="mb-0 fw-bold"><i class="fas fa-paper-plane me-2"></i>Email Blaster</h3>
-        <a href="index.html" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-2"></i>Kembali</a>
+  <div id="loadingOverlay" class="hidden">
+    <div class="text-center">
+      <div class="spinner-border text-primary" role="status"></div>
     </div>
   </div>
 
-  <div class="container">
+  <!-- Header Dikemaskini Menggunakan Gaya Global (.header-bg) -->
+  <div class="header-bg">
+    <div class="container d-flex justify-content-between align-items-center">
+        <div>
+            <h3 class="mb-0 fw-bold"><i class="fas fa-paper-plane me-2"></i>Email Blaster</h3>
+            <p class="mb-0 opacity-75 small">Penjana senarai emel pukal</p>
+        </div>
+        <a href="dashboard.html" class="btn btn-outline-light btn-sm fw-bold shadow-sm">
+            <i class="fas fa-arrow-left me-2"></i>Kembali
+        </a>
+    </div>
+  </div>
+
+  <div class="container main-container pb-5">
     <div class="row">
+        <!-- Kolom Kiri: Tetapan -->
         <div class="col-lg-4 mb-4">
-            <div class="card p-4">
-                <h5 class="fw-bold mb-3">1. Tetapan Penerima</h5>
+            <div class="card p-4 h-100">
+                <h5 class="fw-bold mb-3 border-bottom pb-2">1. Tetapan Penerima</h5>
                 
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-muted">SASARAN JAWATAN:</label>
@@ -46,7 +54,7 @@
                 </div>
 
                 <div class="mb-4">
-                    <label class="form-label fw-bold small text-muted">STATUS PENDAFTARAN BOT:</label>
+                    <label class="form-label fw-bold small text-muted">STATUS TELEGRAM:</label>
                     <select class="form-select" id="statusFilter" onchange="generateList()">
                         <option value="all">Semua (Sudah & Belum)</option>
                         <option value="unregistered" selected>Hanya Yang BELUM Daftar Bot</option>
@@ -54,18 +62,19 @@
                     </select>
                 </div>
 
-                <div class="card bg-light p-3 border-0">
+                <div class="card bg-light p-3 border-0 mt-auto">
                     <div class="d-flex justify-content-between"><span>Jumlah Sekolah:</span> <strong id="countSchool">0</strong></div>
                     <div class="d-flex justify-content-between text-success mt-1"><span>Emel Unik Dijana:</span> <strong id="countEmail">0</strong></div>
                 </div>
             </div>
         </div>
 
+        <!-- Kolom Kanan: Hasil -->
         <div class="col-lg-8">
             <div class="card p-4">
-                <h5 class="fw-bold mb-3">2. Senarai Emel & Mesej</h5>
+                <h5 class="fw-bold mb-3 border-bottom pb-2">2. Senarai Emel & Mesej</h5>
                 <div class="mb-3">
-                    <label class="form-label">Senarai Emel (Untuk BCC):</label>
+                    <label class="form-label fw-bold small text-muted">SENARAI EMEL (UNTUK BCC):</label>
                     <div class="input-group">
                         <textarea id="emailOutput" class="form-control email-box" rows="3" readonly></textarea>
                         <button class="btn btn-success" onclick="copyEmails()"><i class="fas fa-copy"></i> Salin</button>
@@ -73,8 +82,8 @@
                 </div>
                 <hr>
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Draf Mesej (Cadangan):</label>
-                    <input type="text" class="form-control mb-2" id="msgSubject" value="[TINDAKAN] Pengesahan Pendaftaran Sistem SMPID">
+                    <label class="form-label fw-bold small text-muted">DRAF MESEJ (CADANGAN):</label>
+                    <input type="text" class="form-control mb-2 fw-bold" id="msgSubject" value="[TINDAKAN] Pengesahan Pendaftaran Sistem SMPID">
                     <textarea class="form-control" id="msgBody" rows="10">Salam Sejahtera Tuan/Puan,
 
 Mohon kerjasama Tuan/Puan selaku GPICT/Admin DELIMa sekolah untuk mengesahkan peranan anda dalam sistem SMPID melalui Bot Telegram rasmi kami.
@@ -91,112 +100,15 @@ Sekian, terima kasih.
 Unit ICT, PPD Alor Gajah.</textarea>
                 </div>
                 <div class="text-end">
-                    <button class="btn btn-outline-primary" onclick="copyTemplate()"><i class="fas fa-file-alt me-2"></i>Salin Mesej</button>
-                    <a id="mailtoLink" href="#" class="btn btn-primary ms-2"><i class="fas fa-envelope-open-text me-2"></i>Buka Emel</a>
+                    <button class="btn btn-outline-primary me-2" onclick="copyTemplate()"><i class="fas fa-file-alt me-2"></i>Salin Mesej</button>
+                    <a id="mailtoLink" href="#" class="btn btn-primary"><i class="fas fa-envelope-open-text me-2"></i>Buka Emel</a>
                 </div>
             </div>
         </div>
     </div>
   </div>
 
-  <script>
-    // --- SEMAKAN LOGIN ADMIN ---
-    if (sessionStorage.getItem('smpid_auth') !== 'true') {
-        alert("Sila log masuk sebagai Admin terlebih dahulu.");
-        window.location.href = 'index.html';
-    }
-
-    // --- KONFIGURASI SUPABASE ---
-    // PASTIKAN ANDA MASUKKAN URL & KEY ANDA DI SINI
-    const SUPABASE_URL = 'https://hbanvnteyncwsnfprahz.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_IEcWCbBmqWLBOBU4rl0FPw_Z97Assvt'; 
-    
-    // PEMBETULAN: Menggunakan nama 'sbClient' untuk elak konflik 'supabase'
-    const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    let rawData = [];
-
-    // --- FUNGSI UTAMA ---
-    document.addEventListener("DOMContentLoaded", async () => {
-        Swal.fire({title: 'Memuatkan Data...', didOpen: () => Swal.showLoading()});
-        
-        // Gunakan sbClient, bukan supabase
-        const { data, error } = await sbClient
-            .from('sekolah_data')
-            .select('kod_sekolah, nama_gpict, emel_delima_gpict, telegram_id_gpict, nama_admin_delima, emel_delima_admin_delima, telegram_id_admin');
-            
-        if (error) { 
-            console.error(error);
-            Swal.fire('Ralat', 'Gagal sambungan database.', 'error'); 
-            return; 
-        }
-        
-        rawData = data || [];
-        document.getElementById('countSchool').innerText = rawData.length;
-        
-        // Panggil fungsi generateList buat kali pertama
-        generateList();
-        
-        Swal.close();
-    });
-
-    function generateList() {
-        // Ambil elemen HTML
-        const includeGpict = document.getElementById('checkGpict').checked;
-        const includeAdmin = document.getElementById('checkAdmin').checked;
-        const filterStatus = document.getElementById('statusFilter').value;
-        const uniqueEmails = new Set();
-
-        if (!rawData) return;
-
-        rawData.forEach(row => {
-            // Logic GPICT
-            if (includeGpict && row.emel_delima_gpict) {
-                const email = row.emel_delima_gpict.trim();
-                const hasId = row.telegram_id_gpict != null && row.telegram_id_gpict !== ""; // Pastikan tak kosong
-                
-                if (filterStatus === 'all') uniqueEmails.add(email);
-                else if (filterStatus === 'unregistered' && !hasId) uniqueEmails.add(email);
-                else if (filterStatus === 'registered' && hasId) uniqueEmails.add(email);
-            }
-            
-            // Logic Admin
-            if (includeAdmin && row.emel_delima_admin_delima) {
-                const email = row.emel_delima_admin_delima.trim();
-                const hasId = row.telegram_id_admin != null && row.telegram_id_admin !== "";
-
-                if (filterStatus === 'all') uniqueEmails.add(email);
-                else if (filterStatus === 'unregistered' && !hasId) uniqueEmails.add(email);
-                else if (filterStatus === 'registered' && hasId) uniqueEmails.add(email);
-            }
-        });
-
-        // Paparkan Hasil
-        const emailArray = Array.from(uniqueEmails);
-        document.getElementById('countEmail').innerText = emailArray.length;
-        const emailString = emailArray.join(', ');
-        document.getElementById('emailOutput').value = emailString;
-
-        // Update Link Mailto
-        const subject = encodeURIComponent(document.getElementById('msgSubject').value);
-        const body = encodeURIComponent(document.getElementById('msgBody').value);
-        document.getElementById('mailtoLink').href = `mailto:?bcc=${emailString}&subject=${subject}&body=${body}`;
-    }
-
-    function copyEmails() {
-        const copyText = document.getElementById("emailOutput");
-        if (!copyText.value) {
-            Swal.fire('Tiada Data', 'Senarai emel kosong.', 'info');
-            return;
-        }
-        copyText.select();
-        navigator.clipboard.writeText(copyText.value).then(() => Swal.fire({icon: 'success', title: 'Disalin!', timer: 1500, showConfirmButton: false}));
-    }
-
-    function copyTemplate() {
-        const bodyText = document.getElementById("msgBody");
-        navigator.clipboard.writeText(bodyText.value).then(() => Swal.fire({icon: 'success', title: 'Teks Disalin!', timer: 1500, showConfirmButton: false}));
-    }
-  </script>
+  <script src="js/utils.js"></script>
+  <script src="js/email.js"></script>
 </body>
 </html>

@@ -9,33 +9,10 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
   
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-  <style>
-    body { background-color: #f0f2f5; font-family: 'Inter', sans-serif; }
-    .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .header-bg {
-      background: linear-gradient(135deg, #198754 0%, #0d6efd 100%);
-      color: white;
-      padding: 2.5rem 0;
-      margin-bottom: -3rem;
-      padding-bottom: 5rem;
-    }
-    .main-container { margin-top: -2rem; }
-    .form-label { font-weight: 600; color: #344767; font-size: 0.9rem; }
-    .uppercase-input { text-transform: uppercase; }
-    
-    /* Loading Spinner */
-    #loadingOverlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(255,255,255,0.8); z-index: 9999;
-      display: flex; justify-content: center; align-items: center;
-      backdrop-filter: blur(2px);
-    }
-    .hidden { display: none !important; }
-  </style>
 </head>
 <body>
 
@@ -68,21 +45,21 @@
             </div>
           </div>
 
-          <form id="dataForm" onsubmit="event.preventDefault(); prosesSimpan();">
+          <form id="dataForm" onsubmit="event.preventDefault(); simpanProfil();">
             <input type="hidden" id="hiddenKodSekolah">
 
             <h6 class="text-primary border-bottom pb-2 mb-3 mt-4"><i class="fas fa-user-tie me-2"></i>MAKLUMAT GURU PENYELARAS ICT</h6>
             <div class="row g-3">
                 <div class="col-12">
-                  <label class="form-label">NAMA PENUH</label>
+                  <label class="form-label fw-bold small text-muted">NAMA PENUH</label>
                   <input type="text" class="form-control uppercase-input bg-light" id="gpictNama" required oninput="this.value = this.value.toUpperCase()">
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label">NO. TELEFON</label>
+                  <label class="form-label fw-bold small text-muted">NO. TELEFON</label>
                   <input type="tel" class="form-control bg-light" id="gpictTel" required placeholder="0123456789" onblur="autoFormatPhone(this)">
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label">EMEL DELIMA (@moe-dl.edu.my)</label>
+                  <label class="form-label fw-bold small text-muted">EMEL DELIMA (@moe-dl.edu.my)</label>
                   <input type="email" class="form-control bg-light" id="gpictEmel" required placeholder="g-xxxxxxxx@moe-dl.edu.my">
                 </div>
             </div>
@@ -97,15 +74,15 @@
             
             <div class="row g-3">
                 <div class="col-12">
-                  <label class="form-label">NAMA PENUH</label>
+                  <label class="form-label fw-bold small text-muted">NAMA PENUH</label>
                   <input type="text" class="form-control uppercase-input bg-light" id="adminNama" required oninput="this.value = this.value.toUpperCase()">
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label">NO. TELEFON</label>
+                  <label class="form-label fw-bold small text-muted">NO. TELEFON</label>
                   <input type="tel" class="form-control bg-light" id="adminTel" required placeholder="0123456789" onblur="autoFormatPhone(this)">
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label">EMEL DELIMA (@moe-dl.edu.my)</label>
+                  <label class="form-label fw-bold small text-muted">EMEL DELIMA (@moe-dl.edu.my)</label>
                   <input type="email" class="form-control bg-light" id="adminEmel" required placeholder="g-xxxxxxxx@moe-dl.edu.my">
                 </div>
             </div>
@@ -116,18 +93,16 @@
                 <i class="fas fa-save me-2"></i>KEMASKINI DATA
               </button>
               
-              <!-- NAVIGASI BAWAH (DIKEMASKINI) -->
+              <!-- NAVIGASI BAWAH -->
               <div class="d-flex justify-content-between mt-3 pt-3 border-top">
                   <button type="button" onclick="mintaPinPadam()" class="btn btn-outline-danger btn-sm border-0">
                     <i class="fas fa-trash-alt me-2"></i>Padam Data (Admin)
                   </button>
                   
                   <div class="d-flex gap-2">
-                    <!-- Butang Baru: Menu Utama -->
                     <button type="button" onclick="window.location.href='menu.html'" class="btn btn-outline-secondary btn-sm fw-bold">
                         <i class="fas fa-th-large me-2"></i>Menu Utama
                     </button>
-                    <!-- Butang Keluar -->
                     <button type="button" id="btnNavigasiKeluar" onclick="keluarSistem()" class="btn btn-outline-dark btn-sm">
                         <i class="fas fa-sign-out-alt me-1"></i>Keluar
                     </button>
@@ -141,133 +116,7 @@
     </div>
   </div>
 
-  <!-- Import Utiliti -->
-  <script src="utils.js"></script>
-
-  <script>
-    // --- SECURITY CHECK & DATA LOAD ---
-    const currentKod = sessionStorage.getItem('smpid_user_kod');
-    const isAdmin = sessionStorage.getItem('smpid_auth') === 'true';
-
-    // Jika tiada session kod sekolah, tendang keluar
-    if (!currentKod) {
-        alert("Akses tidak sah. Sila log masuk.");
-        window.location.href = 'index.html';
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        loadDataSekolah(currentKod);
-        
-        // Ubah butang keluar jika Admin yang view (View Mode)
-        const btnNav = document.getElementById('btnNavigasiKeluar');
-        if (isAdmin) {
-             btnNav.innerHTML = '<i class="fas fa-arrow-left me-1"></i> Kembali ke Dashboard';
-             btnNav.setAttribute('onclick', "window.location.href='dashboard.html'");
-        }
-    });
-
-    async function loadDataSekolah(kod) {
-        toggleLoading(true);
-        try {
-            const { data, error } = await supabaseClient.from('sekolah_data').select('*').eq('kod_sekolah', kod).single();
-            if (error) throw error;
-            
-            // Papar Data Header
-            document.getElementById('dispNamaSekolah').innerText = data.nama_sekolah;
-            document.getElementById('dispKodDaerah').innerText = `KOD: ${data.kod_sekolah} | DAERAH: ${data.daerah}`;
-            document.getElementById('hiddenKodSekolah').value = data.kod_sekolah;
-
-            // Isi Borang
-            document.getElementById('gpictNama').value = data.nama_gpict || "";
-            document.getElementById('gpictTel').value = data.no_telefon_gpict || "";
-            document.getElementById('gpictEmel').value = data.emel_delima_gpict || "";
-            document.getElementById('adminNama').value = data.nama_admin_delima || "";
-            document.getElementById('adminTel').value = data.no_telefon_admin_delima || "";
-            document.getElementById('adminEmel').value = data.emel_delima_admin_delima || "";
-            
-            toggleLoading(false);
-        } catch (err) {
-            toggleLoading(false);
-            console.error(err);
-            Swal.fire('Ralat', 'Gagal memuatkan data.', 'error').then(() => keluarSistem());
-        }
-    }
-
-    function salinData() {
-      if (document.getElementById('checkSama').checked) {
-        document.getElementById('adminNama').value = document.getElementById('gpictNama').value;
-        document.getElementById('adminTel').value = document.getElementById('gpictTel').value;
-        document.getElementById('adminEmel').value = document.getElementById('gpictEmel').value;
-      }
-    }
-
-    async function prosesSimpan() {
-      const kod = document.getElementById('hiddenKodSekolah').value;
-      const gpictEmel = document.getElementById('gpictEmel').value;
-      const adminEmel = document.getElementById('adminEmel').value;
-      
-      let errorMsg = "";
-      if (!checkEmailDomain(gpictEmel)) errorMsg += "Emel GPICT mesti guna @moe-dl.edu.my.<br>";
-      if (!checkEmailDomain(adminEmel)) errorMsg += "Emel Admin mesti guna @moe-dl.edu.my.";
-      if (errorMsg) { Swal.fire('Format Emel', errorMsg, 'warning'); return; }
-
-      toggleLoading(true);
-      try {
-          const { error } = await supabaseClient
-            .from('sekolah_data')
-            .update({
-              nama_gpict: document.getElementById('gpictNama').value.toUpperCase(), 
-              no_telefon_gpict: document.getElementById('gpictTel').value,   
-              emel_delima_gpict: gpictEmel,
-              nama_admin_delima: document.getElementById('adminNama').value.toUpperCase(),
-              no_telefon_admin_delima: document.getElementById('adminTel').value,
-              emel_delima_admin_delima: adminEmel
-            })
-            .eq('kod_sekolah', kod);
-
-          if (error) throw error;
-
-          toggleLoading(false);
-          Swal.fire({ title: 'Berjaya!', text: 'Data telah dikemaskini.', icon: 'success', timer: 1500, showConfirmButton: false });
-
-      } catch (err) {
-          toggleLoading(false);
-          Swal.fire('Ralat', err.message, 'error');
-      }
-    }
-
-    function mintaPinPadam() {
-      Swal.fire({
-        title: 'Admin Sahaja',
-        text: "Masukkan PIN Keselamatan:",
-        input: 'password',
-        showCancelButton: true,
-        confirmButtonText: 'Padam Data',
-        confirmButtonColor: '#dc3545',
-        preConfirm: async (pin) => {
-          if (pin !== ADMIN_PIN) { Swal.showValidationMessage('PIN Salah!'); return false; }
-          const kod = document.getElementById('hiddenKodSekolah').value;
-          try {
-             const { error } = await supabaseClient.from('sekolah_data')
-                .update({ nama_gpict: '', no_telefon_gpict: '', emel_delima_gpict: '', nama_admin_delima: '', no_telefon_admin_delima: '', emel_delima_admin_delima: '' })
-                .eq('kod_sekolah', kod);
-             if (error) throw error;
-             return true;
-          } catch (error) { Swal.showValidationMessage(error.message); }
-        }
-      }).then((result) => {
-        if (result.isConfirmed) {
-            Swal.fire('Terpadam!', 'Data telah dikosongkan.', 'success').then(() => { loadDataSekolah(document.getElementById('hiddenKodSekolah').value); });
-        }
-      });
-    }
-
-    function keluarSistem() {
-        if (!isAdmin) {
-             sessionStorage.clear();
-        }
-        window.location.href = isAdmin ? 'dashboard.html' : 'index.html';
-    }
-  </script>
+  <script src="js/utils.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>

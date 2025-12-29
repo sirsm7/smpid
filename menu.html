@@ -9,71 +9,10 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
   
-  <!-- Library Penting -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-  <style>
-    body { background-color: #f0f2f5; font-family: 'Inter', sans-serif; }
-    
-    /* Header (Konsisten dengan index/profil) */
-    .header-bg {
-      background: linear-gradient(135deg, #198754 0%, #0d6efd 100%);
-      color: white;
-      padding: 2.5rem 0;
-      margin-bottom: -3rem;
-      padding-bottom: 5rem;
-    }
-    
-    .main-container { margin-top: -2rem; }
-    
-    /* Card Design Khas untuk Menu */
-    .menu-card {
-      border: none;
-      border-radius: 16px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-      transition: all 0.3s ease;
-      background: white;
-      height: 100%;
-      cursor: default;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .menu-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 12px 20px rgba(0,0,0,0.1);
-    }
-
-    .icon-box {
-      width: 90px;
-      height: 90px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 1.5rem;
-      font-size: 2.5rem;
-    }
-
-    .icon-ai { background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; }
-    .icon-school { background-color: rgba(25, 135, 84, 0.1); color: #198754; }
-
-    .btn-menu {
-        border-radius: 50px;
-        padding: 10px 20px;
-        font-weight: 600;
-        width: 100%;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-size: 0.9rem;
-    }
-
-    /* Animasi Masuk */
-    .fade-up { animation: fadeInUp 0.5s ease-out forwards; opacity: 0; transform: translateY(20px); }
-    @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
-  </style>
 </head>
 <body>
 
@@ -145,39 +84,7 @@
     </div>
   </div>
 
-  <!-- Import Utiliti (Perlu untuk konsistensi session) -->
-  <script src="utils.js"></script>
-
-  <script>
-    // --- 1. SEMAKAN KESELAMATAN (AUTH CHECK) ---
-    const currentKod = sessionStorage.getItem('smpid_user_kod');
-
-    if (!currentKod) {
-        // Jika tiada session, tendang ke login
-        window.location.href = 'index.html';
-    } else {
-        // Papar kod sekolah
-        document.getElementById('displayKodSekolah').innerHTML = `<i class="fas fa-school me-2"></i>${currentKod}`;
-    }
-
-    // --- 2. FUNGSI LOG KELUAR ---
-    function logout() {
-        Swal.fire({
-            title: 'Log Keluar?',
-            text: "Anda akan kembali ke halaman log masuk.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Ya, Keluar',
-            cancelButtonText: 'Batal'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                sessionStorage.clear();
-                window.location.href = 'index.html';
-            }
-        });
-    }
-  </script>
+  <script src="js/utils.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
