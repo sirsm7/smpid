@@ -1,12 +1,14 @@
-// --- LOGIK LOGIN (index.html) ---
+// --- LOGIK GLOBAL (Digunakan merentas sistem) ---
+
+// Fungsi Utiliti Login (index.html)
 async function prosesLogin() {
     const input = document.getElementById('inputKodSekolah');
-    if (!input) return; // Bukan page login
+    if (!input) return; // Guard clause jika bukan page login
 
     const kod = input.value.trim().toUpperCase();
     if (!kod) { Swal.fire('Ralat', 'Sila masukkan kod.', 'warning'); return; }
 
-    // Admin Access
+    // Admin Access (M030)
     if (kod === "M030") {
         sessionStorage.setItem('smpid_auth', 'true');
         Swal.fire({
@@ -16,7 +18,6 @@ async function prosesLogin() {
             confirmButtonColor: '#0d6efd',
             cancelButtonColor: '#198754'
         }).then((res) => {
-             // Jika dismiss/cancel, pergi ke email. Jika confirm, pergi ke dashboard.
              if(res.isConfirmed) window.location.href = 'dashboard.html';
              else if(res.dismiss === Swal.DismissReason.cancel) window.location.href = 'email.html';
         });
@@ -39,16 +40,26 @@ async function prosesLogin() {
 
 // --- LOGIK PROFIL SEKOLAH (profil.html) ---
 async function loadProfil() {
+    // Pastikan kita di halaman profil sebelum run
+    if (!document.getElementById('dispNamaSekolah')) return;
+
     const kod = sessionStorage.getItem('smpid_user_kod');
     const isAdmin = sessionStorage.getItem('smpid_auth') === 'true';
+    
     if (!kod) { window.location.href = 'index.html'; return; }
 
+    // Logik UI untuk Admin vs User
     if (isAdmin) {
+        // Jika Admin: Ubah butang keluar jadi 'Kembali ke Dashboard'
         const btn = document.getElementById('btnNavigasiKeluar');
         if(btn) {
             btn.innerHTML = '<i class="fas fa-arrow-left me-1"></i> Kembali ke Dashboard';
             btn.setAttribute('onclick', "window.location.href='dashboard.html'");
         }
+    } else {
+        // Jika User Biasa: Sembunyikan Butang Padam Data
+        const btnPadam = document.querySelector('button[onclick="mintaPinPadam()"]');
+        if (btnPadam) btnPadam.style.display = 'none';
     }
 
     toggleLoading(true);
@@ -56,12 +67,10 @@ async function loadProfil() {
         const { data, error } = await supabaseClient.from('sekolah_data').select('*').eq('kod_sekolah', kod).single();
         if (error) throw error;
         
-        // Papar Data
         document.getElementById('dispNamaSekolah').innerText = data.nama_sekolah;
         document.getElementById('dispKodDaerah').innerText = `KOD: ${data.kod_sekolah} | DAERAH: ${data.daerah || '-'}`;
         document.getElementById('hiddenKodSekolah').value = data.kod_sekolah;
         
-        // Isi Form
         const sets = [['gpictNama', data.nama_gpict], ['gpictTel', data.no_telefon_gpict], ['gpictEmel', data.emel_delima_gpict],
                       ['adminNama', data.nama_admin_delima], ['adminTel', data.no_telefon_admin_delima], ['adminEmel', data.emel_delima_admin_delima]];
         sets.forEach(([id, val]) => { if(document.getElementById(id)) document.getElementById(id).value = val || ""; });
@@ -71,7 +80,7 @@ async function loadProfil() {
 }
 
 function salinData() {
-    if (document.getElementById('checkSama').checked) {
+    if (document.getElementById('checkSama') && document.getElementById('checkSama').checked) {
       document.getElementById('adminNama').value = document.getElementById('gpictNama').value;
       document.getElementById('adminTel').value = document.getElementById('gpictTel').value;
       document.getElementById('adminEmel').value = document.getElementById('gpictEmel').value;
@@ -104,42 +113,105 @@ async function simpanProfil() {
     } catch (err) { toggleLoading(false); Swal.fire('Ralat', err.message, 'error'); }
 }
 
-function mintaPinPadam() {
-    Swal.fire({
-      title: 'Admin Sahaja', text: "Masukkan PIN Keselamatan:", input: 'password', showCancelButton: true, confirmButtonText: 'Padam Data', confirmButtonColor: '#dc3545',
-      preConfirm: async (pin) => {
-        if (pin !== ADMIN_PIN) { Swal.showValidationMessage('PIN Salah!'); return false; }
-        const kod = document.getElementById('hiddenKodSekolah').value;
-        try {
-           const { error } = await supabaseClient.from('sekolah_data').update({ nama_gpict: '', no_telefon_gpict: '', emel_delima_gpict: '', nama_admin_delima: '', no_telefon_admin_delima: '', emel_delima_admin_delima: '' }).eq('kod_sekolah', kod);
-           if (error) throw error;
-           return true;
-        } catch (error) { Swal.showValidationMessage(error.message); }
-      }
-    }).then((result) => {
-      if (result.isConfirmed) { Swal.fire('Terpadam!', 'Data kosong.', 'success').then(() => { loadProfil(); }); }
+// --- FUNGSI PADAM DATA (ADMIN SAHAJA) ---
+async function mintaPinPadam() {
+    // 1. Semak Keselamatan Sesi
+    if (sessionStorage.getItem('smpid_auth') !== 'true') {
+        Swal.fire('Akses Ditolak', 'Hanya Admin yang sah boleh melakukan tindakan ini.', 'error');
+        return;
+    }
+
+    // 2. Minta PIN Keselamatan
+    const { value: pin } = await Swal.fire({
+        title: 'Mod Admin',
+        text: "Masukkan PIN Keselamatan untuk memadam data sekolah ini:",
+        input: 'password',
+        inputPlaceholder: 'Masukkan PIN',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fas fa-trash-alt me-2"></i>Padam Data'
     });
+
+    if (!pin) return; // Pengguna tekan batal
+
+    // 3. Sahkan PIN (ADMIN_PIN dari utils.js)
+    if (pin !== ADMIN_PIN) {
+        Swal.fire('Gagal', 'PIN Keselamatan tidak sah.', 'error');
+        return;
+    }
+
+    // 4. Proses Pemadaman (Reset medan ke NULL)
+    toggleLoading(true);
+    const kod = document.getElementById('hiddenKodSekolah').value;
+
+    try {
+        // Kita hanya padam data profil, bukan rekod sekolah itu sendiri
+        const resetPayload = {
+            nama_gpict: null,
+            no_telefon_gpict: null,
+            emel_delima_gpict: null,
+            nama_admin_delima: null,
+            no_telefon_admin_delima: null,
+            emel_delima_admin_delima: null
+        };
+
+        const { error } = await supabaseClient
+            .from('sekolah_data')
+            .update(resetPayload)
+            .eq('kod_sekolah', kod);
+
+        if (error) throw error;
+
+        toggleLoading(false);
+        await Swal.fire('Selesai', 'Data profil sekolah telah dipadamkan.', 'success');
+        
+        // Reload halaman untuk paparan kosong
+        window.location.reload();
+
+    } catch (err) {
+        toggleLoading(false);
+        console.error(err);
+        Swal.fire('Ralat', 'Gagal memadam data dari database.', 'error');
+    }
 }
 
-function keluarSistem() {
+// --- FUNGSI SISTEM ---
+
+// Fungsi PUSAT untuk logout. 
+function keluarSistem(forceRedirect = false) {
     const isAdmin = sessionStorage.getItem('smpid_auth') === 'true';
-    if (!isAdmin) sessionStorage.clear();
-    window.location.href = isAdmin ? 'dashboard.html' : 'index.html';
+
+    // Jika dipanggil dari Dashboard UI (yang dah confirm), terus jalankan
+    if (forceRedirect) {
+        sessionStorage.clear();
+        window.location.href = 'index.html';
+        return;
+    }
+
+    // Jika dipanggil dari Menu Pengguna biasa (belum confirm)
+    if (!isAdmin) {
+        Swal.fire({
+            title: 'Log Keluar?', text: "Kembali ke laman utama.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Ya, Keluar'
+        }).then((result) => {
+            if (result.isConfirmed) { sessionStorage.clear(); window.location.href = 'index.html'; }
+        });
+    } else {
+        // Jika admin tertekan 'Back' di browser atau butang lain, fallback ke dashboard
+        window.location.href = 'dashboard.html';
+    }
 }
 
-function logout() {
-    Swal.fire({
-        title: 'Log Keluar?', text: "Kembali ke laman utama.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Ya, Keluar'
-    }).then((result) => {
-        if (result.isConfirmed) { sessionStorage.clear(); window.location.href = 'index.html'; }
-    });
-}
-
-// Auto-run berdasarkan page
+// --- AUTO RUN ---
 document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('inputKodSekolah')) { sessionStorage.clear(); } // Login Page
-    if (document.getElementById('dispNamaSekolah')) { loadProfil(); } // Profil Page
-    if (document.getElementById('displayKodSekolah')) { // Menu Page
+    // Bersihkan session hanya jika berada di Login Page
+    if (document.getElementById('inputKodSekolah')) { sessionStorage.clear(); } 
+    
+    // Load profil hanya jika elemen wujud
+    if (document.getElementById('dispNamaSekolah')) { loadProfil(); } 
+    
+    // Logic Menu Pengguna
+    if (document.getElementById('displayKodSekolah')) { 
          const k = sessionStorage.getItem('smpid_user_kod');
          if(k) document.getElementById('displayKodSekolah').innerHTML = `<i class="fas fa-school me-2"></i>${k}`;
          else window.location.href = 'index.html';

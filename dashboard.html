@@ -82,7 +82,9 @@
               <button onclick="janaSenaraiTelegram()" class="btn btn-warning btn-sm text-dark fw-bold">
                 <i class="fab fa-telegram-plane me-1"></i>List Telegram
               </button>
-              <button onclick="keluarSistem()" class="btn btn-outline-danger btn-sm">
+              
+              <!-- Panggil confirmLogout() dari dashboard.js, bukannya terus keluarSistem() -->
+              <button onclick="confirmLogout()" class="btn btn-outline-danger btn-sm">
                 <i class="fas fa-sign-out-alt me-1"></i>Keluar
               </button>
             </div>
@@ -98,74 +100,11 @@
   </div>
 
   <script src="js/utils.js"></script>
-  <!-- Menambah main.js untuk memastikan fungsi keluarSistem() wujud -->
   <script src="js/main.js"></script>
   <script src="js/dashboard.js"></script>
 
-  <!-- Logik Pembaikan Khas untuk Senarai Telegram -->
-  <script>
-    // Menggantikan fungsi placeholder dalam dashboard.js dengan logik asal yang betul
-    function janaSenaraiTelegram() {
-        // 'storedData' dan 'activeType' adalah global variable dari dashboard.js
-        if (typeof storedData === 'undefined' || storedData.length === 0) {
-            Swal.fire('Data Belum Sedia', 'Sila tunggu data dimuatkan sepenuhnya.', 'warning');
-            return;
-        }
+  <!-- Skrip Tampalan HTML TELAH DIBUANG -->
+  <!-- Semua logik kini diuruskan secara berpusat dalam dashboard.js -->
 
-        // 1. Tapis ikut jenis sekolah yang sedang aktif
-        let list = (typeof activeType === 'undefined' || activeType === 'ALL') ? storedData : storedData.filter(i => i.jenis === activeType);
-        
-        // 2. Cari yang belum lengkap (nama_gpict kosong)
-        // Logik asal: item.nama_gpict && item.nama_gpict.trim() !== "" bermaksud lengkap.
-        // Kita nak yang !lengkap.
-        const belumIsi = list.filter(item => !(item.nama_gpict && item.nama_gpict.trim() !== ""));
-
-        if (belumIsi.length === 0) {
-            Swal.fire('Tahniah', 'Tiada sekolah yang belum mengisi data dalam kategori ini.', 'success');
-            return;
-        }
-
-        // 3. Group by Jenis (SK, SMK, dll)
-        const groups = belumIsi.reduce((acc, item) => {
-            const key = item.jenis || "LAIN-LAIN";
-            if (!acc[key]) acc[key] = [];
-            acc[key].push(item);
-            return acc;
-        }, {});
-
-        // 4. Bina Mesej Format Telegram
-        const tarikh = new Date().toLocaleDateString('ms-MY');
-        let teks = `**SENARAI SEKOLAH BELUM ISI MAKLUMAT**\n`;
-        
-        if (typeof activeType !== 'undefined' && activeType !== 'ALL') {
-            teks += `Kategori: ${activeType}\n`;
-        }
-        
-        teks += `Tarikh: ${tarikh}\n\nMohon tindakan sekolah berikut:\n`;
-
-        Object.keys(groups).sort().forEach(jenis => {
-            teks += `\n**${jenis}**\n`;
-            groups[jenis].forEach((school, index) => {
-                teks += `${index + 1}. \`${school.kod_sekolah}\` - ${school.nama_sekolah}\n`;
-            });
-        });
-
-        teks += `\nSila kemaskini di sistem segera.`;
-
-        // 5. Salin ke Clipboard
-        navigator.clipboard.writeText(teks).then(() => {
-            Swal.fire({
-                title: 'Berjaya Disalin!',
-                text: 'Senarai telah disalin. Boleh terus tampal (Paste) di Telegram.',
-                icon: 'success',
-                timer: 2000,
-                showConfirmButton: false
-            });
-        }).catch(err => {
-            console.error(err);
-            Swal.fire('Ralat', 'Gagal menyalin teks.', 'error');
-        });
-    }
-  </script>
 </body>
 </html>

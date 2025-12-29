@@ -4,15 +4,16 @@ let activeType = 'ALL';
 let reminderQueue = [];
 let qIndex = 0;
 
-// Init Dashboard
+// --- INIT DASHBOARD ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Semakan Keselamatan Session
+    // 1. Semakan Keselamatan Session
     if (sessionStorage.getItem('smpid_auth') !== 'true') {
         Swal.fire('Akses Ditolak', 'Sila log masuk semula.', 'error').then(() => {
             window.location.href = 'index.html';
         });
         return;
     }
+    // 2. Mula ambil data
     fetchDashboardData();
 });
 
@@ -27,13 +28,27 @@ async function fetchDashboardData() {
             
         if (error) throw error;
         
-        // Mapping data untuk pastikan konsistensi field
-        storedData = data.map(i => ({
-            ...i, 
-            jenis: i.jenis_sekolah || 'LAIN-LAIN',
-            // Pastikan field ini wujud untuk filtering
-            is_lengkap: (i.nama_gpict && i.nama_gpict.trim() !== "")
-        }));
+        // Mapping data dengan Validasi Ketat (6 Medan Wajib)
+        storedData = data.map(i => {
+            // Senarai medan yang wajib diisi
+            const requiredFields = [
+                i.nama_gpict, 
+                i.no_telefon_gpict, 
+                i.emel_delima_gpict,
+                i.nama_admin_delima, 
+                i.no_telefon_admin_delima, 
+                i.emel_delima_admin_delima
+            ];
+
+            // Semak jika semua medan wujud dan tidak kosong
+            const isDataComplete = requiredFields.every(field => field && field.trim() !== "");
+
+            return {
+                ...i, 
+                jenis: i.jenis_sekolah || 'LAIN-LAIN',
+                is_lengkap: isDataComplete
+            };
+        });
 
         renderFilters();
         runFilter();
@@ -47,7 +62,6 @@ async function fetchDashboardData() {
 
 // --- FILTERING ---
 function renderFilters() {
-    // Ambil jenis sekolah unik dari data
     const types = [...new Set(storedData.map(i => i.jenis))].sort();
     let opts = `<option value="ALL">SEMUA JENIS SEKOLAH</option>`;
     types.forEach(t => opts += `<option value="${t}">${t}</option>`);
@@ -70,7 +84,6 @@ function setFilter(s) { activeStatus = s; runFilter(); }
 function setType(t) { activeType = t; runFilter(); }
 
 function runFilter() {
-    // Logik Tapis Utama
     const filtered = storedData.filter(i => {
         const statMatch = (activeStatus === 'ALL') || 
                           (activeStatus === 'LENGKAP' && i.is_lengkap) || 
@@ -81,13 +94,11 @@ function runFilter() {
         return statMatch && typeMatch;
     });
 
-    // Update UI Badges
     document.querySelectorAll('.filter-badge').forEach(e => e.classList.remove('active'));
     if(activeStatus === 'ALL') document.getElementById('badgeAll').classList.add('active');
     if(activeStatus === 'LENGKAP') document.getElementById('badgeLengkap').classList.add('active');
     if(activeStatus === 'BELUM') document.getElementById('badgeBelum').classList.add('active');
     
-    // Update Counters
     const context = (activeType === 'ALL') ? storedData : storedData.filter(i => i.jenis === activeType);
     document.getElementById('cntAll').innerText = context.length;
     document.getElementById('cntLengkap').innerText = context.filter(i => i.is_lengkap).length;
@@ -96,7 +107,7 @@ function runFilter() {
     renderGrid(filtered);
 }
 
-// --- RENDERING GRID ---
+// --- RENDERING GRID (Dengan Butang Personal Chat) ---
 function renderGrid(data) {
     const wrapper = document.getElementById('schoolGridWrapper');
     wrapper.innerHTML = "";
@@ -106,7 +117,6 @@ function renderGrid(data) {
         return; 
     }
 
-    // Group by Jenis Sekolah
     const groups = data.reduce((acc, i) => { 
         (acc[i.jenis] = acc[i.jenis] || []).push(i); 
         return acc; 
@@ -124,20 +134,38 @@ function renderGrid(data) {
                 ? `<span class="badge bg-success status-badge"><i class="fas fa-check me-1"></i>LENGKAP</span>` 
                 : `<span class="badge bg-danger status-badge"><i class="fas fa-times me-1"></i>BELUM ISI</span>`;
             
-            // Generate Links
-            const linkG = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict);
-            const linkA = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima);
+            // Logic Pautan WhatsApp (Templat & Personal)
+            const linkG_Template = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, false);
+            const linkG_Raw = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, true);
             
-            // Check Telegram ID existence (CSV: telegram_id_gpict, telegram_id_admin)
+            const linkA_Template = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, false);
+            const linkA_Raw = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, true);
+            
             const hasTeleG = s.telegram_id_gpict && s.telegram_id_gpict.toString().trim() !== "";
             const hasTeleA = s.telegram_id_admin && s.telegram_id_admin.toString().trim() !== "";
 
-            const icoG = hasTeleG ? `<span class="status-active"><i class="fas fa-check-circle"></i> OK</span>` : (linkG ? `<a href="${linkG}" target="_blank" class="wa-btn"><i class="fab fa-whatsapp"></i> Ingatkan</a>` : `<span class="text-muted">-</span>`);
-            const icoA = hasTeleA ? `<span class="status-active"><i class="fas fa-check-circle"></i> OK</span>` : (linkA ? `<a href="${linkA}" target="_blank" class="wa-btn"><i class="fab fa-whatsapp"></i> Ingatkan</a>` : `<span class="text-muted">-</span>`);
+            // Fungsi Helper untuk generate butang
+            const renderActions = (hasTele, linkTemplate, linkRaw) => {
+                if (hasTele) {
+                    return `<span class="status-active"><i class="fas fa-check-circle"></i> OK</span>`;
+                } else if (linkTemplate) {
+                    // Dwi-Butang: Hijau (Ingatkan) & Kelabu (Personal Chat)
+                    return `
+                    <div class="action-group">
+                        <a href="${linkTemplate}" target="_blank" class="wa-btn" title="Hantar Arahan Bot"><i class="fab fa-whatsapp"></i> Ingatkan</a>
+                        <a href="${linkRaw}" target="_blank" class="chat-btn" title="Mesej Personal"><i class="fas fa-comment"></i></a>
+                    </div>`;
+                } else {
+                    return `<span class="text-muted">-</span>`;
+                }
+            };
+
+            const actionsGpict = renderActions(hasTeleG, linkG_Template, linkG_Raw);
+            const actionsAdmin = renderActions(hasTeleA, linkA_Template, linkA_Raw);
 
             html += `
             <div class="col-6 col-md-4 col-lg-3">
-              <div class="card school-card h-100" onclick="sessionStorage.setItem('smpid_user_kod', '${s.kod_sekolah}'); window.location.href='profil.html'">
+              <div class="card school-card h-100 cursor-pointer" onclick="viewSchoolProfile('${s.kod_sekolah}')">
                 <div class="card-body p-3 d-flex flex-column">
                   <div class="d-flex justify-content-between align-items-start mb-2">
                     <h6 class="fw-bold text-primary mb-0">${s.kod_sekolah}</h6>
@@ -146,8 +174,8 @@ function renderGrid(data) {
                   <p class="school-name mb-auto" title="${s.nama_sekolah}">${s.nama_sekolah}</p>
                 </div>
                 <div class="tele-status-row">
-                   <div class="row-item"><span class="small fw-bold text-muted">GPICT</span> ${icoG}</div>
-                   <div class="row-item border-top pt-1 mt-1 border-light"><span class="small fw-bold text-muted">Admin</span> ${icoA}</div>
+                   <div class="row-item"><span class="small fw-bold text-muted">GPICT</span> ${actionsGpict}</div>
+                   <div class="row-item border-top pt-1 mt-1 border-light"><span class="small fw-bold text-muted">Admin</span> ${actionsAdmin}</div>
                 </div>
               </div>
             </div>`;
@@ -157,20 +185,20 @@ function renderGrid(data) {
     });
 }
 
-// --- FUNGSI LIST TELEGRAM (DIPERBAIKI) ---
+function viewSchoolProfile(kod) {
+    sessionStorage.setItem('smpid_user_kod', kod);
+    window.location.href = 'profil.html';
+}
+
 function janaSenaraiTelegram() {
-    // 1. Tapis data semasa berdasarkan Dropdown Jenis Sekolah sahaja (Status tak kisah sebab kita nak cari yg BELUM)
     let contextData = (activeType === 'ALL') ? storedData : storedData.filter(item => item.jenis === activeType);
-    
-    // 2. Cari yang BELUM isi
     const belumIsi = contextData.filter(item => !item.is_lengkap);
 
     if (belumIsi.length === 0) { 
-        Swal.fire('Tahniah!', 'Semua sekolah dalam kategori ini telah mengisi maklumat.', 'success'); 
+        Swal.fire('Tahniah!', 'Semua sekolah dalam paparan ini telah mengisi maklumat.', 'success'); 
         return; 
     }
 
-    // 3. Grouping Logic
     const groups = belumIsi.reduce((acc, item) => {
         const key = item.jenis || "LAIN-LAIN";
         if (!acc[key]) acc[key] = [];
@@ -178,23 +206,21 @@ function janaSenaraiTelegram() {
         return acc;
     }, {});
 
-    // 4. Format Teks untuk Telegram (Markdown)
     const tarikh = new Date().toLocaleDateString('ms-MY');
-    let teks = `📊 **STATUS PENGISIAN MAKLUMAT SMPID**\n`;
-    teks += `📅 Tarikh: ${tarikh}\n`;
-    if(activeType !== 'ALL') teks += `📂 Kategori: ${activeType}\n`;
+    let teks = `**STATUS PENGISIAN MAKLUMAT SMPID**\n`;
+    teks += `Tarikh: ${tarikh}\n`;
+    if(activeType !== 'ALL') teks += `Kategori: ${activeType}\n`;
     teks += `\nMohon perhatian sekolah-sekolah berikut untuk mengemaskini maklumat GPICT dan Admin DELIMa dengan segera:\n`;
 
     Object.keys(groups).sort().forEach(jenis => {
-        teks += `\n🔸 *${jenis}*\n`; 
+        teks += `\n*${jenis}*\n`; 
         groups[jenis].forEach((school, index) => { 
             teks += `${index + 1}. \`${school.kod_sekolah}\` - ${school.nama_sekolah}\n`; 
         });
     });
 
-    teks += `\n🔗 Pautan Sistem: https://smpid-ppdag.pages.dev (Contoh)\nTerima kasih.`;
+    teks += `\nSila kemaskini di sistem segera.\nTerima kasih.`;
 
-    // 5. Salin ke Clipboard
     navigator.clipboard.writeText(teks).then(() => {
         Swal.fire({
             title: 'Berjaya Disalin!',
@@ -203,18 +229,16 @@ function janaSenaraiTelegram() {
         });
     }).catch(err => {
         console.error(err);
-        Swal.fire('Ralat', 'Gagal menyalin teks. Sila cuba lagi.', 'error');
+        Swal.fire('Ralat', 'Gagal menyalin teks.', 'error');
     });
 }
 
 // --- TINDAKAN PANTAS (QUEUE) ---
 function mulaTindakanPantas() {
-    // Ambil list ikut filter semasa
     let list = (activeType === 'ALL') ? storedData : storedData.filter(i => i.jenis === activeType);
     
     reminderQueue = [];
     
-    // Masukkan ke dalam queue jika nombor telefon ada TAPI Telegram ID tiada
     list.forEach(i => {
         const telGpict = cleanPhone(i.no_telefon_gpict);
         const telAdmin = cleanPhone(i.no_telefon_admin_delima);
@@ -230,7 +254,7 @@ function mulaTindakanPantas() {
     });
 
     if (reminderQueue.length === 0) { 
-        Swal.fire('Tiada Sasaran', 'Semua staf yang mempunyai nombor telefon telah mendaftar bot, atau tiada nombor telefon direkodkan.', 'info'); 
+        Swal.fire('Tiada Sasaran', 'Tiada staf yang memerlukan peringatan (sama ada sudah daftar bot atau tiada no telefon).', 'info'); 
         return; 
     }
     
@@ -249,7 +273,6 @@ function renderQueue() {
     const item = reminderQueue[qIndex];
     document.getElementById('qProgress').innerText = `Sasaran ${qIndex + 1} / ${reminderQueue.length}`;
     
-    // Update Badge Role
     const badge = document.getElementById('qRoleBadge');
     badge.innerText = item.role;
     badge.className = item.role === 'GPICT' ? 'badge bg-info text-dark mb-3' : 'badge bg-warning text-dark mb-3';
@@ -258,7 +281,6 @@ function renderQueue() {
     document.getElementById('qCode').innerText = item.kod_sekolah;
     document.getElementById('qPersonName').innerText = item.targetName || "Tiada Nama";
     
-    // Update Button Link
     const link = generateWhatsAppLink(item.targetName, item.targetTel);
     const btn = document.getElementById('qWaBtn');
     if (link) {
@@ -273,10 +295,9 @@ function renderQueue() {
 function nextQueue() { qIndex++; renderQueue(); }
 function prevQueue() { if(qIndex > 0) qIndex--; renderQueue(); }
 
-// --- FUNGSI KELUAR SISTEM (DITAMBAH UNTUK MEMBAIKI ERROR) ---
-function keluarSistem() {
+function confirmLogout() {
     Swal.fire({
-        title: 'Log Keluar?',
+        title: 'Log Keluar Admin?',
         text: "Anda akan kembali ke halaman log masuk utama.",
         icon: 'warning',
         showCancelButton: true,
@@ -285,8 +306,7 @@ function keluarSistem() {
         confirmButtonText: 'Ya, Keluar'
     }).then((result) => {
         if (result.isConfirmed) {
-            sessionStorage.clear();
-            window.location.href = 'index.html';
+            keluarSistem(true); 
         }
     });
 }
