@@ -107,7 +107,7 @@ function runFilter() {
     renderGrid(filtered);
 }
 
-// --- RENDERING GRID (Dengan Butang Personal Chat) ---
+// --- RENDERING GRID (FIXED: Event Bubbling & Button Logic) ---
 function renderGrid(data) {
     const wrapper = document.getElementById('schoolGridWrapper');
     wrapper.innerHTML = "";
@@ -144,20 +144,31 @@ function renderGrid(data) {
             const hasTeleG = s.telegram_id_gpict && s.telegram_id_gpict.toString().trim() !== "";
             const hasTeleA = s.telegram_id_admin && s.telegram_id_admin.toString().trim() !== "";
 
-            // Fungsi Helper untuk generate butang
+            // --- FUNGSI HELPER (DIPERBAIKI) ---
             const renderActions = (hasTele, linkTemplate, linkRaw) => {
+                let buttonsHtml = '<div class="d-flex align-items-center gap-1">';
+
+                // 1. Jika ada Telegram ID, papar lencana OK
                 if (hasTele) {
-                    return `<span class="status-active"><i class="fas fa-check-circle"></i> OK</span>`;
-                } else if (linkTemplate) {
-                    // Dwi-Butang: Hijau (Ingatkan) & Kelabu (Personal Chat)
-                    return `
-                    <div class="action-group">
-                        <a href="${linkTemplate}" target="_blank" class="wa-btn" title="Hantar Arahan Bot"><i class="fab fa-whatsapp"></i> Ingatkan</a>
-                        <a href="${linkRaw}" target="_blank" class="chat-btn" title="Mesej Personal"><i class="fas fa-comment"></i></a>
-                    </div>`;
-                } else {
-                    return `<span class="text-muted">-</span>`;
+                    buttonsHtml += `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary"><i class="fas fa-check-circle"></i> OK</span>`;
                 }
+
+                // 2. Butang Personal Chat (Sentiasa ada jika nombor telefon wujud)
+                // Guna event.stopPropagation() untuk elak buka profil sekolah
+                if (linkRaw) {
+                    buttonsHtml += `<a href="${linkRaw}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm btn-light border text-secondary" title="Mesej Personal"><i class="fas fa-comment"></i></a>`;
+                }
+
+                // 3. Butang Ingatkan (Hanya jika belum ada Telegram ID)
+                if (!hasTele && linkTemplate) {
+                     buttonsHtml += `<a href="${linkTemplate}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm btn-outline-success" title="Hantar Arahan Bot"><i class="fab fa-whatsapp"></i> Ingatkan</a>`;
+                } else if (!linkRaw) {
+                    // Jika tiada no telefon langsung
+                    buttonsHtml += `<span class="text-muted small">-</span>`;
+                }
+
+                buttonsHtml += '</div>';
+                return buttonsHtml;
             };
 
             const actionsGpict = renderActions(hasTeleG, linkG_Template, linkG_Raw);
@@ -165,6 +176,7 @@ function renderGrid(data) {
 
             html += `
             <div class="col-6 col-md-4 col-lg-3">
+              <!-- Kad Utama: onclick untuk buka profil -->
               <div class="card school-card h-100 cursor-pointer" onclick="viewSchoolProfile('${s.kod_sekolah}')">
                 <div class="card-body p-3 d-flex flex-column">
                   <div class="d-flex justify-content-between align-items-start mb-2">
@@ -173,9 +185,9 @@ function renderGrid(data) {
                   </div>
                   <p class="school-name mb-auto" title="${s.nama_sekolah}">${s.nama_sekolah}</p>
                 </div>
-                <div class="tele-status-row">
-                   <div class="row-item"><span class="small fw-bold text-muted">GPICT</span> ${actionsGpict}</div>
-                   <div class="row-item border-top pt-1 mt-1 border-light"><span class="small fw-bold text-muted">Admin</span> ${actionsAdmin}</div>
+                <div class="tele-status-row bg-light border-top">
+                   <div class="row-item p-2"><span class="small fw-bold text-muted d-block mb-1">GPICT</span> ${actionsGpict}</div>
+                   <div class="row-item p-2 border-top border-light"><span class="small fw-bold text-muted d-block mb-1">Admin</span> ${actionsAdmin}</div>
                 </div>
               </div>
             </div>`;

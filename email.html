@@ -4,111 +4,149 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SMPID - Email Blaster</title>
+  
   <link rel="icon" href="icoppdag.png">
+  
+  <!-- CSS Luaran (Sama seperti Dashboard) -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link href="css/style.css" rel="stylesheet">
   
+  <!-- Library JS Utama -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
+  <!-- LOADING OVERLAY -->
   <div id="loadingOverlay" class="hidden">
     <div class="text-center">
-      <div class="spinner-border text-primary" role="status"></div>
+      <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+      <p class="mt-2 fw-bold text-dark">Menjana Senarai...</p>
     </div>
   </div>
 
-  <!-- Header Dikemaskini Menggunakan Gaya Global (.header-bg) -->
-  <div class="header-bg">
-    <div class="container d-flex justify-content-between align-items-center">
-        <div>
-            <h3 class="mb-0 fw-bold"><i class="fas fa-paper-plane me-2"></i>Email Blaster</h3>
-            <p class="mb-0 opacity-75 small">Penjana senarai emel pukal</p>
-        </div>
-        <a href="dashboard.html" class="btn btn-outline-light btn-sm fw-bold shadow-sm">
-            <i class="fas fa-arrow-left me-2"></i>Kembali
-        </a>
-    </div>
+  <!-- HEADER STANDARD (Dikemaskini untuk konsistensi) -->
+  <div class="header-bg text-center">
+    <img src="icoppdag.png" alt="Logo PPD" class="mb-3" style="width: 100px; height: auto;">
+    <h3 class="fw-bold px-3">Email Blaster SMPID</h3>
+    <p class="opacity-75 mb-0 px-3">Jana & Hantar Emel Peringatan Secara Pukal</p>
   </div>
 
+  <!-- KONTEN UTAMA -->
   <div class="container main-container pb-5">
-    <div class="row">
-        <!-- Kolom Kiri: Tetapan -->
-        <div class="col-lg-4 mb-4">
-            <div class="card p-4 h-100">
-                <h5 class="fw-bold mb-3 border-bottom pb-2">1. Tetapan Penerima</h5>
+    <div class="row justify-content-center">
+      <div class="col-lg-10 col-md-12">
+
+        <!-- KAD UTAMA -->
+        <div class="card p-4 shadow-sm">
+          <div class="card-body">
+
+            <!-- BAHAGIAN 1: PENAPISAN (FILTER) -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-3">
+                <div>
+                    <h5 class="card-title fw-bold text-primary mb-1"><i class="fas fa-filter me-2"></i>Kriteria Penerima</h5>
+                    <small class="text-muted">Pilih sasaran emel</small>
+                </div>
                 
-                <div class="mb-3">
-                    <label class="form-label fw-bold small text-muted">SASARAN JAWATAN:</label>
+                <div class="d-flex gap-3 align-items-center flex-wrap">
+                    <!-- Checkbox Peranan -->
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="checkGpict" checked onchange="generateList()">
-                        <label class="form-check-label" for="checkGpict">GPICT</label>
+                        <label class="form-check-label fw-bold" for="checkGpict">GPICT</label>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="checkAdmin" checked onchange="generateList()">
-                        <label class="form-check-label" for="checkAdmin">Admin DELIMa</label>
+                        <label class="form-check-label fw-bold" for="checkAdmin">Admin DELIMa</label>
                     </div>
-                </div>
 
-                <div class="mb-4">
-                    <label class="form-label fw-bold small text-muted">STATUS TELEGRAM:</label>
-                    <select class="form-select" id="statusFilter" onchange="generateList()">
-                        <option value="all">Semua (Sudah & Belum)</option>
-                        <option value="unregistered" selected>Hanya Yang BELUM Daftar Bot</option>
-                        <option value="registered">Hanya Yang SUDAH Daftar Bot</option>
+                    <!-- Dropdown Status -->
+                    <select id="statusFilter" class="form-select form-select-sm" style="width: auto;" onchange="generateList()">
+                        <option value="all">Semua Status</option>
+                        <option value="unregistered" selected>Belum Daftar Bot (Target Utama)</option>
+                        <option value="registered">Sudah Daftar Bot</option>
                     </select>
                 </div>
-
-                <div class="card bg-light p-3 border-0 mt-auto">
-                    <div class="d-flex justify-content-between"><span>Jumlah Sekolah:</span> <strong id="countSchool">0</strong></div>
-                    <div class="d-flex justify-content-between text-success mt-1"><span>Emel Unik Dijana:</span> <strong id="countEmail">0</strong></div>
-                </div>
             </div>
-        </div>
 
-        <!-- Kolom Kanan: Hasil -->
-        <div class="col-lg-8">
-            <div class="card p-4">
-                <h5 class="fw-bold mb-3 border-bottom pb-2">2. Senarai Emel & Mesej</h5>
-                <div class="mb-3">
-                    <label class="form-label fw-bold small text-muted">SENARAI EMEL (UNTUK BCC):</label>
-                    <div class="input-group">
-                        <textarea id="emailOutput" class="form-control email-box" rows="3" readonly></textarea>
-                        <button class="btn btn-success" onclick="copyEmails()"><i class="fas fa-copy"></i> Salin</button>
-                    </div>
+            <!-- BAHAGIAN 2: HASIL EMEL -->
+            <div class="mb-4">
+                <div class="d-flex justify-content-between mb-2">
+                    <label class="fw-bold small text-muted">SENARAI EMEL (<span id="countEmail">0</span> Penerima dari <span id="countSchool">0</span> Sekolah)</label>
+                    <button class="btn btn-sm btn-outline-secondary py-0" onclick="copyEmails()">
+                        <i class="fas fa-copy me-1"></i> Salin Emel
+                    </button>
                 </div>
-                <hr>
+                <!-- Textarea Emel (Readonly) -->
+                <textarea id="emailOutput" class="form-control email-box mb-2" rows="4" readonly placeholder="Senarai emel akan muncul di sini..."></textarea>
+                <small class="text-muted"><i class="fas fa-info-circle me-1"></i> Emel dipisahkan dengan koma, sedia untuk 'Blind Carbon Copy' (BCC).</small>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- BAHAGIAN 3: DRAF MESEJ -->
+            <div class="mb-4">
+                <div class="d-flex align-items-center mb-3">
+                    <h5 class="card-title fw-bold text-success mb-0"><i class="fas fa-pen-fancy me-2"></i>Draf Mesej</h5>
+                </div>
+
                 <div class="mb-3">
-                    <label class="form-label fw-bold small text-muted">DRAF MESEJ (CADANGAN):</label>
-                    <input type="text" class="form-control mb-2 fw-bold" id="msgSubject" value="[TINDAKAN] Pengesahan Pendaftaran Sistem SMPID">
+                    <label class="form-label fw-bold small text-muted">TAJUK EMEL (SUBJECT)</label>
+                    <input type="text" class="form-control fw-bold" id="msgSubject" value="[TINDAKAN] Pengesahan Pendaftaran Sistem SMPID">
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-muted">KANDUNGAN EMEL (BODY)</label>
                     <textarea class="form-control" id="msgBody" rows="10">Salam Sejahtera Tuan/Puan,
 
 Mohon kerjasama Tuan/Puan selaku GPICT/Admin DELIMa sekolah untuk mengesahkan peranan anda dalam sistem SMPID melalui Bot Telegram rasmi kami.
 
 Sila ikuti langkah berikut:
 1. Klik pautan bot: https://t.me/smpid_bot
-2. Tekan butang 'Start'.
+2. Tekan butang 'Start' atau hantar /start
 3. Masukkan KOD SEKOLAH anda.
 4. Pilih butang peranan yang betul.
 
 Kerjasama Tuan/Puan amat dihargai.
 Sekian, terima kasih.
 
-Unit ICT, PPD Alor Gajah.</textarea>
-                </div>
-                <div class="text-end">
-                    <button class="btn btn-outline-primary me-2" onclick="copyTemplate()"><i class="fas fa-file-alt me-2"></i>Salin Mesej</button>
-                    <a id="mailtoLink" href="#" class="btn btn-primary"><i class="fas fa-envelope-open-text me-2"></i>Buka Emel</a>
+Unit Sumber Teknologi Pendidikan,
+PPD Alor Gajah.</textarea>
                 </div>
             </div>
+
+            <!-- BAHAGIAN 4: BUTANG TINDAKAN -->
+            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                <button class="btn btn-outline-primary" onclick="copyTemplate()">
+                    <i class="fas fa-file-alt me-2"></i>Salin Kandungan
+                </button>
+                
+                <a id="mailtoLink" href="#" class="btn btn-primary fw-bold shadow-sm">
+                    <i class="fas fa-paper-plane me-2"></i>Buka Client Emel
+                </a>
+            </div>
+
+          </div>
+          <!-- Footer Kad -->
+          <div class="card-footer bg-light border-0 py-3 d-flex justify-content-between align-items-center">
+            <button onclick="window.location.href='dashboard.html'" class="btn btn-link text-decoration-none text-muted fw-bold">
+                <i class="fas fa-arrow-left me-2"></i>Kembali ke Dashboard
+            </button>
+             <button onclick="keluarSistem()" class="btn btn-sm btn-outline-danger">
+                <i class="fas fa-sign-out-alt me-1"></i>Log Keluar
+            </button>
+          </div>
         </div>
+        
+      </div>
     </div>
   </div>
 
+  <!-- SCRIPT -->
+  <!-- Penting: utils.js mesti dimuatkan SEBELUM email.js kerana ia mengandungi Supabase Client -->
   <script src="js/utils.js"></script>
   <script src="js/email.js"></script>
+
 </body>
 </html>
