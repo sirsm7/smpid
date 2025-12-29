@@ -131,12 +131,13 @@
             return;
         }
         
-        // Simpan Kod Sekolah dalam Session untuk digunakan di profil.html
+        // Simpan Kod Sekolah dalam Session
         sessionStorage.setItem('smpid_user_kod', data.kod_sekolah);
         toggleLoading(false);
         
-        // Pindah ke Profil
-        window.location.href = 'profil.html';
+        // PERUBAHAN UTAMA DI SINI:
+        // Pindah ke Menu Pilihan (Sebelum ini profil.html)
+        window.location.href = 'menu.html';
 
       } catch (err) {
         toggleLoading(false);
