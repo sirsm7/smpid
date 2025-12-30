@@ -12,7 +12,7 @@ async function prosesLogin() {
     if (kod === "M030") {
         sessionStorage.setItem('smpid_auth', 'true');
         
-        // KEMASKINI: Terus ke Menu Utama (Menu Pintar akan uruskan paparan)
+        // Terus ke Menu Utama (Menu Pintar akan uruskan paparan)
         Swal.fire({
             icon: 'success',
             title: 'Log Masuk Admin',
@@ -47,21 +47,19 @@ async function loadProfil() {
     const kod = sessionStorage.getItem('smpid_user_kod');
     const isAdmin = sessionStorage.getItem('smpid_auth') === 'true';
     
-    // Admin boleh lihat profil tanpa kod user di session (guna logik viewSchoolProfile dashboard)
-    // Tetapi jika user biasa tiada kod, tendang keluar.
+    // Logik keselamatan akses profil
     if (!kod && !isAdmin) { window.location.href = 'index.html'; return; }
     
-    // Jika admin masuk profil, mungkin dia set kod melalui dashboard.js (viewSchoolProfile)
-    // Jadi kita guna kod yang ada dalam session 'smpid_user_kod' yang diset oleh dashboard
-    
-    // Logik UI untuk Admin vs User
+    // --- PEMBETULAN LOGIK BUTANG DI SINI ---
     if (isAdmin) {
-        // Jika Admin: Ubah butang keluar jadi 'Kembali ke Dashboard'
+        // Jika Admin: Kita ubah butang "Keluar" (id=btnNavigasiKeluar) menjadi butang "Dashboard"
+        // Kita TIDAK ubah jadi "Menu Utama" sebab butang Menu Utama sudah wujud dalam HTML.
         const btn = document.getElementById('btnNavigasiKeluar');
         if(btn) {
-            // Kita ubah ke menu.html sekarang sebab menu dah ada dashboard link
-            btn.innerHTML = '<i class="fas fa-th-large me-1"></i> Menu Utama';
-            btn.setAttribute('onclick', "window.location.href='menu.html'");
+            btn.innerHTML = '<i class="fas fa-tachometer-alt me-1"></i> Dashboard';
+            btn.setAttribute('onclick', "window.location.href='dashboard.html'");
+            // Tukar warna sedikit supaya nampak beza (opsyenal)
+            btn.classList.replace('btn-outline-dark', 'btn-outline-primary');
         }
     } else {
         // Jika User Biasa: Sembunyikan Butang Padam Data
@@ -71,7 +69,7 @@ async function loadProfil() {
 
     toggleLoading(true);
     try {
-        const targetKod = kod; // Kod diambil dari session
+        const targetKod = kod; 
         const { data, error } = await supabaseClient.from('sekolah_data').select('*').eq('kod_sekolah', targetKod).single();
         if (error) throw error;
         
@@ -223,5 +221,4 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('dispNamaSekolah')) { loadProfil(); } 
     
     // NOTA: Logik paparan menu (Smart Menu) kini dikendalikan terus dalam <script> di menu.html
-    // supaya tidak berlaku "FOUC" (Flash of Unstyled Content) atau lengah masa.
 });
