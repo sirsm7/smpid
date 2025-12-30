@@ -11,15 +11,16 @@ async function prosesLogin() {
     // Admin Access (M030)
     if (kod === "M030") {
         sessionStorage.setItem('smpid_auth', 'true');
+        
+        // KEMASKINI: Terus ke Menu Utama (Menu Pintar akan uruskan paparan)
         Swal.fire({
-            title: 'Menu Admin', text: 'Pilih modul:', icon: 'question', showCancelButton: true,
-            confirmButtonText: '<i class="fas fa-tachometer-alt me-2"></i>Dashboard', 
-            cancelButtonText: '<i class="fas fa-envelope me-2"></i>Email Blaster', 
-            confirmButtonColor: '#0d6efd',
-            cancelButtonColor: '#198754'
-        }).then((res) => {
-             if(res.isConfirmed) window.location.href = 'dashboard.html';
-             else if(res.dismiss === Swal.DismissReason.cancel) window.location.href = 'email.html';
+            icon: 'success',
+            title: 'Log Masuk Admin',
+            text: 'Mengalihkan ke menu utama...',
+            timer: 1000,
+            showConfirmButton: false
+        }).then(() => {
+            window.location.href = 'menu.html';
         });
         return;
     }
@@ -46,15 +47,21 @@ async function loadProfil() {
     const kod = sessionStorage.getItem('smpid_user_kod');
     const isAdmin = sessionStorage.getItem('smpid_auth') === 'true';
     
-    if (!kod) { window.location.href = 'index.html'; return; }
-
+    // Admin boleh lihat profil tanpa kod user di session (guna logik viewSchoolProfile dashboard)
+    // Tetapi jika user biasa tiada kod, tendang keluar.
+    if (!kod && !isAdmin) { window.location.href = 'index.html'; return; }
+    
+    // Jika admin masuk profil, mungkin dia set kod melalui dashboard.js (viewSchoolProfile)
+    // Jadi kita guna kod yang ada dalam session 'smpid_user_kod' yang diset oleh dashboard
+    
     // Logik UI untuk Admin vs User
     if (isAdmin) {
         // Jika Admin: Ubah butang keluar jadi 'Kembali ke Dashboard'
         const btn = document.getElementById('btnNavigasiKeluar');
         if(btn) {
-            btn.innerHTML = '<i class="fas fa-arrow-left me-1"></i> Kembali ke Dashboard';
-            btn.setAttribute('onclick', "window.location.href='dashboard.html'");
+            // Kita ubah ke menu.html sekarang sebab menu dah ada dashboard link
+            btn.innerHTML = '<i class="fas fa-th-large me-1"></i> Menu Utama';
+            btn.setAttribute('onclick', "window.location.href='menu.html'");
         }
     } else {
         // Jika User Biasa: Sembunyikan Butang Padam Data
@@ -64,7 +71,8 @@ async function loadProfil() {
 
     toggleLoading(true);
     try {
-        const { data, error } = await supabaseClient.from('sekolah_data').select('*').eq('kod_sekolah', kod).single();
+        const targetKod = kod; // Kod diambil dari session
+        const { data, error } = await supabaseClient.from('sekolah_data').select('*').eq('kod_sekolah', targetKod).single();
         if (error) throw error;
         
         document.getElementById('dispNamaSekolah').innerText = data.nama_sekolah;
@@ -197,8 +205,12 @@ function keluarSistem(forceRedirect = false) {
             if (result.isConfirmed) { sessionStorage.clear(); window.location.href = 'index.html'; }
         });
     } else {
-        // Jika admin tertekan 'Back' di browser atau butang lain, fallback ke dashboard
-        window.location.href = 'dashboard.html';
+        // Jika admin klik log keluar di menu utama
+        Swal.fire({
+            title: 'Log Keluar Admin?', text: "Tamatkan sesi admin?", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Ya, Keluar'
+        }).then((result) => {
+            if (result.isConfirmed) { sessionStorage.clear(); window.location.href = 'index.html'; }
+        });
     }
 }
 
@@ -210,10 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load profil hanya jika elemen wujud
     if (document.getElementById('dispNamaSekolah')) { loadProfil(); } 
     
-    // Logic Menu Pengguna
-    if (document.getElementById('displayKodSekolah')) { 
-         const k = sessionStorage.getItem('smpid_user_kod');
-         if(k) document.getElementById('displayKodSekolah').innerHTML = `<i class="fas fa-school me-2"></i>${k}`;
-         else window.location.href = 'index.html';
-    }
+    // NOTA: Logik paparan menu (Smart Menu) kini dikendalikan terus dalam <script> di menu.html
+    // supaya tidak berlaku "FOUC" (Flash of Unstyled Content) atau lengah masa.
 });

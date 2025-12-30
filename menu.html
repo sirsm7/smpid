@@ -13,6 +13,11 @@
   
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <style>
+    /* Kelas utiliti untuk sembunyikan kad sebelum logik JS berjalan */
+    .role-card { display: none; }
+  </style>
 </head>
 <body>
 
@@ -20,7 +25,7 @@
   <div class="header-bg text-center">
     <img src="icoppdag.png" alt="Logo PPD" class="mb-3" style="width: 100px; height: auto;">
     <h3 class="fw-bold px-3">Menu Utama</h3>
-    <p class="opacity-75 mb-0">Sila pilih tindakan yang ingin dilakukan</p>
+    <p class="opacity-75 mb-0" id="welcomeText">Sila pilih tindakan yang ingin dilakukan</p>
     <div class="mt-3">
         <span class="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill" id="displayKodSekolah">
             <i class="fas fa-school me-2"></i>Loading...
@@ -34,8 +39,10 @@
         
         <div class="row g-4">
             
-            <!-- PILIHAN 1: SPKA (AI) -->
-            <div class="col-md-6 fade-up" style="animation-delay: 0.1s;">
+            <!-- --- KAD UNTUK PENGGUNA SEKOLAH --- -->
+
+            <!-- 1. SPKA (AI) -->
+            <div id="card-ai" class="col-md-6 role-card user-only fade-up" style="animation-delay: 0.1s;">
                 <div class="card menu-card p-4 text-center">
                     <div class="card-body d-flex flex-column">
                         <div class="icon-box icon-ai">
@@ -52,8 +59,8 @@
                 </div>
             </div>
 
-            <!-- PILIHAN 2: PROFIL SEKOLAH -->
-            <div class="col-md-6 fade-up" style="animation-delay: 0.2s;">
+            <!-- 2. PROFIL SEKOLAH -->
+            <div id="card-profil" class="col-md-6 role-card user-only fade-up" style="animation-delay: 0.2s;">
                 <div class="card menu-card p-4 text-center">
                     <div class="card-body d-flex flex-column">
                         <div class="icon-box icon-school">
@@ -70,11 +77,49 @@
                 </div>
             </div>
 
+            <!-- --- KAD UNTUK ADMIN --- -->
+
+            <!-- 3. DASHBOARD ADMIN -->
+            <div id="card-dashboard" class="col-md-6 role-card admin-only fade-up" style="animation-delay: 0.1s;">
+                <div class="card menu-card p-4 text-center border-primary">
+                    <div class="card-body d-flex flex-column">
+                        <div class="icon-box bg-primary bg-opacity-10 text-primary">
+                            <i class="fas fa-tachometer-alt"></i>
+                        </div>
+                        <h4 class="fw-bold mb-2">Dashboard Admin</h4>
+                        <p class="text-muted mb-4 flex-grow-1">
+                            Pantau status pendaftaran sekolah, lihat statistik, dan uruskan tindakan susulan.
+                        </p>
+                        <a href="dashboard.html" class="btn btn-primary btn-menu shadow-sm">
+                            <i class="fas fa-chart-line me-2"></i>Buka Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. EMAIL BLASTER -->
+            <div id="card-email" class="col-md-6 role-card admin-only fade-up" style="animation-delay: 0.2s;">
+                <div class="card menu-card p-4 text-center border-warning">
+                    <div class="card-body d-flex flex-column">
+                        <div class="icon-box bg-warning bg-opacity-10 text-dark">
+                            <i class="fas fa-paper-plane"></i>
+                        </div>
+                        <h4 class="fw-bold mb-2">Email Blaster</h4>
+                        <p class="text-muted mb-4 flex-grow-1">
+                            Jana senarai emel pukal dan hantar peringatan kepada sekolah yang belum selesai.
+                        </p>
+                        <a href="email.html" class="btn btn-warning btn-menu shadow-sm text-dark">
+                            <i class="fas fa-envelope me-2"></i>Buka Email Blaster
+                        </a>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- FOOTER / LOGOUT -->
         <div class="text-center mt-5 fade-up" style="animation-delay: 0.3s;">
-            <button onclick="logout()" class="btn btn-link text-danger text-decoration-none fw-bold">
+            <button onclick="keluarSistem()" class="btn btn-link text-danger text-decoration-none fw-bold">
                 <i class="fas fa-sign-out-alt me-2"></i>Log Keluar Sistem
             </button>
             <p class="small text-muted mt-2 opacity-50">Unit Sumber Teknologi Pendidikan, PPD Alor Gajah</p>
@@ -86,5 +131,37 @@
 
   <script src="js/utils.js"></script>
   <script src="js/main.js"></script>
+
+  <!-- LOGIK MENU PINTAR -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const isAdmin = sessionStorage.getItem('smpid_auth') === 'true';
+        const userKod = sessionStorage.getItem('smpid_user_kod');
+        const badge = document.getElementById('displayKodSekolah');
+
+        if (isAdmin) {
+            // --- MOD ADMIN ---
+            badge.innerHTML = '<i class="fas fa-user-shield me-2"></i>MOD ADMIN';
+            badge.classList.replace('text-dark', 'text-primary');
+            badge.classList.add('border', 'border-primary');
+            
+            // Tunjuk kad Admin, Sembunyi kad User
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+            document.querySelectorAll('.user-only').forEach(el => el.style.display = 'none');
+
+        } else if (userKod) {
+            // --- MOD SEKOLAH ---
+            badge.innerHTML = `<i class="fas fa-school me-2"></i>${userKod}`;
+            
+            // Tunjuk kad User, Sembunyi kad Admin
+            document.querySelectorAll('.user-only').forEach(el => el.style.display = 'block');
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+
+        } else {
+            // --- TIADA SESI ---
+            window.location.href = 'index.html';
+        }
+    });
+  </script>
 </body>
 </html>
