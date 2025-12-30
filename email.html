@@ -27,7 +27,7 @@
     </div>
   </div>
 
-  <!-- HEADER STANDARD (Dikemaskini untuk konsistensi) -->
+  <!-- HEADER STANDARD -->
   <div class="header-bg text-center">
     <img src="icoppdag.png" alt="Logo PPD" class="mb-3" style="width: 100px; height: auto;">
     <h3 class="fw-bold px-3">Email Blaster SMPID</h3>
@@ -133,6 +133,7 @@ PPD Alor Gajah.</textarea>
             <button onclick="window.location.href='dashboard.html'" class="btn btn-link text-decoration-none text-muted fw-bold">
                 <i class="fas fa-arrow-left me-2"></i>Kembali ke Dashboard
             </button>
+             <!-- Butang Log Keluar -->
              <button onclick="keluarSistem()" class="btn btn-sm btn-outline-danger">
                 <i class="fas fa-sign-out-alt me-1"></i>Log Keluar
             </button>
@@ -144,9 +145,30 @@ PPD Alor Gajah.</textarea>
   </div>
 
   <!-- SCRIPT -->
-  <!-- Penting: utils.js mesti dimuatkan SEBELUM email.js kerana ia mengandungi Supabase Client -->
   <script src="js/utils.js"></script>
   <script src="js/email.js"></script>
+
+  <!-- LOGIK TAMBAHAN: FUNGSI LOG KELUAR -->
+  <script>
+    // Fungsi ini ditambah di sini untuk memastikan ia berfungsi tanpa bergantung pada fail luaran lain
+    function keluarSistem() {
+        Swal.fire({
+            title: 'Log Keluar Admin?',
+            text: "Anda akan kembali ke skrin log masuk utama.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Keluar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Padam semua sesi dan kembali ke index
+                sessionStorage.clear();
+                window.location.href = 'index.html';
+            }
+        });
+    }
+  </script>
 
 </body>
 </html>
