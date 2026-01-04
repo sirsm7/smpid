@@ -17,6 +17,9 @@
   <style>
     /* Kelas utiliti untuk sembunyikan kad sebelum logik JS berjalan */
     .role-card { display: none; }
+    
+    /* Memastikan kad sama tinggi dalam grid */
+    .menu-card { height: 100%; }
   </style>
 </head>
 <body>
@@ -35,39 +38,22 @@
 
   <div class="container main-container pb-5">
     <div class="row justify-content-center">
-      <div class="col-lg-10 col-xl-8">
+      <div class="col-lg-12 col-xl-10"> <!-- Lebarkan container utama untuk muat 3 kotak -->
         
-        <div class="row g-4">
+        <div class="row g-4 justify-content-center">
             
-            <!-- --- KAD UNTUK PENGGUNA SEKOLAH --- -->
+            <!-- --- KAD UNTUK PENGGUNA SEKOLAH (GRID 3 LAJUR) --- -->
+            <!-- Nota: col-md-4 digunakan untuk memaparkan 3 kotak sebaris pada skrin sederhana ke atas -->
 
-            <!-- 1. SPKA (AI) -->
-            <div id="card-ai" class="col-md-6 role-card user-only fade-up" style="animation-delay: 0.1s;">
-                <div class="card menu-card p-4 text-center">
-                    <div class="card-body d-flex flex-column">
-                        <div class="icon-box icon-ai">
-                            <i class="fas fa-robot"></i>
-                        </div>
-                        <h4 class="fw-bold mb-2">Aplikasi Belajar AI</h4>
-                        <p class="text-muted mb-4 flex-grow-1">
-                            Akses ke Sistem Pembelajaran Kendiri AI (SPKA) untuk meneroka modul kecerdasan buatan.
-                        </p>
-                        <a href="https://sirsm7.github.io/spka/" target="_blank" class="btn btn-primary btn-menu shadow-sm">
-                            <i class="fas fa-external-link-alt me-2"></i>Buka Aplikasi
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 2. PROFIL SEKOLAH -->
-            <div id="card-profil" class="col-md-6 role-card user-only fade-up" style="animation-delay: 0.2s;">
+            <!-- 1. PROFIL SEKOLAH (UTAMA) -->
+            <div id="card-profil" class="col-md-4 role-card user-only fade-up" style="animation-delay: 0.1s;">
                 <div class="card menu-card p-4 text-center">
                     <div class="card-body d-flex flex-column">
                         <div class="icon-box icon-school">
                             <i class="fas fa-edit"></i>
                         </div>
                         <h4 class="fw-bold mb-2">Profil Sekolah</h4>
-                        <p class="text-muted mb-4 flex-grow-1">
+                        <p class="text-muted mb-4 flex-grow-1 small">
                             Kemaskini maklumat Guru Penyelaras ICT (GPICT) dan Admin DELIMa sekolah anda.
                         </p>
                         <a href="profil.html" class="btn btn-success btn-menu shadow-sm">
@@ -77,15 +63,15 @@
                 </div>
             </div>
 
-            <!-- 3. LAPORAN PERTANDINGAN (NEW) -->
-            <div id="card-laporan" class="col-md-6 role-card user-only fade-up" style="animation-delay: 0.3s;">
+            <!-- 2. LAPORAN PPPDM (BAHARU) -->
+            <div id="card-laporan" class="col-md-4 role-card user-only fade-up" style="animation-delay: 0.2s;">
                 <div class="card menu-card p-4 text-center border-info">
                     <div class="card-body d-flex flex-column">
                         <div class="icon-box bg-info bg-opacity-10 text-info">
                             <i class="fas fa-trophy"></i>
                         </div>
                         <h4 class="fw-bold mb-2">Laporan PPPDM</h4>
-                        <p class="text-muted mb-4 flex-grow-1">
+                        <p class="text-muted mb-4 flex-grow-1 small">
                             Laporan Pertandingan Program Pemerkasaan Digital Murid Daerah Alor Gajah.
                         </p>
                         <a href="https://sirsm7.github.io/pppdm" target="_blank" class="btn btn-info text-white btn-menu shadow-sm">
@@ -95,7 +81,26 @@
                 </div>
             </div>
 
-            <!-- --- KAD UNTUK ADMIN --- -->
+            <!-- 3. APLIKASI BELAJAR AI -->
+            <div id="card-ai" class="col-md-4 role-card user-only fade-up" style="animation-delay: 0.3s;">
+                <div class="card menu-card p-4 text-center">
+                    <div class="card-body d-flex flex-column">
+                        <div class="icon-box icon-ai">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h4 class="fw-bold mb-2">Aplikasi AI</h4>
+                        <p class="text-muted mb-4 flex-grow-1 small">
+                            Akses ke Sistem Pembelajaran Kendiri AI (SPKA) untuk meneroka modul kecerdasan buatan.
+                        </p>
+                        <a href="https://sirsm7.github.io/spka/" target="_blank" class="btn btn-primary btn-menu shadow-sm">
+                            <i class="fas fa-external-link-alt me-2"></i>Buka Aplikasi
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- --- KAD UNTUK ADMIN (GRID 2 LAJUR KEKAL) --- -->
+            <!-- Nota: Admin kekal col-md-6 kerana hanya ada 2 item -->
 
             <!-- 4. DASHBOARD ADMIN -->
             <div id="card-dashboard" class="col-md-6 role-card admin-only fade-up" style="animation-delay: 0.1s;">
