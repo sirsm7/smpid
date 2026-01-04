@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sistem SMPID - PPD Alor Gajah</title>
+  
+  <!-- Favicon: Menggunakan logo anda -->
+  <link rel="icon" href="icoppdag.png"> 
+
+  <!-- CSS Framework & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Custom CSS -->
+  <link href="style.css" rel="stylesheet">
+  
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+
+  <!-- 1. LOADING OVERLAY (Global) -->
+  <div id="loadingOverlay" class="hidden">
+    <div class="text-center">
+      <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+      <p class="mt-2 fw-bold text-dark" id="loadingText">Memproses...</p>
+    </div>
+  </div>
+
+  <!-- 2. QUEUE MODAL (Tindakan Pantas Dashboard) -->
+  <div id="queueModal" class="queue-overlay hidden">
+      <div class="queue-card">
+          <button class="btn-close-queue" onclick="toggleQueueModal(false)" title="Tutup">&times;</button>
+          
+          <div class="queue-progress fw-bold text-muted mb-3" id="qProgress">Sasaran 1 / 10</div>
+          <span class="badge bg-warning text-dark mb-3" id="qRoleBadge">GPICT</span>
+          
+          <h3 class="queue-school fw-bold mb-1" id="qSchoolName">NAMA SEKOLAH</h3>
+          <p class="text-muted small mb-1" id="qCode">KOD</p>
+          <div class="queue-person text-success fw-bold mb-4 fs-5" id="qPersonName">Nama Guru</div>
+          
+          <div class="alert alert-light border small text-start mb-3 bg-light">
+              <i class="fas fa-info-circle me-1 text-primary"></i> 
+              Tekan butang hijau untuk buka WhatsApp Web dan hantar arahan pendaftaran bot.
+          </div>
+
+          <a href="#" id="qWaBtn" target="_blank" class="btn-wa-big">
+              <i class="fab fa-whatsapp fa-lg"></i> Hantar Mesej
+          </a>
+          
+          <div class="d-flex gap-2">
+            <button class="btn btn-light border w-50" onclick="prevQueue()">
+                <i class="fas fa-chevron-left me-1"></i> Sebelum
+            </button>
+            <button class="btn btn-light border w-50" onclick="nextQueue()">
+                Seterusnya <i class="fas fa-chevron-right ms-1"></i>
+            </button>
+          </div>
+      </div>
+  </div>
+
+  <!-- 3. HEADER UTAMA (Dikongsi Semua Halaman) -->
+  <div class="header-bg text-center">
+    
+    <!-- LOGO DIKEMASKINI: Menggunakan icoppdag.png -->
+    <img src="icoppdag.png" alt="Logo PPD" class="mb-4 bg-white rounded-circle p-2 shadow-sm" style="width: 120px; height: 120px; object-fit: contain;">
+    
+    <h3 class="fw-bold px-3 text-white" id="headerTitle">Sistem Maklumat Penyelaras ICT & Admin DELIMa</h3>
+    <p class="opacity-75 text-white" id="headerSubtitle">Unit Sumber Teknologi Pendidikan, PPD Alor Gajah</p>
+    
+    <!-- Badge Dinamik untuk Menu -->
+    <div id="headerBadgeContainer" class="mt-3 hidden">
+        <span class="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill" id="displayUserBadge">
+            <i class="fas fa-school me-2"></i>Loading...
+        </span>
+    </div>
+  </div>
+
+  <div class="container main-container pb-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-12">
+
+        <!-- =======================================================
+             VIEW 1: LOGIN
+        ======================================================== -->
+        <section id="view-login" class="view-section active">
+            <div class="card p-4 mx-auto shadow-sm fade-up" style="max-width: 500px;">
+              <div class="card-body">
+                <h5 class="card-title text-center mb-4 fw-bold">AKSES SISTEM</h5>
+                <div class="mb-3">
+                  <label class="form-label text-muted fw-bold small">MASUKKAN KOD SEKOLAH</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-key text-muted"></i></span>
+                    <input type="text" id="inputKodSekolah" class="form-control form-control-lg uppercase-input border-start-0" 
+                           placeholder="CONTOH: MBA0001">
+                  </div>
+                </div>
+                <button onclick="prosesLogin()" class="btn btn-primary w-100 btn-lg fw-bold shadow-sm">
+                  <i class="fas fa-sign-in-alt me-2"></i>LOG MASUK
+                </button>
+              </div>
+            </div>
+        </section>
+
+        <!-- =======================================================
+             VIEW 2: MENU UTAMA
+        ======================================================== -->
+        <section id="view-menu" class="view-section hidden">
+            <div class="row g-4 justify-content-center">
+                
+                <!-- USER: Profil Sekolah -->
+                <div class="col-md-4 user-only role-card fade-up" style="animation-delay: 0.1s;">
+                    <div class="card menu-card p-4 text-center cursor-pointer" onclick="navigateTo('profile')">
+                        <div class="card-body d-flex flex-column align-items-center">
+                            <div class="icon-box icon-school"><i class="fas fa-edit"></i></div>
+                            <h4 class="fw-bold mb-2">Profil Sekolah</h4>
+                            <p class="text-muted mb-4 small">Kemaskini maklumat GPICT dan Admin DELIMa.</p>
+                            <button class="btn btn-success btn-menu shadow-sm">Kemaskini</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- USER: Laporan PPPDM -->
+                <div class="col-md-4 user-only role-card fade-up" style="animation-delay: 0.2s;">
+                    <div class="card menu-card p-4 text-center border-info">
+                        <div class="card-body d-flex flex-column align-items-center">
+                            <div class="icon-box bg-info bg-opacity-10 text-info"><i class="fas fa-trophy"></i></div>
+                            <h4 class="fw-bold mb-2">Laporan PPPDM</h4>
+                            <p class="text-muted mb-4 small">Laporan pertandingan pemerkasaan digital.</p>
+                            <a href="https://sirsm7.github.io/pppdm" target="_blank" class="btn btn-info text-white btn-menu shadow-sm">Lihat Laporan</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- USER: Aplikasi AI -->
+                <div class="col-md-4 user-only role-card fade-up" style="animation-delay: 0.3s;">
+                    <div class="card menu-card p-4 text-center">
+                        <div class="card-body d-flex flex-column align-items-center">
+                            <div class="icon-box icon-ai"><i class="fas fa-robot"></i></div>
+                            <h4 class="fw-bold mb-2">Aplikasi AI</h4>
+                            <p class="text-muted mb-4 small">Sistem Pembelajaran Kendiri AI.</p>
+                            <a href="https://sirsm7.github.io/spka/" target="_blank" class="btn btn-primary btn-menu shadow-sm">Buka Aplikasi</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ADMIN: Dashboard -->
+                <div class="col-md-6 admin-only role-card fade-up" style="animation-delay: 0.1s;">
+                    <div class="card menu-card p-4 text-center border-primary cursor-pointer" onclick="navigateTo('dashboard')">
+                        <div class="card-body d-flex flex-column align-items-center">
+                            <div class="icon-box bg-primary bg-opacity-10 text-primary"><i class="fas fa-tachometer-alt"></i></div>
+                            <h4 class="fw-bold mb-2">Dashboard Admin</h4>
+                            <p class="text-muted mb-4">Pantau status pendaftaran dan statistik.</p>
+                            <button class="btn btn-primary btn-menu shadow-sm">Buka Dashboard</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ADMIN: Email Blaster -->
+                <div class="col-md-6 admin-only role-card fade-up" style="animation-delay: 0.2s;">
+                    <div class="card menu-card p-4 text-center border-warning cursor-pointer" onclick="navigateTo('email')">
+                        <div class="card-body d-flex flex-column align-items-center">
+                            <div class="icon-box bg-warning bg-opacity-10 text-dark"><i class="fas fa-paper-plane"></i></div>
+                            <h4 class="fw-bold mb-2">Email Blaster</h4>
+                            <p class="text-muted mb-4">Jana dan hantar peringatan pukal.</p>
+                            <button class="btn btn-warning btn-menu shadow-sm text-dark">Buka Email Blaster</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer Log Keluar -->
+            <div class="text-center mt-5 fade-up" style="animation-delay: 0.4s;">
+                <button onclick="logout()" class="btn btn-link text-danger text-decoration-none fw-bold">
+                    <i class="fas fa-sign-out-alt me-2"></i>Log Keluar Sistem
+                </button>
+            </div>
+        </section>
+
+        <!-- =======================================================
+             VIEW 3: PROFIL SEKOLAH (BORANG)
+        ======================================================== -->
+        <section id="view-profile" class="view-section hidden">
+            <div class="card p-4 mx-auto shadow-sm fade-up" style="max-width: 800px;">
+                <div class="alert alert-primary d-flex align-items-center shadow-sm border-0 mb-4" role="alert">
+                    <i class="fas fa-building fa-2x me-3 opacity-50"></i>
+                    <div>
+                        <h5 class="alert-heading mb-0 fw-bold" id="dispNamaSekolah">Memuatkan...</h5>
+                        <small id="dispKodDaerah" class="text-uppercase">Sila tunggu sebentar</small>
+                    </div>
+                </div>
+
+                <form id="profileForm" onsubmit="event.preventDefault(); simpanProfil();">
+                    <input type="hidden" id="hiddenKodSekolah">
+
+                    <!-- GPICT -->
+                    <h6 class="text-primary border-bottom pb-2 mb-3 mt-2"><i class="fas fa-user-tie me-2"></i>MAKLUMAT GPICT</h6>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-muted">NAMA PENUH</label>
+                            <input type="text" class="form-control uppercase-input bg-light" id="gpictNama" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">NO. TELEFON</label>
+                            <input type="tel" class="form-control bg-light" id="gpictTel" required placeholder="0123456789" onblur="autoFormatPhone(this)">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">EMEL DELIMA</label>
+                            <input type="email" class="form-control bg-light" id="gpictEmel" required placeholder="@moe-dl.edu.my">
+                        </div>
+                    </div>
+
+                    <!-- ADMIN -->
+                    <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3 mt-5">
+                        <h6 class="text-primary mb-0"><i class="fas fa-user-shield me-2"></i>MAKLUMAT ADMIN DELIMA</h6>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="checkSama" onchange="salinDataProfil()">
+                            <label class="form-check-label small fw-bold text-muted" for="checkSama">Sama dengan GPICT</label>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-muted">NAMA PENUH</label>
+                            <input type="text" class="form-control uppercase-input bg-light" id="adminNama" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">NO. TELEFON</label>
+                            <input type="tel" class="form-control bg-light" id="adminTel" required placeholder="0123456789" onblur="autoFormatPhone(this)">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">EMEL DELIMA</label>
+                            <input type="email" class="form-control bg-light" id="adminEmel" required placeholder="@moe-dl.edu.my">
+                        </div>
+                    </div>
+
+                    <!-- ACTIONS -->
+                    <div class="d-grid gap-2 mt-5">
+                        <button type="submit" class="btn btn-success btn-lg fw-bold shadow"><i class="fas fa-save me-2"></i>KEMASKINI DATA</button>
+                    </div>
+                </form>
+
+                <div class="d-flex justify-content-between mt-3 pt-3 border-top">
+                    <button type="button" id="btnPadamData" onclick="mintaPinPadam()" class="btn btn-outline-danger btn-sm border-0 hidden">
+                        <i class="fas fa-trash-alt me-2"></i>Padam Data (Admin)
+                    </button>
+                    <button type="button" onclick="navigateTo('menu')" class="btn btn-outline-secondary btn-sm fw-bold">
+                        <i class="fas fa-arrow-left me-2"></i>Kembali
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- =======================================================
+             VIEW 4: DASHBOARD ADMIN
+        ======================================================== -->
+        <section id="view-dashboard" class="view-section hidden">
+            <div class="card p-4 shadow-sm fade-up">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
+                    <div>
+                         <h4 class="mb-0 fw-bold text-primary"><i class="fas fa-tachometer-alt me-2"></i>Status Pendaftaran</h4>
+                         <small class="text-muted">Pantau pendaftaran & hantar peringatan</small>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                      <button onclick="mulaTindakanPantas()" class="btn btn-success btn-sm fw-bold shadow-sm">
+                        <i class="fab fa-whatsapp me-1"></i> Tindakan Pantas
+                      </button>
+                      <button onclick="janaSenaraiTelegram()" class="btn btn-warning btn-sm text-dark fw-bold">
+                        <i class="fab fa-telegram-plane me-1"></i> List Telegram
+                      </button>
+                      <button onclick="navigateTo('menu')" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-home me-1"></i> Menu
+                      </button>
+                    </div>
+                </div>
+
+                <!-- Filter Area -->
+                <div class="mb-4 row align-items-center g-3" id="dashboardFilterContainer">
+                     <!-- Filter akan dirender oleh JS -->
+                </div>
+                
+                <!-- Grid Area -->
+                <div id="schoolGridWrapper">
+                    <div class="text-center p-5 text-muted">Sedang memuatkan data...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =======================================================
+             VIEW 5: EMAIL BLASTER
+        ======================================================== -->
+        <section id="view-email" class="view-section hidden">
+            <div class="card p-4 shadow-sm fade-up">
+                
+                <!-- Filter Config -->
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-3">
+                    <div>
+                        <h5 class="fw-bold text-primary mb-1"><i class="fas fa-filter me-2"></i>Kriteria Penerima</h5>
+                    </div>
+                    <div class="d-flex gap-3 align-items-center flex-wrap">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="checkGpict" checked onchange="generateEmailList()">
+                            <label class="form-check-label fw-bold" for="checkGpict">GPICT</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="checkAdmin" checked onchange="generateEmailList()">
+                            <label class="form-check-label fw-bold" for="checkAdmin">Admin</label>
+                        </div>
+                        <select id="statusFilter" class="form-select form-select-sm w-auto" onchange="generateEmailList()">
+                            <option value="all">Semua Status</option>
+                            <option value="unregistered" selected>Belum Daftar Bot</option>
+                            <option value="registered">Sudah Daftar Bot</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Hasil -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <label class="fw-bold small text-muted">SENARAI (<span id="countEmail">0</span> Penerima)</label>
+                        <button class="btn btn-sm btn-outline-secondary py-0" onclick="copyEmails()">Salin</button>
+                    </div>
+                    <textarea id="emailOutput" class="form-control email-box mb-2" rows="4" readonly></textarea>
+                </div>
+
+                <!-- Mesej -->
+                <div class="mb-4">
+                    <h5 class="fw-bold text-success mb-3"><i class="fas fa-pen-fancy me-2"></i>Draf Mesej</h5>
+                    <div class="mb-2">
+                        <input type="text" class="form-control fw-bold" id="msgSubject" value="[TINDAKAN] Pengesahan Pendaftaran Sistem SMPID">
+                    </div>
+                    <textarea class="form-control" id="msgBody" rows="6">Salam Sejahtera Tuan/Puan,
+
+Mohon kerjasama Tuan/Puan selaku GPICT/Admin DELIMa sekolah untuk mengesahkan peranan anda dalam sistem SMPID melalui Bot Telegram rasmi kami.
+
+Sila ikuti langkah berikut:
+1. Klik pautan bot: https://t.me/smpid_bot
+2. Tekan butang 'Start' atau hantar /start
+3. Masukkan KOD SEKOLAH anda.
+4. Pilih butang peranan yang betul.
+
+Kerjasama Tuan/Puan amat dihargai.</textarea>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                    <button class="btn btn-outline-secondary" onclick="navigateTo('menu')">Batal</button>
+                    <a id="mailtoLink" href="#" class="btn btn-primary fw-bold shadow-sm">Buka Email Client</a>
+                </div>
+            </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>

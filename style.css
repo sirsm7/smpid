@@ -1,0 +1,157 @@
+/* --- GLOBAL & THEME --- */
+:root {
+    --primary-gradient: linear-gradient(135deg, #198754 0%, #0d6efd 100%);
+    --bg-color: #f0f2f5;
+    --card-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+body {
+    background-color: var(--bg-color);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+}
+
+.hidden { display: none !important; }
+.cursor-pointer { cursor: pointer; }
+.uppercase-input { text-transform: uppercase; }
+
+/* --- SPA VIEW TRANSITIONS --- */
+.view-section {
+    display: none; /* Default hidden */
+    width: 100%;
+}
+.view-section.active {
+    display: block;
+    animation: fadeIn 0.4s ease-out;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- HEADER --- */
+.header-bg {
+    background: var(--primary-gradient);
+    color: white;
+    padding: 2.5rem 0;
+    margin-bottom: -3rem;
+    padding-bottom: 5rem;
+    transition: all 0.3s ease;
+}
+.main-container { margin-top: -2rem; }
+
+/* --- COMPONENTS --- */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    background: white;
+}
+.email-box {
+    background: #e9ecef;
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+/* --- LOADING OVERLAY --- */
+#loadingOverlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(255,255,255,0.8); z-index: 9999;
+    display: flex; justify-content: center; align-items: center;
+    backdrop-filter: blur(2px);
+}
+
+/* --- DASHBOARD SCHOOL CARDS --- */
+.school-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer; height: 100%;
+    border: 1px solid rgba(0,0,0,0.05);
+    display: flex; flex-direction: column;
+}
+.school-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    border-color: #0d6efd;
+}
+.school-name {
+    font-size: 0.85rem; font-weight: 700; color: #212529;
+    line-height: 1.4; margin-bottom: 0.5rem;
+}
+.status-badge {
+    font-size: 0.75rem; padding: 4px 8px; border-radius: 20px;
+    font-weight: 700; text-transform: uppercase;
+}
+
+/* WhatsApp & Status Row */
+.tele-status-row {
+    background-color: #f8f9fa; border-top: 1px solid #eee;
+    padding: 8px 12px; border-radius: 0 0 12px 12px;
+    font-size: 0.75rem; display: flex; flex-direction: column; gap: 8px;
+}
+.row-item { display: flex; justify-content: space-between; align-items: center; }
+
+/* --- FILTERS --- */
+.filter-badge {
+    opacity: 0.6; transform: scale(0.98); border: 2px solid transparent; cursor: pointer;
+}
+.filter-badge.active {
+    opacity: 1; transform: scale(1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    border-color: rgba(0,0,0,0.1);
+}
+.category-header {
+    background-color: #e9ecef; padding: 10px 15px; border-radius: 8px;
+    margin-bottom: 15px; color: #495057; font-weight: 700;
+    border-left: 5px solid #0d6efd;
+}
+
+/* --- MENU PAGE --- */
+.menu-card {
+    border: none; border-radius: 16px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    transition: all 0.3s ease; height: 100%;
+}
+.menu-card:hover { transform: translateY(-5px); box-shadow: 0 12px 20px rgba(0,0,0,0.1); }
+
+.icon-box {
+    width: 90px; height: 90px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1.5rem; font-size: 2.5rem;
+}
+.icon-ai { background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; }
+.icon-school { background-color: rgba(25, 135, 84, 0.1); color: #198754; }
+
+.btn-menu {
+    border-radius: 50px; padding: 10px 20px; font-weight: 600;
+    width: 100%; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.9rem;
+}
+
+/* Animations */
+.fade-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+    opacity: 0; transform: translateY(20px);
+}
+@keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+
+/* --- QUEUE MODAL --- */
+.queue-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); z-index: 10000;
+    display: flex; justify-content: center; align-items: center;
+}
+.queue-card {
+    background: white; width: 90%; max-width: 500px;
+    border-radius: 15px; padding: 2rem; position: relative; text-align: center;
+}
+.btn-wa-big {
+    background: #25D366; color: white; text-decoration: none;
+    border: none; padding: 15px 30px; font-size: 1.2rem;
+    font-weight: bold; border-radius: 50px; width: 100%; margin-bottom: 1rem;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.btn-wa-big:hover { background: #128C7E; color: white; }
+.btn-close-queue {
+    position: absolute; top: 15px; right: 15px;
+    background: none; border: none; font-size: 1.5rem; color: #aaa; cursor: pointer;
+}
