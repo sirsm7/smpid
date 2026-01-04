@@ -16,14 +16,23 @@ body { background-color: #f0f2f5; font-family: 'Inter', sans-serif; min-height: 
 .border-top-primary { border-top: 4px solid #0d6efd !important; }
 .border-top-warning { border-top: 4px solid #ffc107 !important; }
 
-/* --- LOADING --- */
-#loadingOverlay {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(255,255,255,0.85); z-index: 9999;
-  display: flex; justify-content: center; align-items: center; backdrop-filter: blur(2px);
+/* --- DASHBOARD SCHOOL CARDS (Dipulihkan) --- */
+.school-card {
+  transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; height: 100%;
+  border: 1px solid rgba(0,0,0,0.05); background: white;
 }
+.school-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.15); border-color: #0d6efd; }
+.school-name { font-size: 0.85rem; font-weight: 700; color: #212529; line-height: 1.4; margin-bottom: 0.5rem; }
+.status-badge { font-size: 0.7rem; padding: 4px 6px; border-radius: 20px; font-weight: 700; }
 
-/* --- ADMIN DASHBOARD --- */
+/* WhatsApp & Status Row (Dipulihkan) */
+.tele-status-row { 
+    background-color: #f8f9fa; border-top: 1px solid #eee; padding: 0; 
+    border-radius: 0 0 12px 12px; font-size: 0.75rem; 
+}
+.row-item { display: flex; justify-content: space-between; align-items: center; }
+
+/* --- ADMIN DASHBOARD UTILS --- */
 .category-header { font-weight: 700; color: #495057; border-left: 4px solid #0d6efd; padding-left: 10px; margin-bottom: 15px; margin-top: 20px; }
 .filter-badge { opacity: 0.6; transform: scale(0.98); }
 .filter-badge.active { opacity: 1; transform: scale(1); box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
@@ -36,7 +45,12 @@ body { background-color: #f0f2f5; font-family: 'Inter', sans-serif; min-height: 
 .icon-school { background-color: rgba(25, 135, 84, 0.1); color: #198754; }
 .btn-menu { border-radius: 50px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
-/* --- ANIMATION --- */
+/* --- LOADING & MODAL --- */
+#loadingOverlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(255,255,255,0.85); z-index: 9999;
+  display: flex; justify-content: center; align-items: center; backdrop-filter: blur(2px);
+}
 .fade-up { animation: fadeInUp 0.5s ease-out forwards; opacity: 0; transform: translateY(20px); }
 @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
 

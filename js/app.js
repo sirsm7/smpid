@@ -1,6 +1,6 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi 2.0 - Struktur Baru (index, admin, user)
+ * Versi 2.1 - Pembaikan Fungsi Dashboard & Admin View
  */
 
 // ==========================================
@@ -8,7 +8,6 @@
 // ==========================================
 const SUPABASE_URL = 'https://hbanvnteyncwsnfprahz.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_IEcWCbBmqWLBOBU4rl0FPw_Z97Assvt';
-const ADMIN_PIN = "pkgag"; // Nota: Masih client-side. Perlu RLS di Supabase untuk lebih selamat.
 
 let supabaseClient;
 if (window.supabase) {
@@ -137,7 +136,6 @@ function initAdminPanel() {
         window.location.href = 'index.html';
         return;
     }
-    // Muat turun data untuk kedua-dua tab (Dashboard & Email)
     fetchDashboardData(); 
 }
 
@@ -151,21 +149,16 @@ async function fetchDashboardData() {
             
         if (error) throw error;
         
-        // Proses data untuk Dashboard
         dashboardData = data.map(i => {
             const requiredFields = [i.nama_gpict, i.no_telefon_gpict, i.emel_delima_gpict, i.nama_admin_delima, i.no_telefon_admin_delima, i.emel_delima_admin_delima];
             const isDataComplete = requiredFields.every(field => field && field.trim() !== "");
             return { ...i, jenis: i.jenis_sekolah || 'LAIN-LAIN', is_lengkap: isDataComplete };
         });
 
-        // Proses data untuk Email Blaster (Guna data sama)
         emailRawData = data; 
-        
-        // Render UI
         renderFilters();
         runFilter();
-        generateList(); // Init email list juga
-
+        generateList();
         toggleLoading(false);
     } catch (err) { 
         toggleLoading(false); 
@@ -173,7 +166,7 @@ async function fetchDashboardData() {
     }
 }
 
-// --- SUB-LOGIK DASHBOARD ---
+// --- SUB-LOGIK DASHBOARD (DIPERBAIKI) ---
 function renderFilters() {
     const types = [...new Set(dashboardData.map(i => i.jenis))].sort();
     let opts = `<option value="ALL">SEMUA JENIS SEKOLAH</option>`;
@@ -218,6 +211,7 @@ function runFilter() {
     renderGrid(filtered);
 }
 
+// --- FUNGSI RENDER GRID (DIPULIHKAN SEPENUHNYA) ---
 function renderGrid(data) {
     const wrapper = document.getElementById('schoolGridWrapper');
     if (!wrapper) return;
@@ -232,37 +226,56 @@ function renderGrid(data) {
 
     Object.keys(groups).sort().forEach(jenis => {
         const items = groups[jenis];
-        let html = `<div class="mb-4"><h6 class="category-header">${jenis} (${items.length})</h6><div class="row g-2">`;
+        let html = `<div class="mb-4 fade-up"><h6 class="category-header">${jenis} (${items.length})</h6><div class="row g-3">`;
         
         items.forEach(s => {
-            const statusColor = s.is_lengkap ? 'text-success' : 'text-danger';
-            const statusIcon = s.is_lengkap ? 'fa-check-circle' : 'fa-exclamation-circle';
+            const statusBadge = s.is_lengkap 
+                ? `<span class="badge bg-success status-badge"><i class="fas fa-check me-1"></i>LENGKAP</span>` 
+                : `<span class="badge bg-danger status-badge"><i class="fas fa-times me-1"></i>BELUM ISI</span>`;
             
-            // Logic Icon Telegram/WhatsApp
+            const linkG_Template = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, false);
+            const linkG_Raw = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, true);
+            const linkA_Template = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, false);
+            const linkA_Raw = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, true);
+            
             const hasTeleG = s.telegram_id_gpict;
             const hasTeleA = s.telegram_id_admin;
-            
-            const renderIcon = (hasTele, link) => {
-                if (hasTele) return `<i class="fas fa-check-circle text-primary" title="Bot Berdaftar"></i>`;
-                return `<a href="${link}" target="_blank" class="text-success"><i class="fab fa-whatsapp"></i></a>`;
+
+            // Logik butang tindakan yang dikembalikan
+            const renderActions = (hasTele, linkTemplate, linkRaw) => {
+                let buttonsHtml = '<div class="d-flex align-items-center gap-1 justify-content-end">';
+                if (hasTele) {
+                    buttonsHtml += `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary"><i class="fas fa-check-circle"></i> OK</span>`;
+                }
+                if (linkRaw) {
+                    buttonsHtml += `<a href="${linkRaw}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm btn-light border text-secondary" title="Chat"><i class="fas fa-comment"></i></a>`;
+                }
+                if (!hasTele && linkTemplate) {
+                     buttonsHtml += `<a href="${linkTemplate}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm btn-outline-success" title="Ingatkan"><i class="fab fa-whatsapp"></i></a>`;
+                } else if (!linkRaw) {
+                    buttonsHtml += `<span class="text-muted small">-</span>`;
+                }
+                buttonsHtml += '</div>';
+                return buttonsHtml;
             };
 
-            const linkG = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict);
-            const linkA = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima);
+            const actionsGpict = renderActions(hasTeleG, linkG_Template, linkG_Raw);
+            const actionsAdmin = renderActions(hasTeleA, linkA_Template, linkA_Raw);
 
+            // Perhatikan: onclick="viewSchoolProfile" dikembalikan pada kad utama
             html += `
             <div class="col-6 col-md-4 col-lg-3">
-              <div class="card h-100 border shadow-sm">
-                <div class="card-body p-2 d-flex flex-column">
-                  <div class="d-flex justify-content-between">
-                    <span class="fw-bold small">${s.kod_sekolah}</span>
-                    <i class="fas ${statusIcon} ${statusColor}"></i>
+              <div class="card school-card h-100 cursor-pointer" onclick="viewSchoolProfile('${s.kod_sekolah}')">
+                <div class="card-body p-3 d-flex flex-column">
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="fw-bold text-primary mb-0">${s.kod_sekolah}</h6>
+                    ${statusBadge}
                   </div>
-                  <small class="text-truncate mb-2" title="${s.nama_sekolah}">${s.nama_sekolah}</small>
-                  <div class="mt-auto bg-light p-1 rounded d-flex justify-content-between small">
-                    <span>G: ${renderIcon(hasTeleG, linkG)}</span>
-                    <span>A: ${renderIcon(hasTeleA, linkA)}</span>
-                  </div>
+                  <p class="school-name mb-auto" title="${s.nama_sekolah}">${s.nama_sekolah}</p>
+                </div>
+                <div class="tele-status-row bg-light border-top">
+                   <div class="row-item p-2"><span class="small fw-bold text-muted">GPICT</span> ${actionsGpict}</div>
+                   <div class="row-item p-2 border-top border-light"><span class="small fw-bold text-muted">Admin</span> ${actionsAdmin}</div>
                 </div>
               </div>
             </div>`;
@@ -272,21 +285,34 @@ function renderGrid(data) {
     });
 }
 
+function viewSchoolProfile(kod) {
+    // Fungsi ini membolehkan Admin melihat profil sekolah (Impersonation)
+    sessionStorage.setItem('smpid_user_kod', kod);
+    // Kita redirect ke user.html kerana profil ada di sana sekarang
+    window.location.href = 'user.html'; 
+}
+
 function janaSenaraiTelegram() {
-    // ... Logik sama seperti asal, disingkatkan untuk menjimatkan ruang ...
     let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
-    let txt = `*BELUM LENGKAP (${activeType})*\n`;
-    list.filter(i => !i.is_lengkap).forEach(i => txt += `${i.kod_sekolah} `);
+    let txt = `**STATUS PENGISIAN SMPID (${activeType})**\n\n`;
+    const pending = list.filter(i => !i.is_lengkap);
+    
+    if(pending.length === 0) { Swal.fire('Hebat', 'Semua sekolah dah lengkap!', 'success'); return; }
+
+    pending.forEach(i => txt += `- ${i.kod_sekolah} ${i.nama_sekolah}\n`);
+    txt += `\nMohon tindakan segera.`;
+    
     navigator.clipboard.writeText(txt).then(() => Swal.fire('Disalin!', 'Senarai disalin.', 'success'));
 }
 
 // --- SUB-LOGIK EMAIL BLASTER ---
 function generateList() {
-    // ... Logik sama seperti asal ...
     const includeGpict = document.getElementById('checkGpict').checked;
     const includeAdmin = document.getElementById('checkAdmin').checked;
     const filterStatus = document.getElementById('statusFilter').value;
     const uniqueEmails = new Set();
+
+    if(!emailRawData) return;
 
     emailRawData.forEach(row => {
         if (includeGpict && row.emel_delima_gpict) {
@@ -302,10 +328,15 @@ function generateList() {
     const arr = Array.from(uniqueEmails);
     document.getElementById('countEmail').innerText = arr.length;
     document.getElementById('emailOutput').value = arr.join(', ');
+    
+    const subject = encodeURIComponent(document.getElementById('msgSubject').value);
+    const body = encodeURIComponent(document.getElementById('msgBody').value);
+    document.getElementById('mailtoLink').href = `mailto:?bcc=${arr.join(',')}&subject=${subject}&body=${body}`;
 }
 
 function copyEmails() {
     const el = document.getElementById("emailOutput");
+    if(!el.value) return;
     el.select();
     navigator.clipboard.writeText(el.value).then(() => Swal.fire('Disalin', '', 'success'));
 }
@@ -316,12 +347,10 @@ function copyTemplate() {
 
 // --- SUB-LOGIK QUEUE SYSTEM ---
 function mulaTindakanPantas() {
-    // Bina queue dari list semasa
     let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
     reminderQueue = [];
     
     list.forEach(i => {
-        // Hanya masukkan jika ada No Telefon tetapi belum daftar Telegram
         if (i.no_telefon_gpict && !i.telegram_id_gpict) 
             reminderQueue.push({role:'GPICT', ...i, targetName: i.nama_gpict, targetTel: i.no_telefon_gpict});
         if (i.no_telefon_admin_delima && !i.telegram_id_admin) 
@@ -343,12 +372,20 @@ function renderQueue() {
     const item = reminderQueue[qIndex];
     document.getElementById('qProgress').innerText = `${qIndex + 1} / ${reminderQueue.length}`;
     document.getElementById('qRoleBadge').innerText = item.role;
+    document.getElementById('qRoleBadge').className = item.role === 'GPICT' ? 'badge bg-info text-dark mb-3' : 'badge bg-warning text-dark mb-3';
     document.getElementById('qSchoolName').innerText = item.nama_sekolah;
     document.getElementById('qCode').innerText = item.kod_sekolah;
     document.getElementById('qPersonName').innerText = item.targetName || "-";
     
     const link = generateWhatsAppLink(item.targetName, item.targetTel);
-    document.getElementById('qWaBtn').href = link || "#";
+    const btn = document.getElementById('qWaBtn');
+    if (link) {
+        btn.href = link;
+        btn.classList.remove('disabled');
+    } else {
+        btn.removeAttribute('href');
+        btn.classList.add('disabled');
+    }
 }
 function nextQueue() { qIndex++; renderQueue(); }
 function prevQueue() { if(qIndex > 0) qIndex--; renderQueue(); }
@@ -358,11 +395,27 @@ function prevQueue() { if(qIndex > 0) qIndex--; renderQueue(); }
 // ==========================================
 function initUserPortal() {
     const kod = sessionStorage.getItem('smpid_user_kod');
+    const isAdmin = sessionStorage.getItem('smpid_auth') === 'true';
+
     if (!kod) { window.location.href = 'index.html'; return; }
     
-    document.getElementById('displayKodSekolah').innerHTML = `<i class="fas fa-school me-2"></i>${kod}`;
+    // Jika ADMIN yang masuk, ubah butang Log Keluar jadi 'Kembali ke Dashboard'
+    if (isAdmin) {
+        document.getElementById('displayKodSekolah').innerHTML = `<i class="fas fa-user-shield me-2"></i>ADMIN VIEW: ${kod}`;
+        document.getElementById('displayKodSekolah').classList.replace('text-dark', 'text-primary');
+        document.getElementById('displayKodSekolah').classList.add('border', 'border-primary');
+        
+        // Cari butang log keluar di menu dan ubah
+        const btnLogout = document.getElementById('btnLogoutMenu');
+        if(btnLogout) {
+            btnLogout.innerHTML = `<i class="fas fa-arrow-left me-2"></i>Kembali ke Dashboard Admin`;
+            btnLogout.setAttribute('onclick', "window.location.href='admin.html'");
+            btnLogout.classList.replace('text-danger', 'text-primary');
+        }
+    } else {
+        document.getElementById('displayKodSekolah').innerHTML = `<i class="fas fa-school me-2"></i>${kod}`;
+    }
     
-    // Auto load data untuk persediaan form
     loadProfil(kod);
 }
 
@@ -384,7 +437,7 @@ async function loadProfil(kod) {
         if (error) throw error;
         
         document.getElementById('dispNamaSekolah').innerText = data.nama_sekolah;
-        document.getElementById('dispKodDaerah').innerText = data.daerah || '';
+        document.getElementById('dispKodDaerah').innerText = `KOD: ${data.kod_sekolah} | DAERAH: ${data.daerah || '-'}`;
         document.getElementById('hiddenKodSekolah').value = data.kod_sekolah;
         
         const fields = {
@@ -405,7 +458,6 @@ function salinData() {
 
 async function simpanProfil() {
     const kod = document.getElementById('hiddenKodSekolah').value;
-    // Validasi ringkas
     const emelG = document.getElementById('gpictEmel').value;
     if (!checkEmailDomain(emelG)) { Swal.fire('Format Salah', 'Gunakan emel moe-dl.edu.my', 'warning'); return; }
 
