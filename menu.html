@@ -15,10 +15,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   
   <style>
-    /* Kelas utiliti untuk sembunyikan kad sebelum logik JS berjalan */
     .role-card { display: none; }
-    
-    /* Memastikan kad sama tinggi dalam grid */
     .menu-card { height: 100%; }
   </style>
 </head>
@@ -38,12 +35,11 @@
 
   <div class="container main-container pb-5">
     <div class="row justify-content-center">
-      <div class="col-lg-12 col-xl-10"> <!-- Lebarkan container utama untuk muat 3 kotak -->
+      <div class="col-lg-12 col-xl-10"> 
         
         <div class="row g-4 justify-content-center">
             
             <!-- --- KAD UNTUK PENGGUNA SEKOLAH (GRID 3 LAJUR) --- -->
-            <!-- Nota: col-md-4 digunakan untuk memaparkan 3 kotak sebaris pada skrin sederhana ke atas -->
 
             <!-- 1. PROFIL SEKOLAH (UTAMA) -->
             <div id="card-profil" class="col-md-4 role-card user-only fade-up" style="animation-delay: 0.1s;">
@@ -63,7 +59,7 @@
                 </div>
             </div>
 
-            <!-- 2. LAPORAN PPPDM (BAHARU) -->
+            <!-- 2. LAPORAN PPPDM -->
             <div id="card-laporan" class="col-md-4 role-card user-only fade-up" style="animation-delay: 0.2s;">
                 <div class="card menu-card p-4 text-center border-info">
                     <div class="card-body d-flex flex-column">
@@ -100,7 +96,6 @@
             </div>
 
             <!-- --- KAD UNTUK ADMIN (GRID 2 LAJUR KEKAL) --- -->
-            <!-- Nota: Admin kekal col-md-6 kerana hanya ada 2 item -->
 
             <!-- 4. DASHBOARD ADMIN -->
             <div id="card-dashboard" class="col-md-6 role-card admin-only fade-up" style="animation-delay: 0.1s;">
@@ -152,39 +147,7 @@
     </div>
   </div>
 
-  <script src="js/utils.js"></script>
-  <script src="js/main.js"></script>
-
-  <!-- LOGIK MENU PINTAR -->
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-        const isAdmin = sessionStorage.getItem('smpid_auth') === 'true';
-        const userKod = sessionStorage.getItem('smpid_user_kod');
-        const badge = document.getElementById('displayKodSekolah');
-
-        if (isAdmin) {
-            // --- MOD ADMIN ---
-            badge.innerHTML = '<i class="fas fa-user-shield me-2"></i>MOD ADMIN';
-            badge.classList.replace('text-dark', 'text-primary');
-            badge.classList.add('border', 'border-primary');
-            
-            // Tunjuk kad Admin, Sembunyi kad User
-            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
-            document.querySelectorAll('.user-only').forEach(el => el.style.display = 'none');
-
-        } else if (userKod) {
-            // --- MOD SEKOLAH ---
-            badge.innerHTML = `<i class="fas fa-school me-2"></i>${userKod}`;
-            
-            // Tunjuk kad User, Sembunyi kad Admin
-            document.querySelectorAll('.user-only').forEach(el => el.style.display = 'block');
-            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
-
-        } else {
-            // --- TIADA SESI ---
-            window.location.href = 'index.html';
-        }
-    });
-  </script>
+  <!-- Pautan JS Tunggal -->
+  <script src="js/app.js"></script>
 </body>
 </html>

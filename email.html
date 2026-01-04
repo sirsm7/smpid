@@ -144,31 +144,8 @@ PPD Alor Gajah.</textarea>
     </div>
   </div>
 
-  <!-- SCRIPT -->
-  <script src="js/utils.js"></script>
-  <script src="js/email.js"></script>
-
-  <!-- LOGIK TAMBAHAN: FUNGSI LOG KELUAR -->
-  <script>
-    // Fungsi ini ditambah di sini untuk memastikan ia berfungsi tanpa bergantung pada fail luaran lain
-    function keluarSistem() {
-        Swal.fire({
-            title: 'Log Keluar Admin?',
-            text: "Anda akan kembali ke skrin log masuk utama.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Ya, Keluar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // Padam semua sesi dan kembali ke index
-                sessionStorage.clear();
-                window.location.href = 'index.html';
-            }
-        });
-    }
-  </script>
+  <!-- Pautan JS Tunggal -->
+  <script src="js/app.js"></script>
 
 </body>
 </html>

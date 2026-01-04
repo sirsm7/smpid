@@ -24,7 +24,7 @@
     </div>
   </div>
 
-  <!-- QUEUE MODAL (Tindakan Pantas) -->
+  <!-- QUEUE MODAL -->
   <div id="queueModal" class="queue-overlay hidden">
       <div class="queue-card">
           <button class="btn-close-queue" onclick="document.getElementById('queueModal').classList.add('hidden')" title="Tutup">&times;</button>
@@ -83,7 +83,6 @@
                 <i class="fab fa-telegram-plane me-1"></i>List Telegram
               </button>
               
-              <!-- Panggil confirmLogout() dari dashboard.js, bukannya terus keluarSistem() -->
               <button onclick="confirmLogout()" class="btn btn-outline-danger btn-sm">
                 <i class="fas fa-sign-out-alt me-1"></i>Keluar
               </button>
@@ -99,12 +98,8 @@
     </div>
   </div>
 
-  <script src="js/utils.js"></script>
-  <script src="js/main.js"></script>
-  <script src="js/dashboard.js"></script>
-
-  <!-- Skrip Tampalan HTML TELAH DIBUANG -->
-  <!-- Semua logik kini diuruskan secara berpusat dalam dashboard.js -->
+  <!-- Pautan JS Tunggal -->
+  <script src="js/app.js"></script>
 
 </body>
 </html>
