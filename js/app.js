@@ -412,6 +412,11 @@ function initUserPortal() {
             btnLogout.setAttribute('onclick', "window.location.href='admin.html'");
             btnLogout.classList.replace('text-danger', 'text-primary');
         }
+
+        // --- TAMBAHAN BARU: Tunjukkan butang RESET ---
+        const btnReset = document.getElementById('btnResetData');
+        if (btnReset) btnReset.classList.remove('hidden');
+
     } else {
         document.getElementById('displayKodSekolah').innerHTML = `<i class="fas fa-school me-2"></i>${kod}`;
     }
@@ -478,5 +483,62 @@ async function simpanProfil() {
         Swal.fire('Berjaya', 'Data dikemaskini.', 'success').then(() => showSection('menu'));
     } catch (err) {
         toggleLoading(false); Swal.fire('Ralat', 'Gagal simpan.', 'error');
+    }
+}
+
+// --- FUNGSI BARU: RESET DATA (ADMIN ONLY) ---
+async function resetDataSekolah() {
+    const kod = document.getElementById('hiddenKodSekolah').value;
+
+    // Langkah 1: Minta kata laluan
+    const { value: password } = await Swal.fire({
+        title: 'Akses Admin Diperlukan',
+        text: 'Masukkan kata laluan untuk reset data sekolah ini:',
+        input: 'password',
+        inputPlaceholder: 'Kata laluan',
+        showCancelButton: true,
+        confirmButtonText: 'Sahkan'
+    });
+
+    if (password === 'pkgag') {
+         // Langkah 2: Sahkan Tindakan
+         Swal.fire({
+            title: 'Pasti Reset Data?',
+            text: "Semua data GPICT dan Admin sekolah ini akan dipadam (NULL). Kod sekolah kekal.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Ya, Reset!'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                toggleLoading(true);
+                // Kita set semua medan kepada NULL
+                const payload = {
+                    nama_gpict: null,
+                    no_telefon_gpict: null,
+                    emel_delima_gpict: null,
+                    telegram_id_gpict: null,
+                    nama_admin_delima: null,
+                    no_telefon_admin_delima: null,
+                    emel_delima_admin_delima: null,
+                    telegram_id_admin: null
+                };
+
+                try {
+                    const { error } = await supabaseClient.from('sekolah_data').update(payload).eq('kod_sekolah', kod);
+                    if (error) throw error;
+                    toggleLoading(false);
+                    Swal.fire('Berjaya', 'Data sekolah telah di-reset.', 'success').then(() => {
+                        // Reload semula borang untuk tunjuk data kosong
+                        loadProfil(kod);
+                    });
+                } catch (err) {
+                    toggleLoading(false);
+                    Swal.fire('Ralat', 'Gagal reset data.', 'error');
+                }
+            }
+        });
+    } else if (password) {
+        Swal.fire('Akses Ditolak', 'Kata laluan salah.', 'error');
     }
 }
