@@ -1,6 +1,6 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi 2.2 - Penambahan Filter & Indikator Jawatan Sama (Dual Role)
+ * Versi 2.3 - Penambahan Filter Jawatan Berbeza & Eksport Data Saringan
  */
 
 // ==========================================
@@ -63,6 +63,8 @@ let activeType = 'ALL';
 let reminderQueue = [];
 let qIndex = 0;
 let emailRawData = [];
+// Variable baru untuk menyimpan data yang sedang dipaparkan (filtered)
+let currentFilteredList = [];
 
 // ==========================================
 // 4. ROUTER UTAMA (DOM CONTROLLER)
@@ -153,17 +155,23 @@ async function fetchDashboardData() {
             const requiredFields = [i.nama_gpict, i.no_telefon_gpict, i.emel_delima_gpict, i.nama_admin_delima, i.no_telefon_admin_delima, i.emel_delima_admin_delima];
             const isDataComplete = requiredFields.every(field => field && field.trim() !== "");
             
-            // --- LOGIK PENGESANAN JAWATAN SAMA ---
-            // Kita bandingkan nombor telefon yang telah dibersihkan
+            // --- LOGIK PENGESANAN JAWATAN ---
             const telG = cleanPhone(i.no_telefon_gpict);
             const telA = cleanPhone(i.no_telefon_admin_delima);
+            
+            // Orang Sama: Jika kedua-dua no telefon wujud DAN sama
             const isSama = (telG && telA) && (telG === telA);
+            
+            // Orang Berbeza: Jika kedua-dua no telefon wujud DAN TIDAK sama
+            // (Kita tak kira 'Berbeza' jika salah satu kosong, sebab itu 'Tidak Lengkap')
+            const isBerbeza = (telG && telA) && (telG !== telA);
 
             return { 
                 ...i, 
                 jenis: i.jenis_sekolah || 'LAIN-LAIN', 
                 is_lengkap: isDataComplete,
-                is_sama: isSama // Property baru
+                is_sama: isSama,
+                is_berbeza: isBerbeza // Property baru
             };
         });
 
@@ -179,7 +187,7 @@ async function fetchDashboardData() {
     }
 }
 
-// --- SUB-LOGIK DASHBOARD (DIPERBAIKI) ---
+// --- SUB-LOGIK DASHBOARD ---
 function renderFilters() {
     const types = [...new Set(dashboardData.map(i => i.jenis))].sort();
     let opts = `<option value="ALL">SEMUA JENIS SEKOLAH</option>`;
@@ -189,18 +197,23 @@ function renderFilters() {
     if(container) {
         container.innerHTML = `
         <div class="row align-items-center g-3">
-          <div class="col-md-8 col-12 d-flex flex-wrap gap-2">
+          <div class="col-md-9 col-12 d-flex flex-wrap gap-2">
             <span onclick="setFilter('ALL')" id="badgeAll" class="badge bg-secondary cursor-pointer filter-badge active p-2">Semua <span id="cntAll" class="badge bg-light text-dark ms-1">0</span></span>
             <span onclick="setFilter('LENGKAP')" id="badgeLengkap" class="badge bg-success cursor-pointer filter-badge p-2">Lengkap <span id="cntLengkap" class="badge bg-light text-dark ms-1">0</span></span>
             <span onclick="setFilter('BELUM')" id="badgeBelum" class="badge bg-danger cursor-pointer filter-badge p-2">Belum <span id="cntBelum" class="badge bg-light text-dark ms-1">0</span></span>
             
-            <!-- BUTTON BARU: JAWATAN SAMA -->
+            <!-- BUTTON: JAWATAN SAMA -->
             <span onclick="setFilter('SAMA')" id="badgeSama" class="badge bg-purple cursor-pointer filter-badge p-2" title="GPICT dan Admin adalah orang yang sama">
                 Jawatan Sama <span id="cntSama" class="badge bg-light text-dark ms-1">0</span>
             </span>
 
+            <!-- BUTTON BARU: JAWATAN BERBEZA -->
+            <span onclick="setFilter('BERBEZA')" id="badgeBerbeza" class="badge bg-orange cursor-pointer filter-badge p-2" title="GPICT dan Admin adalah orang yang berbeza">
+                Jawatan Berbeza <span id="cntBerbeza" class="badge bg-light text-dark ms-1">0</span>
+            </span>
+
           </div>
-          <div class="col-md-4"><select class="form-select rounded-pill shadow-sm" onchange="setType(this.value)">${opts}</select></div>
+          <div class="col-md-3"><select class="form-select rounded-pill shadow-sm" onchange="setType(this.value)">${opts}</select></div>
         </div>`;
     }
 }
@@ -213,28 +226,73 @@ function runFilter() {
         const statMatch = (activeStatus === 'ALL') || 
                           (activeStatus === 'LENGKAP' && i.is_lengkap) || 
                           (activeStatus === 'BELUM' && !i.is_lengkap) ||
-                          (activeStatus === 'SAMA' && i.is_sama); // Logik filter baru
+                          (activeStatus === 'SAMA' && i.is_sama) ||
+                          (activeStatus === 'BERBEZA' && i.is_berbeza); // Logik filter baru
 
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
         return statMatch && typeMatch;
     });
+
+    // Simpan data filtered ke dalam variable global untuk fungsi eksport
+    currentFilteredList = filtered;
 
     document.querySelectorAll('.filter-badge').forEach(e => e.classList.remove('active'));
     if(activeStatus === 'ALL') document.getElementById('badgeAll')?.classList.add('active');
     if(activeStatus === 'LENGKAP') document.getElementById('badgeLengkap')?.classList.add('active');
     if(activeStatus === 'BELUM') document.getElementById('badgeBelum')?.classList.add('active');
     if(activeStatus === 'SAMA') document.getElementById('badgeSama')?.classList.add('active');
+    if(activeStatus === 'BERBEZA') document.getElementById('badgeBerbeza')?.classList.add('active');
     
     const context = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
     if(document.getElementById('cntAll')) document.getElementById('cntAll').innerText = context.length;
     if(document.getElementById('cntLengkap')) document.getElementById('cntLengkap').innerText = context.filter(i => i.is_lengkap).length;
     if(document.getElementById('cntBelum')) document.getElementById('cntBelum').innerText = context.filter(i => !i.is_lengkap).length;
     if(document.getElementById('cntSama')) document.getElementById('cntSama').innerText = context.filter(i => i.is_sama).length;
+    if(document.getElementById('cntBerbeza')) document.getElementById('cntBerbeza').innerText = context.filter(i => i.is_berbeza).length;
 
     renderGrid(filtered);
 }
 
-// --- FUNGSI RENDER GRID (DIPULIHKAN SEPENUHNYA) ---
+// --- FUNGSI EKSPORT DATA TAPISAN (BARU) ---
+function eksportDataTapis() {
+    if (!currentFilteredList || currentFilteredList.length === 0) {
+        Swal.fire('Tiada Data', 'Tiada data dalam paparan untuk dieksport.', 'info');
+        return;
+    }
+
+    let txt = `SENARAI SARINGAN SMPID\n`;
+    txt += `TARIKH: ${new Date().toLocaleDateString()}\n`;
+    txt += `STATUS FILTER: ${activeStatus}\n`;
+    txt += `JENIS FILTER: ${activeType}\n`;
+    txt += `JUMLAH REKOD: ${currentFilteredList.length}\n`;
+    txt += `========================================\n\n`;
+
+    // Header ringkas
+    currentFilteredList.forEach((s, index) => {
+        txt += `${index + 1}. ${s.kod_sekolah} - ${s.nama_sekolah}\n`;
+        txt += `   GPICT: ${s.nama_gpict || 'TIADA'} (${s.no_telefon_gpict || '-'}) \n`;
+        txt += `   ADMIN: ${s.nama_admin_delima || 'TIADA'} (${s.no_telefon_admin_delima || '-'}) \n`;
+        
+        if (s.is_sama) txt += `   [INFO]: Jawatan Sama\n`;
+        if (s.is_berbeza) txt += `   [INFO]: Jawatan Berbeza\n`;
+        
+        txt += `\n`;
+    });
+
+    // Salin ke clipboard
+    navigator.clipboard.writeText(txt).then(() => {
+        Swal.fire({
+            title: 'Berjaya Dieksport!',
+            text: `Senarai ${currentFilteredList.length} sekolah telah disalin ke papan keratan (clipboard). Anda boleh paste (Ctrl+V) ke dalam Words/Excel/WhatsApp.`,
+            icon: 'success'
+        });
+    }).catch(err => {
+        console.error('Gagal menyalin: ', err);
+        Swal.fire('Ralat', 'Gagal menyalin ke papan keratan.', 'error');
+    });
+}
+
+// --- FUNGSI RENDER GRID ---
 function renderGrid(data) {
     const wrapper = document.getElementById('schoolGridWrapper');
     if (!wrapper) return;

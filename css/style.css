@@ -9,6 +9,10 @@ body { background-color: #f0f2f5; font-family: 'Inter', sans-serif; min-height: 
 .text-purple { color: #6f42c1 !important; }
 .border-purple { border-color: #6f42c1 !important; }
 
+/* Warna Jingga untuk "Jawatan Berbeza" */
+.bg-orange { background-color: #fd7e14 !important; color: white; }
+.text-orange { color: #fd7e14 !important; }
+
 /* --- HEADER --- */
 .header-bg {
   background: linear-gradient(135deg, #198754 0%, #0d6efd 100%);
