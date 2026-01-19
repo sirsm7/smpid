@@ -1,6 +1,6 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi 2.3 - Penambahan Filter Jawatan Berbeza & Eksport Data Saringan
+ * Versi 2.4 - Eksport Data ke CSV (Excel Friendly)
  */
 
 // ==========================================
@@ -63,7 +63,7 @@ let activeType = 'ALL';
 let reminderQueue = [];
 let qIndex = 0;
 let emailRawData = [];
-// Variable baru untuk menyimpan data yang sedang dipaparkan (filtered)
+// Variable untuk menyimpan data yang sedang dipaparkan (filtered)
 let currentFilteredList = [];
 
 // ==========================================
@@ -163,7 +163,6 @@ async function fetchDashboardData() {
             const isSama = (telG && telA) && (telG === telA);
             
             // Orang Berbeza: Jika kedua-dua no telefon wujud DAN TIDAK sama
-            // (Kita tak kira 'Berbeza' jika salah satu kosong, sebab itu 'Tidak Lengkap')
             const isBerbeza = (telG && telA) && (telG !== telA);
 
             return { 
@@ -171,7 +170,7 @@ async function fetchDashboardData() {
                 jenis: i.jenis_sekolah || 'LAIN-LAIN', 
                 is_lengkap: isDataComplete,
                 is_sama: isSama,
-                is_berbeza: isBerbeza // Property baru
+                is_berbeza: isBerbeza
             };
         });
 
@@ -227,13 +226,13 @@ function runFilter() {
                           (activeStatus === 'LENGKAP' && i.is_lengkap) || 
                           (activeStatus === 'BELUM' && !i.is_lengkap) ||
                           (activeStatus === 'SAMA' && i.is_sama) ||
-                          (activeStatus === 'BERBEZA' && i.is_berbeza); // Logik filter baru
+                          (activeStatus === 'BERBEZA' && i.is_berbeza); 
 
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
         return statMatch && typeMatch;
     });
 
-    // Simpan data filtered ke dalam variable global untuk fungsi eksport
+    // Simpan data filtered ke dalam variable global
     currentFilteredList = filtered;
 
     document.querySelectorAll('.filter-badge').forEach(e => e.classList.remove('active'));
@@ -253,42 +252,67 @@ function runFilter() {
     renderGrid(filtered);
 }
 
-// --- FUNGSI EKSPORT DATA TAPISAN (BARU) ---
+// --- FUNGSI EKSPORT CSV (DIKEMASKINI) ---
 function eksportDataTapis() {
     if (!currentFilteredList || currentFilteredList.length === 0) {
         Swal.fire('Tiada Data', 'Tiada data dalam paparan untuk dieksport.', 'info');
         return;
     }
 
-    let txt = `SENARAI SARINGAN SMPID\n`;
-    txt += `TARIKH: ${new Date().toLocaleDateString()}\n`;
-    txt += `STATUS FILTER: ${activeStatus}\n`;
-    txt += `JENIS FILTER: ${activeType}\n`;
-    txt += `JUMLAH REKOD: ${currentFilteredList.length}\n`;
-    txt += `========================================\n\n`;
+    // 1. Bina Header CSV
+    // Format "Column1,Column2,Column3..."
+    let csvContent = "BIL,KOD SEKOLAH,NAMA SEKOLAH,JENIS,NAMA GPICT,NO TEL GPICT,NAMA ADMIN DELIMA,NO TEL ADMIN,STATUS DATA,CATATAN\n";
 
-    // Header ringkas
+    // 2. Loop Data untuk bina baris
     currentFilteredList.forEach((s, index) => {
-        txt += `${index + 1}. ${s.kod_sekolah} - ${s.nama_sekolah}\n`;
-        txt += `   GPICT: ${s.nama_gpict || 'TIADA'} (${s.no_telefon_gpict || '-'}) \n`;
-        txt += `   ADMIN: ${s.nama_admin_delima || 'TIADA'} (${s.no_telefon_admin_delima || '-'}) \n`;
+        // Fungsi 'clean' untuk membungkus data dalam "quote" jika ada koma di dalamnya
+        // Ini penting supaya Excel tak pecahkan nama yang ada koma (contoh: ALI, HJ)
+        const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
+
+        let statusStr = s.is_lengkap ? 'LENGKAP' : 'BELUM LENGKAP';
+        let catatan = [];
+        if (s.is_sama) catatan.push("Jawatan Sama");
+        if (s.is_berbeza) catatan.push("Jawatan Berbeza");
         
-        if (s.is_sama) txt += `   [INFO]: Jawatan Sama\n`;
-        if (s.is_berbeza) txt += `   [INFO]: Jawatan Berbeza\n`;
-        
-        txt += `\n`;
+        let row = [
+            index + 1,
+            clean(s.kod_sekolah),
+            clean(s.nama_sekolah),
+            clean(s.jenis),
+            clean(s.nama_gpict),
+            clean(s.no_telefon_gpict),
+            clean(s.nama_admin_delima),
+            clean(s.no_telefon_admin_delima),
+            statusStr,
+            clean(catatan.join(' & '))
+        ];
+
+        csvContent += row.join(",") + "\n";
     });
 
-    // Salin ke clipboard
-    navigator.clipboard.writeText(txt).then(() => {
-        Swal.fire({
-            title: 'Berjaya Dieksport!',
-            text: `Senarai ${currentFilteredList.length} sekolah telah disalin ke papan keratan (clipboard). Anda boleh paste (Ctrl+V) ke dalam Words/Excel/WhatsApp.`,
-            icon: 'success'
-        });
-    }).catch(err => {
-        console.error('Gagal menyalin: ', err);
-        Swal.fire('Ralat', 'Gagal menyalin ke papan keratan.', 'error');
+    // 3. Trigger Download Fail
+    // Tambah BOM (\uFEFF) di permulaan fail supaya Excel kenal ini adalah Unicode (UTF-8)
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    
+    // Nama fail dinamik mengikut filter dan tarikh
+    const dateStr = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const filterName = activeStatus === 'ALL' ? 'SEMUA' : activeStatus;
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `SMPID_Eksport_${filterName}_${dateStr}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // 4. Notifikasi
+    Swal.fire({
+        title: 'Selesai',
+        text: 'Fail CSV telah dimuat turun. Sila buka dengan Microsoft Excel untuk jadual yang tersusun.',
+        icon: 'success'
     });
 }
 
@@ -371,9 +395,7 @@ function renderGrid(data) {
 }
 
 function viewSchoolProfile(kod) {
-    // Fungsi ini membolehkan Admin melihat profil sekolah (Impersonation)
     sessionStorage.setItem('smpid_user_kod', kod);
-    // Kita redirect ke user.html kerana profil ada di sana sekarang
     window.location.href = 'user.html'; 
 }
 
@@ -575,7 +597,6 @@ async function simpanProfil() {
 async function resetDataSekolah() {
     const kod = document.getElementById('hiddenKodSekolah').value;
 
-    // Langkah 1: Minta kata laluan
     const { value: password } = await Swal.fire({
         title: 'Akses Admin Diperlukan',
         text: 'Masukkan kata laluan untuk reset data sekolah ini:',
@@ -586,7 +607,6 @@ async function resetDataSekolah() {
     });
 
     if (password === 'pkgag') {
-         // Langkah 2: Sahkan Tindakan
          Swal.fire({
             title: 'Pasti Reset Data?',
             text: "Semua data GPICT dan Admin sekolah ini akan dipadam (NULL). Kod sekolah kekal.",
@@ -597,7 +617,6 @@ async function resetDataSekolah() {
         }).then(async (result) => {
             if (result.isConfirmed) {
                 toggleLoading(true);
-                // Kita set semua medan kepada NULL
                 const payload = {
                     nama_gpict: null,
                     no_telefon_gpict: null,
@@ -614,7 +633,6 @@ async function resetDataSekolah() {
                     if (error) throw error;
                     toggleLoading(false);
                     Swal.fire('Berjaya', 'Data sekolah telah di-reset.', 'success').then(() => {
-                        // Reload semula borang untuk tunjuk data kosong
                         loadProfil(kod);
                     });
                 } catch (err) {
