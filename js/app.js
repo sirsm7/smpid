@@ -1,6 +1,6 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi 2.1 - Pembaikan Fungsi Dashboard & Admin View
+ * Versi 2.2 - Penambahan Filter & Indikator Jawatan Sama (Dual Role)
  */
 
 // ==========================================
@@ -152,7 +152,19 @@ async function fetchDashboardData() {
         dashboardData = data.map(i => {
             const requiredFields = [i.nama_gpict, i.no_telefon_gpict, i.emel_delima_gpict, i.nama_admin_delima, i.no_telefon_admin_delima, i.emel_delima_admin_delima];
             const isDataComplete = requiredFields.every(field => field && field.trim() !== "");
-            return { ...i, jenis: i.jenis_sekolah || 'LAIN-LAIN', is_lengkap: isDataComplete };
+            
+            // --- LOGIK PENGESANAN JAWATAN SAMA ---
+            // Kita bandingkan nombor telefon yang telah dibersihkan
+            const telG = cleanPhone(i.no_telefon_gpict);
+            const telA = cleanPhone(i.no_telefon_admin_delima);
+            const isSama = (telG && telA) && (telG === telA);
+
+            return { 
+                ...i, 
+                jenis: i.jenis_sekolah || 'LAIN-LAIN', 
+                is_lengkap: isDataComplete,
+                is_sama: isSama // Property baru
+            };
         });
 
         emailRawData = data; 
@@ -161,6 +173,7 @@ async function fetchDashboardData() {
         generateList();
         toggleLoading(false);
     } catch (err) { 
+        console.error(err);
         toggleLoading(false); 
         Swal.fire('Ralat', 'Gagal memuatkan data.', 'error'); 
     }
@@ -180,6 +193,12 @@ function renderFilters() {
             <span onclick="setFilter('ALL')" id="badgeAll" class="badge bg-secondary cursor-pointer filter-badge active p-2">Semua <span id="cntAll" class="badge bg-light text-dark ms-1">0</span></span>
             <span onclick="setFilter('LENGKAP')" id="badgeLengkap" class="badge bg-success cursor-pointer filter-badge p-2">Lengkap <span id="cntLengkap" class="badge bg-light text-dark ms-1">0</span></span>
             <span onclick="setFilter('BELUM')" id="badgeBelum" class="badge bg-danger cursor-pointer filter-badge p-2">Belum <span id="cntBelum" class="badge bg-light text-dark ms-1">0</span></span>
+            
+            <!-- BUTTON BARU: JAWATAN SAMA -->
+            <span onclick="setFilter('SAMA')" id="badgeSama" class="badge bg-purple cursor-pointer filter-badge p-2" title="GPICT dan Admin adalah orang yang sama">
+                Jawatan Sama <span id="cntSama" class="badge bg-light text-dark ms-1">0</span>
+            </span>
+
           </div>
           <div class="col-md-4"><select class="form-select rounded-pill shadow-sm" onchange="setType(this.value)">${opts}</select></div>
         </div>`;
@@ -193,7 +212,9 @@ function runFilter() {
     const filtered = dashboardData.filter(i => {
         const statMatch = (activeStatus === 'ALL') || 
                           (activeStatus === 'LENGKAP' && i.is_lengkap) || 
-                          (activeStatus === 'BELUM' && !i.is_lengkap);
+                          (activeStatus === 'BELUM' && !i.is_lengkap) ||
+                          (activeStatus === 'SAMA' && i.is_sama); // Logik filter baru
+
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
         return statMatch && typeMatch;
     });
@@ -202,11 +223,13 @@ function runFilter() {
     if(activeStatus === 'ALL') document.getElementById('badgeAll')?.classList.add('active');
     if(activeStatus === 'LENGKAP') document.getElementById('badgeLengkap')?.classList.add('active');
     if(activeStatus === 'BELUM') document.getElementById('badgeBelum')?.classList.add('active');
+    if(activeStatus === 'SAMA') document.getElementById('badgeSama')?.classList.add('active');
     
     const context = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
     if(document.getElementById('cntAll')) document.getElementById('cntAll').innerText = context.length;
     if(document.getElementById('cntLengkap')) document.getElementById('cntLengkap').innerText = context.filter(i => i.is_lengkap).length;
     if(document.getElementById('cntBelum')) document.getElementById('cntBelum').innerText = context.filter(i => !i.is_lengkap).length;
+    if(document.getElementById('cntSama')) document.getElementById('cntSama').innerText = context.filter(i => i.is_sama).length;
 
     renderGrid(filtered);
 }
@@ -218,7 +241,7 @@ function renderGrid(data) {
     wrapper.innerHTML = "";
     
     if (data.length === 0) { 
-        wrapper.innerHTML = `<div class="alert alert-light text-center w-100 mt-4">Tiada data.</div>`; 
+        wrapper.innerHTML = `<div class="alert alert-light text-center w-100 mt-4">Tiada data untuk paparan ini.</div>`; 
         return; 
     }
 
@@ -233,6 +256,11 @@ function renderGrid(data) {
                 ? `<span class="badge bg-success status-badge"><i class="fas fa-check me-1"></i>LENGKAP</span>` 
                 : `<span class="badge bg-danger status-badge"><i class="fas fa-times me-1"></i>BELUM ISI</span>`;
             
+            // Logik Label Admin dengan Ikon Link jika orang sama
+            const labelAdmin = s.is_sama 
+                ? `<span class="small fw-bold text-muted">Admin <i class="fas fa-link text-purple ms-1" title="Individu Sama"></i></span>` 
+                : `<span class="small fw-bold text-muted">Admin</span>`;
+
             const linkG_Template = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, false);
             const linkG_Raw = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, true);
             const linkA_Template = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, false);
@@ -262,7 +290,6 @@ function renderGrid(data) {
             const actionsGpict = renderActions(hasTeleG, linkG_Template, linkG_Raw);
             const actionsAdmin = renderActions(hasTeleA, linkA_Template, linkA_Raw);
 
-            // Perhatikan: onclick="viewSchoolProfile" dikembalikan pada kad utama
             html += `
             <div class="col-6 col-md-4 col-lg-3">
               <div class="card school-card h-100 cursor-pointer" onclick="viewSchoolProfile('${s.kod_sekolah}')">
@@ -275,7 +302,7 @@ function renderGrid(data) {
                 </div>
                 <div class="tele-status-row bg-light border-top">
                    <div class="row-item p-2"><span class="small fw-bold text-muted">GPICT</span> ${actionsGpict}</div>
-                   <div class="row-item p-2 border-top border-light"><span class="small fw-bold text-muted">Admin</span> ${actionsAdmin}</div>
+                   <div class="row-item p-2 border-top border-light">${labelAdmin} ${actionsAdmin}</div>
                 </div>
               </div>
             </div>`;
