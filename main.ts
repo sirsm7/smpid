@@ -1,6 +1,6 @@
 /**
  * SMPID Telegram Bot (Deno Deploy)
- * Versi 7.0: Dual-Role Support for PPD Admin (M030)
+ * Versi Akhir: Full Smart UI + Notification API
  * Host: appppdag.cloud
  */
 
@@ -83,23 +83,20 @@ async function getSchoolUI(kodSekolah: string, telegramId: number) {
   return { text: msg, keyboard };
 }
 
-// B. UI SUPER ADMIN (Kod: M030) - DIKEMASKINI UTK 2 PEGAWAI
+// B. UI SUPER ADMIN (Kod: M030)
 async function getAdminUI(telegramId: number) {
-    // Ambil data dari table smpid_admin_users (structure baru: role, telegram_id)
     const { data: roles, error } = await supabase
         .from("smpid_admin_users")
         .select("role, telegram_id");
 
     if (error || !roles) return null;
 
-    // Cari pemilik setiap jawatan
     const gpictRole = roles.find(r => r.role === 'ppd_gpict');
     const delimaRole = roles.find(r => r.role === 'ppd_delima');
 
     const gpictOwner = gpictRole?.telegram_id;
     const delimaOwner = delimaRole?.telegram_id;
 
-    // Logic Validasi (Sama macam sekolah)
     const isGpictAvailable = !gpictOwner || gpictOwner === telegramId;
     const isDelimaAvailable = !delimaOwner || delimaOwner === telegramId;
 
@@ -120,7 +117,6 @@ async function getAdminUI(telegramId: number) {
     const keyboard = new InlineKeyboard();
     let hasSafeOptions = false;
 
-    // Butang Daftar Selamat
     if (isGpictAvailable) {
         keyboard.text("👨‍💻 Daftar PIC GPICT", "admin_act:register:ppd_gpict").row();
         hasSafeOptions = true;
@@ -136,7 +132,6 @@ async function getAdminUI(telegramId: number) {
         msg += "⚠️ Semua slot pegawai telah diisi.";
     }
 
-    // Butang Overwrite (Jika ada orang lain punya)
     if ((!isGpictAvailable || !isDelimaAvailable)) {
         keyboard.text("⚠️ Timpa Data (Overwrite)", "admin_act:overwrite_menu").row();
     }
@@ -145,8 +140,7 @@ async function getAdminUI(telegramId: number) {
     return { text: msg, keyboard };
 }
 
-
-// 4. LOGIK UTAMA
+// 4. LOGIK BOT UTAMA
 
 // A. COMMAND /START
 bot.command("start", async (ctx) => {
@@ -164,20 +158,19 @@ bot.on("message:text", async (ctx) => {
   const inputKod = inputTeks.toUpperCase();
   const telegramId = ctx.from.id;
 
-  // --- 1. SUPER ADMIN CHECK (M030) ---
+  // SUPER ADMIN CHECK (M030)
   if (inputKod === "M030") {
     const ui = await getAdminUI(telegramId);
     if (!ui) return ctx.reply("❌ Ralat sistem database admin. Sila pastikan SQL migration telah dijalankan.");
-    
     return ctx.reply(ui.text, { reply_markup: ui.keyboard, parse_mode: "Markdown" });
   }
 
-  // --- 2. VALIDASI FORMAT SEKOLAH ---
+  // VALIDASI FORMAT SEKOLAH
   if (inputKod.length < 5 || inputKod.length > 9) {
     return ctx.reply("⚠️ Format kod tidak sah. Sila masukkan Kod Sekolah (Contoh: MBA0001).");
   }
 
-  // --- 3. PAPARKAN UI SEKOLAH ---
+  // PAPARKAN UI SEKOLAH
   const ui = await getSchoolUI(inputKod, telegramId);
   if (!ui) {
     return ctx.reply(`❌ Kod sekolah *${inputKod}* tiada dalam rekod kami.`, { parse_mode: "Markdown" });
@@ -194,33 +187,29 @@ bot.on("callback_query:data", async (ctx) => {
   const dataString = ctx.callbackQuery.data;
   const telegramId = ctx.from.id;
 
-  // --- 1. GLOBAL ACTION: CLOSE ---
+  // GLOBAL ACTION: CLOSE
   if (dataString === "close") {
     await ctx.answerCallbackQuery();
     return ctx.deleteMessage();
   }
 
-  // --- 2. ADMIN PPD ACTIONS (M030) ---
+  // ADMIN PPD ACTIONS (M030)
   if (dataString.startsWith("admin_act:")) {
       const parts = dataString.split(":");
       const action = parts[1];
-      const role = parts[2]; // ppd_gpict atau ppd_delima
+      const role = parts[2]; 
 
-      // BACK TO MENU
       if (action === "back") {
           const ui = await getAdminUI(telegramId);
           if (ui) await ctx.editMessageText(ui.text, { reply_markup: ui.keyboard, parse_mode: "Markdown" });
           return ctx.answerCallbackQuery();
       }
 
-      // REGISTER (SAFE)
       if (action === "register") {
-          // Double check availability
           const { data: currentRole } = await supabase.from("smpid_admin_users").select("telegram_id").eq("role", role).single();
           if (currentRole?.telegram_id && currentRole.telegram_id !== telegramId) {
              return alertTaken(ctx);
           }
-
           const { error } = await supabase.from("smpid_admin_users").update({ telegram_id: telegramId }).eq("role", role);
           if (error) return ctx.answerCallbackQuery({ text: "Gagal simpan.", show_alert: true });
 
@@ -229,7 +218,6 @@ bot.on("callback_query:data", async (ctx) => {
           await ctx.editMessageText(`✅ **Pendaftaran Pegawai Berjaya!**\n\nAnda kini berdaftar sebagai: *${roleName}*`, { parse_mode: "Markdown" });
       }
 
-      // OVERWRITE MENU
       else if (action === "overwrite_menu") {
           const keyboard = new InlineKeyboard()
              .text("⚠️ Timpa PIC GPICT", "admin_act:force:ppd_gpict").row()
@@ -242,7 +230,6 @@ bot.on("callback_query:data", async (ctx) => {
           );
       }
 
-      // OVERWRITE FORCE
       else if (action === "force") {
           const { error } = await supabase.from("smpid_admin_users").update({ telegram_id: telegramId }).eq("role", role);
           if (error) return ctx.answerCallbackQuery({ text: "Gagal overwrite.", show_alert: true });
@@ -254,7 +241,7 @@ bot.on("callback_query:data", async (ctx) => {
       return;
   }
 
-  // --- 3. SCHOOL ACTIONS (MBAxxxx) ---
+  // SCHOOL ACTIONS (MBAxxxx)
   const parts = dataString.split(":");
   const prefix = parts[0];
 
@@ -338,4 +325,56 @@ async function alertTaken(ctx: any) {
   await ctx.deleteMessage(); 
 }
 
-Deno.serve(webhookCallback(bot, "std/http"));
+// 5. API SERVER & WEBHOOK HANDLER
+const handleBotUpdate = webhookCallback(bot, "std/http");
+
+Deno.serve(async (req) => {
+  const url = new URL(req.url);
+
+  // Endpoint Khas: /notify (Dipanggil oleh Website)
+  if (req.method === "POST" && url.pathname === "/notify") {
+    try {
+      const body = await req.json();
+      const { kod, nama } = body;
+
+      // 1. Dapatkan ID Admin PPD dari Database
+      const { data: admins } = await supabase
+        .from("smpid_admin_users")
+        .select("telegram_id")
+        .not("telegram_id", "is", null);
+
+      if (admins && admins.length > 0) {
+        const message = 
+          `🔔 *KEMASKINI DATA SEKOLAH*\n\n` +
+          `🏫 *${nama}*\n` +
+          `Kod: \`${kod}\`\n\n` +
+          `Maklumat sekolah ini baru sahaja dikemaskini melalui Portal Web.`;
+
+        // Hantar kepada SEMUA Admin PPD
+        const sendPromises = admins.map(admin => 
+           bot.api.sendMessage(admin.telegram_id, message, { parse_mode: "Markdown" })
+             .catch(err => console.error(`Gagal hantar ke ${admin.telegram_id}`, err))
+        );
+        
+        await Promise.all(sendPromises);
+      }
+
+      return new Response(JSON.stringify({ status: "success" }), {
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
+
+    } catch (e) {
+      console.error(e);
+      return new Response(JSON.stringify({ status: "error" }), { status: 500 });
+    }
+  }
+
+  // Handle Telegram Webhook
+  if (req.method === "OPTIONS") {
+      return new Response(null, {
+          headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "POST", "Access-Control-Allow-Headers": "Content-Type" }
+      });
+  }
+
+  return await handleBotUpdate(req);
+});

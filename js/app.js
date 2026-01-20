@@ -1,26 +1,33 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi 3.0 - Migrasi Self-Hosted (Prefix: smpid)
- * Host: appppdag.cloud
+ * Versi Akhir: Full Features + Notification
+ * Host Database: appppdag.cloud
+ * Host Bot API: smpid-40.ppdag.deno.net
  */
 
 // ==========================================
-// 1. KONFIGURASI & INISIALISASI SUPABASE (BARU)
+// 1. KONFIGURASI UTAMA
 // ==========================================
 const SUPABASE_URL = 'https://appppdag.cloud';
-// Anon Key dari fail yang dimuat naik
+// Anon Key (Public)
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY';
 
+// URL Deno Deploy untuk Notifikasi Telegram
+const DENO_API_URL = 'https://smpid-40.ppdag.deno.net'; 
+
+// ==========================================
+// 2. INISIALISASI SUPABASE
+// ==========================================
 let supabaseClient;
 if (window.supabase) {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    console.log("Supabase (Self-Hosted) Ready.");
+    console.log("Supabase Ready (Self-Hosted).");
 } else {
     console.error("Supabase library not loaded.");
 }
 
 // ==========================================
-// 2. FUNGSI UTILITI GLOBAL
+// 3. FUNGSI UTILITI GLOBAL
 // ==========================================
 function toggleLoading(show) {
     const el = document.getElementById('loadingOverlay');
@@ -57,19 +64,7 @@ function generateWhatsAppLink(nama, noTel, isRaw = false) {
 }
 
 // ==========================================
-// 3. PEMBOLEHUBAH STATE GLOBAL
-// ==========================================
-let dashboardData = [];
-let activeStatus = 'ALL';
-let activeType = 'ALL';
-let reminderQueue = [];
-let qIndex = 0;
-let emailRawData = [];
-// Variable untuk menyimpan data yang sedang dipaparkan (filtered)
-let currentFilteredList = [];
-
-// ==========================================
-// 4. ROUTER UTAMA (DOM CONTROLLER)
+// 4. ROUTER & AUTHENTICATION
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const bodyId = document.body.id;
@@ -85,10 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// ==========================================
-// 5. SISTEM AUTH & NAVIGASI
-// ==========================================
-
 async function prosesLogin() {
     const input = document.getElementById('inputKodSekolah');
     if (!input) return;
@@ -96,7 +87,7 @@ async function prosesLogin() {
     const kod = input.value.trim().toUpperCase();
     if (!kod) { Swal.fire('Ralat', 'Sila masukkan kod.', 'warning'); return; }
 
-    // --- LALUAN 1: ADMIN ---
+    // --- LALUAN 1: ADMIN PPD (M030) ---
     if (kod === "M030") {
         sessionStorage.setItem('smpid_auth', 'true');
         Swal.fire({
@@ -110,7 +101,6 @@ async function prosesLogin() {
     // --- LALUAN 2: USER SEKOLAH ---
     toggleLoading(true);
     try {
-        // UPDATE: Tukar nama table kepada 'smpid_sekolah_data'
         const { data, error } = await supabaseClient
             .from('smpid_sekolah_data')
             .select('kod_sekolah')
@@ -140,361 +130,7 @@ function keluarSistem() {
 }
 
 // ==========================================
-// 6. LOGIK ADMIN PANEL (admin.html)
-// ==========================================
-function initAdminPanel() {
-    if (sessionStorage.getItem('smpid_auth') !== 'true') {
-        window.location.href = 'index.html';
-        return;
-    }
-    fetchDashboardData(); 
-}
-
-async function fetchDashboardData() {
-    toggleLoading(true);
-    try {
-        // UPDATE: Tukar nama table kepada 'smpid_sekolah_data'
-        const { data, error } = await supabaseClient
-            .from('smpid_sekolah_data')
-            .select('*')
-            .order('nama_sekolah', { ascending: true });
-            
-        if (error) throw error;
-        
-        dashboardData = data.map(i => {
-            const requiredFields = [i.nama_gpict, i.no_telefon_gpict, i.emel_delima_gpict, i.nama_admin_delima, i.no_telefon_admin_delima, i.emel_delima_admin_delima];
-            const isDataComplete = requiredFields.every(field => field && field.trim() !== "");
-            
-            // --- LOGIK PENGESANAN JAWATAN ---
-            const telG = cleanPhone(i.no_telefon_gpict);
-            const telA = cleanPhone(i.no_telefon_admin_delima);
-            
-            // Orang Sama: Jika kedua-dua no telefon wujud DAN sama
-            const isSama = (telG && telA) && (telG === telA);
-            
-            // Orang Berbeza: Jika kedua-dua no telefon wujud DAN TIDAK sama
-            const isBerbeza = (telG && telA) && (telG !== telA);
-
-            return { 
-                ...i, 
-                jenis: i.jenis_sekolah || 'LAIN-LAIN', 
-                is_lengkap: isDataComplete,
-                is_sama: isSama,
-                is_berbeza: isBerbeza
-            };
-        });
-
-        emailRawData = data; 
-        renderFilters();
-        runFilter();
-        generateList();
-        toggleLoading(false);
-    } catch (err) { 
-        console.error(err);
-        toggleLoading(false); 
-        Swal.fire('Ralat', 'Gagal memuatkan data.', 'error'); 
-    }
-}
-
-// --- SUB-LOGIK DASHBOARD ---
-function renderFilters() {
-    const types = [...new Set(dashboardData.map(i => i.jenis))].sort();
-    let opts = `<option value="ALL">SEMUA JENIS SEKOLAH</option>`;
-    types.forEach(t => opts += `<option value="${t}">${t}</option>`);
-    
-    const container = document.getElementById('filterContainer');
-    if(container) {
-        container.innerHTML = `
-        <div class="row align-items-center g-3">
-          <div class="col-md-9 col-12 d-flex flex-wrap gap-2">
-            <span onclick="setFilter('ALL')" id="badgeAll" class="badge bg-secondary cursor-pointer filter-badge active p-2">Semua <span id="cntAll" class="badge bg-light text-dark ms-1">0</span></span>
-            <span onclick="setFilter('LENGKAP')" id="badgeLengkap" class="badge bg-success cursor-pointer filter-badge p-2">Lengkap <span id="cntLengkap" class="badge bg-light text-dark ms-1">0</span></span>
-            <span onclick="setFilter('BELUM')" id="badgeBelum" class="badge bg-danger cursor-pointer filter-badge p-2">Belum <span id="cntBelum" class="badge bg-light text-dark ms-1">0</span></span>
-            
-            <span onclick="setFilter('SAMA')" id="badgeSama" class="badge bg-purple cursor-pointer filter-badge p-2" title="GPICT dan Admin adalah orang yang sama">
-                Jawatan Sama <span id="cntSama" class="badge bg-light text-dark ms-1">0</span>
-            </span>
-
-            <span onclick="setFilter('BERBEZA')" id="badgeBerbeza" class="badge bg-orange cursor-pointer filter-badge p-2" title="GPICT dan Admin adalah orang yang berbeza">
-                Jawatan Berbeza <span id="cntBerbeza" class="badge bg-light text-dark ms-1">0</span>
-            </span>
-
-          </div>
-          <div class="col-md-3"><select class="form-select rounded-pill shadow-sm" onchange="setType(this.value)">${opts}</select></div>
-        </div>`;
-    }
-}
-
-function setFilter(s) { activeStatus = s; runFilter(); }
-function setType(t) { activeType = t; runFilter(); }
-
-function runFilter() {
-    const filtered = dashboardData.filter(i => {
-        const statMatch = (activeStatus === 'ALL') || 
-                          (activeStatus === 'LENGKAP' && i.is_lengkap) || 
-                          (activeStatus === 'BELUM' && !i.is_lengkap) ||
-                          (activeStatus === 'SAMA' && i.is_sama) ||
-                          (activeStatus === 'BERBEZA' && i.is_berbeza); 
-
-        const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
-        return statMatch && typeMatch;
-    });
-
-    currentFilteredList = filtered;
-
-    document.querySelectorAll('.filter-badge').forEach(e => e.classList.remove('active'));
-    if(activeStatus === 'ALL') document.getElementById('badgeAll')?.classList.add('active');
-    if(activeStatus === 'LENGKAP') document.getElementById('badgeLengkap')?.classList.add('active');
-    if(activeStatus === 'BELUM') document.getElementById('badgeBelum')?.classList.add('active');
-    if(activeStatus === 'SAMA') document.getElementById('badgeSama')?.classList.add('active');
-    if(activeStatus === 'BERBEZA') document.getElementById('badgeBerbeza')?.classList.add('active');
-    
-    const context = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
-    if(document.getElementById('cntAll')) document.getElementById('cntAll').innerText = context.length;
-    if(document.getElementById('cntLengkap')) document.getElementById('cntLengkap').innerText = context.filter(i => i.is_lengkap).length;
-    if(document.getElementById('cntBelum')) document.getElementById('cntBelum').innerText = context.filter(i => !i.is_lengkap).length;
-    if(document.getElementById('cntSama')) document.getElementById('cntSama').innerText = context.filter(i => i.is_sama).length;
-    if(document.getElementById('cntBerbeza')) document.getElementById('cntBerbeza').innerText = context.filter(i => i.is_berbeza).length;
-
-    renderGrid(filtered);
-}
-
-// --- FUNGSI EKSPORT CSV (DIKEMASKINI) ---
-function eksportDataTapis() {
-    if (!currentFilteredList || currentFilteredList.length === 0) {
-        Swal.fire('Tiada Data', 'Tiada data dalam paparan untuk dieksport.', 'info');
-        return;
-    }
-
-    let csvContent = "BIL,KOD SEKOLAH,NAMA SEKOLAH,JENIS,NAMA GPICT,NO TEL GPICT,NAMA ADMIN DELIMA,NO TEL ADMIN,STATUS DATA,CATATAN\n";
-
-    currentFilteredList.forEach((s, index) => {
-        const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
-
-        let statusStr = s.is_lengkap ? 'LENGKAP' : 'BELUM LENGKAP';
-        let catatan = [];
-        if (s.is_sama) catatan.push("Jawatan Sama");
-        if (s.is_berbeza) catatan.push("Jawatan Berbeza");
-        
-        let row = [
-            index + 1,
-            clean(s.kod_sekolah),
-            clean(s.nama_sekolah),
-            clean(s.jenis),
-            clean(s.nama_gpict),
-            clean(s.no_telefon_gpict),
-            clean(s.nama_admin_delima),
-            clean(s.no_telefon_admin_delima),
-            statusStr,
-            clean(catatan.join(' & '))
-        ];
-
-        csvContent += row.join(",") + "\n";
-    });
-
-    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    
-    const dateStr = new Date().toISOString().split('T')[0];
-    const filterName = activeStatus === 'ALL' ? 'SEMUA' : activeStatus;
-    
-    link.setAttribute("href", url);
-    link.setAttribute("download", `SMPID_Eksport_${filterName}_${dateStr}.csv`);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    Swal.fire({
-        title: 'Selesai',
-        text: 'Fail CSV telah dimuat turun.',
-        icon: 'success'
-    });
-}
-
-// --- FUNGSI RENDER GRID ---
-function renderGrid(data) {
-    const wrapper = document.getElementById('schoolGridWrapper');
-    if (!wrapper) return;
-    wrapper.innerHTML = "";
-    
-    if (data.length === 0) { 
-        wrapper.innerHTML = `<div class="alert alert-light text-center w-100 mt-4">Tiada data untuk paparan ini.</div>`; 
-        return; 
-    }
-
-    const groups = data.reduce((acc, i) => { (acc[i.jenis] = acc[i.jenis] || []).push(i); return acc; }, {});
-
-    Object.keys(groups).sort().forEach(jenis => {
-        const items = groups[jenis];
-        let html = `<div class="mb-4 fade-up"><h6 class="category-header">${jenis} (${items.length})</h6><div class="row g-3">`;
-        
-        items.forEach(s => {
-            const statusBadge = s.is_lengkap 
-                ? `<span class="badge bg-success status-badge"><i class="fas fa-check me-1"></i>LENGKAP</span>` 
-                : `<span class="badge bg-danger status-badge"><i class="fas fa-times me-1"></i>BELUM ISI</span>`;
-            
-            const labelAdmin = s.is_sama 
-                ? `<span class="small fw-bold text-muted">Admin <i class="fas fa-link text-purple ms-1" title="Individu Sama"></i></span>` 
-                : `<span class="small fw-bold text-muted">Admin</span>`;
-
-            const linkG_Template = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, false);
-            const linkG_Raw = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, true);
-            const linkA_Template = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, false);
-            const linkA_Raw = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, true);
-            
-            const hasTeleG = s.telegram_id_gpict;
-            const hasTeleA = s.telegram_id_admin;
-
-            const renderActions = (hasTele, linkTemplate, linkRaw) => {
-                let buttonsHtml = '<div class="d-flex align-items-center gap-1 justify-content-end">';
-                if (hasTele) {
-                    buttonsHtml += `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary"><i class="fas fa-check-circle"></i> OK</span>`;
-                }
-                if (linkRaw) {
-                    buttonsHtml += `<a href="${linkRaw}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm btn-light border text-secondary" title="Chat"><i class="fas fa-comment"></i></a>`;
-                }
-                if (!hasTele && linkTemplate) {
-                     buttonsHtml += `<a href="${linkTemplate}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm btn-outline-success" title="Ingatkan"><i class="fab fa-whatsapp"></i></a>`;
-                } else if (!linkRaw) {
-                    buttonsHtml += `<span class="text-muted small">-</span>`;
-                }
-                buttonsHtml += '</div>';
-                return buttonsHtml;
-            };
-
-            const actionsGpict = renderActions(hasTeleG, linkG_Template, linkG_Raw);
-            const actionsAdmin = renderActions(hasTeleA, linkA_Template, linkA_Raw);
-
-            html += `
-            <div class="col-6 col-md-4 col-lg-3">
-              <div class="card school-card h-100 cursor-pointer" onclick="viewSchoolProfile('${s.kod_sekolah}')">
-                <div class="card-body p-3 d-flex flex-column">
-                  <div class="d-flex justify-content-between align-items-start mb-2">
-                    <h6 class="fw-bold text-primary mb-0">${s.kod_sekolah}</h6>
-                    ${statusBadge}
-                  </div>
-                  <p class="school-name mb-auto" title="${s.nama_sekolah}">${s.nama_sekolah}</p>
-                </div>
-                <div class="tele-status-row bg-light border-top">
-                   <div class="row-item p-2"><span class="small fw-bold text-muted">GPICT</span> ${actionsGpict}</div>
-                   <div class="row-item p-2 border-top border-light">${labelAdmin} ${actionsAdmin}</div>
-                </div>
-              </div>
-            </div>`;
-        });
-        html += `</div></div>`;
-        wrapper.innerHTML += html;
-    });
-}
-
-function viewSchoolProfile(kod) {
-    sessionStorage.setItem('smpid_user_kod', kod);
-    window.location.href = 'user.html'; 
-}
-
-function janaSenaraiTelegram() {
-    let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
-    let txt = `**STATUS PENGISIAN SMPID (${activeType})**\n\n`;
-    const pending = list.filter(i => !i.is_lengkap);
-    
-    if(pending.length === 0) { Swal.fire('Hebat', 'Semua sekolah dah lengkap!', 'success'); return; }
-
-    pending.forEach(i => txt += `- ${i.kod_sekolah} ${i.nama_sekolah}\n`);
-    txt += `\nMohon tindakan segera.`;
-    
-    navigator.clipboard.writeText(txt).then(() => Swal.fire('Disalin!', 'Senarai disalin.', 'success'));
-}
-
-// --- SUB-LOGIK EMAIL BLASTER ---
-function generateList() {
-    const includeGpict = document.getElementById('checkGpict').checked;
-    const includeAdmin = document.getElementById('checkAdmin').checked;
-    const filterStatus = document.getElementById('statusFilter').value;
-    const uniqueEmails = new Set();
-
-    if(!emailRawData) return;
-
-    emailRawData.forEach(row => {
-        if (includeGpict && row.emel_delima_gpict) {
-            const hasId = row.telegram_id_gpict;
-            if (filterStatus === 'all' || (filterStatus === 'unregistered' && !hasId) || (filterStatus === 'registered' && hasId)) uniqueEmails.add(row.emel_delima_gpict.trim());
-        }
-        if (includeAdmin && row.emel_delima_admin_delima) {
-            const hasId = row.telegram_id_admin;
-            if (filterStatus === 'all' || (filterStatus === 'unregistered' && !hasId) || (filterStatus === 'registered' && hasId)) uniqueEmails.add(row.emel_delima_admin_delima.trim());
-        }
-    });
-
-    const arr = Array.from(uniqueEmails);
-    document.getElementById('countEmail').innerText = arr.length;
-    document.getElementById('emailOutput').value = arr.join(', ');
-    
-    const subject = encodeURIComponent(document.getElementById('msgSubject').value);
-    const body = encodeURIComponent(document.getElementById('msgBody').value);
-    document.getElementById('mailtoLink').href = `mailto:?bcc=${arr.join(',')}&subject=${subject}&body=${body}`;
-}
-
-function copyEmails() {
-    const el = document.getElementById("emailOutput");
-    if(!el.value) return;
-    el.select();
-    navigator.clipboard.writeText(el.value).then(() => Swal.fire('Disalin', '', 'success'));
-}
-
-function copyTemplate() {
-    navigator.clipboard.writeText(document.getElementById("msgBody").value).then(() => Swal.fire('Disalin', '', 'success'));
-}
-
-// --- SUB-LOGIK QUEUE SYSTEM ---
-function mulaTindakanPantas() {
-    let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
-    reminderQueue = [];
-    
-    list.forEach(i => {
-        if (i.no_telefon_gpict && !i.telegram_id_gpict) 
-            reminderQueue.push({role:'GPICT', ...i, targetName: i.nama_gpict, targetTel: i.no_telefon_gpict});
-        if (i.no_telefon_admin_delima && !i.telegram_id_admin) 
-            reminderQueue.push({role:'Admin', ...i, targetName: i.nama_admin_delima, targetTel: i.no_telefon_admin_delima});
-    });
-
-    if (reminderQueue.length === 0) { Swal.fire('Tiada Sasaran', 'Semua lengkap/tiada no telefon.', 'info'); return; }
-    
-    qIndex = 0;
-    document.getElementById('queueModal').classList.remove('hidden');
-    renderQueue();
-}
-
-function renderQueue() {
-    if (qIndex >= reminderQueue.length) { 
-        document.getElementById('queueModal').classList.add('hidden'); 
-        Swal.fire('Selesai', 'Semakan tamat.', 'success'); return; 
-    }
-    const item = reminderQueue[qIndex];
-    document.getElementById('qProgress').innerText = `${qIndex + 1} / ${reminderQueue.length}`;
-    document.getElementById('qRoleBadge').innerText = item.role;
-    document.getElementById('qRoleBadge').className = item.role === 'GPICT' ? 'badge bg-info text-dark mb-3' : 'badge bg-warning text-dark mb-3';
-    document.getElementById('qSchoolName').innerText = item.nama_sekolah;
-    document.getElementById('qCode').innerText = item.kod_sekolah;
-    document.getElementById('qPersonName').innerText = item.targetName || "-";
-    
-    const link = generateWhatsAppLink(item.targetName, item.targetTel);
-    const btn = document.getElementById('qWaBtn');
-    if (link) {
-        btn.href = link;
-        btn.classList.remove('disabled');
-    } else {
-        btn.removeAttribute('href');
-        btn.classList.add('disabled');
-    }
-}
-function nextQueue() { qIndex++; renderQueue(); }
-function prevQueue() { if(qIndex > 0) qIndex--; renderQueue(); }
-
-// ==========================================
-// 7. LOGIK USER PORTAL (user.html)
+// 5. MODUL USER PORTAL (user.html)
 // ==========================================
 function initUserPortal() {
     const kod = sessionStorage.getItem('smpid_user_kod');
@@ -502,6 +138,7 @@ function initUserPortal() {
 
     if (!kod) { window.location.href = 'index.html'; return; }
     
+    // Paparan Header Khas jika Admin yang masuk view sekolah
     if (isAdmin) {
         document.getElementById('displayKodSekolah').innerHTML = `<i class="fas fa-user-shield me-2"></i>ADMIN VIEW: ${kod}`;
         document.getElementById('displayKodSekolah').classList.replace('text-dark', 'text-primary');
@@ -513,10 +150,9 @@ function initUserPortal() {
             btnLogout.setAttribute('onclick', "window.location.href='admin.html'");
             btnLogout.classList.replace('text-danger', 'text-primary');
         }
-
+        // Tunjuk butang reset hanya untuk admin
         const btnReset = document.getElementById('btnResetData');
         if (btnReset) btnReset.classList.remove('hidden');
-
     } else {
         document.getElementById('displayKodSekolah').innerHTML = `<i class="fas fa-school me-2"></i>${kod}`;
     }
@@ -538,7 +174,6 @@ function showSection(section) {
 
 async function loadProfil(kod) {
     try {
-        // UPDATE: Table name
         const { data, error } = await supabaseClient.from('smpid_sekolah_data').select('*').eq('kod_sekolah', kod).single();
         if (error) throw error;
         
@@ -564,7 +199,10 @@ function salinData() {
 
 async function simpanProfil() {
     const kod = document.getElementById('hiddenKodSekolah').value;
+    const namaSekolah = document.getElementById('dispNamaSekolah').innerText;
     const emelG = document.getElementById('gpictEmel').value;
+
+    // Validasi
     if (!checkEmailDomain(emelG)) { Swal.fire('Format Salah', 'Gunakan emel moe-dl.edu.my', 'warning'); return; }
 
     toggleLoading(true);
@@ -578,24 +216,38 @@ async function simpanProfil() {
     };
 
     try {
-        // UPDATE: Table name
+        // 1. SIMPAN DATA KE SUPABASE
         const { error } = await supabaseClient.from('smpid_sekolah_data').update(payload).eq('kod_sekolah', kod);
         if (error) throw error;
+
+        // 2. HANTAR NOTIFIKASI KE BOT (DENO API)
+        if (DENO_API_URL) {
+            console.log("Menghantar notifikasi ke PPD...");
+            fetch(`${DENO_API_URL}/notify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kod: kod, nama: namaSekolah })
+            })
+            .then(res => res.json())
+            .then(res => console.log("Status Notifikasi:", res))
+            .catch(err => console.warn("Gagal hubungi bot notifikasi:", err));
+        }
+
         toggleLoading(false);
-        Swal.fire('Berjaya', 'Data dikemaskini.', 'success').then(() => showSection('menu'));
+        Swal.fire('Berjaya', 'Data dikemaskini dan notifikasi telah dihantar ke PPD.', 'success').then(() => showSection('menu'));
     } catch (err) {
-        toggleLoading(false); Swal.fire('Ralat', 'Gagal simpan.', 'error');
+        toggleLoading(false); Swal.fire('Ralat', 'Gagal simpan data.', 'error');
+        console.error(err);
     }
 }
 
 async function resetDataSekolah() {
     const kod = document.getElementById('hiddenKodSekolah').value;
-
+    // Password hardcoded untuk demo
     const { value: password } = await Swal.fire({
         title: 'Akses Admin Diperlukan',
         text: 'Masukkan kata laluan untuk reset data sekolah ini:',
         input: 'password',
-        inputPlaceholder: 'Kata laluan',
         showCancelButton: true,
         confirmButtonText: 'Sahkan'
     });
@@ -603,7 +255,7 @@ async function resetDataSekolah() {
     if (password === 'pkgag') {
          Swal.fire({
             title: 'Pasti Reset Data?',
-            text: "Semua data GPICT dan Admin sekolah ini akan dipadam (NULL). Kod sekolah kekal.",
+            text: "Data GPICT/Admin akan dipadam (NULL). Kod sekolah kekal.",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
@@ -612,27 +264,16 @@ async function resetDataSekolah() {
             if (result.isConfirmed) {
                 toggleLoading(true);
                 const payload = {
-                    nama_gpict: null,
-                    no_telefon_gpict: null,
-                    emel_delima_gpict: null,
-                    telegram_id_gpict: null,
-                    nama_admin_delima: null,
-                    no_telefon_admin_delima: null,
-                    emel_delima_admin_delima: null,
-                    telegram_id_admin: null
+                    nama_gpict: null, no_telefon_gpict: null, emel_delima_gpict: null, telegram_id_gpict: null,
+                    nama_admin_delima: null, no_telefon_admin_delima: null, emel_delima_admin_delima: null, telegram_id_admin: null
                 };
-
                 try {
-                    // UPDATE: Table name
                     const { error } = await supabaseClient.from('smpid_sekolah_data').update(payload).eq('kod_sekolah', kod);
                     if (error) throw error;
                     toggleLoading(false);
-                    Swal.fire('Berjaya', 'Data sekolah telah di-reset.', 'success').then(() => {
-                        loadProfil(kod);
-                    });
+                    Swal.fire('Berjaya', 'Data sekolah telah di-reset.', 'success').then(() => loadProfil(kod));
                 } catch (err) {
-                    toggleLoading(false);
-                    Swal.fire('Ralat', 'Gagal reset data.', 'error');
+                    toggleLoading(false); Swal.fire('Ralat', 'Gagal reset data.', 'error');
                 }
             }
         });
@@ -640,3 +281,267 @@ async function resetDataSekolah() {
         Swal.fire('Akses Ditolak', 'Kata laluan salah.', 'error');
     }
 }
+
+// ==========================================
+// 6. MODUL ADMIN PANEL (admin.html)
+// ==========================================
+let dashboardData = [];
+let activeStatus = 'ALL';
+let activeType = 'ALL';
+let reminderQueue = [];
+let qIndex = 0;
+let emailRawData = [];
+let currentFilteredList = [];
+
+function initAdminPanel() {
+    if (sessionStorage.getItem('smpid_auth') !== 'true') {
+        window.location.href = 'index.html';
+        return;
+    }
+    fetchDashboardData(); 
+}
+
+async function fetchDashboardData() {
+    toggleLoading(true);
+    try {
+        const { data, error } = await supabaseClient
+            .from('smpid_sekolah_data')
+            .select('*')
+            .order('nama_sekolah', { ascending: true });
+            
+        if (error) throw error;
+        
+        dashboardData = data.map(i => {
+            const requiredFields = [i.nama_gpict, i.no_telefon_gpict, i.emel_delima_gpict, i.nama_admin_delima, i.no_telefon_admin_delima, i.emel_delima_admin_delima];
+            const isDataComplete = requiredFields.every(field => field && field.trim() !== "");
+            
+            const telG = cleanPhone(i.no_telefon_gpict);
+            const telA = cleanPhone(i.no_telefon_admin_delima);
+            const isSama = (telG && telA) && (telG === telA);
+            const isBerbeza = (telG && telA) && (telG !== telA);
+
+            return { ...i, jenis: i.jenis_sekolah || 'LAIN-LAIN', is_lengkap: isDataComplete, is_sama: isSama, is_berbeza: isBerbeza };
+        });
+
+        emailRawData = data; 
+        renderFilters();
+        runFilter();
+        toggleLoading(false);
+    } catch (err) { 
+        console.error(err);
+        toggleLoading(false); 
+        Swal.fire('Ralat', 'Gagal memuatkan data.', 'error'); 
+    }
+}
+
+function renderFilters() {
+    const types = [...new Set(dashboardData.map(i => i.jenis))].sort();
+    let opts = `<option value="ALL">SEMUA JENIS SEKOLAH</option>`;
+    types.forEach(t => opts += `<option value="${t}">${t}</option>`);
+    
+    const container = document.getElementById('filterContainer');
+    if(container) {
+        container.innerHTML = `
+        <div class="row align-items-center g-3">
+          <div class="col-md-9 col-12 d-flex flex-wrap gap-2">
+            <span onclick="setFilter('ALL')" id="badgeAll" class="badge bg-secondary cursor-pointer filter-badge active p-2">Semua <span id="cntAll" class="badge bg-light text-dark ms-1">0</span></span>
+            <span onclick="setFilter('LENGKAP')" id="badgeLengkap" class="badge bg-success cursor-pointer filter-badge p-2">Lengkap <span id="cntLengkap" class="badge bg-light text-dark ms-1">0</span></span>
+            <span onclick="setFilter('BELUM')" id="badgeBelum" class="badge bg-danger cursor-pointer filter-badge p-2">Belum <span id="cntBelum" class="badge bg-light text-dark ms-1">0</span></span>
+            <span onclick="setFilter('SAMA')" id="badgeSama" class="badge bg-purple cursor-pointer filter-badge p-2">Jawatan Sama <span id="cntSama" class="badge bg-light text-dark ms-1">0</span></span>
+            <span onclick="setFilter('BERBEZA')" id="badgeBerbeza" class="badge bg-orange cursor-pointer filter-badge p-2">Jawatan Berbeza <span id="cntBerbeza" class="badge bg-light text-dark ms-1">0</span></span>
+          </div>
+          <div class="col-md-3"><select class="form-select rounded-pill shadow-sm" onchange="setType(this.value)">${opts}</select></div>
+        </div>`;
+    }
+}
+
+function setFilter(s) { activeStatus = s; runFilter(); }
+function setType(t) { activeType = t; runFilter(); }
+
+function runFilter() {
+    const filtered = dashboardData.filter(i => {
+        const statMatch = (activeStatus === 'ALL') || 
+                          (activeStatus === 'LENGKAP' && i.is_lengkap) || 
+                          (activeStatus === 'BELUM' && !i.is_lengkap) ||
+                          (activeStatus === 'SAMA' && i.is_sama) ||
+                          (activeStatus === 'BERBEZA' && i.is_berbeza); 
+        const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
+        return statMatch && typeMatch;
+    });
+
+    currentFilteredList = filtered;
+    updateBadgeCounts(filtered);
+    renderGrid(filtered);
+}
+
+function updateBadgeCounts(filtered) {
+    document.querySelectorAll('.filter-badge').forEach(e => e.classList.remove('active'));
+    if(activeStatus === 'ALL') document.getElementById('badgeAll')?.classList.add('active');
+    else if(activeStatus === 'LENGKAP') document.getElementById('badgeLengkap')?.classList.add('active');
+    else if(activeStatus === 'BELUM') document.getElementById('badgeBelum')?.classList.add('active');
+    else if(activeStatus === 'SAMA') document.getElementById('badgeSama')?.classList.add('active');
+    else if(activeStatus === 'BERBEZA') document.getElementById('badgeBerbeza')?.classList.add('active');
+    
+    // Kiraan berdasarkan konteks filter Jenis Sekolah shj
+    const context = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
+    if(document.getElementById('cntAll')) document.getElementById('cntAll').innerText = context.length;
+    if(document.getElementById('cntLengkap')) document.getElementById('cntLengkap').innerText = context.filter(i => i.is_lengkap).length;
+    if(document.getElementById('cntBelum')) document.getElementById('cntBelum').innerText = context.filter(i => !i.is_lengkap).length;
+    if(document.getElementById('cntSama')) document.getElementById('cntSama').innerText = context.filter(i => i.is_sama).length;
+    if(document.getElementById('cntBerbeza')) document.getElementById('cntBerbeza').innerText = context.filter(i => i.is_berbeza).length;
+}
+
+function renderGrid(data) {
+    const wrapper = document.getElementById('schoolGridWrapper');
+    if (!wrapper) return;
+    wrapper.innerHTML = "";
+    
+    if (data.length === 0) { 
+        wrapper.innerHTML = `<div class="alert alert-light text-center w-100 mt-4">Tiada data untuk paparan ini.</div>`; 
+        return; 
+    }
+
+    const groups = data.reduce((acc, i) => { (acc[i.jenis] = acc[i.jenis] || []).push(i); return acc; }, {});
+
+    Object.keys(groups).sort().forEach(jenis => {
+        const items = groups[jenis];
+        let html = `<div class="mb-4 fade-up"><h6 class="category-header">${jenis} (${items.length})</h6><div class="row g-3">`;
+        
+        items.forEach(s => {
+            const statusBadge = s.is_lengkap 
+                ? `<span class="badge bg-success status-badge"><i class="fas fa-check me-1"></i>LENGKAP</span>` 
+                : `<span class="badge bg-danger status-badge"><i class="fas fa-times me-1"></i>BELUM ISI</span>`;
+            
+            const linkG_Raw = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, true);
+            const linkA_Raw = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, true);
+            
+            const hasTeleG = s.telegram_id_gpict;
+            const hasTeleA = s.telegram_id_admin;
+
+            const renderActions = (hasTele, linkRaw) => {
+                let buttonsHtml = '<div class="d-flex align-items-center gap-1 justify-content-end">';
+                if (hasTele) buttonsHtml += `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary"><i class="fas fa-check-circle"></i> OK</span>`;
+                if (linkRaw) buttonsHtml += `<a href="${linkRaw}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm btn-light border text-secondary" title="Chat"><i class="fas fa-comment"></i></a>`;
+                else buttonsHtml += `<span class="text-muted small">-</span>`;
+                buttonsHtml += '</div>';
+                return buttonsHtml;
+            };
+
+            html += `
+            <div class="col-6 col-md-4 col-lg-3">
+              <div class="card school-card h-100 cursor-pointer" onclick="viewSchoolProfile('${s.kod_sekolah}')">
+                <div class="card-body p-3 d-flex flex-column">
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="fw-bold text-primary mb-0">${s.kod_sekolah}</h6>
+                    ${statusBadge}
+                  </div>
+                  <p class="school-name mb-auto" title="${s.nama_sekolah}">${s.nama_sekolah}</p>
+                </div>
+                <div class="tele-status-row bg-light border-top">
+                   <div class="row-item p-2"><span class="small fw-bold text-muted">GPICT</span> ${renderActions(hasTeleG, linkG_Raw)}</div>
+                   <div class="row-item p-2 border-top border-light"><span class="small fw-bold text-muted">Admin</span> ${renderActions(hasTeleA, linkA_Raw)}</div>
+                </div>
+              </div>
+            </div>`;
+        });
+        html += `</div></div>`;
+        wrapper.innerHTML += html;
+    });
+}
+
+function viewSchoolProfile(kod) {
+    sessionStorage.setItem('smpid_user_kod', kod);
+    window.location.href = 'user.html'; 
+}
+
+function eksportDataTapis() {
+    if (!currentFilteredList || currentFilteredList.length === 0) { Swal.fire('Tiada Data', 'Tiada data dalam paparan.', 'info'); return; }
+    let csvContent = "BIL,KOD SEKOLAH,NAMA SEKOLAH,JENIS,NAMA GPICT,NO TEL GPICT,NAMA ADMIN DELIMA,NO TEL ADMIN,STATUS DATA,CATATAN\n";
+
+    currentFilteredList.forEach((s, index) => {
+        const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
+        let statusStr = s.is_lengkap ? 'LENGKAP' : 'BELUM LENGKAP';
+        let catatan = [];
+        if (s.is_sama) catatan.push("Jawatan Sama");
+        if (s.is_berbeza) catatan.push("Jawatan Berbeza");
+        
+        let row = [
+            index + 1, clean(s.kod_sekolah), clean(s.nama_sekolah), clean(s.jenis),
+            clean(s.nama_gpict), clean(s.no_telefon_gpict), clean(s.nama_admin_delima), clean(s.no_telefon_admin_delima),
+            statusStr, clean(catatan.join(' & '))
+        ];
+        csvContent += row.join(",") + "\n";
+    });
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `SMPID_Eksport_${activeStatus}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+}
+
+function janaSenaraiTelegram() {
+    let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
+    let txt = `**STATUS PENGISIAN SMPID (${activeType})**\n\n`;
+    const pending = list.filter(i => !i.is_lengkap);
+    if(pending.length === 0) { Swal.fire('Hebat', 'Semua sekolah dah lengkap!', 'success'); return; }
+    pending.forEach(i => txt += `- ${i.kod_sekolah} ${i.nama_sekolah}\n`);
+    txt += `\nMohon tindakan segera.`;
+    navigator.clipboard.writeText(txt).then(() => Swal.fire('Disalin!', 'Senarai disalin.', 'success'));
+}
+
+function generateList() {
+    const includeGpict = document.getElementById('checkGpict').checked;
+    const includeAdmin = document.getElementById('checkAdmin').checked;
+    const filterStatus = document.getElementById('statusFilter').value;
+    const uniqueEmails = new Set();
+    if(!emailRawData) return;
+    emailRawData.forEach(row => {
+        if (includeGpict && row.emel_delima_gpict) {
+            const hasId = row.telegram_id_gpict;
+            if (filterStatus === 'all' || (filterStatus === 'unregistered' && !hasId) || (filterStatus === 'registered' && hasId)) uniqueEmails.add(row.emel_delima_gpict.trim());
+        }
+        if (includeAdmin && row.emel_delima_admin_delima) {
+            const hasId = row.telegram_id_admin;
+            if (filterStatus === 'all' || (filterStatus === 'unregistered' && !hasId) || (filterStatus === 'registered' && hasId)) uniqueEmails.add(row.emel_delima_admin_delima.trim());
+        }
+    });
+    const arr = Array.from(uniqueEmails);
+    document.getElementById('countEmail').innerText = arr.length;
+    document.getElementById('emailOutput').value = arr.join(', ');
+    const subject = encodeURIComponent(document.getElementById('msgSubject').value);
+    const body = encodeURIComponent(document.getElementById('msgBody').value);
+    document.getElementById('mailtoLink').href = `mailto:?bcc=${arr.join(',')}&subject=${subject}&body=${body}`;
+}
+
+function copyEmails() { const el = document.getElementById("emailOutput"); if(!el.value) return; el.select(); navigator.clipboard.writeText(el.value).then(() => Swal.fire('Disalin', '', 'success')); }
+function copyTemplate() { navigator.clipboard.writeText(document.getElementById("msgBody").value).then(() => Swal.fire('Disalin', '', 'success')); }
+
+function mulaTindakanPantas() {
+    let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
+    reminderQueue = [];
+    list.forEach(i => {
+        if (i.no_telefon_gpict && !i.telegram_id_gpict) reminderQueue.push({role:'GPICT', ...i, targetName: i.nama_gpict, targetTel: i.no_telefon_gpict});
+        if (i.no_telefon_admin_delima && !i.telegram_id_admin) reminderQueue.push({role:'Admin', ...i, targetName: i.nama_admin_delima, targetTel: i.no_telefon_admin_delima});
+    });
+    if (reminderQueue.length === 0) { Swal.fire('Tiada Sasaran', 'Semua lengkap/tiada no telefon.', 'info'); return; }
+    qIndex = 0; document.getElementById('queueModal').classList.remove('hidden'); renderQueue();
+}
+
+function renderQueue() {
+    if (qIndex >= reminderQueue.length) { document.getElementById('queueModal').classList.add('hidden'); Swal.fire('Selesai', 'Semakan tamat.', 'success'); return; }
+    const item = reminderQueue[qIndex];
+    document.getElementById('qProgress').innerText = `${qIndex + 1} / ${reminderQueue.length}`;
+    document.getElementById('qRoleBadge').innerText = item.role;
+    document.getElementById('qRoleBadge').className = item.role === 'GPICT' ? 'badge bg-info text-dark mb-3' : 'badge bg-warning text-dark mb-3';
+    document.getElementById('qSchoolName').innerText = item.nama_sekolah;
+    document.getElementById('qCode').innerText = item.kod_sekolah;
+    document.getElementById('qPersonName').innerText = item.targetName || "-";
+    
+    const link = generateWhatsAppLink(item.targetName, item.targetTel);
+    const btn = document.getElementById('qWaBtn');
+    if (link) { btn.href = link; btn.classList.remove('disabled'); } else { btn.removeAttribute('href'); btn.classList.add('disabled'); }
+}
+function nextQueue() { qIndex++; renderQueue(); }
+function prevQueue() { if(qIndex > 0) qIndex--; renderQueue(); }
