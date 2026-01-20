@@ -1,6 +1,6 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi Akhir: Full Features + Notification
+ * Versi Akhir: Full Features + Notification + Actor ID
  * Host Database: appppdag.cloud
  * Host Bot API: smpid-40.ppdag.deno.net
  */
@@ -201,6 +201,9 @@ async function simpanProfil() {
     const kod = document.getElementById('hiddenKodSekolah').value;
     const namaSekolah = document.getElementById('dispNamaSekolah').innerText;
     const emelG = document.getElementById('gpictEmel').value;
+    
+    // Check jika yang sedang edit ini adalah ADMIN atau USER
+    const isAdmin = sessionStorage.getItem('smpid_auth') === 'true';
 
     // Validasi
     if (!checkEmailDomain(emelG)) { Swal.fire('Format Salah', 'Gunakan emel moe-dl.edu.my', 'warning'); return; }
@@ -226,15 +229,19 @@ async function simpanProfil() {
             fetch(`${DENO_API_URL}/notify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ kod: kod, nama: namaSekolah })
+                body: JSON.stringify({ 
+                    kod: kod, 
+                    nama: namaSekolah,
+                    // Tambahan: Hantar info siapa yang update
+                    updated_by: isAdmin ? 'PENTADBIR PPD' : 'PIHAK SEKOLAH' 
+                })
             })
             .then(res => res.json())
-            .then(res => console.log("Status Notifikasi:", res))
             .catch(err => console.warn("Gagal hubungi bot notifikasi:", err));
         }
 
         toggleLoading(false);
-        Swal.fire('Berjaya', 'Data dikemaskini dan notifikasi telah dihantar ke PPD.', 'success').then(() => showSection('menu'));
+        Swal.fire('Berjaya', 'Data dikemaskini.', 'success').then(() => showSection('menu'));
     } catch (err) {
         toggleLoading(false); Swal.fire('Ralat', 'Gagal simpan data.', 'error');
         console.error(err);
@@ -243,7 +250,6 @@ async function simpanProfil() {
 
 async function resetDataSekolah() {
     const kod = document.getElementById('hiddenKodSekolah').value;
-    // Password hardcoded untuk demo
     const { value: password } = await Swal.fire({
         title: 'Akses Admin Diperlukan',
         text: 'Masukkan kata laluan untuk reset data sekolah ini:',

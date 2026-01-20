@@ -1,6 +1,6 @@
 /**
- * SMPID Telegram Bot (Deno Deploy)
- * Versi Akhir: Full Smart UI + Notification API
+ * SMPID Telegram Bot & API (Deno Deploy)
+ * Versi Akhir: Full Smart UI + Notification API + Actor ID
  * Host: appppdag.cloud
  */
 
@@ -335,7 +335,7 @@ Deno.serve(async (req) => {
   if (req.method === "POST" && url.pathname === "/notify") {
     try {
       const body = await req.json();
-      const { kod, nama } = body;
+      const { kod, nama, updated_by } = body; 
 
       // 1. Dapatkan ID Admin PPD dari Database
       const { data: admins } = await supabase
@@ -344,11 +344,21 @@ Deno.serve(async (req) => {
         .not("telegram_id", "is", null);
 
       if (admins && admins.length > 0) {
+        
+        // Logik Mesej Berbeza
+        let titleIcon = "🔔";
+        let actionText = "dikemaskini oleh pihak sekolah.";
+        
+        if (updated_by === 'PENTADBIR PPD') {
+            titleIcon = "🛡️"; // Ikon Shield untuk Admin
+            actionText = "dikemaskini oleh PENTADBIR PPD.";
+        }
+
         const message = 
-          `🔔 *KEMASKINI DATA SEKOLAH*\n\n` +
+          `${titleIcon} *KEMASKINI DATA SEKOLAH*\n\n` +
           `🏫 *${nama}*\n` +
           `Kod: \`${kod}\`\n\n` +
-          `Maklumat sekolah ini baru sahaja dikemaskini melalui Portal Web.`;
+          `Status: Maklumat sekolah ini baru sahaja ${actionText}`;
 
         // Hantar kepada SEMUA Admin PPD
         const sendPromises = admins.map(admin => 
