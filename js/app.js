@@ -3,7 +3,7 @@
  * Versi Akhir: Full Features + Notification + Actor ID
  * Host Database: appppdag.cloud
  * Host Bot API: smpid-40.ppdag.deno.net
- * Status: Dibaiki (Auto-load Email Blaster)
+ * Status: Dibaiki (Tab Listener Fix + Auto Load)
  */
 
 // ==========================================
@@ -305,6 +305,17 @@ function initAdminPanel() {
         window.location.href = 'index.html';
         return;
     }
+    
+    // --- FIX UTAMA: PENCETUS TAB LISTENER ---
+    // Kod ini memastikan apabila tab Email Blaster diklik, senarai dijana semula
+    const emailTabBtn = document.getElementById('email-tab');
+    if (emailTabBtn) {
+        emailTabBtn.addEventListener('shown.bs.tab', function (event) {
+            console.log("Tab Email dibuka, menjana senarai...");
+            generateList();
+        });
+    }
+    
     fetchDashboardData(); 
 }
 
@@ -334,9 +345,8 @@ async function fetchDashboardData() {
         renderFilters();
         runFilter();
         
-        // --- PEMBAIKAN UTAMA: PANGGIL GENERATE LIST DI SINI ---
+        // Panggilan awal (backup)
         generateList(); 
-        // ----------------------------------------------------
 
         toggleLoading(false);
     } catch (err) { 
