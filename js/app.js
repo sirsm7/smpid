@@ -1,6 +1,6 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi Akhir: Helpdesk Module Included
+ * Versi Akhir: Helpdesk Module + Delete Function
  * Host Database: appppdag.cloud
  * Host Bot API: smpid-40.ppdag.deno.net
  */
@@ -696,12 +696,23 @@ async function loadTiketAdmin() {
                 <div class="mt-3 border-top pt-3 bg-light p-3 rounded">
                     <label class="small fw-bold mb-1">Balasan Admin PPD:</label>
                     <textarea id="reply-${t.id}" class="form-control form-control-sm mb-2" rows="2" placeholder="Tulis penyelesaian..."></textarea>
-                    <button onclick="submitBalasanAdmin(${t.id}, '${t.kod_sekolah}', '${t.peranan_pengirim}', '${t.tajuk}')" class="btn btn-sm btn-primary">
-                        <i class="fas fa-reply me-1"></i> Hantar & Tutup Tiket
-                    </button>
+                    <div class="d-flex justify-content-between">
+                        <button onclick="submitBalasanAdmin(${t.id}, '${t.kod_sekolah}', '${t.peranan_pengirim}', '${t.tajuk}')" class="btn btn-sm btn-primary">
+                            <i class="fas fa-reply me-1"></i> Hantar & Tutup Tiket
+                        </button>
+                        <button onclick="padamTiket(${t.id})" class="btn btn-sm btn-outline-danger" title="Padam Tiket Ini">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
                 </div>`;
             } else {
-                actionArea = `<div class="mt-2 text-success small"><i class="fas fa-check-circle"></i> Diselesaikan pada: ${t.tarikh_balas ? new Date(t.tarikh_balas).toLocaleDateString() : '-'} <br> <b>Respon:</b> ${t.balasan_admin}</div>`;
+                actionArea = `
+                <div class="d-flex justify-content-between align-items-end mt-2">
+                    <div class="text-success small"><i class="fas fa-check-circle"></i> Diselesaikan pada: ${t.tarikh_balas ? new Date(t.tarikh_balas).toLocaleDateString() : '-'} <br> <b>Respon:</b> ${t.balasan_admin}</div>
+                    <button onclick="padamTiket(${t.id})" class="btn btn-sm btn-outline-danger ms-2" title="Padam Tiket Ini">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>`;
             }
 
             const card = `
@@ -763,4 +774,37 @@ async function submitBalasanAdmin(id, kod, peranan, tajuk) {
         toggleLoading(false);
         Swal.fire('Ralat', 'Gagal menyimpan.', 'error');
     }
+}
+
+// E. ADMIN: Delete Ticket (NEW FUNCTION)
+async function padamTiket(id) {
+    Swal.fire({
+        title: 'Padam Tiket Ini?',
+        text: "Tindakan ini akan memadam rekod tiket secara kekal dari database. Pastikan ini adalah tiket ujian.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Ya, Padam!',
+        cancelButtonText: 'Batal'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            toggleLoading(true);
+            try {
+                const { error } = await supabaseClient
+                    .from('smpid_aduan')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                toggleLoading(false);
+                Swal.fire('Dipadwham', 'Tiket telah dihapuskan.', 'success').then(() => loadTiketAdmin());
+            } catch (err) {
+                toggleLoading(false);
+                Swal.fire('Ralat', 'Gagal memadam tiket.', 'error');
+                console.error(err);
+            }
+        }
+    });
 }
