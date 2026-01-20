@@ -1,6 +1,6 @@
 /**
  * SMPID Telegram Bot (Deno Deploy)
- * Versi 5.0: Smart UI, Real-time Validation & Overwrite Mode
+ * Versi 6.0: Full Smart UI for Schools & Super Admin (M030)
  * Host: appppdag.cloud
  */
 
@@ -20,7 +20,9 @@ if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_KEY) {
 const bot = new Bot(BOT_TOKEN);
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 3. FUNGSI UI HELPER (Untuk Paparan Menu Utama)
+// 3. FUNGSI UI HELPER
+
+// A. UI SEKOLAH (Kod: MBAxxxx)
 async function getSchoolUI(kodSekolah: string, telegramId: number) {
   const { data: sekolah, error } = await supabase
     .from("smpid_sekolah_data")
@@ -33,11 +35,9 @@ async function getSchoolUI(kodSekolah: string, telegramId: number) {
   const gpictOwner = sekolah.telegram_id_gpict;
   const adminOwner = sekolah.telegram_id_admin;
 
-  // Logic: Available if (Nobody owns it) OR (I own it)
   const isGpictAvailable = !gpictOwner || gpictOwner === telegramId;
   const isAdminAvailable = !adminOwner || adminOwner === telegramId;
 
-  // Status Text
   const statusGpict = !gpictOwner ? "⚪ Kosong (Boleh Daftar)" 
                     : gpictOwner === telegramId ? "✅ Anda (Boleh Kemaskini)" 
                     : "⛔ Sudah Diisi (Orang Lain)";
@@ -55,7 +55,6 @@ async function getSchoolUI(kodSekolah: string, telegramId: number) {
   const keyboard = new InlineKeyboard();
   let hasSafeOptions = false;
 
-  // --- BUTANG PENDAFTARAN SELAMAT (SAFE MODE) ---
   if (isGpictAvailable) {
     keyboard.text("👨‍💻 Daftar GPICT", `role:gpict:${sekolah.kod_sekolah}`).row();
     hasSafeOptions = true;
@@ -72,19 +71,70 @@ async function getSchoolUI(kodSekolah: string, telegramId: number) {
     msg += "👇 Sila pilih jawatan anda di bawah:";
   } else {
     msg += "⚠️ *Tiada slot kosong.* Jawatan telah diisi.\n" +
-           "Jika anda pengguna sah, gunakan pilihan Overwrite di bawah.";
+           "Gunakan pilihan Overwrite di bawah jika perlu.";
   }
 
-  // --- BUTANG OVERWRITE (JIKA ADA SLOT ORANG LAIN) ---
   const isTakenByOther = (!isGpictAvailable || !isAdminAvailable);
   if (isTakenByOther) {
       keyboard.text("⚠️ Timpa Data (Overwrite)", `overwrite_menu:${sekolah.kod_sekolah}`).row();
   }
 
-  // --- BUTANG TUTUP ---
   keyboard.text("❌ Tutup", "close");
-
   return { text: msg, keyboard };
+}
+
+// B. UI SUPER ADMIN (Kod: M030)
+async function getAdminUI(telegramId: number) {
+    // Cari semua admin
+    const { data: admins, error } = await supabase
+        .from("smpid_admin_users")
+        .select("telegram_id");
+
+    if (error) return null;
+
+    // Logik: Kita anggap "Admin PPD" sepatutnya eksklusif atau kita pantau siapa ada.
+    // Jika table kosong -> Available
+    // Jika user wujud -> "Anda"
+    // Jika user lain wujud -> "Orang Lain"
+    
+    const amIRegistered = admins.some(a => a.telegram_id === telegramId);
+    const totalAdmins = admins.length;
+    
+    let statusText = "";
+    let isAvailable = false;
+
+    if (totalAdmins === 0) {
+        statusText = "⚪ Kosong (Boleh Daftar)";
+        isAvailable = true;
+    } else if (amIRegistered) {
+        statusText = "✅ Anda Sudah Berdaftar (Aktif)";
+        isAvailable = true; // Boleh update diri sendiri
+    } else {
+        statusText = `⛔ Sudah Diisi (${totalAdmins} pengguna lain)`;
+        isAvailable = false;
+    }
+
+    let msg = `🛡️ *PANEL SUPER ADMIN (PPD)*\n` +
+              `Kod Akses: \`M030\`\n\n` +
+              `📊 *Status Akses Semasa:*\n` +
+              `• Admin PPD: ${statusText}\n\n`;
+
+    const keyboard = new InlineKeyboard();
+
+    if (isAvailable) {
+        if (totalAdmins === 0) msg += "👇 Sila tekan untuk aktifkan akses Admin.";
+        else msg += "👇 Anda boleh kemaskini akses anda.";
+        
+        keyboard.text("🛡️ Daftar / Kemaskini Admin", "admin_ppd:register").row();
+    } else {
+        msg += "⚠️ *Akses Terhad.* Admin lain telah mendaftar.\n" +
+               "Jika anda ingin mengambil alih akses (Reset Admin Lain), tekan butang di bawah.";
+        
+        keyboard.text("⚠️ Timpa Data (Overwrite)", "admin_ppd:overwrite_confirm").row();
+    }
+
+    keyboard.text("❌ Tutup", "close");
+    return { text: msg, keyboard };
 }
 
 
@@ -100,28 +150,26 @@ bot.command("start", async (ctx) => {
   );
 });
 
-// B. PENGENDALI TEKS (Kod Sekolah & Admin)
+// B. PENGENDALI TEKS
 bot.on("message:text", async (ctx) => {
   const inputTeks = ctx.message.text.trim();
   const inputKod = inputTeks.toUpperCase();
   const telegramId = ctx.from.id;
 
-  // --- 1. SUPER ADMIN CHECK ---
+  // --- 1. SUPER ADMIN CHECK (M030) - UPDATE V6 ---
   if (inputKod === "M030") {
-    const { error } = await supabase
-      .from("smpid_admin_users")
-      .upsert({ telegram_id: telegramId }, { onConflict: "telegram_id" });
-
-    if (error) return ctx.reply("❌ Ralat sistem.");
-    return ctx.reply("✅ *Akses Admin PPD Disahkan.*", { parse_mode: "Markdown" });
+    const ui = await getAdminUI(telegramId);
+    if (!ui) return ctx.reply("❌ Ralat sistem database admin.");
+    
+    return ctx.reply(ui.text, { reply_markup: ui.keyboard, parse_mode: "Markdown" });
   }
 
-  // --- 2. VALIDASI FORMAT ---
+  // --- 2. VALIDASI FORMAT SEKOLAH ---
   if (inputKod.length < 5 || inputKod.length > 9) {
     return ctx.reply("⚠️ Format kod tidak sah. Sila masukkan Kod Sekolah (Contoh: MBA0001).");
   }
 
-  // --- 3. PAPARKAN UI ---
+  // --- 3. PAPARKAN UI SEKOLAH ---
   const ui = await getSchoolUI(inputKod, telegramId);
   if (!ui) {
     return ctx.reply(`❌ Kod sekolah *${inputKod}* tiada dalam rekod kami.`, { parse_mode: "Markdown" });
@@ -133,57 +181,112 @@ bot.on("message:text", async (ctx) => {
   });
 });
 
-// C. PENGENDALI BUTANG (Callback Query)
+// C. PENGENDALI BUTANG
 bot.on("callback_query:data", async (ctx) => {
   const dataString = ctx.callbackQuery.data;
   const telegramId = ctx.from.id;
 
-  // --- 1. ACTION: CLOSE ---
+  // --- 1. GLOBAL ACTION: CLOSE ---
   if (dataString === "close") {
     await ctx.answerCallbackQuery();
     return ctx.deleteMessage();
   }
 
+  // --- 2. SUPER ADMIN ACTIONS (M030) ---
+  if (dataString.startsWith("admin_ppd:")) {
+      const action = dataString.split(":")[1];
+
+      // A. REGISTER (Normal)
+      if (action === "register") {
+          const { error } = await supabase
+            .from("smpid_admin_users")
+            .upsert({ telegram_id: telegramId }, { onConflict: "telegram_id" });
+
+          if (error) return ctx.answerCallbackQuery({ text: "Gagal daftar.", show_alert: true });
+
+          await ctx.answerCallbackQuery({ text: "Akses Admin Disahkan!" });
+          await ctx.editMessageText(
+              "✅ **Akses Admin PPD Berjaya!**\n\n" +
+              "ID Telegram anda telah direkodkan sebagai Admin PPD yang sah.", 
+              { parse_mode: "Markdown" }
+          );
+      }
+      
+      // B. OVERWRITE MENU (Warning)
+      else if (action === "overwrite_confirm") {
+          const keyboard = new InlineKeyboard()
+              .text("🔥 YA, Reset & Ambil Alih", "admin_ppd:overwrite_execute").row()
+              .text("❌ Batal", "close");
+
+          await ctx.editMessageText(
+              "⚠️ **AMARAN: MOD OVERWRITE ADMIN** ⚠️\n\n" +
+              "Adakah anda pasti? Tindakan ini akan:\n" +
+              "1. **MEMADAM** semua Admin PPD lain yang sedia ada.\n" +
+              "2. Menetapkan **ANDA** sebagai satu-satunya Admin PPD.\n\n" +
+              "Teruskan hanya jika anda berhak.",
+              { reply_markup: keyboard, parse_mode: "Markdown" }
+          );
+      }
+
+      // C. OVERWRITE EXECUTE (Nuclear Option)
+      else if (action === "overwrite_execute") {
+          // Langkah 1: Delete semua row dalam admin_users (Reset)
+          const { error: delError } = await supabase
+            .from("smpid_admin_users")
+            .delete()
+            .neq("id", 0); // Delete all rows
+
+          if (delError) return ctx.answerCallbackQuery({ text: "Gagal reset database.", show_alert: true });
+
+          // Langkah 2: Insert diri sendiri
+          const { error: insError } = await supabase
+            .from("smpid_admin_users")
+            .insert({ telegram_id: telegramId });
+
+          if (insError) return ctx.answerCallbackQuery({ text: "Gagal simpan data baru.", show_alert: true });
+
+          await ctx.answerCallbackQuery({ text: "Admin Reset Berjaya!" });
+          await ctx.editMessageText(
+              "✅ **Akses Admin PPD Diambil Alih!**\n\n" +
+              "Semua admin lama telah dipadam. Anda kini adalah satu-satunya Admin PPD dalam sistem.", 
+              { parse_mode: "Markdown" }
+          );
+      }
+      return;
+  }
+
+  // --- 3. SCHOOL ACTIONS ---
   const parts = dataString.split(":");
   const prefix = parts[0];
 
-  // --- 2. ACTION: BACK TO MAIN MENU ---
   if (prefix === "back") {
       const kod = parts[1];
       const ui = await getSchoolUI(kod, telegramId);
-      if (ui) {
-          await ctx.editMessageText(ui.text, { reply_markup: ui.keyboard, parse_mode: "Markdown" });
-      }
+      if (ui) await ctx.editMessageText(ui.text, { reply_markup: ui.keyboard, parse_mode: "Markdown" });
       return ctx.answerCallbackQuery();
   }
 
-  // --- 3. ACTION: OVERWRITE MENU ---
   if (prefix === "overwrite_menu") {
       const kod = parts[1];
       const keyboard = new InlineKeyboard()
          .text("⚠️ Timpa GPICT", `force:gpict:${kod}`).row()
          .text("⚠️ Timpa Admin", `force:admin:${kod}`).row()
          .text("⚠️ Timpa Kedua-dua", `force:both:${kod}`).row()
-         .text("« Kembali", `back:${kod}`); // Butang Back
+         .text("« Kembali", `back:${kod}`);
       
       await ctx.editMessageText(
           `⚠️ **MOD OVERWRITE (TIMPA DATA)** ⚠️\n\n` +
-          `Amaran: Tindakan ini akan **membuang akses pengguna lama** bagi jawatan yang dipilih dan menggantikannya dengan ID Telegram anda.\n\n` +
-          `Hanya gunakan fungsi ini jika anda adalah pemegang jawatan yang sah.\n\n` +
-          `Sila pilih tindakan:`,
+          `Sila pilih jawatan untuk diambil alih secara paksa:`,
           { reply_markup: keyboard, parse_mode: "Markdown" }
       );
       return ctx.answerCallbackQuery();
   }
 
-  // --- 4. ACTION: REGISTER (SAFE & FORCE) ---
-  // prefix: 'role' (Safe) or 'force' (Overwrite)
   if (prefix === "role" || prefix === "force") {
       const role = parts[1];
       const kodSekolah = parts[2];
       const isForce = (prefix === "force");
 
-      // Validasi 'Safe Mode' (Hanya untuk 'role')
       if (!isForce) {
           const { data: sekolah, error } = await supabase
             .from("smpid_sekolah_data")
@@ -196,12 +299,13 @@ bot.on("callback_query:data", async (ctx) => {
           const gpictSafe = !sekolah.telegram_id_gpict || sekolah.telegram_id_gpict === telegramId;
           const adminSafe = !sekolah.telegram_id_admin || sekolah.telegram_id_admin === telegramId;
 
-          if (role === "gpict" && !gpictSafe) return alertTaken(ctx);
-          if (role === "admin" && !adminSafe) return alertTaken(ctx);
-          if (role === "both" && (!gpictSafe || !adminSafe)) return alertTaken(ctx);
+          if ((role === "gpict" && !gpictSafe) || 
+              (role === "admin" && !adminSafe) || 
+              (role === "both" && (!gpictSafe || !adminSafe))) {
+             return alertTaken(ctx);
+          }
       }
 
-      // Sediakan Data Update
       let updateData = {};
       let roleText = "";
 
@@ -216,45 +320,27 @@ bot.on("callback_query:data", async (ctx) => {
         roleText = "Guru ICT & Admin DELIMa";
       }
 
-      // Execute Update
       const { error: errUpdate } = await supabase
         .from("smpid_sekolah_data")
         .update(updateData)
         .eq("kod_sekolah", kodSekolah);
 
-      if (errUpdate) {
-        return ctx.answerCallbackQuery({ text: "Gagal menyimpan. Cuba lagi.", show_alert: true });
-      }
+      if (errUpdate) return ctx.answerCallbackQuery({ text: "Gagal menyimpan.", show_alert: true });
 
-      await ctx.answerCallbackQuery({ text: isForce ? "Data berjaya ditimpa!" : "Pendaftaran Berjaya!" });
-      
       const successTitle = isForce ? "✅ **Data Berjaya Ditimpa!**" : "✅ **Pendaftaran Berjaya!**";
-      
+      await ctx.answerCallbackQuery({ text: "Berjaya!" });
       await ctx.editMessageText(
         `${successTitle}\n\n` +
         `Sekolah: *${kodSekolah}*\n` +
         `Jawatan: *${roleText}*\n` +
-        `Status: *Aktif*\n\n` +
-        `Terima kasih. Rekod telah dikemaskini.`, 
+        `Status: *Aktif*`, 
         { parse_mode: "Markdown" }
       );
   }
 });
 
-// Helper Function untuk Alert
 async function alertTaken(ctx: any) {
-  await ctx.answerCallbackQuery({ 
-    text: "⚠️ Slot ini telah diambil orang lain. Sila guna butang 'Overwrite' jika perlu.", 
-    show_alert: true 
-  });
-  // Refresh menu untuk tunjuk butang Overwrite
-  const dataString = ctx.callbackQuery.data;
-  const parts = dataString.split(":");
-  const kod = parts[2]; // role:type:kod
-  
-  // Reload UI
-  // Note: We can't easily call getSchoolUI inside alert without triggering edit loop issues sometimes, 
-  // but deleting helps user restart flow.
+  await ctx.answerCallbackQuery({ text: "⚠️ Slot diambil orang lain. Guna Overwrite jika perlu.", show_alert: true });
   await ctx.deleteMessage(); 
 }
 
