@@ -1,6 +1,6 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi Akhir: Helpdesk Module + Smart Sentence Case (Email Safe)
+ * Versi Akhir: Helpdesk Module + Smart Sentence Case (User & Admin)
  * Host Database: appppdag.cloud
  * Host Bot API: smpid-40.ppdag.deno.net
  */
@@ -54,13 +54,13 @@ function checkEmailDomain(email) {
     return email.includes("@moe-dl.edu.my");
 }
 
-// --- FUNGSI SMART SENTENCE CASE (DIPERBAIKI) ---
+// --- FUNGSI SMART SENTENCE CASE (GLOBAL) ---
+// Digunakan oleh User (Butiran Masalah) & Admin (Balasan)
 function formatSentenceCase(str) {
     if (!str) return "";
     
-    // Logik Baru:
-    // (?:^|[\.\!\?]\s+) -> Cari (Permulaan Ayat) ATAU (Tanda Baca + WAJIB ADA SPACE)
-    // Ini mengelakkan .edu.my dikesan sebagai ayat baru kerana tiada space selepas titik.
+    // Logik: Huruf besar HANYA jika permulaan ayat ATAU tanda baca diikuti SPACE/NEWLINE
+    // Ini mengelakkan emel (ali@moe.gov.my) menjadi Ali@moe.Gov.My
     return str.replace(/(?:^|[\.\!\?]\s+)([a-z])/g, function(match) {
         return match.toUpperCase();
     });
@@ -713,7 +713,12 @@ async function loadTiketAdmin() {
                 actionArea = `
                 <div class="mt-3 border-top pt-3 bg-light p-3 rounded">
                     <label class="small fw-bold mb-1">Balasan Admin PPD:</label>
-                    <textarea id="reply-${t.id}" class="form-control form-control-sm mb-2" rows="2" placeholder="Tulis penyelesaian..."></textarea>
+                    
+                    <!-- FIX: Tambah Smart Sentence Case untuk Admin Reply -->
+                    <textarea id="reply-${t.id}" class="form-control form-control-sm mb-2" rows="2" 
+                              placeholder="Tulis penyelesaian..." 
+                              onblur="this.value = formatSentenceCase(this.value)"></textarea>
+
                     <div class="d-flex justify-content-between">
                         <button onclick="submitBalasanAdmin(${t.id}, '${t.kod_sekolah}', '${t.peranan_pengirim}', '${t.tajuk}')" class="btn btn-sm btn-primary">
                             <i class="fas fa-reply me-1"></i> Hantar & Tutup Tiket
