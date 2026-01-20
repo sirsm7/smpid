@@ -1,6 +1,6 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi Akhir: Helpdesk Module + Delete Function
+ * Versi Akhir: Helpdesk Module + Delete Function + Smart Sentence Case
  * Host Database: appppdag.cloud
  * Host Bot API: smpid-40.ppdag.deno.net
  */
@@ -52,6 +52,16 @@ function autoFormatPhone(input) {
 
 function checkEmailDomain(email) {
     return email.includes("@moe-dl.edu.my");
+}
+
+// --- NEW FUNCTION: Smart Sentence Case ---
+function formatSentenceCase(str) {
+    if (!str) return "";
+    // Regex Logic: Cari permulaan string (^) ATAU tanda baca (. ! ?) diikuti whitespace
+    // Kemudian tukar huruf pertama selepas itu kepada Uppercase
+    return str.replace(/(^\s*\w|[\.\!\?]\s*\w)/g, function(c) {
+        return c.toUpperCase();
+    });
 }
 
 function generateWhatsAppLink(nama, noTel, isRaw = false) {
@@ -590,8 +600,14 @@ function prevQueue() { if(qIndex > 0) qIndex--; renderQueue(); }
 async function hantarTiket() {
     const kod = sessionStorage.getItem('smpid_user_kod');
     const peranan = document.getElementById('tiketPeranan').value;
-    const tajuk = document.getElementById('tiketTajuk').value;
-    const mesej = document.getElementById('tiketMesej').value;
+    
+    // FORCE UPPERCASE untuk TAJUK sahaja
+    const tajuk = document.getElementById('tiketTajuk').value.toUpperCase();
+    
+    // FIX: Gunakan Smart Sentence Case untuk MESEJ (Tidak paksa semua huruf besar)
+    // Supaya emel kekal cantik, tapi ayat nampak kemas.
+    const mesejRaw = document.getElementById('tiketMesej').value;
+    const mesej = formatSentenceCase(mesejRaw);
 
     if (!peranan) { Swal.fire('Pilih Jawatan', 'Sila nyatakan anda sebagai GPICT atau Admin.', 'warning'); return; }
 

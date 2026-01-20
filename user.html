@@ -243,12 +243,17 @@
                                     </select>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label small fw-bold text-muted">TAJUK ISU</label>
-                                    <input type="text" class="form-control" id="tiketTajuk" placeholder="Cth: Lupa Kata Laluan Admin" required>
+                                    <label class="form-label small fw-bold text-muted">TAJUK ISU (Wajib Huruf Besar)</label>
+                                    <input type="text" class="form-control uppercase-input" id="tiketTajuk" placeholder="CTH: LUPA KATA LALUAN ADMIN" required oninput="this.value = this.value.toUpperCase()">
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label small fw-bold text-muted">BUTIRAN MESEJ</label>
-                                    <textarea class="form-control" id="tiketMesej" rows="4" placeholder="Jelaskan masalah dengan ringkas..." required></textarea>
+                                    <!-- FIX: Buang uppercase-input dan oninput, tambah onblur untuk smart format -->
+                                    <textarea class="form-control" id="tiketMesej" rows="4" 
+                                      placeholder="Jelaskan masalah dengan ringkas. Sertakan emel jika perlu..." 
+                                      required 
+                                      onblur="this.value = formatSentenceCase(this.value)"></textarea>
+                                    <div class="form-text small text-end fst-italic">Format ayat akan dikemaskan secara automatik.</div>
                                 </div>
                                 <button type="submit" class="btn btn-danger w-100 fw-bold">
                                     <i class="fas fa-paper-plane me-2"></i>Hantar Tiket
