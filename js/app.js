@@ -3,6 +3,7 @@
  * Versi Akhir: Full Features + Notification + Actor ID
  * Host Database: appppdag.cloud
  * Host Bot API: smpid-40.ppdag.deno.net
+ * Status: Dibaiki (Auto-load Email Blaster)
  */
 
 // ==========================================
@@ -332,6 +333,11 @@ async function fetchDashboardData() {
         emailRawData = data; 
         renderFilters();
         runFilter();
+        
+        // --- PEMBAIKAN UTAMA: PANGGIL GENERATE LIST DI SINI ---
+        generateList(); 
+        // ----------------------------------------------------
+
         toggleLoading(false);
     } catch (err) { 
         console.error(err);
@@ -502,7 +508,14 @@ function generateList() {
     const includeAdmin = document.getElementById('checkAdmin').checked;
     const filterStatus = document.getElementById('statusFilter').value;
     const uniqueEmails = new Set();
-    if(!emailRawData) return;
+    
+    // Safety check jika emailRawData kosong atau undefined
+    if(!emailRawData || emailRawData.length === 0) {
+        document.getElementById('countEmail').innerText = "0";
+        document.getElementById('emailOutput').value = "";
+        return;
+    }
+
     emailRawData.forEach(row => {
         if (includeGpict && row.emel_delima_gpict) {
             const hasId = row.telegram_id_gpict;
