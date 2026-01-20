@@ -2,7 +2,8 @@
  * SMPID Telegram Bot (Deno Deploy)
  * Bahasa: TypeScript
  * Framework: grammY
- * Database: Supabase
+ * Database: Supabase (Self-Hosted Migrated)
+ * Table Prefix: smpid_
  */
 
 import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";
@@ -10,6 +11,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 // 1. KONFIGURASI ENV
 // Pastikan variable ini diset dalam Settings -> Environment Variables di Deno Deploy
+// SUPABASE_URL hendaklah: https://appppdag.cloud
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_KEY = Deno.env.get("SUPABASE_KEY");
@@ -44,9 +46,10 @@ bot.on("message:text", async (ctx) => {
   // Langkah 1: Semak jika input adalah "M030"
   if (inputKod === "M030") {
     
-    // Langkah 2: Upsert ke tabel admin_users
+    // Langkah 2: Upsert ke tabel smpid_admin_users
+    // UPDATE: Nama table baru
     const { error } = await supabase
-      .from("admin_users")
+      .from("smpid_admin_users")
       .upsert({ telegram_id: telegramId }, { onConflict: "telegram_id" });
 
     if (error) {
@@ -70,8 +73,9 @@ bot.on("message:text", async (ctx) => {
   }
 
   // Cari dalam Supabase
+  // UPDATE: Nama table smpid_sekolah_data
   const { data, error } = await supabase
-    .from("sekolah_data")
+    .from("smpid_sekolah_data")
     .select("kod_sekolah, nama_sekolah")
     .eq("kod_sekolah", inputKod)
     .single();
@@ -129,8 +133,9 @@ bot.on("callback_query:data", async (ctx) => {
   }
 
   // Lakukan kemaskini ke Supabase
+  // UPDATE: Nama table smpid_sekolah_data
   const { error } = await supabase
-    .from("sekolah_data")
+    .from("smpid_sekolah_data")
     .update(updateData)
     .eq("kod_sekolah", kodSekolah);
 

@@ -1,18 +1,20 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi 2.4 - Eksport Data ke CSV (Excel Friendly)
+ * Versi 3.0 - Migrasi Self-Hosted (Prefix: smpid)
+ * Host: appppdag.cloud
  */
 
 // ==========================================
-// 1. KONFIGURASI & INISIALISASI SUPABASE
+// 1. KONFIGURASI & INISIALISASI SUPABASE (BARU)
 // ==========================================
-const SUPABASE_URL = 'https://hbanvnteyncwsnfprahz.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_IEcWCbBmqWLBOBU4rl0FPw_Z97Assvt';
+const SUPABASE_URL = 'https://appppdag.cloud';
+// Anon Key dari fail yang dimuat naik
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY';
 
 let supabaseClient;
 if (window.supabase) {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    console.log("Supabase Ready.");
+    console.log("Supabase (Self-Hosted) Ready.");
 } else {
     console.error("Supabase library not loaded.");
 }
@@ -108,7 +110,13 @@ async function prosesLogin() {
     // --- LALUAN 2: USER SEKOLAH ---
     toggleLoading(true);
     try {
-        const { data, error } = await supabaseClient.from('sekolah_data').select('kod_sekolah').eq('kod_sekolah', kod).single();
+        // UPDATE: Tukar nama table kepada 'smpid_sekolah_data'
+        const { data, error } = await supabaseClient
+            .from('smpid_sekolah_data')
+            .select('kod_sekolah')
+            .eq('kod_sekolah', kod)
+            .single();
+            
         toggleLoading(false);
         if (error || !data) { Swal.fire('Maaf', 'Kod sekolah tidak dijumpai.', 'error'); return; }
         
@@ -116,6 +124,7 @@ async function prosesLogin() {
         window.location.href = 'user.html';
     } catch (err) {
         toggleLoading(false); Swal.fire('Ralat', 'Gagal sambungan server.', 'error');
+        console.error(err);
     }
 }
 
@@ -144,8 +153,9 @@ function initAdminPanel() {
 async function fetchDashboardData() {
     toggleLoading(true);
     try {
+        // UPDATE: Tukar nama table kepada 'smpid_sekolah_data'
         const { data, error } = await supabaseClient
-            .from('sekolah_data')
+            .from('smpid_sekolah_data')
             .select('*')
             .order('nama_sekolah', { ascending: true });
             
@@ -201,12 +211,10 @@ function renderFilters() {
             <span onclick="setFilter('LENGKAP')" id="badgeLengkap" class="badge bg-success cursor-pointer filter-badge p-2">Lengkap <span id="cntLengkap" class="badge bg-light text-dark ms-1">0</span></span>
             <span onclick="setFilter('BELUM')" id="badgeBelum" class="badge bg-danger cursor-pointer filter-badge p-2">Belum <span id="cntBelum" class="badge bg-light text-dark ms-1">0</span></span>
             
-            <!-- BUTTON: JAWATAN SAMA -->
             <span onclick="setFilter('SAMA')" id="badgeSama" class="badge bg-purple cursor-pointer filter-badge p-2" title="GPICT dan Admin adalah orang yang sama">
                 Jawatan Sama <span id="cntSama" class="badge bg-light text-dark ms-1">0</span>
             </span>
 
-            <!-- BUTTON BARU: JAWATAN BERBEZA -->
             <span onclick="setFilter('BERBEZA')" id="badgeBerbeza" class="badge bg-orange cursor-pointer filter-badge p-2" title="GPICT dan Admin adalah orang yang berbeza">
                 Jawatan Berbeza <span id="cntBerbeza" class="badge bg-light text-dark ms-1">0</span>
             </span>
@@ -232,7 +240,6 @@ function runFilter() {
         return statMatch && typeMatch;
     });
 
-    // Simpan data filtered ke dalam variable global
     currentFilteredList = filtered;
 
     document.querySelectorAll('.filter-badge').forEach(e => e.classList.remove('active'));
@@ -259,14 +266,9 @@ function eksportDataTapis() {
         return;
     }
 
-    // 1. Bina Header CSV
-    // Format "Column1,Column2,Column3..."
     let csvContent = "BIL,KOD SEKOLAH,NAMA SEKOLAH,JENIS,NAMA GPICT,NO TEL GPICT,NAMA ADMIN DELIMA,NO TEL ADMIN,STATUS DATA,CATATAN\n";
 
-    // 2. Loop Data untuk bina baris
     currentFilteredList.forEach((s, index) => {
-        // Fungsi 'clean' untuk membungkus data dalam "quote" jika ada koma di dalamnya
-        // Ini penting supaya Excel tak pecahkan nama yang ada koma (contoh: ALI, HJ)
         const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
 
         let statusStr = s.is_lengkap ? 'LENGKAP' : 'BELUM LENGKAP';
@@ -290,14 +292,11 @@ function eksportDataTapis() {
         csvContent += row.join(",") + "\n";
     });
 
-    // 3. Trigger Download Fail
-    // Tambah BOM (\uFEFF) di permulaan fail supaya Excel kenal ini adalah Unicode (UTF-8)
     const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     
-    // Nama fail dinamik mengikut filter dan tarikh
-    const dateStr = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const dateStr = new Date().toISOString().split('T')[0];
     const filterName = activeStatus === 'ALL' ? 'SEMUA' : activeStatus;
     
     link.setAttribute("href", url);
@@ -308,10 +307,9 @@ function eksportDataTapis() {
     link.click();
     document.body.removeChild(link);
 
-    // 4. Notifikasi
     Swal.fire({
         title: 'Selesai',
-        text: 'Fail CSV telah dimuat turun. Sila buka dengan Microsoft Excel untuk jadual yang tersusun.',
+        text: 'Fail CSV telah dimuat turun.',
         icon: 'success'
     });
 }
@@ -338,7 +336,6 @@ function renderGrid(data) {
                 ? `<span class="badge bg-success status-badge"><i class="fas fa-check me-1"></i>LENGKAP</span>` 
                 : `<span class="badge bg-danger status-badge"><i class="fas fa-times me-1"></i>BELUM ISI</span>`;
             
-            // Logik Label Admin dengan Ikon Link jika orang sama
             const labelAdmin = s.is_sama 
                 ? `<span class="small fw-bold text-muted">Admin <i class="fas fa-link text-purple ms-1" title="Individu Sama"></i></span>` 
                 : `<span class="small fw-bold text-muted">Admin</span>`;
@@ -351,7 +348,6 @@ function renderGrid(data) {
             const hasTeleG = s.telegram_id_gpict;
             const hasTeleA = s.telegram_id_admin;
 
-            // Logik butang tindakan yang dikembalikan
             const renderActions = (hasTele, linkTemplate, linkRaw) => {
                 let buttonsHtml = '<div class="d-flex align-items-center gap-1 justify-content-end">';
                 if (hasTele) {
@@ -506,13 +502,11 @@ function initUserPortal() {
 
     if (!kod) { window.location.href = 'index.html'; return; }
     
-    // Jika ADMIN yang masuk, ubah butang Log Keluar jadi 'Kembali ke Dashboard'
     if (isAdmin) {
         document.getElementById('displayKodSekolah').innerHTML = `<i class="fas fa-user-shield me-2"></i>ADMIN VIEW: ${kod}`;
         document.getElementById('displayKodSekolah').classList.replace('text-dark', 'text-primary');
         document.getElementById('displayKodSekolah').classList.add('border', 'border-primary');
         
-        // Cari butang log keluar di menu dan ubah
         const btnLogout = document.getElementById('btnLogoutMenu');
         if(btnLogout) {
             btnLogout.innerHTML = `<i class="fas fa-arrow-left me-2"></i>Kembali ke Dashboard Admin`;
@@ -520,7 +514,6 @@ function initUserPortal() {
             btnLogout.classList.replace('text-danger', 'text-primary');
         }
 
-        // --- TAMBAHAN BARU: Tunjukkan butang RESET ---
         const btnReset = document.getElementById('btnResetData');
         if (btnReset) btnReset.classList.remove('hidden');
 
@@ -545,7 +538,8 @@ function showSection(section) {
 
 async function loadProfil(kod) {
     try {
-        const { data, error } = await supabaseClient.from('sekolah_data').select('*').eq('kod_sekolah', kod).single();
+        // UPDATE: Table name
+        const { data, error } = await supabaseClient.from('smpid_sekolah_data').select('*').eq('kod_sekolah', kod).single();
         if (error) throw error;
         
         document.getElementById('dispNamaSekolah').innerText = data.nama_sekolah;
@@ -584,7 +578,8 @@ async function simpanProfil() {
     };
 
     try {
-        const { error } = await supabaseClient.from('sekolah_data').update(payload).eq('kod_sekolah', kod);
+        // UPDATE: Table name
+        const { error } = await supabaseClient.from('smpid_sekolah_data').update(payload).eq('kod_sekolah', kod);
         if (error) throw error;
         toggleLoading(false);
         Swal.fire('Berjaya', 'Data dikemaskini.', 'success').then(() => showSection('menu'));
@@ -593,7 +588,6 @@ async function simpanProfil() {
     }
 }
 
-// --- FUNGSI BARU: RESET DATA (ADMIN ONLY) ---
 async function resetDataSekolah() {
     const kod = document.getElementById('hiddenKodSekolah').value;
 
@@ -629,7 +623,8 @@ async function resetDataSekolah() {
                 };
 
                 try {
-                    const { error } = await supabaseClient.from('sekolah_data').update(payload).eq('kod_sekolah', kod);
+                    // UPDATE: Table name
+                    const { error } = await supabaseClient.from('smpid_sekolah_data').update(payload).eq('kod_sekolah', kod);
                     if (error) throw error;
                     toggleLoading(false);
                     Swal.fire('Berjaya', 'Data sekolah telah di-reset.', 'success').then(() => {
