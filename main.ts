@@ -1,6 +1,6 @@
 /**
  * SMPID Telegram Bot & API (Deno Deploy)
- * Versi Akhir: Full Smart UI + Notification API + Actor ID
+ * Versi: Helpdesk Module Added
  * Host: appppdag.cloud
  */
 
@@ -331,26 +331,23 @@ const handleBotUpdate = webhookCallback(bot, "std/http");
 Deno.serve(async (req) => {
   const url = new URL(req.url);
 
-  // Endpoint Khas: /notify (Dipanggil oleh Website)
+  // Endpoint: /notify (Data Profil Dikemaskini)
   if (req.method === "POST" && url.pathname === "/notify") {
     try {
       const body = await req.json();
       const { kod, nama, updated_by } = body; 
 
-      // 1. Dapatkan ID Admin PPD dari Database
       const { data: admins } = await supabase
         .from("smpid_admin_users")
         .select("telegram_id")
         .not("telegram_id", "is", null);
 
       if (admins && admins.length > 0) {
-        
-        // Logik Mesej Berbeza
         let titleIcon = "🔔";
         let actionText = "dikemaskini oleh pihak sekolah.";
         
         if (updated_by === 'PENTADBIR PPD') {
-            titleIcon = "🛡️"; // Ikon Shield untuk Admin
+            titleIcon = "🛡️";
             actionText = "dikemaskini oleh PENTADBIR PPD.";
         }
 
@@ -360,23 +357,88 @@ Deno.serve(async (req) => {
           `Kod: \`${kod}\`\n\n` +
           `Status: Maklumat sekolah ini baru sahaja ${actionText}`;
 
-        // Hantar kepada SEMUA Admin PPD
         const sendPromises = admins.map(admin => 
            bot.api.sendMessage(admin.telegram_id, message, { parse_mode: "Markdown" })
              .catch(err => console.error(`Gagal hantar ke ${admin.telegram_id}`, err))
         );
-        
         await Promise.all(sendPromises);
       }
-
       return new Response(JSON.stringify({ status: "success" }), {
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });
-
     } catch (e) {
       console.error(e);
       return new Response(JSON.stringify({ status: "error" }), { status: 500 });
     }
+  }
+
+  // --- NEW: Endpoint /notify-ticket (User Hantar Tiket -> Admin PPD) ---
+  if (req.method === "POST" && url.pathname === "/notify-ticket") {
+      try {
+          const body = await req.json();
+          const { kod, peranan, tajuk, mesej } = body;
+
+          // Cari semua Admin PPD
+          const { data: admins } = await supabase
+              .from("smpid_admin_users")
+              .select("telegram_id")
+              .not("telegram_id", "is", null);
+
+          if (admins && admins.length > 0) {
+              const text = 
+                  `🆘 *TIKET ADUAN BARU*\n\n` +
+                  `🏫 Sekolah: *${kod}*\n` +
+                  `👤 Pengirim: *${peranan}*\n` +
+                  `📌 Tajuk: *${tajuk}*\n\n` +
+                  `📝 Mesej: ${mesej}\n\n` +
+                  `_Sila buka panel admin untuk membalas._`;
+
+              const sendPromises = admins.map(admin => 
+                  bot.api.sendMessage(admin.telegram_id, text, { parse_mode: "Markdown" })
+                  .catch(err => console.error(err))
+              );
+              await Promise.all(sendPromises);
+          }
+          return new Response(JSON.stringify({ status: "success" }), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+      } catch (e) {
+          return new Response(JSON.stringify({ status: "error" }), { status: 500 });
+      }
+  }
+
+  // --- NEW: Endpoint /reply-ticket (Admin Balas -> User Sekolah) ---
+  if (req.method === "POST" && url.pathname === "/reply-ticket") {
+      try {
+          const body = await req.json();
+          const { kod, peranan, tajuk, balasan } = body;
+
+          // Cari data sekolah untuk dapatkan ID Telegram PIC
+          const { data: sekolah } = await supabase
+              .from("smpid_sekolah_data")
+              .select("telegram_id_gpict, telegram_id_admin")
+              .eq("kod_sekolah", kod)
+              .single();
+
+          if (sekolah) {
+              let targetId = null;
+              // Jika pengirim asal GPICT, hantar ke GPICT. Jika Admin, hantar ke Admin.
+              if (peranan === 'GPICT') targetId = sekolah.telegram_id_gpict;
+              else if (peranan === 'ADMIN') targetId = sekolah.telegram_id_admin;
+
+              if (targetId) {
+                  const text = 
+                      `✅ *STATUS TIKET: SELESAI*\n\n` +
+                      `📌 Tajuk: *${tajuk}*\n` +
+                      `👤 Dibalas Oleh: *PPD (Admin)*\n\n` +
+                      `💬 Respon: ${balasan}\n\n` +
+                      `_Sila semak portal untuk maklumat lanjut._`;
+
+                  await bot.api.sendMessage(targetId, text, { parse_mode: "Markdown" });
+              }
+          }
+          return new Response(JSON.stringify({ status: "success" }), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+      } catch (e) {
+          return new Response(JSON.stringify({ status: "error" }), { status: 500 });
+      }
   }
 
   // Handle Telegram Webhook

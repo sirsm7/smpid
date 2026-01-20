@@ -98,7 +98,7 @@
                     </div>
                 </div>
 
-                <!-- KAD 4: BANK SOALAN GEMINI (BARU - col-md-6) -->
+                <!-- KAD 4: BANK SOALAN GEMINI (col-md-6) -->
                 <div class="col-md-6 fade-up" style="animation-delay: 0.4s;">
                     <div class="card menu-card p-4 text-center">
                         <div class="card-body d-flex flex-column">
@@ -109,7 +109,6 @@
                             <p class="text-muted mb-4 flex-grow-1 small">
                                 Koleksi prompt dan soalan AI untuk rujukan guru.
                             </p>
-                            <!-- Butang dengan warna custom ungu -->
                             <a href="https://sirsm7.github.io/bankgemini" target="_blank" class="btn btn-outline-primary btn-menu shadow-sm" style="border-color: #6f42c1; color: #6f42c1;">
                                 <i class="fas fa-external-link-alt me-2"></i>Akses Bank
                             </a>
@@ -117,10 +116,27 @@
                     </div>
                 </div>
 
+                <!-- KAD 5: E-ADUAN / TIKET (NEW) -->
+                <div class="col-md-12 fade-up" style="animation-delay: 0.5s;">
+                    <div class="card menu-card p-4 text-center border-danger">
+                        <div class="card-body d-flex flex-column">
+                            <div class="icon-box bg-danger bg-opacity-10 text-danger">
+                                <i class="fas fa-headset"></i>
+                            </div>
+                            <h4 class="fw-bold mb-2">e-Aduan & Bantuan</h4>
+                            <p class="text-muted mb-4 flex-grow-1 small">
+                                Saluran rasmi untuk melaporkan isu teknikal atau masalah DELIMa terus ke PPD.
+                            </p>
+                            <button onclick="showSection('aduan')" class="btn btn-danger btn-menu shadow-sm">
+                                <i class="fas fa-paper-plane me-2"></i>Hantar Tiket
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
-            <div class="text-center mt-5 fade-up" style="animation-delay: 0.5s;">
-                <!-- ID ditambah untuk membolehkan JS ubah butang ini jika Admin yang login -->
+            <div class="text-center mt-5 fade-up" style="animation-delay: 0.6s;">
                 <button id="btnLogoutMenu" onclick="keluarSistem()" class="btn btn-link text-danger text-decoration-none fw-bold">
                     <i class="fas fa-sign-out-alt me-2"></i>Log Keluar
                 </button>
@@ -187,7 +203,6 @@
                       <i class="fas fa-save me-2"></i>KEMASKINI DATA
                     </button>
                     
-                    <!-- BUTANG RESET (HIDDEN SECARA LALAI) -->
                     <button type="button" id="btnResetData" onclick="resetDataSekolah()" class="btn btn-danger hidden">
                         <i class="fas fa-trash-restore me-2"></i>RESET DATA SEKOLAH (ADMIN)
                     </button>
@@ -198,6 +213,73 @@
                   </div>
                 </form>
               </div>
+        </div>
+
+        <!-- SEKSYEN 3: ADUAN / TIKET FORM (NEW - HIDDEN) -->
+        <div id="section-aduan" class="hidden fade-up">
+            <div class="card p-4 mx-auto shadow-sm" style="max-width: 800px;">
+                <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
+                    <button onclick="showSection('menu')" class="btn btn-outline-secondary btn-sm me-3">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div>
+                        <h5 class="mb-0 fw-bold">Sistem Tiket & Aduan</h5>
+                        <small class="text-muted">Laporkan isu terus kepada PPD</small>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Kolum Kiri: Borang -->
+                    <div class="col-md-12">
+                        <div class="bg-light p-3 rounded border mb-4">
+                            <h6 class="text-danger fw-bold mb-3"><i class="fas fa-edit me-2"></i>Buka Tiket Baru</h6>
+                            <form id="formTiket" onsubmit="event.preventDefault(); hantarTiket();">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">IDENTITI PENGIRIM</label>
+                                    <select class="form-select" id="tiketPeranan" required>
+                                        <option value="" selected disabled>-- Sila Pilih Jawatan Anda --</option>
+                                        <option value="GPICT">Guru Penyelaras ICT (GPICT)</option>
+                                        <option value="ADMIN">Admin DELIMa</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">TAJUK ISU</label>
+                                    <input type="text" class="form-control" id="tiketTajuk" placeholder="Cth: Lupa Kata Laluan Admin" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold text-muted">BUTIRAN MESEJ</label>
+                                    <textarea class="form-control" id="tiketMesej" rows="4" placeholder="Jelaskan masalah dengan ringkas..." required></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-danger w-100 fw-bold">
+                                    <i class="fas fa-paper-plane me-2"></i>Hantar Tiket
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Kolum Bawah: Sejarah -->
+                    <div class="col-md-12">
+                        <h6 class="fw-bold text-dark mb-3"><i class="fas fa-history me-2"></i>Sejarah Tiket Anda</h6>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover small">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Tarikh</th>
+                                        <th>Pengirim</th>
+                                        <th>Tajuk</th>
+                                        <th>Status</th>
+                                        <th>Tindakan PPD</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="senaraiTiketUser">
+                                    <tr><td colspan="5" class="text-center text-muted">Memuatkan rekod...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </div>
 
       </div>

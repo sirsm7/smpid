@@ -1,9 +1,8 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi Akhir: Full Features + Notification + Actor ID
+ * Versi Akhir: Helpdesk Module Included
  * Host Database: appppdag.cloud
  * Host Bot API: smpid-40.ppdag.deno.net
- * Status: Dibaiki (Tab Listener Fix + Auto Load)
  */
 
 // ==========================================
@@ -165,11 +164,19 @@ function showSection(section) {
     if (section === 'menu') {
         document.getElementById('section-menu').classList.remove('hidden');
         document.getElementById('section-profil').classList.add('hidden');
+        document.getElementById('section-aduan').classList.add('hidden'); // NEW
         document.getElementById('welcomeText').innerText = "Sila pilih tindakan yang ingin dilakukan";
     } else if (section === 'profil') {
         document.getElementById('section-menu').classList.add('hidden');
         document.getElementById('section-profil').classList.remove('hidden');
+        document.getElementById('section-aduan').classList.add('hidden'); // NEW
         document.getElementById('welcomeText').innerText = "Kemaskini Maklumat";
+    } else if (section === 'aduan') { // NEW
+        document.getElementById('section-menu').classList.add('hidden');
+        document.getElementById('section-profil').classList.add('hidden');
+        document.getElementById('section-aduan').classList.remove('hidden');
+        document.getElementById('welcomeText').innerText = "Helpdesk & Aduan";
+        loadTiketUser(); // Load history bila buka
     }
 }
 
@@ -307,13 +314,15 @@ function initAdminPanel() {
     }
     
     // --- FIX UTAMA: PENCETUS TAB LISTENER ---
-    // Kod ini memastikan apabila tab Email Blaster diklik, senarai dijana semula
     const emailTabBtn = document.getElementById('email-tab');
     if (emailTabBtn) {
-        emailTabBtn.addEventListener('shown.bs.tab', function (event) {
-            console.log("Tab Email dibuka, menjana senarai...");
-            generateList();
-        });
+        emailTabBtn.addEventListener('shown.bs.tab', function () { generateList(); });
+    }
+
+    // --- NEW: TAB HELPDESK LISTENER ---
+    const helpdeskTabBtn = document.getElementById('helpdesk-tab');
+    if (helpdeskTabBtn) {
+        helpdeskTabBtn.addEventListener('shown.bs.tab', function () { loadTiketAdmin(); });
     }
     
     fetchDashboardData(); 
@@ -344,8 +353,6 @@ async function fetchDashboardData() {
         emailRawData = data; 
         renderFilters();
         runFilter();
-        
-        // Panggilan awal (backup)
         generateList(); 
 
         toggleLoading(false);
@@ -574,3 +581,186 @@ function renderQueue() {
 }
 function nextQueue() { qIndex++; renderQueue(); }
 function prevQueue() { if(qIndex > 0) qIndex--; renderQueue(); }
+
+// ==========================================
+// 7. MODUL HELPDESK & ADUAN (NEW)
+// ==========================================
+
+// A. USER: Hantar Tiket
+async function hantarTiket() {
+    const kod = sessionStorage.getItem('smpid_user_kod');
+    const peranan = document.getElementById('tiketPeranan').value;
+    const tajuk = document.getElementById('tiketTajuk').value;
+    const mesej = document.getElementById('tiketMesej').value;
+
+    if (!peranan) { Swal.fire('Pilih Jawatan', 'Sila nyatakan anda sebagai GPICT atau Admin.', 'warning'); return; }
+
+    toggleLoading(true);
+    try {
+        // 1. Simpan Database
+        const { error } = await supabaseClient
+            .from('smpid_aduan')
+            .insert([{ kod_sekolah: kod, peranan_pengirim: peranan, tajuk: tajuk, butiran_masalah: mesej }]);
+        
+        if (error) throw error;
+
+        // 2. Notify PPD (API Deno)
+        if (DENO_API_URL) {
+            fetch(`${DENO_API_URL}/notify-ticket`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kod: kod, peranan: peranan, tajuk: tajuk, mesej: mesej })
+            }).catch(e => console.warn("Bot offline?", e));
+        }
+
+        toggleLoading(false);
+        Swal.fire('Tiket Dihantar', 'Pihak PPD telah dimaklumkan.', 'success').then(() => {
+            document.getElementById('formTiket').reset();
+            loadTiketUser();
+        });
+
+    } catch (err) {
+        toggleLoading(false);
+        Swal.fire('Ralat', 'Gagal menghantar tiket.', 'error');
+    }
+}
+
+// B. USER: Load Tiket History
+async function loadTiketUser() {
+    const kod = sessionStorage.getItem('smpid_user_kod');
+    const tbody = document.getElementById('senaraiTiketUser');
+    if(!tbody) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('smpid_aduan')
+            .select('*')
+            .eq('kod_sekolah', kod)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        
+        tbody.innerHTML = "";
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Tiada rekod aduan.</td></tr>`;
+            return;
+        }
+
+        data.forEach(t => {
+            const date = new Date(t.created_at).toLocaleDateString('ms-MY');
+            const statusClass = t.status === 'SELESAI' ? 'text-success fw-bold' : 'text-warning fw-bold';
+            const balasan = t.balasan_admin ? `<div class="mt-1 small text-primary border-start border-2 ps-2 border-primary"><b>PPD:</b> ${t.balasan_admin}</div>` : `<span class="text-muted small">- Menunggu Respon -</span>`;
+
+            const row = `
+            <tr>
+                <td>${date}</td>
+                <td><span class="badge bg-secondary">${t.peranan_pengirim}</span></td>
+                <td>${t.tajuk}</td>
+                <td class="${statusClass}">${t.status}</td>
+                <td>${balasan}</td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    } catch (e) { console.error(e); }
+}
+
+// C. ADMIN: Load All Tickets
+async function loadTiketAdmin() {
+    const wrapper = document.getElementById('adminTiketWrapper');
+    const filter = document.getElementById('filterTiketAdmin')?.value || 'ALL';
+    if(!wrapper) return;
+
+    wrapper.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>`;
+
+    try {
+        let query = supabaseClient.from('smpid_aduan').select('*').order('created_at', { ascending: false });
+        if (filter !== 'ALL') query = query.eq('status', filter);
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        wrapper.innerHTML = "";
+        if (data.length === 0) {
+            wrapper.innerHTML = `<div class="alert alert-light text-center">Tiada tiket dalam kategori ini.</div>`;
+            return;
+        }
+
+        data.forEach(t => {
+            const date = new Date(t.created_at).toLocaleString('ms-MY');
+            const bgClass = t.status === 'SELESAI' ? 'bg-light opacity-75' : 'bg-white border-danger';
+            
+            // Borang Balasan (Hanya jika belum selesai)
+            let actionArea = "";
+            if (t.status !== 'SELESAI') {
+                actionArea = `
+                <div class="mt-3 border-top pt-3 bg-light p-3 rounded">
+                    <label class="small fw-bold mb-1">Balasan Admin PPD:</label>
+                    <textarea id="reply-${t.id}" class="form-control form-control-sm mb-2" rows="2" placeholder="Tulis penyelesaian..."></textarea>
+                    <button onclick="submitBalasanAdmin(${t.id}, '${t.kod_sekolah}', '${t.peranan_pengirim}', '${t.tajuk}')" class="btn btn-sm btn-primary">
+                        <i class="fas fa-reply me-1"></i> Hantar & Tutup Tiket
+                    </button>
+                </div>`;
+            } else {
+                actionArea = `<div class="mt-2 text-success small"><i class="fas fa-check-circle"></i> Diselesaikan pada: ${t.tarikh_balas ? new Date(t.tarikh_balas).toLocaleDateString() : '-'} <br> <b>Respon:</b> ${t.balasan_admin}</div>`;
+            }
+
+            const card = `
+            <div class="card mb-3 shadow-sm ${bgClass}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="badge bg-dark me-2">${t.kod_sekolah}</span>
+                            <span class="badge bg-secondary">${t.peranan_pengirim}</span>
+                            <h6 class="mt-2 fw-bold text-dark">${t.tajuk}</h6>
+                        </div>
+                        <small class="text-muted">${date}</small>
+                    </div>
+                    <p class="text-secondary small mb-1 bg-light p-2 rounded">${t.butiran_masalah}</p>
+                    ${actionArea}
+                </div>
+            </div>`;
+            wrapper.innerHTML += card;
+        });
+
+    } catch (e) { 
+        console.error(e);
+        wrapper.innerHTML = `<div class="text-danger text-center">Ralat memuatkan tiket.</div>`;
+    }
+}
+
+// D. ADMIN: Submit Reply
+async function submitBalasanAdmin(id, kod, peranan, tajuk) {
+    const replyText = document.getElementById(`reply-${id}`).value;
+    if(!replyText) return Swal.fire('Kosong', 'Sila tulis balasan.', 'warning');
+
+    toggleLoading(true);
+    try {
+        // 1. Update Database
+        const { error } = await supabaseClient
+            .from('smpid_aduan')
+            .update({ 
+                status: 'SELESAI', 
+                balasan_admin: replyText,
+                tarikh_balas: new Date().toISOString()
+            })
+            .eq('id', id);
+        
+        if (error) throw error;
+
+        // 2. Notify User (API Deno)
+        if (DENO_API_URL) {
+            fetch(`${DENO_API_URL}/reply-ticket`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kod: kod, peranan: peranan, tajuk: tajuk, balasan: replyText })
+            }).catch(e => console.warn("Bot offline?", e));
+        }
+
+        toggleLoading(false);
+        Swal.fire('Selesai', 'Tiket ditutup & notifikasi dihantar.', 'success').then(() => loadTiketAdmin());
+
+    } catch (e) {
+        toggleLoading(false);
+        Swal.fire('Ralat', 'Gagal menyimpan.', 'error');
+    }
+}
