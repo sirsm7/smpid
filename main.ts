@@ -1,6 +1,6 @@
 /**
  * SMPID Telegram Bot (Deno Deploy)
- * Versi 6.0: Full Smart UI for Schools & Super Admin (M030)
+ * Versi 7.0: Dual-Role Support for PPD Admin (M030)
  * Host: appppdag.cloud
  */
 
@@ -83,54 +83,62 @@ async function getSchoolUI(kodSekolah: string, telegramId: number) {
   return { text: msg, keyboard };
 }
 
-// B. UI SUPER ADMIN (Kod: M030)
+// B. UI SUPER ADMIN (Kod: M030) - DIKEMASKINI UTK 2 PEGAWAI
 async function getAdminUI(telegramId: number) {
-    // Cari semua admin
-    const { data: admins, error } = await supabase
+    // Ambil data dari table smpid_admin_users (structure baru: role, telegram_id)
+    const { data: roles, error } = await supabase
         .from("smpid_admin_users")
-        .select("telegram_id");
+        .select("role, telegram_id");
 
-    if (error) return null;
+    if (error || !roles) return null;
 
-    // Logik: Kita anggap "Admin PPD" sepatutnya eksklusif atau kita pantau siapa ada.
-    // Jika table kosong -> Available
-    // Jika user wujud -> "Anda"
-    // Jika user lain wujud -> "Orang Lain"
-    
-    const amIRegistered = admins.some(a => a.telegram_id === telegramId);
-    const totalAdmins = admins.length;
-    
-    let statusText = "";
-    let isAvailable = false;
+    // Cari pemilik setiap jawatan
+    const gpictRole = roles.find(r => r.role === 'ppd_gpict');
+    const delimaRole = roles.find(r => r.role === 'ppd_delima');
 
-    if (totalAdmins === 0) {
-        statusText = "⚪ Kosong (Boleh Daftar)";
-        isAvailable = true;
-    } else if (amIRegistered) {
-        statusText = "✅ Anda Sudah Berdaftar (Aktif)";
-        isAvailable = true; // Boleh update diri sendiri
-    } else {
-        statusText = `⛔ Sudah Diisi (${totalAdmins} pengguna lain)`;
-        isAvailable = false;
-    }
+    const gpictOwner = gpictRole?.telegram_id;
+    const delimaOwner = delimaRole?.telegram_id;
 
-    let msg = `🛡️ *PANEL SUPER ADMIN (PPD)*\n` +
+    // Logic Validasi (Sama macam sekolah)
+    const isGpictAvailable = !gpictOwner || gpictOwner === telegramId;
+    const isDelimaAvailable = !delimaOwner || delimaOwner === telegramId;
+
+    const statusGpict = !gpictOwner ? "⚪ Kosong" 
+                      : gpictOwner === telegramId ? "✅ Anda" 
+                      : "⛔ Pegawai Lain";
+
+    const statusDelima = !delimaOwner ? "⚪ Kosong" 
+                       : delimaOwner === telegramId ? "✅ Anda" 
+                       : "⛔ Pegawai Lain";
+
+    let msg = `🛡️ *PANEL PEGAWAI USTP (PPD)*\n` +
               `Kod Akses: \`M030\`\n\n` +
-              `📊 *Status Akses Semasa:*\n` +
-              `• Admin PPD: ${statusText}\n\n`;
+              `📊 *Status Pegawai Meja:*\n` +
+              `• PIC GPICT: ${statusGpict}\n` +
+              `• PIC DELIMa: ${statusDelima}\n\n`;
 
     const keyboard = new InlineKeyboard();
+    let hasSafeOptions = false;
 
-    if (isAvailable) {
-        if (totalAdmins === 0) msg += "👇 Sila tekan untuk aktifkan akses Admin.";
-        else msg += "👇 Anda boleh kemaskini akses anda.";
-        
-        keyboard.text("🛡️ Daftar / Kemaskini Admin", "admin_ppd:register").row();
+    // Butang Daftar Selamat
+    if (isGpictAvailable) {
+        keyboard.text("👨‍💻 Daftar PIC GPICT", "admin_act:register:ppd_gpict").row();
+        hasSafeOptions = true;
+    }
+    if (isDelimaAvailable) {
+        keyboard.text("📂 Daftar PIC DELIMa", "admin_act:register:ppd_delima").row();
+        hasSafeOptions = true;
+    }
+
+    if (hasSafeOptions) {
+        msg += "👇 Sila pilih portfolio anda:";
     } else {
-        msg += "⚠️ *Akses Terhad.* Admin lain telah mendaftar.\n" +
-               "Jika anda ingin mengambil alih akses (Reset Admin Lain), tekan butang di bawah.";
-        
-        keyboard.text("⚠️ Timpa Data (Overwrite)", "admin_ppd:overwrite_confirm").row();
+        msg += "⚠️ Semua slot pegawai telah diisi.";
+    }
+
+    // Butang Overwrite (Jika ada orang lain punya)
+    if ((!isGpictAvailable || !isDelimaAvailable)) {
+        keyboard.text("⚠️ Timpa Data (Overwrite)", "admin_act:overwrite_menu").row();
     }
 
     keyboard.text("❌ Tutup", "close");
@@ -156,10 +164,10 @@ bot.on("message:text", async (ctx) => {
   const inputKod = inputTeks.toUpperCase();
   const telegramId = ctx.from.id;
 
-  // --- 1. SUPER ADMIN CHECK (M030) - UPDATE V6 ---
+  // --- 1. SUPER ADMIN CHECK (M030) ---
   if (inputKod === "M030") {
     const ui = await getAdminUI(telegramId);
-    if (!ui) return ctx.reply("❌ Ralat sistem database admin.");
+    if (!ui) return ctx.reply("❌ Ralat sistem database admin. Sila pastikan SQL migration telah dijalankan.");
     
     return ctx.reply(ui.text, { reply_markup: ui.keyboard, parse_mode: "Markdown" });
   }
@@ -192,70 +200,61 @@ bot.on("callback_query:data", async (ctx) => {
     return ctx.deleteMessage();
   }
 
-  // --- 2. SUPER ADMIN ACTIONS (M030) ---
-  if (dataString.startsWith("admin_ppd:")) {
-      const action = dataString.split(":")[1];
+  // --- 2. ADMIN PPD ACTIONS (M030) ---
+  if (dataString.startsWith("admin_act:")) {
+      const parts = dataString.split(":");
+      const action = parts[1];
+      const role = parts[2]; // ppd_gpict atau ppd_delima
 
-      // A. REGISTER (Normal)
-      if (action === "register") {
-          const { error } = await supabase
-            .from("smpid_admin_users")
-            .upsert({ telegram_id: telegramId }, { onConflict: "telegram_id" });
-
-          if (error) return ctx.answerCallbackQuery({ text: "Gagal daftar.", show_alert: true });
-
-          await ctx.answerCallbackQuery({ text: "Akses Admin Disahkan!" });
-          await ctx.editMessageText(
-              "✅ **Akses Admin PPD Berjaya!**\n\n" +
-              "ID Telegram anda telah direkodkan sebagai Admin PPD yang sah.", 
-              { parse_mode: "Markdown" }
-          );
+      // BACK TO MENU
+      if (action === "back") {
+          const ui = await getAdminUI(telegramId);
+          if (ui) await ctx.editMessageText(ui.text, { reply_markup: ui.keyboard, parse_mode: "Markdown" });
+          return ctx.answerCallbackQuery();
       }
-      
-      // B. OVERWRITE MENU (Warning)
-      else if (action === "overwrite_confirm") {
-          const keyboard = new InlineKeyboard()
-              .text("🔥 YA, Reset & Ambil Alih", "admin_ppd:overwrite_execute").row()
-              .text("❌ Batal", "close");
 
+      // REGISTER (SAFE)
+      if (action === "register") {
+          // Double check availability
+          const { data: currentRole } = await supabase.from("smpid_admin_users").select("telegram_id").eq("role", role).single();
+          if (currentRole?.telegram_id && currentRole.telegram_id !== telegramId) {
+             return alertTaken(ctx);
+          }
+
+          const { error } = await supabase.from("smpid_admin_users").update({ telegram_id: telegramId }).eq("role", role);
+          if (error) return ctx.answerCallbackQuery({ text: "Gagal simpan.", show_alert: true });
+
+          const roleName = role === 'ppd_gpict' ? "PIC GPICT" : "PIC Admin DELIMa";
+          await ctx.answerCallbackQuery({ text: "Berjaya!" });
+          await ctx.editMessageText(`✅ **Pendaftaran Pegawai Berjaya!**\n\nAnda kini berdaftar sebagai: *${roleName}*`, { parse_mode: "Markdown" });
+      }
+
+      // OVERWRITE MENU
+      else if (action === "overwrite_menu") {
+          const keyboard = new InlineKeyboard()
+             .text("⚠️ Timpa PIC GPICT", "admin_act:force:ppd_gpict").row()
+             .text("⚠️ Timpa PIC DELIMa", "admin_act:force:ppd_delima").row()
+             .text("« Kembali", "admin_act:back");
+          
           await ctx.editMessageText(
-              "⚠️ **AMARAN: MOD OVERWRITE ADMIN** ⚠️\n\n" +
-              "Adakah anda pasti? Tindakan ini akan:\n" +
-              "1. **MEMADAM** semua Admin PPD lain yang sedia ada.\n" +
-              "2. Menetapkan **ANDA** sebagai satu-satunya Admin PPD.\n\n" +
-              "Teruskan hanya jika anda berhak.",
+              "⚠️ **MOD TIMPA DATA (OVERWRITE)** ⚠️\n\nSila pilih jawatan pegawai yang ingin diambil alih:",
               { reply_markup: keyboard, parse_mode: "Markdown" }
           );
       }
 
-      // C. OVERWRITE EXECUTE (Nuclear Option)
-      else if (action === "overwrite_execute") {
-          // Langkah 1: Delete semua row dalam admin_users (Reset)
-          const { error: delError } = await supabase
-            .from("smpid_admin_users")
-            .delete()
-            .neq("id", 0); // Delete all rows
+      // OVERWRITE FORCE
+      else if (action === "force") {
+          const { error } = await supabase.from("smpid_admin_users").update({ telegram_id: telegramId }).eq("role", role);
+          if (error) return ctx.answerCallbackQuery({ text: "Gagal overwrite.", show_alert: true });
 
-          if (delError) return ctx.answerCallbackQuery({ text: "Gagal reset database.", show_alert: true });
-
-          // Langkah 2: Insert diri sendiri
-          const { error: insError } = await supabase
-            .from("smpid_admin_users")
-            .insert({ telegram_id: telegramId });
-
-          if (insError) return ctx.answerCallbackQuery({ text: "Gagal simpan data baru.", show_alert: true });
-
-          await ctx.answerCallbackQuery({ text: "Admin Reset Berjaya!" });
-          await ctx.editMessageText(
-              "✅ **Akses Admin PPD Diambil Alih!**\n\n" +
-              "Semua admin lama telah dipadam. Anda kini adalah satu-satunya Admin PPD dalam sistem.", 
-              { parse_mode: "Markdown" }
-          );
+          const roleName = role === 'ppd_gpict' ? "PIC GPICT" : "PIC Admin DELIMa";
+          await ctx.answerCallbackQuery({ text: "Berjaya Timpa Data!" });
+          await ctx.editMessageText(`✅ **Akses Diambil Alih!**\n\nAnda kini berdaftar sebagai: *${roleName}*`, { parse_mode: "Markdown" });
       }
       return;
   }
 
-  // --- 3. SCHOOL ACTIONS ---
+  // --- 3. SCHOOL ACTIONS (MBAxxxx) ---
   const parts = dataString.split(":");
   const prefix = parts[0];
 
@@ -275,7 +274,7 @@ bot.on("callback_query:data", async (ctx) => {
          .text("« Kembali", `back:${kod}`);
       
       await ctx.editMessageText(
-          `⚠️ **MOD OVERWRITE (TIMPA DATA)** ⚠️\n\n` +
+          `⚠️ **MOD OVERWRITE (SEKOLAH)** ⚠️\n\n` +
           `Sila pilih jawatan untuk diambil alih secara paksa:`,
           { reply_markup: keyboard, parse_mode: "Markdown" }
       );
@@ -299,9 +298,7 @@ bot.on("callback_query:data", async (ctx) => {
           const gpictSafe = !sekolah.telegram_id_gpict || sekolah.telegram_id_gpict === telegramId;
           const adminSafe = !sekolah.telegram_id_admin || sekolah.telegram_id_admin === telegramId;
 
-          if ((role === "gpict" && !gpictSafe) || 
-              (role === "admin" && !adminSafe) || 
-              (role === "both" && (!gpictSafe || !adminSafe))) {
+          if ((role === "gpict" && !gpictSafe) || (role === "admin" && !adminSafe) || (role === "both" && (!gpictSafe || !adminSafe))) {
              return alertTaken(ctx);
           }
       }
@@ -320,10 +317,7 @@ bot.on("callback_query:data", async (ctx) => {
         roleText = "Guru ICT & Admin DELIMa";
       }
 
-      const { error: errUpdate } = await supabase
-        .from("smpid_sekolah_data")
-        .update(updateData)
-        .eq("kod_sekolah", kodSekolah);
+      const { error: errUpdate } = await supabase.from("smpid_sekolah_data").update(updateData).eq("kod_sekolah", kodSekolah);
 
       if (errUpdate) return ctx.answerCallbackQuery({ text: "Gagal menyimpan.", show_alert: true });
 
