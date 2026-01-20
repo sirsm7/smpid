@@ -1,6 +1,6 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi Akhir: Helpdesk Module + Delete Function + Smart Sentence Case
+ * Versi Akhir: Helpdesk Module + Smart Sentence Case (Email Safe)
  * Host Database: appppdag.cloud
  * Host Bot API: smpid-40.ppdag.deno.net
  */
@@ -54,13 +54,15 @@ function checkEmailDomain(email) {
     return email.includes("@moe-dl.edu.my");
 }
 
-// --- NEW FUNCTION: Smart Sentence Case ---
+// --- FUNGSI SMART SENTENCE CASE (DIPERBAIKI) ---
 function formatSentenceCase(str) {
     if (!str) return "";
-    // Regex Logic: Cari permulaan string (^) ATAU tanda baca (. ! ?) diikuti whitespace
-    // Kemudian tukar huruf pertama selepas itu kepada Uppercase
-    return str.replace(/(^\s*\w|[\.\!\?]\s*\w)/g, function(c) {
-        return c.toUpperCase();
+    
+    // Logik Baru:
+    // (?:^|[\.\!\?]\s+) -> Cari (Permulaan Ayat) ATAU (Tanda Baca + WAJIB ADA SPACE)
+    // Ini mengelakkan .edu.my dikesan sebagai ayat baru kerana tiada space selepas titik.
+    return str.replace(/(?:^|[\.\!\?]\s+)([a-z])/g, function(match) {
+        return match.toUpperCase();
     });
 }
 
