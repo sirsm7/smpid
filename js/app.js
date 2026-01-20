@@ -799,7 +799,7 @@ async function padamTiket(id) {
                 if (error) throw error;
 
                 toggleLoading(false);
-                Swal.fire('Dipadwham', 'Tiket telah dihapuskan.', 'success').then(() => loadTiketAdmin());
+                Swal.fire('Dipadam', 'Tiket telah dihapuskan.', 'success').then(() => loadTiketAdmin());
             } catch (err) {
                 toggleLoading(false);
                 Swal.fire('Ralat', 'Gagal memadam tiket.', 'error');
