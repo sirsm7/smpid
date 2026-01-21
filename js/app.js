@@ -1,6 +1,6 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi Akhir: Helpdesk Module + Session Security (Anti-Back Button) + Anti-Double Send
+ * Versi Akhir: Helpdesk Module + Session Security + PWA Support
  * Host Database: appppdag.cloud
  * Host Bot API: smpid-40.ppdag.deno.net
  */
@@ -872,5 +872,16 @@ async function padamTiket(id) {
                 console.error(err);
             }
         }
+    });
+}
+
+// ==========================================
+// 8. PWA SERVICE WORKER REGISTRATION (BARU)
+// ==========================================
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('[PWA] Service Worker Registered!', reg))
+            .catch(err => console.error('[PWA] Service Worker Registration Failed:', err));
     });
 }

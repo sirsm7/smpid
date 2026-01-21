@@ -1,0 +1,21 @@
+{
+  "name": "SMPID - Portal Sekolah",
+  "short_name": "SMPID",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f0f2f5",
+  "theme_color": "#198754",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icoppdag.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icoppdag.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
