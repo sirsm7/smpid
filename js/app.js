@@ -1,6 +1,6 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi Akhir: Helpdesk Module + Smart Sentence Case (User & Admin)
+ * Versi Akhir: Helpdesk Module + Session Security (Anti-Back Button) + Anti-Double Send
  * Host Database: appppdag.cloud
  * Host Bot API: smpid-40.ppdag.deno.net
  */
@@ -55,12 +55,8 @@ function checkEmailDomain(email) {
 }
 
 // --- FUNGSI SMART SENTENCE CASE (GLOBAL) ---
-// Digunakan oleh User (Butiran Masalah) & Admin (Balasan)
 function formatSentenceCase(str) {
     if (!str) return "";
-    
-    // Logik: Huruf besar HANYA jika permulaan ayat ATAU tanda baca diikuti SPACE/NEWLINE
-    // Ini mengelakkan emel (ali@moe.gov.my) menjadi Ali@moe.Gov.My
     return str.replace(/(?:^|[\.\!\?]\s+)([a-z])/g, function(match) {
         return match.toUpperCase();
     });
@@ -76,13 +72,16 @@ function generateWhatsAppLink(nama, noTel, isRaw = false) {
 }
 
 // ==========================================
-// 4. ROUTER & AUTHENTICATION
+// 4. ROUTER, AUTHENTICATION & SECURITY
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
+    runSecurityCheck(); // Semak sesi sebaik sahaja load
+    
     const bodyId = document.body.id;
-
     if (bodyId === 'page-login') {
-        sessionStorage.clear();
+        sessionStorage.clear(); // Pastikan bersih di login page
+        // Hapus history supaya tak boleh 'Forward' balik
+        window.history.replaceState(null, null, window.location.href);
     } 
     else if (bodyId === 'page-admin') {
         initAdminPanel();
@@ -92,12 +91,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// --- SECURITY: HALANG BACK BUTTON (BF CACHE) ---
+window.addEventListener('pageshow', function(event) {
+    // Jika page dimuatkan dari cache memori (butang Back)
+    if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+        runSecurityCheck();
+    }
+});
+
+function runSecurityCheck() {
+    const bodyId = document.body.id;
+    const isAuth = sessionStorage.getItem('smpid_auth') === 'true';
+    const userKod = sessionStorage.getItem('smpid_user_kod');
+
+    // Jika di page User/Admin tapi tiada sesi -> Tendang keluar
+    if ((bodyId === 'page-user' || bodyId === 'page-admin') && !isAuth && !userKod) {
+        window.location.replace('index.html'); // Replace = Tak boleh back
+    }
+}
+
 async function prosesLogin() {
     const input = document.getElementById('inputKodSekolah');
+    const btnLogin = document.querySelector('button[onclick="prosesLogin()"]');
     if (!input) return;
 
     const kod = input.value.trim().toUpperCase();
     if (!kod) { Swal.fire('Ralat', 'Sila masukkan kod.', 'warning'); return; }
+
+    // Disable button untuk elak double click
+    if (btnLogin) btnLogin.disabled = true;
+    toggleLoading(true);
 
     // --- LALUAN 1: ADMIN PPD (M030) ---
     if (kod === "M030") {
@@ -105,13 +128,12 @@ async function prosesLogin() {
         Swal.fire({
             icon: 'success', title: 'Admin Disahkan', timer: 800, showConfirmButton: false
         }).then(() => {
-            window.location.href = 'admin.html';
+            window.location.replace('admin.html'); // Guna replace
         });
         return;
     }
 
     // --- LALUAN 2: USER SEKOLAH ---
-    toggleLoading(true);
     try {
         const { data, error } = await supabaseClient
             .from('smpid_sekolah_data')
@@ -120,12 +142,16 @@ async function prosesLogin() {
             .single();
             
         toggleLoading(false);
+        if (btnLogin) btnLogin.disabled = false;
+
         if (error || !data) { Swal.fire('Maaf', 'Kod sekolah tidak dijumpai.', 'error'); return; }
         
         sessionStorage.setItem('smpid_user_kod', data.kod_sekolah);
-        window.location.href = 'user.html';
+        window.location.replace('user.html'); // Guna replace
     } catch (err) {
-        toggleLoading(false); Swal.fire('Ralat', 'Gagal sambungan server.', 'error');
+        toggleLoading(false); 
+        if (btnLogin) btnLogin.disabled = false;
+        Swal.fire('Ralat', 'Gagal sambungan server.', 'error');
         console.error(err);
     }
 }
@@ -136,7 +162,10 @@ function keluarSistem() {
     }).then((result) => {
         if (result.isConfirmed) {
             sessionStorage.clear();
-            window.location.href = 'index.html';
+            sessionStorage.removeItem('smpid_user_kod');
+            sessionStorage.removeItem('smpid_auth');
+            // Hard redirect supaya history hilang
+            window.location.replace('index.html');
         }
     });
 }
@@ -148,10 +177,13 @@ function initUserPortal() {
     const kod = sessionStorage.getItem('smpid_user_kod');
     const isAdmin = sessionStorage.getItem('smpid_auth') === 'true';
 
-    if (!kod) { window.location.href = 'index.html'; return; }
+    // Double check (Fail-safe)
+    if (!kod && !isAdmin) { window.location.replace('index.html'); return; }
     
     // Paparan Header Khas jika Admin yang masuk view sekolah
     if (isAdmin) {
+        // Jika admin view user, kita set kod sementara dari apa yang dia pilih sebelum ini
+        // atau jika direct access, fallback ke kod.
         document.getElementById('displayKodSekolah').innerHTML = `<i class="fas fa-user-shield me-2"></i>ADMIN VIEW: ${kod}`;
         document.getElementById('displayKodSekolah').classList.replace('text-dark', 'text-primary');
         document.getElementById('displayKodSekolah').classList.add('border', 'border-primary');
@@ -162,7 +194,6 @@ function initUserPortal() {
             btnLogout.setAttribute('onclick', "window.location.href='admin.html'");
             btnLogout.classList.replace('text-danger', 'text-primary');
         }
-        // Tunjuk butang reset hanya untuk admin
         const btnReset = document.getElementById('btnResetData');
         if (btnReset) btnReset.classList.remove('hidden');
     } else {
@@ -176,19 +207,19 @@ function showSection(section) {
     if (section === 'menu') {
         document.getElementById('section-menu').classList.remove('hidden');
         document.getElementById('section-profil').classList.add('hidden');
-        document.getElementById('section-aduan').classList.add('hidden'); // NEW
+        document.getElementById('section-aduan').classList.add('hidden');
         document.getElementById('welcomeText').innerText = "Sila pilih tindakan yang ingin dilakukan";
     } else if (section === 'profil') {
         document.getElementById('section-menu').classList.add('hidden');
         document.getElementById('section-profil').classList.remove('hidden');
-        document.getElementById('section-aduan').classList.add('hidden'); // NEW
+        document.getElementById('section-aduan').classList.add('hidden');
         document.getElementById('welcomeText').innerText = "Kemaskini Maklumat";
-    } else if (section === 'aduan') { // NEW
+    } else if (section === 'aduan') {
         document.getElementById('section-menu').classList.add('hidden');
         document.getElementById('section-profil').classList.add('hidden');
         document.getElementById('section-aduan').classList.remove('hidden');
         document.getElementById('welcomeText').innerText = "Helpdesk & Aduan";
-        loadTiketUser(); // Load history bila buka
+        loadTiketUser();
     }
 }
 
@@ -221,14 +252,16 @@ async function simpanProfil() {
     const kod = document.getElementById('hiddenKodSekolah').value;
     const namaSekolah = document.getElementById('dispNamaSekolah').innerText;
     const emelG = document.getElementById('gpictEmel').value;
+    const btnSubmit = document.querySelector('#dataForm button[type="submit"]');
     
-    // Check jika yang sedang edit ini adalah ADMIN atau USER
     const isAdmin = sessionStorage.getItem('smpid_auth') === 'true';
 
-    // Validasi
     if (!checkEmailDomain(emelG)) { Swal.fire('Format Salah', 'Gunakan emel moe-dl.edu.my', 'warning'); return; }
 
+    // ANTI-DOUBLE SUBMIT
+    if(btnSubmit) btnSubmit.disabled = true;
     toggleLoading(true);
+
     const payload = {
         nama_gpict: document.getElementById('gpictNama').value.toUpperCase(),
         no_telefon_gpict: document.getElementById('gpictTel').value,
@@ -239,11 +272,9 @@ async function simpanProfil() {
     };
 
     try {
-        // 1. SIMPAN DATA KE SUPABASE
         const { error } = await supabaseClient.from('smpid_sekolah_data').update(payload).eq('kod_sekolah', kod);
         if (error) throw error;
 
-        // 2. HANTAR NOTIFIKASI KE BOT (DENO API)
         if (DENO_API_URL) {
             console.log("Menghantar notifikasi ke PPD...");
             fetch(`${DENO_API_URL}/notify`, {
@@ -252,7 +283,6 @@ async function simpanProfil() {
                 body: JSON.stringify({ 
                     kod: kod, 
                     nama: namaSekolah,
-                    // Tambahan: Hantar info siapa yang update
                     updated_by: isAdmin ? 'PENTADBIR PPD' : 'PIHAK SEKOLAH' 
                 })
             })
@@ -261,9 +291,12 @@ async function simpanProfil() {
         }
 
         toggleLoading(false);
+        if(btnSubmit) btnSubmit.disabled = false;
         Swal.fire('Berjaya', 'Data dikemaskini.', 'success').then(() => showSection('menu'));
     } catch (err) {
-        toggleLoading(false); Swal.fire('Ralat', 'Gagal simpan data.', 'error');
+        toggleLoading(false); 
+        if(btnSubmit) btnSubmit.disabled = false;
+        Swal.fire('Ralat', 'Gagal simpan data.', 'error');
         console.error(err);
     }
 }
@@ -321,17 +354,15 @@ let currentFilteredList = [];
 
 function initAdminPanel() {
     if (sessionStorage.getItem('smpid_auth') !== 'true') {
-        window.location.href = 'index.html';
+        window.location.replace('index.html');
         return;
     }
     
-    // --- FIX UTAMA: PENCETUS TAB LISTENER ---
     const emailTabBtn = document.getElementById('email-tab');
     if (emailTabBtn) {
         emailTabBtn.addEventListener('shown.bs.tab', function () { generateList(); });
     }
 
-    // --- NEW: TAB HELPDESK LISTENER ---
     const helpdeskTabBtn = document.getElementById('helpdesk-tab');
     if (helpdeskTabBtn) {
         helpdeskTabBtn.addEventListener('shown.bs.tab', function () { loadTiketAdmin(); });
@@ -606,14 +637,18 @@ async function hantarTiket() {
     // FORCE UPPERCASE untuk TAJUK sahaja
     const tajuk = document.getElementById('tiketTajuk').value.toUpperCase();
     
-    // FIX: Gunakan Smart Sentence Case untuk MESEJ (Tidak paksa semua huruf besar)
-    // Supaya emel kekal cantik, tapi ayat nampak kemas.
+    // SMART SENTENCE CASE untuk MESEJ
     const mesejRaw = document.getElementById('tiketMesej').value;
     const mesej = formatSentenceCase(mesejRaw);
 
+    const btnSubmit = document.querySelector('#formTiket button[type="submit"]');
+
     if (!peranan) { Swal.fire('Pilih Jawatan', 'Sila nyatakan anda sebagai GPICT atau Admin.', 'warning'); return; }
 
+    // ANTI-DOUBLE SUBMIT
+    if(btnSubmit) btnSubmit.disabled = true;
     toggleLoading(true);
+
     try {
         // 1. Simpan Database
         const { error } = await supabaseClient
@@ -632,6 +667,7 @@ async function hantarTiket() {
         }
 
         toggleLoading(false);
+        if(btnSubmit) btnSubmit.disabled = false;
         Swal.fire('Tiket Dihantar', 'Pihak PPD telah dimaklumkan.', 'success').then(() => {
             document.getElementById('formTiket').reset();
             loadTiketUser();
@@ -639,6 +675,7 @@ async function hantarTiket() {
 
     } catch (err) {
         toggleLoading(false);
+        if(btnSubmit) btnSubmit.disabled = false;
         Swal.fire('Ralat', 'Gagal menghantar tiket.', 'error');
     }
 }
@@ -714,7 +751,6 @@ async function loadTiketAdmin() {
                 <div class="mt-3 border-top pt-3 bg-light p-3 rounded">
                     <label class="small fw-bold mb-1">Balasan Admin PPD:</label>
                     
-                    <!-- FIX: Tambah Smart Sentence Case untuk Admin Reply -->
                     <textarea id="reply-${t.id}" class="form-control form-control-sm mb-2" rows="2" 
                               placeholder="Tulis penyelesaian..." 
                               onblur="this.value = formatSentenceCase(this.value)"></textarea>
@@ -766,6 +802,11 @@ async function loadTiketAdmin() {
 async function submitBalasanAdmin(id, kod, peranan, tajuk) {
     const replyText = document.getElementById(`reply-${id}`).value;
     if(!replyText) return Swal.fire('Kosong', 'Sila tulis balasan.', 'warning');
+    
+    // ANTI-DOUBLE SUBMIT
+    // Kita cari button yang sedang ditekan
+    const btn = event.currentTarget; 
+    if(btn) btn.disabled = true;
 
     toggleLoading(true);
     try {
@@ -791,10 +832,12 @@ async function submitBalasanAdmin(id, kod, peranan, tajuk) {
         }
 
         toggleLoading(false);
+        if(btn) btn.disabled = false;
         Swal.fire('Selesai', 'Tiket ditutup & notifikasi dihantar.', 'success').then(() => loadTiketAdmin());
 
     } catch (e) {
         toggleLoading(false);
+        if(btn) btn.disabled = false;
         Swal.fire('Ralat', 'Gagal menyimpan.', 'error');
     }
 }
