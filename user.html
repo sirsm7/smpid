@@ -25,7 +25,7 @@
   <div id="loadingOverlay" class="hidden">
     <div class="text-center">
       <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
-      <p class="mt-2 fw-bold text-dark">Memuatkan Data...</p>
+      <p class="mt-2 fw-bold text-dark">Memuatkan...</p>
     </div>
   </div>
 
@@ -36,7 +36,7 @@
     <p class="opacity-75 mb-0" id="welcomeText">Selamat Datang</p>
     <div class="mt-3">
         <span class="badge bg-white text-dark shadow-sm px-3 py-2 rounded-pill" id="displayKodSekolah">
-            <i class="fas fa-school me-2"></i>...
+            <i class="fas fa-school me-2"></i>Loading...
         </span>
     </div>
   </div>
@@ -49,9 +49,7 @@
         <div id="section-menu">
             <div class="row g-4 justify-content-center">
                 
-                <!-- NOTE: Kad "Pengurusan Akses" akan disuntik di sini oleh app.js jika login sebagai SEKOLAH -->
-
-                <!-- KAD 1: PROFIL SEKOLAH -->
+                <!-- KAD 1: PROFIL SEKOLAH (col-md-6) -->
                 <div class="col-md-6 fade-up" style="animation-delay: 0.1s;">
                     <div class="card menu-card p-4 text-center">
                         <div class="card-body d-flex flex-column">
@@ -69,7 +67,7 @@
                     </div>
                 </div>
 
-                <!-- KAD 2: LAPORAN PPPDM -->
+                <!-- KAD 2: LAPORAN PPPDM (col-md-6) -->
                 <div class="col-md-6 fade-up" style="animation-delay: 0.2s;">
                     <div class="card menu-card p-4 text-center border-info">
                         <div class="card-body d-flex flex-column">
@@ -87,7 +85,7 @@
                     </div>
                 </div>
 
-                <!-- KAD 3: APLIKASI AI -->
+                <!-- KAD 3: APLIKASI AI (col-md-6) -->
                 <div class="col-md-6 fade-up" style="animation-delay: 0.3s;">
                     <div class="card menu-card p-4 text-center">
                         <div class="card-body d-flex flex-column">
@@ -105,7 +103,7 @@
                     </div>
                 </div>
 
-                <!-- KAD 4: BANK SOALAN GEMINI -->
+                <!-- KAD 4: BANK SOALAN GEMINI (col-md-6) -->
                 <div class="col-md-6 fade-up" style="animation-delay: 0.4s;">
                     <div class="card menu-card p-4 text-center">
                         <div class="card-body d-flex flex-column">
@@ -123,7 +121,7 @@
                     </div>
                 </div>
 
-                <!-- KAD 5: E-ADUAN / TIKET -->
+                <!-- KAD 5: E-ADUAN / TIKET (NEW) -->
                 <div class="col-md-12 fade-up" style="animation-delay: 0.5s;">
                     <div class="card menu-card p-4 text-center border-danger">
                         <div class="card-body d-flex flex-column">
@@ -209,6 +207,11 @@
                     <button type="submit" class="btn btn-success btn-lg fw-bold shadow">
                       <i class="fas fa-save me-2"></i>KEMASKINI DATA
                     </button>
+                    
+                    <button type="button" id="btnResetData" onclick="resetDataSekolah()" class="btn btn-danger hidden">
+                        <i class="fas fa-trash-restore me-2"></i>RESET DATA SEKOLAH (ADMIN)
+                    </button>
+
                     <button type="button" onclick="showSection('menu')" class="btn btn-light text-muted">
                         Batal
                     </button>
@@ -217,7 +220,7 @@
               </div>
         </div>
 
-        <!-- SEKSYEN 3: ADUAN / TIKET FORM (HIDDEN) -->
+        <!-- SEKSYEN 3: ADUAN / TIKET FORM (NEW - HIDDEN) -->
         <div id="section-aduan" class="hidden fade-up">
             <div class="card p-4 mx-auto shadow-sm" style="max-width: 800px;">
                 <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
@@ -242,8 +245,6 @@
                                         <option value="" selected disabled>-- Sila Pilih Jawatan Anda --</option>
                                         <option value="GPICT">Guru Penyelaras ICT (GPICT)</option>
                                         <option value="ADMIN">Admin DELIMa</option>
-                                        <!-- Opsyen tambahan untuk akaun sekolah rasmi -->
-                                        <option value="SEKOLAH">Pentadbir Sekolah</option>
                                     </select>
                                 </div>
                                 <div class="mb-3">
@@ -252,10 +253,12 @@
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label small fw-bold text-muted">BUTIRAN MESEJ</label>
+                                    <!-- FIX: Buang uppercase-input dan oninput, tambah onblur untuk smart format -->
                                     <textarea class="form-control" id="tiketMesej" rows="4" 
                                       placeholder="Jelaskan masalah dengan ringkas. Sertakan emel jika perlu..." 
                                       required 
                                       onblur="this.value = formatSentenceCase(this.value)"></textarea>
+                                    <div class="form-text small text-end fst-italic">Format ayat akan dikemaskan secara automatik.</div>
                                 </div>
                                 <button type="submit" class="btn btn-danger w-100 fw-bold">
                                     <i class="fas fa-paper-plane me-2"></i>Hantar Tiket

@@ -34,8 +34,8 @@
   <!-- HEADER -->
   <div class="header-bg text-center">
     <img src="icoppdag.png" alt="Logo PPD" class="mb-4" style="width: 200px; height: auto;">
-    <h2 class="fw-bold px-3"><i class="fas fa-school me-2"></i>Sistem Maklumat Penyelaras ICT</h2>
-    <p class="opacity-75">Unit Sumber Teknologi Pendidikan, PPD Alor Gajah</p>
+    <h2 class="fw-bold px-3"><i class="fas fa-school me-2"></i>Sistem Maklumat Penyelaras ICT & Admin DELIMa</h2>
+    <p class="opacity-75">Unit Sumber Teknologi Pendidikan, Pejabat Pendidikan Daerah Alor Gajah</p>
   </div>
 
   <div class="container main-container pb-5">
@@ -43,49 +43,42 @@
       <div class="col-md-12">
 
         <!-- LOGIN CARD -->
-        <div id="loginCard" class="card p-4 mx-auto shadow-sm" style="max-width: 450px;">
+        <div id="loginCard" class="card p-4 mx-auto shadow-sm" style="max-width: 500px;">
           <div class="card-body">
-            <h5 class="card-title text-center mb-4 fw-bold text-primary">LOG MASUK PENGGUNA</h5>
+            <h5 class="card-title text-center mb-4 fw-bold">AKSES SISTEM</h5>
             
-            <form onsubmit="event.preventDefault(); prosesLogin();">
-                <!-- INPUT EMEL -->
-                <div class="mb-3">
-                  <label class="form-label small fw-bold text-muted">ALAMAT EMEL</label>
-                  <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-envelope text-muted"></i></span>
-                    <input type="email" id="inputEmail" class="form-control form-control-lg border-start-0" 
-                           placeholder="nama@moe-dl.edu.my" required>
-                  </div>
-                  <div class="form-text small fst-italic mt-1">
-                    <i class="fas fa-info-circle me-1"></i> Sekolah: <b>KOD@moe.gov.my</b> | Guru: <b>@moe-dl.edu.my</b>
-                  </div>
-                </div>
-
-                <!-- INPUT PASSWORD -->
-                <div class="mb-4">
-                  <label class="form-label small fw-bold text-muted">KATA LALUAN</label>
-                  <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-lock text-muted"></i></span>
-                    <input type="password" id="inputPassword" class="form-control form-control-lg border-start-0 border-end-0" 
-                           placeholder="••••••••" required>
-                    <button class="btn btn-light border border-start-0" type="button" onclick="togglePassword()">
-                        <i class="fas fa-eye text-muted" id="iconEye"></i>
-                    </button>
-                  </div>
-                </div>
-
-                <button type="submit" class="btn btn-primary w-100 btn-lg fw-bold shadow-sm">
-                  <i class="fas fa-sign-in-alt me-2"></i>LOG MASUK
-                </button>
-            </form>
-
-            <div class="text-center mt-4 pt-3 border-top">
-                <p class="small text-muted mb-1">Terlupa Kata Laluan?</p>
-                <small class="fst-italic text-secondary">Sila hubungi <b>Admin Sekolah</b> (Untuk Guru) atau <b>PPD</b> (Untuk Sekolah) bagi tetapan semula.</small>
+            <!-- Input Emel -->
+            <div class="mb-3">
+              <label class="form-label text-muted" style="font-weight: 600; font-size: 0.9rem;">EMEL PENGGUNA</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="fas fa-envelope text-muted"></i></span>
+                <input type="email" id="inputEmail" class="form-control form-control-lg border-start-0" 
+                       placeholder="nama@moe.gov.my">
+              </div>
             </div>
 
+            <!-- Input Password -->
+            <div class="mb-4">
+              <label class="form-label text-muted" style="font-weight: 600; font-size: 0.9rem;">KATA LALUAN</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="fas fa-lock text-muted"></i></span>
+                <input type="password" id="inputPassword" class="form-control form-control-lg border-start-0" 
+                       placeholder="••••••••">
+                <button class="btn btn-outline-secondary border-start-0 bg-white" type="button" onclick="togglePass()">
+                    <i class="fas fa-eye text-muted" id="iconEye"></i>
+                </button>
+              </div>
+              <div class="text-end mt-1">
+                  <small class="text-muted" style="font-size: 0.75rem;">Default: ppdag@12345</small>
+              </div>
+            </div>
+
+            <button onclick="prosesLogin()" class="btn btn-primary w-100 btn-lg fw-bold shadow-sm">
+              <i class="fas fa-sign-in-alt me-2"></i>LOG MASUK
+            </button>
+            
             <div class="text-center mt-3">
-                <small class="text-muted fw-bold" style="font-size: 0.7rem;">HAKCIPTA TERPELIHARA USTP PPD AG 2026</small>
+                <small class="text-muted fst-italic">HAKCIPTA TERPELIHARA USTP PPD AG 2026</small>
             </div>
           </div>
         </div>
@@ -94,20 +87,7 @@
     </div>
   </div>
 
-  <!-- SCRIPT KHAS UNTUK HALAMAN LOGIN -->
-  <script>
-      function togglePassword() {
-          const input = document.getElementById('inputPassword');
-          const icon = document.getElementById('iconEye');
-          if (input.type === "password") {
-              input.type = "text";
-              icon.classList.replace('fa-eye', 'fa-eye-slash');
-          } else {
-              input.type = "password";
-              icon.classList.replace('fa-eye-slash', 'fa-eye');
-          }
-      }
-  </script>
+  <!-- Pautan JS Tunggal -->
   <script src="js/app.js"></script>
 </body>
 </html>
