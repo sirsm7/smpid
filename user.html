@@ -63,7 +63,7 @@
                     <!-- GRID MENU UTAMA -->
                     <div class="row g-3">
                         
-                        <!-- 1. KEMASKINI PROFIL (INTERNAL) -->
+                        <!-- 1. KEMASKINI PROFIL -->
                         <div class="col-6 col-md-4">
                             <div onclick="showSection('profil')" class="card btn-menu h-100 text-center p-3 border-0 bg-primary bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -73,7 +73,7 @@
                             </div>
                         </div>
 
-                        <!-- 2. HELPDESK & ADUAN (INTERNAL) -->
+                        <!-- 2. HELPDESK & ADUAN -->
                         <div class="col-6 col-md-4">
                             <div onclick="showSection('aduan')" class="card btn-menu h-100 text-center p-3 border-0 bg-danger bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -83,7 +83,7 @@
                             </div>
                         </div>
 
-                        <!-- 3. LAPORAN PPPDM (EXTERNAL) -->
+                        <!-- 3. LAPORAN PPPDM -->
                         <div class="col-6 col-md-4">
                             <div onclick="window.open('https://ppdm.tech4ag.my/', '_blank')" class="card btn-menu h-100 text-center p-3 border-0 bg-success bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -93,7 +93,7 @@
                             </div>
                         </div>
 
-                        <!-- 4. BELAJAR AI (EXTERNAL) -->
+                        <!-- 4. BELAJAR AI -->
                         <div class="col-6 col-md-4">
                             <div onclick="window.open('https://spka.tech4ag.my/', '_blank')" class="card btn-menu h-100 text-center p-3 border-0 bg-info bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -103,7 +103,7 @@
                             </div>
                         </div>
 
-                        <!-- 5. PORTAL DELIMa (EXTERNAL) -->
+                        <!-- 5. PORTAL DELIMa -->
                         <div class="col-6 col-md-4">
                             <div onclick="window.open('https://d2.delima.edu.my/login', '_blank')" class="card btn-menu h-100 text-center p-3 border-0 bg-warning bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -113,7 +113,7 @@
                             </div>
                         </div>
 
-                         <!-- 6. PENSIJILAN GOOGLE (EXTERNAL) -->
+                         <!-- 6. PENSIJILAN GOOGLE -->
                          <div class="col-6 col-md-4">
                             <div onclick="window.open('https://gemini.tech4ag.my/', '_blank')" class="card btn-menu h-100 text-center p-3 border-0 bg-secondary bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -141,7 +141,7 @@
                         </button>
                     </div>
 
-                    <!-- Admin Only Actions (Hidden by default) -->
+                    <!-- Admin Only Actions -->
                     <div class="text-center mt-3">
                          <button id="btnResetData" onclick="resetDataSekolah()" class="btn btn-link text-danger text-decoration-none small hidden opacity-75">
                             <i class="fas fa-trash-alt me-1"></i> [Admin] Reset Data Sekolah Ini
@@ -156,7 +156,7 @@
             </div>
         </div>
 
-        <!-- SECTION: PROFIL SEKOLAH (Sama seperti sebelum ini) -->
+        <!-- SECTION: PROFIL SEKOLAH -->
         <div id="section-profil" class="hidden fade-up">
             <div class="d-flex align-items-center mb-3">
                 <button onclick="showSection('menu')" class="btn btn-sm btn-white border shadow-sm rounded-circle me-3" style="width: 40px; height: 40px;">
@@ -170,55 +170,44 @@
                     <form id="dataForm" onsubmit="event.preventDefault(); simpanProfil();">
                         <input type="hidden" id="hiddenKodSekolah">
                         
-                        <!-- Bahagian GPICT -->
                         <div class="bg-light p-3 rounded-3 mb-4 border-start border-4 border-primary">
                             <h6 class="fw-bold text-primary mb-3"><i class="fas fa-laptop-code me-2"></i>MAKLUMAT GPICT</h6>
-                            
                             <div class="mb-3">
                                 <label class="form-label small text-secondary fw-bold mb-1">NAMA PENUH</label>
-                                <input type="text" id="gpictNama" class="form-control uppercase-input fw-semibold" 
-                                       placeholder="NAMA PENUH CIKGU" oninput="this.value = this.value.toUpperCase()" required>
+                                <input type="text" id="gpictNama" class="form-control uppercase-input fw-semibold" oninput="this.value = this.value.toUpperCase()" required>
                             </div>
-                            
                             <div class="row g-2">
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label small text-secondary fw-bold mb-1">NO TELEFON</label>
-                                    <input type="tel" id="gpictTel" class="form-control" 
-                                           placeholder="0123456789" oninput="autoFormatPhone(this)" required>
+                                    <input type="tel" id="gpictTel" class="form-control" oninput="autoFormatPhone(this)" required>
                                 </div>
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label small text-secondary fw-bold mb-1">EMEL DELIMA</label>
-                                    <input type="email" id="gpictEmel" class="form-control" 
-                                           placeholder="g-xxxxxxxx@moe-dl.edu.my" required>
+                                    <input type="email" id="gpictEmel" class="form-control" required>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Bahagian ADMIN DELIMA -->
                         <div class="bg-light p-3 rounded-3 mb-4 border-start border-4 border-success">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h6 class="fw-bold text-success m-0"><i class="fas fa-user-shield me-2"></i>ADMIN DELIMA</h6>
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" id="checkSama" onchange="salinData()">
-                                    <label class="form-check-label small text-muted fw-bold" for="checkSama">Sama dengan GPICT?</label>
+                                    <label class="form-check-label small text-muted fw-bold" for="checkSama">Sama?</label>
                                 </div>
                             </div>
-                            
                             <div class="mb-3">
                                 <label class="form-label small text-secondary fw-bold mb-1">NAMA PENUH</label>
-                                <input type="text" id="adminNama" class="form-control uppercase-input fw-semibold" 
-                                       placeholder="NAMA PENUH CIKGU" oninput="this.value = this.value.toUpperCase()" required>
+                                <input type="text" id="adminNama" class="form-control uppercase-input fw-semibold" oninput="this.value = this.value.toUpperCase()" required>
                             </div>
                              <div class="row g-2">
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label small text-secondary fw-bold mb-1">NO TELEFON</label>
-                                    <input type="tel" id="adminTel" class="form-control" 
-                                           placeholder="0123456789" oninput="autoFormatPhone(this)" required>
+                                    <input type="tel" id="adminTel" class="form-control" oninput="autoFormatPhone(this)" required>
                                 </div>
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label small text-secondary fw-bold mb-1">EMEL DELIMA</label>
-                                    <input type="email" id="adminEmel" class="form-control" 
-                                           placeholder="g-xxxxxxxx@moe-dl.edu.my" required>
+                                    <input type="email" id="adminEmel" class="form-control" required>
                                 </div>
                             </div>
                         </div>
@@ -240,22 +229,16 @@
                 <h5 class="fw-bold m-0 text-dark">Helpdesk & Aduan</h5>
             </div>
 
-            <!-- Custom Tabs -->
             <ul class="nav nav-pills nav-fill mb-3 bg-white p-1 rounded-pill border shadow-sm" id="helpdeskTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active rounded-pill small fw-bold" id="tab-buat-aduan" data-bs-toggle="pill" data-bs-target="#content-buat-aduan" type="button">
-                        <i class="fas fa-pen me-1"></i> Buat Aduan
-                    </button>
+                <li class="nav-item">
+                    <button class="nav-link active rounded-pill small fw-bold" id="tab-buat-aduan" data-bs-toggle="pill" data-bs-target="#content-buat-aduan" type="button">Hantar Tiket</button>
                 </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link rounded-pill small fw-bold" id="tab-semak-aduan" data-bs-toggle="pill" data-bs-target="#content-semak-aduan" type="button" onclick="loadTiketUser()">
-                        <i class="fas fa-history me-1"></i> Sejarah Tiket
-                    </button>
+                <li class="nav-item">
+                    <button class="nav-link rounded-pill small fw-bold" id="tab-semak-aduan" data-bs-toggle="pill" data-bs-target="#content-semak-aduan" type="button" onclick="loadTiketUser()">Sejarah Tiket</button>
                 </li>
             </ul>
 
             <div class="tab-content">
-                <!-- FORM HANTAR ADUAN -->
                 <div class="tab-pane fade show active" id="content-buat-aduan">
                     <div class="card border-0 shadow-sm rounded-4 p-4">
                         <form id="formTiket" onsubmit="event.preventDefault(); hantarTiket();">
@@ -269,36 +252,24 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-label small fw-bold text-muted">TAJUK MASALAH</label>
-                                <input type="text" id="tiketTajuk" class="form-control uppercase-input bg-light" 
-                                       placeholder="CONTOH: ID GURU TERSEKAT" oninput="this.value = this.value.toUpperCase()" required>
+                                <input type="text" id="tiketTajuk" class="form-control uppercase-input bg-light" oninput="this.value = this.value.toUpperCase()" required>
                             </div>
                             <div class="mb-4">
-                                <label class="form-label small fw-bold text-muted">BUTIRAN (Sertakan No KP/ID jika perlu)</label>
-                                <textarea id="tiketMesej" class="form-control bg-light" rows="5" 
-                                          placeholder="Jelaskan masalah anda secara terperinci..." required onblur="this.value = formatSentenceCase(this.value)"></textarea>
+                                <label class="form-label small fw-bold text-muted">BUTIRAN</label>
+                                <textarea id="tiketMesej" class="form-control bg-light" rows="5" required onblur="this.value = formatSentenceCase(this.value)"></textarea>
                             </div>
-                            <button type="submit" class="btn btn-danger w-100 fw-bold py-3 rounded-3 shadow-sm">
-                                <i class="fas fa-paper-plane me-2"></i>HANTAR TIKET
-                            </button>
+                            <button type="submit" class="btn btn-danger w-100 fw-bold py-3 rounded-3 shadow-sm">HANTAR TIKET</button>
                         </form>
                     </div>
                 </div>
 
-                <!-- SENARAI SEJARAH (Reka Bentuk Kad) -->
                 <div class="tab-pane fade" id="content-semak-aduan">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold text-secondary m-0"><i class="fas fa-history me-2"></i>Rekod Terdahulu</h6>
-                        <button onclick="loadTiketUser()" class="btn btn-sm btn-light border shadow-sm">
-                            <i class="fas fa-sync-alt text-primary"></i> Refresh
-                        </button>
+                        <h6 class="fw-bold text-secondary m-0">Rekod Terdahulu</h6>
+                        <button onclick="loadTiketUser()" class="btn btn-sm btn-light border">Refresh</button>
                     </div>
-
-                    <!-- Container untuk senarai tiket (Kad) -->
                     <div id="senaraiTiketContainer" class="d-flex flex-column gap-3">
-                        <!-- Data akan dimasukkan oleh JS di sini -->
-                        <div class="text-center py-5 text-muted">
-                            <i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>Sedang memuatkan data...
-                        </div>
+                        <div class="text-center py-5 text-muted">Memuatkan data...</div>
                     </div>
                 </div>
             </div>
@@ -308,7 +279,6 @@
     </div>
   </div>
 
-  <!-- Pautan JS Tunggal -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/app.js"></script>
 </body>
