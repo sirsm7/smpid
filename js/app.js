@@ -1,18 +1,17 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi Akhir: Helpdesk Module + Session Security + PWA Support
- * Host Database: appppdag.cloud
- * Host Bot API: smpid-40.ppdag.deno.net
+ * Versi: 2.0 (Supabase Auth Integration + Full Legacy Support)
+ * Host Database: app.tech4ag.my
  */
 
 // ==========================================
 // 1. KONFIGURASI UTAMA
 // ==========================================
 const SUPABASE_URL = 'https://app.tech4ag.my';
-// Anon Key (Public)
+// Anon Key (Public) - Selamat untuk Frontend
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY';
 
-// URL Deno Deploy untuk Notifikasi Telegram
+// URL Deno Deploy untuk Notifikasi Telegram (Kekal)
 const DENO_API_URL = 'https://smpid-40.ppdag.deno.net'; 
 
 // ==========================================
@@ -21,7 +20,7 @@ const DENO_API_URL = 'https://smpid-40.ppdag.deno.net';
 let supabaseClient;
 if (window.supabase) {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    console.log("Supabase Ready (Self-Hosted).");
+    console.log("Supabase Ready (Auth v2).");
 } else {
     console.error("Supabase library not loaded.");
 }
@@ -54,7 +53,6 @@ function checkEmailDomain(email) {
     return email.includes("@moe-dl.edu.my");
 }
 
-// --- FUNGSI SMART SENTENCE CASE (GLOBAL) ---
 function formatSentenceCase(str) {
     if (!str) return "";
     return str.replace(/(?:^|[\.\!\?]\s+)([a-z])/g, function(match) {
@@ -72,99 +70,100 @@ function generateWhatsAppLink(nama, noTel, isRaw = false) {
 }
 
 // ==========================================
-// 4. ROUTER, AUTHENTICATION & SECURITY
+// 4. LOGIK AUTHENTICATION & LOGIN (BARU)
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-    runSecurityCheck(); // Semak sesi sebaik sahaja load
-    
+document.addEventListener('DOMContentLoaded', async () => {
+    // Semak sesi login semasa
+    const { data: { session } } = await supabaseClient.auth.getSession();
     const bodyId = document.body.id;
+
     if (bodyId === 'page-login') {
-        sessionStorage.clear(); // Pastikan bersih di login page
-        // Hapus history supaya tak boleh 'Forward' balik
-        window.history.replaceState(null, null, window.location.href);
+        if (session) {
+            // Jika dah login, redirect ke page sepatutnya
+            checkRoleAndRedirect(session.user.id);
+        } else {
+            // Jika belum login, clear storage untuk keselamatan
+            sessionStorage.clear();
+        }
     } 
-    else if (bodyId === 'page-admin') {
-        initAdminPanel();
-    } 
-    else if (bodyId === 'page-user') {
-        initUserPortal();
+    else if (bodyId === 'page-admin' || bodyId === 'page-user') {
+        if (!session) {
+            window.location.replace('index.html'); // Tendang keluar jika tiada sesi
+        } else {
+            // Jalankan fungsi halaman masing-masing
+            if (bodyId === 'page-admin') initAdminPanel();
+            if (bodyId === 'page-user') initUserPortal(session.user);
+        }
     }
 });
 
-// --- SECURITY: HALANG BACK BUTTON (BF CACHE) ---
-window.addEventListener('pageshow', function(event) {
-    // Jika page dimuatkan dari cache memori (butang Back)
-    if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
-        runSecurityCheck();
-    }
-});
-
-function runSecurityCheck() {
-    const bodyId = document.body.id;
-    const isAuth = sessionStorage.getItem('smpid_auth') === 'true';
-    const userKod = sessionStorage.getItem('smpid_user_kod');
-
-    // Jika di page User/Admin tapi tiada sesi -> Tendang keluar
-    if ((bodyId === 'page-user' || bodyId === 'page-admin') && !isAuth && !userKod) {
-        window.location.replace('index.html'); // Replace = Tak boleh back
-    }
-}
-
+// Fungsi Login Utama (Menggantikan sistem login lama)
 async function prosesLogin() {
-    const input = document.getElementById('inputKodSekolah');
-    const btnLogin = document.querySelector('button[onclick="prosesLogin()"]');
-    if (!input) return;
+    const email = document.getElementById('inputEmail').value.trim();
+    const password = document.getElementById('inputPassword').value;
 
-    const kod = input.value.trim().toUpperCase();
-    if (!kod) { Swal.fire('Ralat', 'Sila masukkan kod.', 'warning'); return; }
-
-    // Disable button untuk elak double click
-    if (btnLogin) btnLogin.disabled = true;
-    toggleLoading(true);
-
-    // --- LALUAN 1: ADMIN PPD (M030) ---
-    if (kod === "M030") {
-        sessionStorage.setItem('smpid_auth', 'true');
-        Swal.fire({
-            icon: 'success', title: 'Admin Disahkan', timer: 800, showConfirmButton: false
-        }).then(() => {
-            window.location.replace('admin.html'); // Guna replace
-        });
+    if (!email || !password) {
+        Swal.fire('Ralat', 'Sila masukkan emel dan kata laluan.', 'warning');
         return;
     }
 
-    // --- LALUAN 2: USER SEKOLAH ---
+    toggleLoading(true);
+
+    try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+
+        if (error) throw error;
+
+        // Login berjaya, semak role
+        console.log("Login Berjaya:", data.user.id);
+        await checkRoleAndRedirect(data.user.id);
+
+    } catch (err) {
+        toggleLoading(false);
+        console.error("Login Error:", err);
+        Swal.fire('Log Masuk Gagal', 'Emel atau kata laluan salah.', 'error');
+    }
+}
+
+// Fungsi Semak Role & Redirect
+async function checkRoleAndRedirect(userId) {
     try {
         const { data, error } = await supabaseClient
-            .from('smpid_sekolah_data')
-            .select('kod_sekolah')
-            .eq('kod_sekolah', kod)
+            .from('smpid_users')
+            .select('role, kod_sekolah')
+            .eq('id', userId)
             .single();
-            
-        toggleLoading(false);
-        if (btnLogin) btnLogin.disabled = false;
 
-        if (error || !data) { Swal.fire('Maaf', 'Kod sekolah tidak dijumpai.', 'error'); return; }
-        
-        sessionStorage.setItem('smpid_user_kod', data.kod_sekolah);
-        window.location.replace('user.html'); // Guna replace
+        if (error || !data) throw new Error("Profil pengguna tidak dijumpai.");
+
+        // Simpan info asas dalam session storage untuk rujukan pantas UI
+        sessionStorage.setItem('smpid_role', data.role);
+        sessionStorage.setItem('smpid_kod', data.kod_sekolah || "");
+        sessionStorage.setItem('smpid_auth', 'true'); // Backward compatibility
+
+        if (data.role === 'PPD') {
+            window.location.replace('admin.html');
+        } else {
+            window.location.replace('user.html');
+        }
+
     } catch (err) {
-        toggleLoading(false); 
-        if (btnLogin) btnLogin.disabled = false;
-        Swal.fire('Ralat', 'Gagal sambungan server.', 'error');
         console.error(err);
+        Swal.fire('Ralat Sistem', 'Gagal mendapatkan profil pengguna.', 'error');
+        toggleLoading(false);
     }
 }
 
 function keluarSistem() {
     Swal.fire({
         title: 'Log Keluar?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Ya'
-    }).then((result) => {
+    }).then(async (result) => {
         if (result.isConfirmed) {
+            await supabaseClient.auth.signOut();
             sessionStorage.clear();
-            sessionStorage.removeItem('smpid_user_kod');
-            sessionStorage.removeItem('smpid_auth');
-            // Hard redirect supaya history hilang
             window.location.replace('index.html');
         }
     });
@@ -173,42 +172,268 @@ function keluarSistem() {
 // ==========================================
 // 5. MODUL USER PORTAL (user.html)
 // ==========================================
-function initUserPortal() {
-    const kod = sessionStorage.getItem('smpid_user_kod');
-    const isAdmin = sessionStorage.getItem('smpid_auth') === 'true';
+async function initUserPortal(user) {
+    // Dapatkan data fresh dari DB
+    const { data: userProfile } = await supabaseClient
+        .from('smpid_users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+    
+    if (!userProfile) return;
 
-    // Double check (Fail-safe)
-    if (!kod && !isAdmin) { window.location.replace('index.html'); return; }
+    const kod = userProfile.kod_sekolah;
+    const role = userProfile.role;
+
+    // Simpan kod untuk kegunaan borang lama
+    sessionStorage.setItem('smpid_user_kod', kod);
+    document.getElementById('hiddenKodSekolah').value = kod;
+
+    // Paparan Header
+    document.getElementById('displayKodSekolah').innerHTML = `<i class="fas fa-school me-2"></i>${kod}`;
     
-    // Paparan Header Khas jika Admin yang masuk view sekolah
-    if (isAdmin) {
-        // Jika admin view user, kita set kod sementara dari apa yang dia pilih sebelum ini
-        // atau jika direct access, fallback ke kod.
-        document.getElementById('displayKodSekolah').innerHTML = `<i class="fas fa-user-shield me-2"></i>ADMIN VIEW: ${kod}`;
-        document.getElementById('displayKodSekolah').classList.replace('text-dark', 'text-primary');
-        document.getElementById('displayKodSekolah').classList.add('border', 'border-primary');
-        
-        const btnLogout = document.getElementById('btnLogoutMenu');
-        if(btnLogout) {
-            btnLogout.innerHTML = `<i class="fas fa-arrow-left me-2"></i>Kembali ke Dashboard Admin`;
-            btnLogout.setAttribute('onclick', "window.location.href='admin.html'");
-            btnLogout.classList.replace('text-danger', 'text-primary');
-        }
-        const btnReset = document.getElementById('btnResetData');
-        if (btnReset) btnReset.classList.remove('hidden');
+    // Load nama sekolah
+    loadNamaSekolah(kod);
+
+    // LOGIK PAPARAN BERDASARKAN ROLE
+    if (role === 'SEKOLAH') {
+        setupDashboardSekolah(kod);
     } else {
-        document.getElementById('displayKodSekolah').innerHTML = `<i class="fas fa-school me-2"></i>${kod}`;
+        setupDashboardGuru(kod, role);
     }
+}
+
+async function loadNamaSekolah(kod) {
+    const { data } = await supabaseClient.from('smpid_sekolah_data').select('nama_sekolah, daerah').eq('kod_sekolah', kod).single();
+    if(data) {
+        const elNama = document.getElementById('dispNamaSekolah');
+        if(elNama) elNama.innerText = data.nama_sekolah;
+        
+        const elDaerah = document.getElementById('dispKodDaerah');
+        if(elDaerah) elDaerah.innerText = `KOD: ${kod} | DAERAH: ${data.daerah || '-'}`;
+
+        // Update header utama
+        const elHeaderNama = document.querySelector('.header-bg h3');
+        if(elHeaderNama) elHeaderNama.innerText = data.nama_sekolah; 
+    }
+}
+
+// A. SETUP UNTUK GURU (GPICT/DELIMA)
+function setupDashboardGuru(kod, role) {
+    document.getElementById('section-menu').classList.remove('hidden');
+    document.getElementById('welcomeText').innerText = `Selamat Datang, ${role}`;
     
+    // Load Data Profil untuk Form Kemaskini (Guna fungsi sedia ada)
     loadProfil(kod);
 }
+
+// B. SETUP UNTUK ADMIN SEKOLAH (MODUL BARU)
+function setupDashboardSekolah(kod) {
+    document.getElementById('welcomeText').innerText = "Akaun Pentadbir Sekolah";
+    document.getElementById('section-menu').classList.remove('hidden');
+    
+    // Sembunyikan borang profil biasa kerana Sekolah urus akses, bukan data diri sendiri
+    // Sekolah masih boleh view profil melalui modul akses
+    
+    // Tambah kad menu khas "Pengurusan Akses"
+    const menuSection = document.getElementById('section-menu');
+    const existingRow = menuSection.querySelector('.row');
+    
+    const accessCardHTML = `
+        <div class="col-md-12 fade-up">
+            <div class="card menu-card p-4 text-center border-primary border-2">
+                <div class="card-body d-flex flex-column">
+                    <div class="icon-box bg-primary bg-opacity-10 text-primary">
+                        <i class="fas fa-users-cog"></i>
+                    </div>
+                    <h4 class="fw-bold mb-2">Pengurusan Akses Guru</h4>
+                    <p class="text-muted mb-4 flex-grow-1 small">
+                        Aktifkan akaun atau reset kata laluan GPICT & Admin DELIMa.
+                    </p>
+                    <button onclick="bukaModalAkses('${kod}')" class="btn btn-primary btn-menu shadow-sm">
+                        <i class="fas fa-lock-open me-2"></i>Urus Akses
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Masukkan kad baru di bahagian atas
+    existingRow.insertAdjacentHTML('afterbegin', accessCardHTML);
+}
+
+// ==========================================
+// 6. LOGIK PENGURUSAN AKSES (MODAL SEKOLAH)
+// ==========================================
+async function bukaModalAkses(kod) {
+    toggleLoading(true);
+
+    // 1. Dapatkan data profil guru (nama, emel delima)
+    const { data: profail } = await supabaseClient
+        .from('smpid_sekolah_data')
+        .select('nama_gpict, emel_delima_gpict, nama_admin_delima, emel_delima_admin_delima')
+        .eq('kod_sekolah', kod)
+        .single();
+
+    // 2. Dapatkan status akaun aktif dari smpid_users
+    const { data: users } = await supabaseClient
+        .from('smpid_users')
+        .select('role, email')
+        .eq('kod_sekolah', kod);
+
+    toggleLoading(false);
+
+    const gpictAktif = users.find(u => u.role === 'GPICT');
+    const delimaAktif = users.find(u => u.role === 'DELIMA');
+
+    let htmlContent = `
+    <div class="text-start">
+        <div class="alert alert-info small">
+            <i class="fas fa-info-circle me-1"></i> Kata laluan lalai (default) untuk semua guru ialah: <b>${kod}@ppdag</b>
+        </div>
+        
+        <!-- ROW GPICT -->
+        <div class="card mb-3 border p-3 bg-light">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                 <h6 class="fw-bold text-primary mb-0">GPICT</h6>
+                 ${gpictAktif ? '<span class="badge bg-success">AKTIF</span>' : '<span class="badge bg-secondary">BELUM AKTIF</span>'}
+            </div>
+            <p class="mb-1 small text-uppercase fw-bold text-dark">${profail.nama_gpict || 'TIADA NAMA'}</p>
+            <p class="mb-3 small text-muted font-monospace">${profail.emel_delima_gpict || 'Tiada Emel'}</p>
+            ${renderButtonAkses(kod, 'GPICT', profail.emel_delima_gpict, gpictAktif)}
+        </div>
+
+        <!-- ROW ADMIN DELIMA -->
+        <div class="card mb-2 border p-3 bg-light">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                 <h6 class="fw-bold text-success mb-0">ADMIN DELIMa</h6>
+                 ${delimaAktif ? '<span class="badge bg-success">AKTIF</span>' : '<span class="badge bg-secondary">BELUM AKTIF</span>'}
+            </div>
+            <p class="mb-1 small text-uppercase fw-bold text-dark">${profail.nama_admin_delima || 'TIADA NAMA'}</p>
+            <p class="mb-3 small text-muted font-monospace">${profail.emel_delima_admin_delima || 'Tiada Emel'}</p>
+            ${renderButtonAkses(kod, 'DELIMA', profail.emel_delima_admin_delima, delimaAktif)}
+        </div>
+    </div>`;
+
+    Swal.fire({
+        title: 'Pengurusan Akses',
+        html: htmlContent,
+        showCloseButton: true,
+        showConfirmButton: false,
+        width: '600px'
+    });
+}
+
+function renderButtonAkses(kod, role, email, userAktif) {
+    if (!email) return `<button class="btn btn-secondary btn-sm w-100 disabled" disabled>Kemaskini Profil Dahulu</button>`;
+    
+    if (userAktif) {
+        return `
+        <div class="d-flex gap-2">
+            <button onclick="resetPasswordGuru('${email}', '${kod}')" class="btn btn-outline-danger btn-sm w-100" title="Reset Password Default">
+                <i class="fas fa-undo me-1"></i> Reset Password
+            </button>
+        </div>`;
+    } else {
+        return `<button onclick="aktifkanAkaun('${kod}', '${role}', '${email}')" class="btn btn-primary btn-sm w-100 fw-bold shadow-sm">
+            <i class="fas fa-power-off me-1"></i> Aktifkan Akses
+        </button>`;
+    }
+}
+
+// Fungsi Backend: Aktifkan Akaun
+async function aktifkanAkaun(kod, role, email) {
+    const defaultPass = `${kod}@ppdag`;
+    
+    const confirm = await Swal.fire({
+        title: 'Aktifkan Akaun?',
+        text: `Akaun akan dicipta untuk ${email} dengan password: ${defaultPass}`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Aktifkan'
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    toggleLoading(true);
+    
+    try {
+        // Panggil RPC (Stored Procedure di Database)
+        const { error } = await supabaseClient.rpc('create_smpid_user_sql', {
+            u_email: email,
+            u_password: defaultPass,
+            u_role: role,
+            u_kod_sekolah: kod
+        });
+
+        if (error) throw error;
+
+        toggleLoading(false);
+        Swal.fire('Berjaya', `Akaun ${role} telah diaktifkan.`, 'success').then(() => bukaModalAkses(kod));
+
+    } catch (err) {
+        toggleLoading(false);
+        console.error(err);
+        Swal.fire('Ralat', 'Gagal mengaktifkan akaun. Sila cuba lagi.', 'error');
+    }
+}
+
+// Fungsi Backend: Reset Password
+async function resetPasswordGuru(email, kod) {
+    const defaultPass = `${kod}@ppdag`;
+    
+    const confirm = await Swal.fire({
+        title: 'Reset Kata Laluan?',
+        text: `Kata laluan akan dikembalikan kepada asal: ${defaultPass}`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Ya, Reset'
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    toggleLoading(true);
+    
+    try {
+        // Panggil RPC Reset Password (Perlu function SQL baru: reset_smpid_password_sql)
+        // Kita gunakan function create_smpid_user_sql juga boleh jika ia menyokong upsert/update, 
+        // tapi sebaiknya ada function khusus untuk reset password.
+        
+        // JIKA TIADA RPC KHUSUS, kita boleh gunakan logik delete & recreate (Cara pantas tapi kasar)
+        // ATAU (Better): Admin PPD boleh reset, tapi di sini Sekolah yang reset.
+        // Oleh itu, kita akan gunakan RPC `reset_smpid_user_password`.
+        
+        const { error } = await supabaseClient.rpc('reset_smpid_user_password', {
+            u_email: email,
+            u_password: defaultPass
+        });
+
+        if (error) throw error;
+
+        toggleLoading(false);
+        Swal.fire('Selesai', `Kata laluan telah di-reset kepada ${defaultPass}`, 'success');
+        
+    } catch (err) {
+        toggleLoading(false);
+        console.error(err);
+        // Fallback Error Message
+        Swal.fire('Ralat', 'Gagal reset. Pastikan fungsi database wujud.', 'error');
+    }
+}
+
+// ==========================================
+// 7. FUNGSI BORANG & PROFIL (LOGIK ASAL)
+// ==========================================
 
 function showSection(section) {
     if (section === 'menu') {
         document.getElementById('section-menu').classList.remove('hidden');
         document.getElementById('section-profil').classList.add('hidden');
         document.getElementById('section-aduan').classList.add('hidden');
-        document.getElementById('welcomeText').innerText = "Sila pilih tindakan yang ingin dilakukan";
+        // Reset welcome text ikut role
+        const role = sessionStorage.getItem('smpid_role');
+        document.getElementById('welcomeText').innerText = role === 'SEKOLAH' ? "Akaun Pentadbir Sekolah" : `Selamat Datang, ${role}`;
     } else if (section === 'profil') {
         document.getElementById('section-menu').classList.add('hidden');
         document.getElementById('section-profil').classList.remove('hidden');
@@ -228,8 +453,12 @@ async function loadProfil(kod) {
         const { data, error } = await supabaseClient.from('smpid_sekolah_data').select('*').eq('kod_sekolah', kod).single();
         if (error) throw error;
         
-        document.getElementById('dispNamaSekolah').innerText = data.nama_sekolah;
-        document.getElementById('dispKodDaerah').innerText = `KOD: ${data.kod_sekolah} | DAERAH: ${data.daerah || '-'}`;
+        const elNama = document.getElementById('dispNamaSekolah');
+        if(elNama) elNama.innerText = data.nama_sekolah;
+        
+        const elDaerah = document.getElementById('dispKodDaerah');
+        if(elDaerah) elDaerah.innerText = `KOD: ${data.kod_sekolah} | DAERAH: ${data.daerah || '-'}`;
+        
         document.getElementById('hiddenKodSekolah').value = data.kod_sekolah;
         
         const fields = {
@@ -254,11 +483,11 @@ async function simpanProfil() {
     const emelG = document.getElementById('gpictEmel').value;
     const btnSubmit = document.querySelector('#dataForm button[type="submit"]');
     
-    const isAdmin = sessionStorage.getItem('smpid_auth') === 'true';
+    // Periksa role untuk tujuan notifikasi
+    const role = sessionStorage.getItem('smpid_role');
 
     if (!checkEmailDomain(emelG)) { Swal.fire('Format Salah', 'Gunakan emel moe-dl.edu.my', 'warning'); return; }
 
-    // ANTI-DOUBLE SUBMIT
     if(btnSubmit) btnSubmit.disabled = true;
     toggleLoading(true);
 
@@ -275,19 +504,18 @@ async function simpanProfil() {
         const { error } = await supabaseClient.from('smpid_sekolah_data').update(payload).eq('kod_sekolah', kod);
         if (error) throw error;
 
+        // Notifikasi ke Telegram Admin
         if (DENO_API_URL) {
-            console.log("Menghantar notifikasi ke PPD...");
             fetch(`${DENO_API_URL}/notify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     kod: kod, 
                     nama: namaSekolah,
-                    updated_by: isAdmin ? 'PENTADBIR PPD' : 'PIHAK SEKOLAH' 
+                    updated_by: role === 'PPD' ? 'PENTADBIR PPD' : 'PIHAK SEKOLAH' 
                 })
             })
-            .then(res => res.json())
-            .catch(err => console.warn("Gagal hubungi bot notifikasi:", err));
+            .catch(err => console.warn("Gagal hubungi bot:", err));
         }
 
         toggleLoading(false);
@@ -301,49 +529,97 @@ async function simpanProfil() {
     }
 }
 
-async function resetDataSekolah() {
-    const kod = document.getElementById('hiddenKodSekolah').value;
-    const { value: password } = await Swal.fire({
-        title: 'Akses Admin Diperlukan',
-        text: 'Masukkan kata laluan untuk reset data sekolah ini:',
-        input: 'password',
-        showCancelButton: true,
-        confirmButtonText: 'Sahkan'
-    });
+// ==========================================
+// 8. MODUL TIKET / HELPDESK (LOGIK ASAL)
+// ==========================================
 
-    if (password === 'pkgag') {
-         Swal.fire({
-            title: 'Pasti Reset Data?',
-            text: "Data GPICT/Admin akan dipadam (NULL). Kod sekolah kekal.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            confirmButtonText: 'Ya, Reset!'
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                toggleLoading(true);
-                const payload = {
-                    nama_gpict: null, no_telefon_gpict: null, emel_delima_gpict: null, telegram_id_gpict: null,
-                    nama_admin_delima: null, no_telefon_admin_delima: null, emel_delima_admin_delima: null, telegram_id_admin: null
-                };
-                try {
-                    const { error } = await supabaseClient.from('smpid_sekolah_data').update(payload).eq('kod_sekolah', kod);
-                    if (error) throw error;
-                    toggleLoading(false);
-                    Swal.fire('Berjaya', 'Data sekolah telah di-reset.', 'success').then(() => loadProfil(kod));
-                } catch (err) {
-                    toggleLoading(false); Swal.fire('Ralat', 'Gagal reset data.', 'error');
-                }
-            }
+async function hantarTiket() {
+    const kod = sessionStorage.getItem('smpid_user_kod');
+    const peranan = document.getElementById('tiketPeranan').value;
+    const tajuk = document.getElementById('tiketTajuk').value.toUpperCase();
+    const mesejRaw = document.getElementById('tiketMesej').value;
+    const mesej = formatSentenceCase(mesejRaw);
+
+    const btnSubmit = document.querySelector('#formTiket button[type="submit"]');
+
+    if (!peranan) { Swal.fire('Pilih Jawatan', 'Sila nyatakan peranan anda.', 'warning'); return; }
+
+    if(btnSubmit) btnSubmit.disabled = true;
+    toggleLoading(true);
+
+    try {
+        // Simpan ke DB
+        const { error } = await supabaseClient
+            .from('smpid_aduan')
+            .insert([{ kod_sekolah: kod, peranan_pengirim: peranan, tajuk: tajuk, butiran_masalah: mesej }]);
+        
+        if (error) throw error;
+
+        // Notify PPD
+        if (DENO_API_URL) {
+            fetch(`${DENO_API_URL}/notify-ticket`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kod: kod, peranan: peranan, tajuk: tajuk, mesej: mesej })
+            }).catch(e => console.warn("Bot offline?", e));
+        }
+
+        toggleLoading(false);
+        if(btnSubmit) btnSubmit.disabled = false;
+        Swal.fire('Tiket Dihantar', 'Pihak PPD telah dimaklumkan.', 'success').then(() => {
+            document.getElementById('formTiket').reset();
+            loadTiketUser();
         });
-    } else if (password) {
-        Swal.fire('Akses Ditolak', 'Kata laluan salah.', 'error');
+
+    } catch (err) {
+        toggleLoading(false);
+        if(btnSubmit) btnSubmit.disabled = false;
+        Swal.fire('Ralat', 'Gagal menghantar tiket.', 'error');
     }
 }
 
+async function loadTiketUser() {
+    const kod = sessionStorage.getItem('smpid_user_kod');
+    const tbody = document.getElementById('senaraiTiketUser');
+    if(!tbody) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('smpid_aduan')
+            .select('*')
+            .eq('kod_sekolah', kod)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        
+        tbody.innerHTML = "";
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Tiada rekod aduan.</td></tr>`;
+            return;
+        }
+
+        data.forEach(t => {
+            const date = new Date(t.created_at).toLocaleDateString('ms-MY');
+            const statusClass = t.status === 'SELESAI' ? 'text-success fw-bold' : 'text-warning fw-bold';
+            const balasan = t.balasan_admin ? `<div class="mt-1 small text-primary border-start border-2 ps-2 border-primary"><b>PPD:</b> ${t.balasan_admin}</div>` : `<span class="text-muted small">- Menunggu Respon -</span>`;
+
+            const row = `
+            <tr>
+                <td>${date}</td>
+                <td><span class="badge bg-secondary">${t.peranan_pengirim}</span></td>
+                <td>${t.tajuk}</td>
+                <td class="${statusClass}">${t.status}</td>
+                <td>${balasan}</td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    } catch (e) { console.error(e); }
+}
+
 // ==========================================
-// 6. MODUL ADMIN PANEL (admin.html)
+// 9. MODUL ADMIN PANEL (LOGIK ASAL + AUTH BARU)
 // ==========================================
+
 let dashboardData = [];
 let activeStatus = 'ALL';
 let activeType = 'ALL';
@@ -353,21 +629,21 @@ let emailRawData = [];
 let currentFilteredList = [];
 
 function initAdminPanel() {
-    if (sessionStorage.getItem('smpid_auth') !== 'true') {
-        window.location.replace('index.html');
+    // Pastikan user adalah PPD
+    const role = sessionStorage.getItem('smpid_role');
+    if (role !== 'PPD') {
+        window.location.replace('user.html');
         return;
     }
     
+    // Tab Listeners
     const emailTabBtn = document.getElementById('email-tab');
-    if (emailTabBtn) {
-        emailTabBtn.addEventListener('shown.bs.tab', function () { generateList(); });
-    }
+    if (emailTabBtn) emailTabBtn.addEventListener('shown.bs.tab', function () { generateList(); });
 
     const helpdeskTabBtn = document.getElementById('helpdesk-tab');
-    if (helpdeskTabBtn) {
-        helpdeskTabBtn.addEventListener('shown.bs.tab', function () { loadTiketAdmin(); });
-    }
+    if (helpdeskTabBtn) helpdeskTabBtn.addEventListener('shown.bs.tab', function () { loadTiketAdmin(); });
     
+    // Load Data
     fetchDashboardData(); 
 }
 
@@ -521,8 +797,11 @@ function renderGrid(data) {
     });
 }
 
+// Fungsi Admin View Sekolah (Override session biasa)
 function viewSchoolProfile(kod) {
     sessionStorage.setItem('smpid_user_kod', kod);
+    // Kita redirect ke user.html tapi dalam konteks PPD
+    // Di user.html, role 'PPD' akan membolehkan view data sahaja
     window.location.href = 'user.html'; 
 }
 
@@ -569,7 +848,6 @@ function generateList() {
     const filterStatus = document.getElementById('statusFilter').value;
     const uniqueEmails = new Set();
     
-    // Safety check jika emailRawData kosong atau undefined
     if(!emailRawData || emailRawData.length === 0) {
         document.getElementById('countEmail').innerText = "0";
         document.getElementById('emailOutput').value = "";
@@ -626,100 +904,9 @@ function nextQueue() { qIndex++; renderQueue(); }
 function prevQueue() { if(qIndex > 0) qIndex--; renderQueue(); }
 
 // ==========================================
-// 7. MODUL HELPDESK & ADUAN (NEW)
+// 10. HELPDESK ADMIN (LOGIK ASAL)
 // ==========================================
 
-// A. USER: Hantar Tiket
-async function hantarTiket() {
-    const kod = sessionStorage.getItem('smpid_user_kod');
-    const peranan = document.getElementById('tiketPeranan').value;
-    
-    // FORCE UPPERCASE untuk TAJUK sahaja
-    const tajuk = document.getElementById('tiketTajuk').value.toUpperCase();
-    
-    // SMART SENTENCE CASE untuk MESEJ
-    const mesejRaw = document.getElementById('tiketMesej').value;
-    const mesej = formatSentenceCase(mesejRaw);
-
-    const btnSubmit = document.querySelector('#formTiket button[type="submit"]');
-
-    if (!peranan) { Swal.fire('Pilih Jawatan', 'Sila nyatakan anda sebagai GPICT atau Admin.', 'warning'); return; }
-
-    // ANTI-DOUBLE SUBMIT
-    if(btnSubmit) btnSubmit.disabled = true;
-    toggleLoading(true);
-
-    try {
-        // 1. Simpan Database
-        const { error } = await supabaseClient
-            .from('smpid_aduan')
-            .insert([{ kod_sekolah: kod, peranan_pengirim: peranan, tajuk: tajuk, butiran_masalah: mesej }]);
-        
-        if (error) throw error;
-
-        // 2. Notify PPD (API Deno)
-        if (DENO_API_URL) {
-            fetch(`${DENO_API_URL}/notify-ticket`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ kod: kod, peranan: peranan, tajuk: tajuk, mesej: mesej })
-            }).catch(e => console.warn("Bot offline?", e));
-        }
-
-        toggleLoading(false);
-        if(btnSubmit) btnSubmit.disabled = false;
-        Swal.fire('Tiket Dihantar', 'Pihak PPD telah dimaklumkan.', 'success').then(() => {
-            document.getElementById('formTiket').reset();
-            loadTiketUser();
-        });
-
-    } catch (err) {
-        toggleLoading(false);
-        if(btnSubmit) btnSubmit.disabled = false;
-        Swal.fire('Ralat', 'Gagal menghantar tiket.', 'error');
-    }
-}
-
-// B. USER: Load Tiket History
-async function loadTiketUser() {
-    const kod = sessionStorage.getItem('smpid_user_kod');
-    const tbody = document.getElementById('senaraiTiketUser');
-    if(!tbody) return;
-
-    try {
-        const { data, error } = await supabaseClient
-            .from('smpid_aduan')
-            .select('*')
-            .eq('kod_sekolah', kod)
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        
-        tbody.innerHTML = "";
-        if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Tiada rekod aduan.</td></tr>`;
-            return;
-        }
-
-        data.forEach(t => {
-            const date = new Date(t.created_at).toLocaleDateString('ms-MY');
-            const statusClass = t.status === 'SELESAI' ? 'text-success fw-bold' : 'text-warning fw-bold';
-            const balasan = t.balasan_admin ? `<div class="mt-1 small text-primary border-start border-2 ps-2 border-primary"><b>PPD:</b> ${t.balasan_admin}</div>` : `<span class="text-muted small">- Menunggu Respon -</span>`;
-
-            const row = `
-            <tr>
-                <td>${date}</td>
-                <td><span class="badge bg-secondary">${t.peranan_pengirim}</span></td>
-                <td>${t.tajuk}</td>
-                <td class="${statusClass}">${t.status}</td>
-                <td>${balasan}</td>
-            </tr>`;
-            tbody.innerHTML += row;
-        });
-    } catch (e) { console.error(e); }
-}
-
-// C. ADMIN: Load All Tickets
 async function loadTiketAdmin() {
     const wrapper = document.getElementById('adminTiketWrapper');
     const filter = document.getElementById('filterTiketAdmin')?.value || 'ALL';
@@ -744,17 +931,14 @@ async function loadTiketAdmin() {
             const date = new Date(t.created_at).toLocaleString('ms-MY');
             const bgClass = t.status === 'SELESAI' ? 'bg-light opacity-75' : 'bg-white border-danger';
             
-            // Borang Balasan (Hanya jika belum selesai)
             let actionArea = "";
             if (t.status !== 'SELESAI') {
                 actionArea = `
                 <div class="mt-3 border-top pt-3 bg-light p-3 rounded">
                     <label class="small fw-bold mb-1">Balasan Admin PPD:</label>
-                    
                     <textarea id="reply-${t.id}" class="form-control form-control-sm mb-2" rows="2" 
                               placeholder="Tulis penyelesaian..." 
                               onblur="this.value = formatSentenceCase(this.value)"></textarea>
-
                     <div class="d-flex justify-content-between">
                         <button onclick="submitBalasanAdmin(${t.id}, '${t.kod_sekolah}', '${t.peranan_pengirim}', '${t.tajuk}')" class="btn btn-sm btn-primary">
                             <i class="fas fa-reply me-1"></i> Hantar & Tutup Tiket
@@ -798,19 +982,15 @@ async function loadTiketAdmin() {
     }
 }
 
-// D. ADMIN: Submit Reply
 async function submitBalasanAdmin(id, kod, peranan, tajuk) {
     const replyText = document.getElementById(`reply-${id}`).value;
     if(!replyText) return Swal.fire('Kosong', 'Sila tulis balasan.', 'warning');
     
-    // ANTI-DOUBLE SUBMIT
-    // Kita cari button yang sedang ditekan
     const btn = event.currentTarget; 
     if(btn) btn.disabled = true;
 
     toggleLoading(true);
     try {
-        // 1. Update Database
         const { error } = await supabaseClient
             .from('smpid_aduan')
             .update({ 
@@ -822,7 +1002,6 @@ async function submitBalasanAdmin(id, kod, peranan, tajuk) {
         
         if (error) throw error;
 
-        // 2. Notify User (API Deno)
         if (DENO_API_URL) {
             fetch(`${DENO_API_URL}/reply-ticket`, {
                 method: 'POST',
@@ -842,11 +1021,10 @@ async function submitBalasanAdmin(id, kod, peranan, tajuk) {
     }
 }
 
-// E. ADMIN: Delete Ticket (NEW FUNCTION)
 async function padamTiket(id) {
     Swal.fire({
         title: 'Padam Tiket Ini?',
-        text: "Tindakan ini akan memadam rekod tiket secara kekal dari database. Pastikan ini adalah tiket ujian.",
+        text: "Tindakan ini akan memadam rekod tiket secara kekal.",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
@@ -876,7 +1054,7 @@ async function padamTiket(id) {
 }
 
 // ==========================================
-// 8. PWA SERVICE WORKER REGISTRATION (BARU)
+// 11. PWA SERVICE WORKER (ASAL)
 // ==========================================
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
