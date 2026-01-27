@@ -834,7 +834,7 @@ async function loadTiketUser() {
                 const tarikhBalas = t.tarikh_balas ? new Date(t.tarikh_balas).toLocaleDateString('ms-MY') : 'Baru sebentar';
                 responHTML = `
                 <div class="bg-primary bg-opacity-10 p-3 rounded-3 border border-primary border-opacity-25 mt-3 position-relative">
-                    <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-primary ms-3 mt-1 shadow-sm">
+                    <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary mt-1 shadow-sm">
                         Respon PPD
                     </span>
                     <p class="mb-1 text-dark small mt-2 fw-semibold">${t.balasan_admin}</p>
