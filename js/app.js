@@ -772,10 +772,22 @@ async function hantarTiket() {
     }
 }
 
+// ==========================================
+// KEMASKINI: FUNGSI LOAD TIKET (GAYA KAD)
+// ==========================================
 async function loadTiketUser() {
     const kod = sessionStorage.getItem('smpid_user_kod');
-    const tbody = document.getElementById('senaraiTiketUser');
-    if(!tbody) return;
+    const container = document.getElementById('senaraiTiketContainer');
+    
+    // Pastikan container wujud (elak error jika tab tak load)
+    if(!container) return;
+
+    // UI Loading Sementara
+    container.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="small text-muted mt-2">Memuatkan sejarah tiket...</p>
+        </div>`;
 
     try {
         const { data, error } = await supabaseClient
@@ -786,28 +798,96 @@ async function loadTiketUser() {
 
         if (error) throw error;
         
-        tbody.innerHTML = "";
+        container.innerHTML = ""; // Kosongkan loader
+
+        // JIKA TIADA REKOD
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Tiada rekod aduan.</td></tr>`;
+            container.innerHTML = `
+            <div class="text-center py-5 opacity-50">
+                <i class="fas fa-folder-open fa-3x mb-3 text-secondary"></i>
+                <p class="fw-bold text-dark">Tiada Rekod Aduan</p>
+                <small>Sebarang tiket yang dihantar akan disenaraikan di sini.</small>
+            </div>`;
             return;
         }
 
+        // LOOP SETIAP TIKET
         data.forEach(t => {
-            const date = new Date(t.created_at).toLocaleDateString('ms-MY');
-            const statusClass = t.status === 'SELESAI' ? 'text-success fw-bold' : 'text-warning fw-bold';
-            const balasan = t.balasan_admin ? `<div class="mt-1 small text-primary border-start border-2 ps-2 border-primary"><b>PPD:</b> ${t.balasan_admin}</div>` : `<span class="text-muted small">- Menunggu Respon -</span>`;
+            // Format Tarikh & Masa
+            const dateObj = new Date(t.created_at);
+            const dateStr = dateObj.toLocaleDateString('ms-MY', { day: 'numeric', month: 'short', year: 'numeric' });
+            const timeStr = dateObj.toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' });
 
-            const row = `
-            <tr>
-                <td>${date}</td>
-                <td><span class="badge bg-secondary">${t.peranan_pengirim}</span></td>
-                <td>${t.tajuk}</td>
-                <td class="${statusClass}">${t.status}</td>
-                <td>${balasan}</td>
-            </tr>`;
-            tbody.innerHTML += row;
+            // Tetapan Warna & Ikon Status
+            let statusBadge = '';
+            
+            if (t.status === 'SELESAI') {
+                statusBadge = `<span class="badge bg-success bg-gradient shadow-sm"><i class="fas fa-check-circle me-1"></i>SELESAI</span>`;
+            } else {
+                statusBadge = `<span class="badge bg-warning text-dark bg-gradient shadow-sm"><i class="fas fa-clock me-1"></i>DALAM PROSES</span>`;
+            }
+
+            // Paparan Respon Admin
+            let responHTML = '';
+            if (t.balasan_admin) {
+                // Jika ada balasan
+                const tarikhBalas = t.tarikh_balas ? new Date(t.tarikh_balas).toLocaleDateString('ms-MY') : 'Baru sebentar';
+                responHTML = `
+                <div class="bg-primary bg-opacity-10 p-3 rounded-3 border border-primary border-opacity-25 mt-3 position-relative">
+                    <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-primary ms-3 mt-1 shadow-sm">
+                        Respon PPD
+                    </span>
+                    <p class="mb-1 text-dark small mt-2 fw-semibold">${t.balasan_admin}</p>
+                    <div class="text-end">
+                        <small class="text-muted" style="font-size: 0.7rem;"><i class="fas fa-calendar-check me-1"></i>${tarikhBalas}</small>
+                    </div>
+                </div>`;
+            } else {
+                // Jika tiada balasan lagi
+                responHTML = `
+                <div class="bg-light p-2 rounded-3 border border-dashed mt-3 text-center">
+                    <small class="text-muted fst-italic"><i class="fas fa-hourglass-half me-2"></i>Menunggu tindakan pegawai PPD...</small>
+                </div>`;
+            }
+
+            // HTML KAD TIKET
+            const cardHTML = `
+            <div class="card shadow-sm border-0 rounded-4 mb-1 overflow-hidden">
+                <div class="card-body p-0">
+                    <!-- HEADER KAD -->
+                    <div class="p-3 border-bottom bg-white d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                             <div class="bg-light rounded-circle d-flex align-items-center justify-content-center text-secondary border" style="width: 35px; height: 35px;">
+                                <i class="fas ${t.peranan_pengirim === 'GPICT' ? 'fa-laptop-code' : 'fa-user-shield'}"></i>
+                             </div>
+                             <div>
+                                <small class="text-secondary d-block lh-1" style="font-size: 0.7rem;">${dateStr} • ${timeStr}</small>
+                                <span class="fw-bold text-dark small">${t.peranan_pengirim}</span>
+                             </div>
+                        </div>
+                        ${statusBadge}
+                    </div>
+
+                    <!-- BODY KAD -->
+                    <div class="p-3 bg-white">
+                        <h6 class="fw-bold text-dark mb-2">${t.tajuk}</h6>
+                        <p class="text-secondary small mb-0 text-break">${t.butiran_masalah}</p>
+                        
+                        <!-- BAHAGIAN RESPON -->
+                        ${responHTML}
+                    </div>
+                </div>
+                <!-- Jalur Warna Status di Kiri -->
+                <div class="position-absolute top-0 start-0 bottom-0 bg-${t.status === 'SELESAI' ? 'success' : 'warning'}" style="width: 4px;"></div>
+            </div>`;
+
+            container.innerHTML += cardHTML;
         });
-    } catch (e) { console.error(e); }
+
+    } catch (e) { 
+        console.error(e); 
+        container.innerHTML = `<div class="alert alert-danger small">Gagal memuatkan tiket. Sila cuba lagi.</div>`;
+    }
 }
 
 async function loadTiketAdmin() {

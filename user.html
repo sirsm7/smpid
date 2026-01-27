@@ -31,7 +31,7 @@
     </div>
   </div>
 
-  <!-- HEADER SECTON -->
+  <!-- HEADER SECTION -->
   <div class="header-bg text-center pb-5 pt-4">
     <img src="icoppdag.png" alt="Logo PPD" class="mb-2" style="width: 80px; height: auto;">
     
@@ -63,7 +63,7 @@
                     <!-- GRID MENU UTAMA -->
                     <div class="row g-3">
                         
-                        <!-- 1. KEMASKINI PROFIL -->
+                        <!-- 1. KEMASKINI PROFIL (INTERNAL) -->
                         <div class="col-6 col-md-4">
                             <div onclick="showSection('profil')" class="card btn-menu h-100 text-center p-3 border-0 bg-primary bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -73,7 +73,7 @@
                             </div>
                         </div>
 
-                        <!-- 2. HELPDESK & ADUAN -->
+                        <!-- 2. HELPDESK & ADUAN (INTERNAL) -->
                         <div class="col-6 col-md-4">
                             <div onclick="showSection('aduan')" class="card btn-menu h-100 text-center p-3 border-0 bg-danger bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -83,7 +83,7 @@
                             </div>
                         </div>
 
-                        <!-- 3. LAPORAN PPPDM -->
+                        <!-- 3. LAPORAN PPPDM (EXTERNAL) -->
                         <div class="col-6 col-md-4">
                             <div onclick="window.open('https://ppdm.tech4ag.my/', '_blank')" class="card btn-menu h-100 text-center p-3 border-0 bg-success bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -93,7 +93,7 @@
                             </div>
                         </div>
 
-                        <!-- 4. BELAJAR AI (KEMASKINI) -->
+                        <!-- 4. BELAJAR AI (EXTERNAL) -->
                         <div class="col-6 col-md-4">
                             <div onclick="window.open('https://spka.tech4ag.my/', '_blank')" class="card btn-menu h-100 text-center p-3 border-0 bg-info bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -103,7 +103,7 @@
                             </div>
                         </div>
 
-                        <!-- 5. PORTAL DELIMa (KEMASKINI) -->
+                        <!-- 5. PORTAL DELIMa (EXTERNAL) -->
                         <div class="col-6 col-md-4">
                             <div onclick="window.open('https://d2.delima.edu.my/login', '_blank')" class="card btn-menu h-100 text-center p-3 border-0 bg-warning bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -113,7 +113,7 @@
                             </div>
                         </div>
 
-                         <!-- 6. PENSIJILAN GOOGLE (KEMASKINI) -->
+                         <!-- 6. PENSIJILAN GOOGLE (EXTERNAL) -->
                          <div class="col-6 col-md-4">
                             <div onclick="window.open('https://gemini.tech4ag.my/', '_blank')" class="card btn-menu h-100 text-center p-3 border-0 bg-secondary bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -284,24 +284,20 @@
                     </div>
                 </div>
 
-                <!-- SENARAI SEJARAH -->
+                <!-- SENARAI SEJARAH (Reka Bentuk Kad) -->
                 <div class="tab-pane fade" id="content-semak-aduan">
-                    <div class="card border-0 shadow-sm rounded-4 p-3" style="min-height: 200px;">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle small mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Tarikh</th>
-                                        <th>Tajuk</th>
-                                        <th class="text-center">Status</th>
-                                        <th>Respon</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="senaraiTiketUser">
-                                    <!-- Data akan dimuatkan oleh JS -->
-                                    <tr><td colspan="4" class="text-center text-muted py-4">Memuatkan data...</td></tr>
-                                </tbody>
-                            </table>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold text-secondary m-0"><i class="fas fa-history me-2"></i>Rekod Terdahulu</h6>
+                        <button onclick="loadTiketUser()" class="btn btn-sm btn-light border shadow-sm">
+                            <i class="fas fa-sync-alt text-primary"></i> Refresh
+                        </button>
+                    </div>
+
+                    <!-- Container untuk senarai tiket (Kad) -->
+                    <div id="senaraiTiketContainer" class="d-flex flex-column gap-3">
+                        <!-- Data akan dimasukkan oleh JS di sini -->
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>Sedang memuatkan data...
                         </div>
                     </div>
                 </div>
