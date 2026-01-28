@@ -27,7 +27,7 @@
   <div id="loadingOverlay" class="hidden">
     <div class="text-center">
       <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
-      <p class="mt-2 fw-bold text-dark">Memproses...</p>
+      <p class="mt-2 fw-bold text-dark">Mengesahkan Akaun...</p>
     </div>
   </div>
 
@@ -46,17 +46,37 @@
         <div id="loginCard" class="card p-4 mx-auto shadow-sm" style="max-width: 500px;">
           <div class="card-body">
             <h5 class="card-title text-center mb-4 fw-bold">AKSES SISTEM</h5>
+            
+            <!-- Input Emel -->
             <div class="mb-3">
-              <label class="form-label text-muted" style="font-weight: 600; font-size: 0.9rem;">MASUKKAN KOD SEKOLAH</label>
+              <label class="form-label text-muted" style="font-weight: 600; font-size: 0.9rem;">EMEL PENGGUNA</label>
               <div class="input-group">
-                <span class="input-group-text bg-light border-end-0"><i class="fas fa-key text-muted"></i></span>
-                <input type="text" id="inputKodSekolah" class="form-control form-control-lg uppercase-input border-start-0" 
-                       placeholder="CONTOH: MBA0001" oninput="this.value = this.value.toUpperCase()">
+                <span class="input-group-text bg-light border-end-0"><i class="fas fa-envelope text-muted"></i></span>
+                <input type="email" id="inputEmail" class="form-control form-control-lg border-start-0" 
+                       placeholder="nama@moe.gov.my">
               </div>
             </div>
+
+            <!-- Input Password -->
+            <div class="mb-4">
+              <label class="form-label text-muted" style="font-weight: 600; font-size: 0.9rem;">KATA LALUAN</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="fas fa-lock text-muted"></i></span>
+                <input type="password" id="inputPassword" class="form-control form-control-lg border-start-0" 
+                       placeholder="••••••••">
+                <button class="btn btn-outline-secondary border-start-0 bg-white" type="button" onclick="togglePass()">
+                    <i class="fas fa-eye text-muted" id="iconEye"></i>
+                </button>
+              </div>
+              <div class="text-end mt-1">
+                  <small class="text-muted" style="font-size: 0.75rem;">Default: ppdag@12345</small>
+              </div>
+            </div>
+
             <button onclick="prosesLogin()" class="btn btn-primary w-100 btn-lg fw-bold shadow-sm">
               <i class="fas fa-sign-in-alt me-2"></i>LOG MASUK
             </button>
+            
             <div class="text-center mt-3">
                 <small class="text-muted fst-italic">HAKCIPTA TERPELIHARA USTP PPD AG 2026</small>
             </div>

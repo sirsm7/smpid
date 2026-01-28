@@ -1,8 +1,7 @@
 /**
  * SMPID MASTER JAVASCRIPT FILE (app.js)
- * Versi Akhir: Helpdesk Module + Session Security + PWA Support
+ * Versi: Manual Auth + Change Password Module + Full UI Restoration
  * Host Database: appppdag.cloud
- * Host Bot API: smpid-40.ppdag.deno.net
  */
 
 // ==========================================
@@ -54,7 +53,6 @@ function checkEmailDomain(email) {
     return email.includes("@moe-dl.edu.my");
 }
 
-// --- FUNGSI SMART SENTENCE CASE (GLOBAL) ---
 function formatSentenceCase(str) {
     if (!str) return "";
     return str.replace(/(?:^|[\.\!\?]\s+)([a-z])/g, function(match) {
@@ -75,12 +73,11 @@ function generateWhatsAppLink(nama, noTel, isRaw = false) {
 // 4. ROUTER, AUTHENTICATION & SECURITY
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    runSecurityCheck(); // Semak sesi sebaik sahaja load
+    runSecurityCheck();
     
     const bodyId = document.body.id;
     if (bodyId === 'page-login') {
-        sessionStorage.clear(); // Pastikan bersih di login page
-        // Hapus history supaya tak boleh 'Forward' balik
+        sessionStorage.clear();
         window.history.replaceState(null, null, window.location.href);
     } 
     else if (bodyId === 'page-admin') {
@@ -91,9 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// --- SECURITY: HALANG BACK BUTTON (BF CACHE) ---
 window.addEventListener('pageshow', function(event) {
-    // Jika page dimuatkan dari cache memori (butang Back)
     if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
         runSecurityCheck();
     }
@@ -104,50 +99,86 @@ function runSecurityCheck() {
     const isAuth = sessionStorage.getItem('smpid_auth') === 'true';
     const userKod = sessionStorage.getItem('smpid_user_kod');
 
-    // Jika di page User/Admin tapi tiada sesi -> Tendang keluar
     if ((bodyId === 'page-user' || bodyId === 'page-admin') && !isAuth && !userKod) {
-        window.location.replace('index.html'); // Replace = Tak boleh back
+        window.location.replace('index.html');
     }
 }
 
+// --- FUNGSI UI: LIHAT PASSWORD ---
+function togglePass() {
+    const input = document.getElementById('inputPassword');
+    const icon = document.getElementById('iconEye');
+    if (input.type === "password") {
+        input.type = "text";
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = "password";
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+// --- FUNGSI UTAMA: PROSES LOGIN (MANUAL AUTH) ---
 async function prosesLogin() {
-    const input = document.getElementById('inputKodSekolah');
+    const inputEmail = document.getElementById('inputEmail');
+    const inputPass = document.getElementById('inputPassword');
     const btnLogin = document.querySelector('button[onclick="prosesLogin()"]');
-    if (!input) return;
+    
+    if (!inputEmail || !inputPass) return;
 
-    const kod = input.value.trim().toUpperCase();
-    if (!kod) { Swal.fire('Ralat', 'Sila masukkan kod.', 'warning'); return; }
+    const email = inputEmail.value.trim().toLowerCase(); 
+    const password = inputPass.value.trim();
 
-    // Disable button untuk elak double click
+    if (!email || !password) { 
+        Swal.fire('Ralat', 'Sila masukkan emel dan kata laluan.', 'warning'); 
+        return; 
+    }
+
     if (btnLogin) btnLogin.disabled = true;
     toggleLoading(true);
 
-    // --- LALUAN 1: ADMIN PPD (M030) ---
-    if (kod === "M030") {
-        sessionStorage.setItem('smpid_auth', 'true');
-        Swal.fire({
-            icon: 'success', title: 'Admin Disahkan', timer: 800, showConfirmButton: false
-        }).then(() => {
-            window.location.replace('admin.html'); // Guna replace
-        });
-        return;
-    }
-
-    // --- LALUAN 2: USER SEKOLAH ---
     try {
         const { data, error } = await supabaseClient
-            .from('smpid_sekolah_data')
-            .select('kod_sekolah')
-            .eq('kod_sekolah', kod)
+            .from('smpid_users')
+            .select('kod_sekolah, role, password')
+            .eq('email', email)
             .single();
             
         toggleLoading(false);
         if (btnLogin) btnLogin.disabled = false;
 
-        if (error || !data) { Swal.fire('Maaf', 'Kod sekolah tidak dijumpai.', 'error'); return; }
+        if (error || !data) { 
+            Swal.fire('Gagal', 'Emel pengguna tidak ditemui.', 'error'); 
+            return; 
+        }
+
+        if (data.password !== password) {
+            Swal.fire('Maaf', 'Kata laluan salah.', 'error');
+            return;
+        }
         
+        // Simpan Sesi
         sessionStorage.setItem('smpid_user_kod', data.kod_sekolah);
-        window.location.replace('user.html'); // Guna replace
+        
+        if (data.role === 'ADMIN') {
+            sessionStorage.setItem('smpid_auth', 'true');
+            Swal.fire({
+                icon: 'success', title: 'Admin Disahkan', text: 'Selamat kembali, Admin.',
+                timer: 800, showConfirmButton: false
+            }).then(() => {
+                window.location.replace('admin.html');
+            });
+        } else {
+            sessionStorage.setItem('smpid_auth', 'false'); 
+            Swal.fire({
+                icon: 'success', title: 'Log Masuk Berjaya', text: `Kod Sekolah: ${data.kod_sekolah}`,
+                timer: 800, showConfirmButton: false
+            }).then(() => {
+                window.location.replace('user.html'); 
+            });
+        }
+
     } catch (err) {
         toggleLoading(false); 
         if (btnLogin) btnLogin.disabled = false;
@@ -164,26 +195,104 @@ function keluarSistem() {
             sessionStorage.clear();
             sessionStorage.removeItem('smpid_user_kod');
             sessionStorage.removeItem('smpid_auth');
-            // Hard redirect supaya history hilang
             window.location.replace('index.html');
         }
     });
 }
 
 // ==========================================
-// 5. MODUL USER PORTAL (user.html)
+// 5. MODUL TUKAR KATA LALUAN (MANUAL AUTH)
+// ==========================================
+async function ubahKataLaluan() {
+    const kod = sessionStorage.getItem('smpid_user_kod');
+    if (!kod) return;
+
+    // 1. Minta Kata Laluan Lama & Baru
+    const { value: formValues } = await Swal.fire({
+        title: 'Tukar Kata Laluan',
+        html:
+            '<label class="mb-1 text-start w-100 small fw-bold">Kata Laluan Lama</label>' +
+            '<input id="swal-input1" type="password" class="swal2-input mb-3" placeholder="Masukan password semasa">' +
+            '<label class="mb-1 text-start w-100 small fw-bold">Kata Laluan Baru</label>' +
+            '<input id="swal-input2" type="password" class="swal2-input" placeholder="Minima 6 aksara">',
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+            return [
+                document.getElementById('swal-input1').value,
+                document.getElementById('swal-input2').value
+            ]
+        }
+    });
+
+    if (formValues) {
+        const [oldPass, newPass] = formValues;
+
+        if (!oldPass || !newPass) {
+            Swal.fire('Ralat', 'Sila isi kedua-dua ruang.', 'warning');
+            return;
+        }
+
+        if (newPass.length < 6) {
+            Swal.fire('Ralat', 'Kata laluan baru terlalu pendek (min 6).', 'warning');
+            return;
+        }
+
+        toggleLoading(true);
+
+        try {
+            // 2. Sahkan Password Lama Dahulu
+            const { data: userData, error: fetchError } = await supabaseClient
+                .from('smpid_users')
+                .select('password')
+                .eq('kod_sekolah', kod)
+                .single();
+
+            if (fetchError || !userData) {
+                throw new Error("User tidak dijumpai.");
+            }
+
+            // Check manual string
+            if (userData.password !== oldPass) {
+                toggleLoading(false);
+                Swal.fire('Gagal', 'Kata laluan lama tidak sah.', 'error');
+                return;
+            }
+
+            // 3. Update Password Baru ke Table
+            const { error: updateError } = await supabaseClient
+                .from('smpid_users')
+                .update({ password: newPass })
+                .eq('kod_sekolah', kod);
+
+            if (updateError) throw updateError;
+
+            toggleLoading(false);
+            Swal.fire('Berjaya', 'Kata laluan telah ditukar. Sila log masuk semula.', 'success').then(() => {
+                sessionStorage.clear();
+                window.location.replace('index.html');
+            });
+
+        } catch (err) {
+            toggleLoading(false);
+            console.error(err);
+            Swal.fire('Ralat', 'Gagal menukar kata laluan.', 'error');
+        }
+    }
+}
+
+// ==========================================
+// 6. MODUL USER PORTAL (user.html)
 // ==========================================
 function initUserPortal() {
     const kod = sessionStorage.getItem('smpid_user_kod');
     const isAdmin = sessionStorage.getItem('smpid_auth') === 'true';
 
-    // Double check (Fail-safe)
     if (!kod && !isAdmin) { window.location.replace('index.html'); return; }
     
-    // Paparan Header Khas jika Admin yang masuk view sekolah
     if (isAdmin) {
-        // Jika admin view user, kita set kod sementara dari apa yang dia pilih sebelum ini
-        // atau jika direct access, fallback ke kod.
         document.getElementById('displayKodSekolah').innerHTML = `<i class="fas fa-user-shield me-2"></i>ADMIN VIEW: ${kod}`;
         document.getElementById('displayKodSekolah').classList.replace('text-dark', 'text-primary');
         document.getElementById('displayKodSekolah').classList.add('border', 'border-primary');
@@ -208,7 +317,7 @@ function showSection(section) {
         document.getElementById('section-menu').classList.remove('hidden');
         document.getElementById('section-profil').classList.add('hidden');
         document.getElementById('section-aduan').classList.add('hidden');
-        document.getElementById('welcomeText').innerText = "Sila pilih tindakan yang ingin dilakukan";
+        document.getElementById('welcomeText').innerText = "Menu Utama";
     } else if (section === 'profil') {
         document.getElementById('section-menu').classList.add('hidden');
         document.getElementById('section-profil').classList.remove('hidden');
@@ -258,7 +367,6 @@ async function simpanProfil() {
 
     if (!checkEmailDomain(emelG)) { Swal.fire('Format Salah', 'Gunakan emel moe-dl.edu.my', 'warning'); return; }
 
-    // ANTI-DOUBLE SUBMIT
     if(btnSubmit) btnSubmit.disabled = true;
     toggleLoading(true);
 
@@ -276,7 +384,6 @@ async function simpanProfil() {
         if (error) throw error;
 
         if (DENO_API_URL) {
-            console.log("Menghantar notifikasi ke PPD...");
             fetch(`${DENO_API_URL}/notify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -285,9 +392,7 @@ async function simpanProfil() {
                     nama: namaSekolah,
                     updated_by: isAdmin ? 'PENTADBIR PPD' : 'PIHAK SEKOLAH' 
                 })
-            })
-            .then(res => res.json())
-            .catch(err => console.warn("Gagal hubungi bot notifikasi:", err));
+            }).catch(err => console.warn("Bot offline:", err));
         }
 
         toggleLoading(false);
@@ -342,7 +447,7 @@ async function resetDataSekolah() {
 }
 
 // ==========================================
-// 6. MODUL ADMIN PANEL (admin.html)
+// 7. MODUL ADMIN PANEL (admin.html)
 // ==========================================
 let dashboardData = [];
 let activeStatus = 'ALL';
@@ -454,7 +559,6 @@ function updateBadgeCounts(filtered) {
     else if(activeStatus === 'SAMA') document.getElementById('badgeSama')?.classList.add('active');
     else if(activeStatus === 'BERBEZA') document.getElementById('badgeBerbeza')?.classList.add('active');
     
-    // Kiraan berdasarkan konteks filter Jenis Sekolah shj
     const context = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
     if(document.getElementById('cntAll')) document.getElementById('cntAll').innerText = context.length;
     if(document.getElementById('cntLengkap')) document.getElementById('cntLengkap').innerText = context.filter(i => i.is_lengkap).length;
@@ -486,7 +590,6 @@ function renderGrid(data) {
             
             const linkG_Raw = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, true);
             const linkA_Raw = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, true);
-            
             const hasTeleG = s.telegram_id_gpict;
             const hasTeleA = s.telegram_id_admin;
 
@@ -569,7 +672,6 @@ function generateList() {
     const filterStatus = document.getElementById('statusFilter').value;
     const uniqueEmails = new Set();
     
-    // Safety check jika emailRawData kosong atau undefined
     if(!emailRawData || emailRawData.length === 0) {
         document.getElementById('countEmail').innerText = "0";
         document.getElementById('emailOutput').value = "";
@@ -626,44 +728,34 @@ function nextQueue() { qIndex++; renderQueue(); }
 function prevQueue() { if(qIndex > 0) qIndex--; renderQueue(); }
 
 // ==========================================
-// 7. MODUL HELPDESK & ADUAN (NEW)
+// 8. HELPDESK MODULE
 // ==========================================
-
-// A. USER: Hantar Tiket
 async function hantarTiket() {
     const kod = sessionStorage.getItem('smpid_user_kod');
     const peranan = document.getElementById('tiketPeranan').value;
-    
-    // FORCE UPPERCASE untuk TAJUK sahaja
     const tajuk = document.getElementById('tiketTajuk').value.toUpperCase();
-    
-    // SMART SENTENCE CASE untuk MESEJ
-    const mesejRaw = document.getElementById('tiketMesej').value;
-    const mesej = formatSentenceCase(mesejRaw);
+    const mesej = formatSentenceCase(document.getElementById('tiketMesej').value);
 
     const btnSubmit = document.querySelector('#formTiket button[type="submit"]');
 
     if (!peranan) { Swal.fire('Pilih Jawatan', 'Sila nyatakan anda sebagai GPICT atau Admin.', 'warning'); return; }
 
-    // ANTI-DOUBLE SUBMIT
     if(btnSubmit) btnSubmit.disabled = true;
     toggleLoading(true);
 
     try {
-        // 1. Simpan Database
         const { error } = await supabaseClient
             .from('smpid_aduan')
             .insert([{ kod_sekolah: kod, peranan_pengirim: peranan, tajuk: tajuk, butiran_masalah: mesej }]);
         
         if (error) throw error;
 
-        // 2. Notify PPD (API Deno)
         if (DENO_API_URL) {
             fetch(`${DENO_API_URL}/notify-ticket`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ kod: kod, peranan: peranan, tajuk: tajuk, mesej: mesej })
-            }).catch(e => console.warn("Bot offline?", e));
+            }).catch(e => console.warn("Bot offline:", e));
         }
 
         toggleLoading(false);
@@ -680,11 +772,22 @@ async function hantarTiket() {
     }
 }
 
-// B. USER: Load Tiket History
+// ==========================================
+// KEMASKINI: FUNGSI LOAD TIKET (GAYA KAD)
+// ==========================================
 async function loadTiketUser() {
     const kod = sessionStorage.getItem('smpid_user_kod');
-    const tbody = document.getElementById('senaraiTiketUser');
-    if(!tbody) return;
+    const container = document.getElementById('senaraiTiketContainer');
+    
+    // Pastikan container wujud (elak error jika tab tak load)
+    if(!container) return;
+
+    // UI Loading Sementara
+    container.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="small text-muted mt-2">Memuatkan sejarah tiket...</p>
+        </div>`;
 
     try {
         const { data, error } = await supabaseClient
@@ -695,31 +798,98 @@ async function loadTiketUser() {
 
         if (error) throw error;
         
-        tbody.innerHTML = "";
+        container.innerHTML = ""; // Kosongkan loader
+
+        // JIKA TIADA REKOD
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Tiada rekod aduan.</td></tr>`;
+            container.innerHTML = `
+            <div class="text-center py-5 opacity-50">
+                <i class="fas fa-folder-open fa-3x mb-3 text-secondary"></i>
+                <p class="fw-bold text-dark">Tiada Rekod Aduan</p>
+                <small>Sebarang tiket yang dihantar akan disenaraikan di sini.</small>
+            </div>`;
             return;
         }
 
+        // LOOP SETIAP TIKET
         data.forEach(t => {
-            const date = new Date(t.created_at).toLocaleDateString('ms-MY');
-            const statusClass = t.status === 'SELESAI' ? 'text-success fw-bold' : 'text-warning fw-bold';
-            const balasan = t.balasan_admin ? `<div class="mt-1 small text-primary border-start border-2 ps-2 border-primary"><b>PPD:</b> ${t.balasan_admin}</div>` : `<span class="text-muted small">- Menunggu Respon -</span>`;
+            // Format Tarikh & Masa
+            const dateObj = new Date(t.created_at);
+            const dateStr = dateObj.toLocaleDateString('ms-MY', { day: 'numeric', month: 'short', year: 'numeric' });
+            const timeStr = dateObj.toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' });
 
-            const row = `
-            <tr>
-                <td>${date}</td>
-                <td><span class="badge bg-secondary">${t.peranan_pengirim}</span></td>
-                <td>${t.tajuk}</td>
-                <td class="${statusClass}">${t.status}</td>
-                <td>${balasan}</td>
-            </tr>`;
-            tbody.innerHTML += row;
+            // Tetapan Warna & Ikon Status
+            let statusBadge = '';
+            
+            if (t.status === 'SELESAI') {
+                statusBadge = `<span class="badge bg-success bg-gradient shadow-sm"><i class="fas fa-check-circle me-1"></i>SELESAI</span>`;
+            } else {
+                statusBadge = `<span class="badge bg-warning text-dark bg-gradient shadow-sm"><i class="fas fa-clock me-1"></i>DALAM PROSES</span>`;
+            }
+
+            // Paparan Respon Admin
+            let responHTML = '';
+            if (t.balasan_admin) {
+                // Jika ada balasan
+                const tarikhBalas = t.tarikh_balas ? new Date(t.tarikh_balas).toLocaleDateString('ms-MY') : 'Baru sebentar';
+                responHTML = `
+                <div class="bg-primary bg-opacity-10 p-3 rounded-3 border border-primary border-opacity-25 mt-3 position-relative">
+                    <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary mt-1 shadow-sm">
+                        Respon PPD
+                    </span>
+                    <p class="mb-1 text-dark small mt-2 fw-semibold">${t.balasan_admin}</p>
+                    <div class="text-end">
+                        <small class="text-muted" style="font-size: 0.7rem;"><i class="fas fa-calendar-check me-1"></i>${tarikhBalas}</small>
+                    </div>
+                </div>`;
+            } else {
+                // Jika tiada balasan lagi
+                responHTML = `
+                <div class="bg-light p-2 rounded-3 border border-dashed mt-3 text-center">
+                    <small class="text-muted fst-italic"><i class="fas fa-hourglass-half me-2"></i>Menunggu tindakan pegawai PPD...</small>
+                </div>`;
+            }
+
+            // HTML KAD TIKET
+            const cardHTML = `
+            <div class="card shadow-sm border-0 rounded-4 mb-1 overflow-hidden">
+                <div class="card-body p-0">
+                    <!-- HEADER KAD -->
+                    <div class="p-3 border-bottom bg-white d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                             <div class="bg-light rounded-circle d-flex align-items-center justify-content-center text-secondary border" style="width: 35px; height: 35px;">
+                                <i class="fas ${t.peranan_pengirim === 'GPICT' ? 'fa-laptop-code' : 'fa-user-shield'}"></i>
+                             </div>
+                             <div>
+                                <small class="text-secondary d-block lh-1" style="font-size: 0.7rem;">${dateStr} • ${timeStr}</small>
+                                <span class="fw-bold text-dark small">${t.peranan_pengirim}</span>
+                             </div>
+                        </div>
+                        ${statusBadge}
+                    </div>
+
+                    <!-- BODY KAD -->
+                    <div class="p-3 bg-white">
+                        <h6 class="fw-bold text-dark mb-2">${t.tajuk}</h6>
+                        <p class="text-secondary small mb-0 text-break">${t.butiran_masalah}</p>
+                        
+                        <!-- BAHAGIAN RESPON -->
+                        ${responHTML}
+                    </div>
+                </div>
+                <!-- Jalur Warna Status di Kiri -->
+                <div class="position-absolute top-0 start-0 bottom-0 bg-${t.status === 'SELESAI' ? 'success' : 'warning'}" style="width: 4px;"></div>
+            </div>`;
+
+            container.innerHTML += cardHTML;
         });
-    } catch (e) { console.error(e); }
+
+    } catch (e) { 
+        console.error(e); 
+        container.innerHTML = `<div class="alert alert-danger small">Gagal memuatkan tiket. Sila cuba lagi.</div>`;
+    }
 }
 
-// C. ADMIN: Load All Tickets
 async function loadTiketAdmin() {
     const wrapper = document.getElementById('adminTiketWrapper');
     const filter = document.getElementById('filterTiketAdmin')?.value || 'ALL';
@@ -744,33 +914,24 @@ async function loadTiketAdmin() {
             const date = new Date(t.created_at).toLocaleString('ms-MY');
             const bgClass = t.status === 'SELESAI' ? 'bg-light opacity-75' : 'bg-white border-danger';
             
-            // Borang Balasan (Hanya jika belum selesai)
             let actionArea = "";
             if (t.status !== 'SELESAI') {
                 actionArea = `
                 <div class="mt-3 border-top pt-3 bg-light p-3 rounded">
                     <label class="small fw-bold mb-1">Balasan Admin PPD:</label>
-                    
-                    <textarea id="reply-${t.id}" class="form-control form-control-sm mb-2" rows="2" 
-                              placeholder="Tulis penyelesaian..." 
-                              onblur="this.value = formatSentenceCase(this.value)"></textarea>
-
+                    <textarea id="reply-${t.id}" class="form-control form-control-sm mb-2" rows="2" placeholder="Tulis penyelesaian..." onblur="this.value = formatSentenceCase(this.value)"></textarea>
                     <div class="d-flex justify-content-between">
                         <button onclick="submitBalasanAdmin(${t.id}, '${t.kod_sekolah}', '${t.peranan_pengirim}', '${t.tajuk}')" class="btn btn-sm btn-primary">
                             <i class="fas fa-reply me-1"></i> Hantar & Tutup Tiket
                         </button>
-                        <button onclick="padamTiket(${t.id})" class="btn btn-sm btn-outline-danger" title="Padam Tiket Ini">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
+                        <button onclick="padamTiket(${t.id})" class="btn btn-sm btn-outline-danger" title="Padam Tiket Ini"><i class="fas fa-trash-alt"></i></button>
                     </div>
                 </div>`;
             } else {
                 actionArea = `
                 <div class="d-flex justify-content-between align-items-end mt-2">
                     <div class="text-success small"><i class="fas fa-check-circle"></i> Diselesaikan pada: ${t.tarikh_balas ? new Date(t.tarikh_balas).toLocaleDateString() : '-'} <br> <b>Respon:</b> ${t.balasan_admin}</div>
-                    <button onclick="padamTiket(${t.id})" class="btn btn-sm btn-outline-danger ms-2" title="Padam Tiket Ini">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
+                    <button onclick="padamTiket(${t.id})" class="btn btn-sm btn-outline-danger ms-2" title="Padam Tiket Ini"><i class="fas fa-trash-alt"></i></button>
                 </div>`;
             }
 
@@ -798,37 +959,28 @@ async function loadTiketAdmin() {
     }
 }
 
-// D. ADMIN: Submit Reply
 async function submitBalasanAdmin(id, kod, peranan, tajuk) {
     const replyText = document.getElementById(`reply-${id}`).value;
     if(!replyText) return Swal.fire('Kosong', 'Sila tulis balasan.', 'warning');
     
-    // ANTI-DOUBLE SUBMIT
-    // Kita cari button yang sedang ditekan
     const btn = event.currentTarget; 
     if(btn) btn.disabled = true;
 
     toggleLoading(true);
     try {
-        // 1. Update Database
         const { error } = await supabaseClient
             .from('smpid_aduan')
-            .update({ 
-                status: 'SELESAI', 
-                balasan_admin: replyText,
-                tarikh_balas: new Date().toISOString()
-            })
+            .update({ status: 'SELESAI', balasan_admin: replyText, tarikh_balas: new Date().toISOString() })
             .eq('id', id);
         
         if (error) throw error;
 
-        // 2. Notify User (API Deno)
         if (DENO_API_URL) {
             fetch(`${DENO_API_URL}/reply-ticket`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ kod: kod, peranan: peranan, tajuk: tajuk, balasan: replyText })
-            }).catch(e => console.warn("Bot offline?", e));
+            }).catch(e => console.warn("Bot offline:", e));
         }
 
         toggleLoading(false);
@@ -842,7 +994,6 @@ async function submitBalasanAdmin(id, kod, peranan, tajuk) {
     }
 }
 
-// E. ADMIN: Delete Ticket (NEW FUNCTION)
 async function padamTiket(id) {
     Swal.fire({
         title: 'Padam Tiket Ini?',
@@ -851,32 +1002,25 @@ async function padamTiket(id) {
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Ya, Padam!',
-        cancelButtonText: 'Batal'
+        confirmButtonText: 'Ya, Padam!'
     }).then(async (result) => {
         if (result.isConfirmed) {
             toggleLoading(true);
             try {
-                const { error } = await supabaseClient
-                    .from('smpid_aduan')
-                    .delete()
-                    .eq('id', id);
-
+                const { error } = await supabaseClient.from('smpid_aduan').delete().eq('id', id);
                 if (error) throw error;
-
                 toggleLoading(false);
                 Swal.fire('Dipadam', 'Tiket telah dihapuskan.', 'success').then(() => loadTiketAdmin());
             } catch (err) {
                 toggleLoading(false);
                 Swal.fire('Ralat', 'Gagal memadam tiket.', 'error');
-                console.error(err);
             }
         }
     });
 }
 
 // ==========================================
-// 8. PWA SERVICE WORKER REGISTRATION (BARU)
+// 9. PWA SERVICE WORKER
 // ==========================================
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
