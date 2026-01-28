@@ -1,10 +1,10 @@
 /**
  * SMPID Service Worker
- * Versi: 2.4 (UI Fix: Badge Icons)
- * Strategi: Cache-First untuk Aset Statik, Network-Only untuk API Supabase
+ * Versi: 2.5 (Fix: Cloudflare Insights & AdBlocker Issue)
+ * Strategi: Cache-First untuk Aset Statik, Network-Only untuk API & Analytics
  */
 
-const CACHE_NAME = 'smpid-cache-v2.4'; // Versi dinaikkan untuk UI baru
+const CACHE_NAME = 'smpid-cache-v2.5'; // Versi dinaikkan
 
 // Senarai fail yang WAJIB ada dalam cache untuk berfungsi offline
 const ASSETS_TO_CACHE = [
@@ -34,7 +34,7 @@ const ASSETS_TO_CACHE = [
 
 // 1. INSTALL: Download semua aset bila user mula-mula buka web
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing v2.4...');
+  console.log('[Service Worker] Installing v2.5...');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[Service Worker] Caching App Shell');
@@ -66,9 +66,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // [CRITICAL FIX] ABAIKAN REQUEST KE SUPABASE / API LUAR
-  // Jangan cache request database, biarkan browser urus (Network Only) untuk elak isu CORS
-  if (url.href.includes('supabase') || url.href.includes('tech4ag.my')) {
+  // [CRITICAL FIX] ABAIKAN REQUEST KE SUPABASE, API LUAR, & TRACKERS
+  // Jangan cache request database atau analytics, biarkan browser urus (Network Only)
+  // Ini menyelesaikan masalah 'Failed to fetch' jika adblocker menyekat cloudflareinsights
+  if (
+      url.href.includes('supabase') || 
+      url.href.includes('tech4ag.my') ||
+      url.href.includes('cloudflareinsights')
+  ) {
       return; 
   }
 
