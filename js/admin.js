@@ -1,18 +1,22 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 2.7 (UI Fix: Status Badge to Icons)
- * Fungsi: Dashboard, Email Blaster, Helpdesk & User Management
+ * Versi: 3.1 (Logik KPI PPD M030)
+ * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management & Analisa Digital
  * Halaman: admin.html
  */
 
 // NOTA: Variable global diambil dari window (utils.js)
 
-// State Management
+// State Management (Dashboard Utama)
 let dashboardData = [];
 let emailRawData = [];
 let currentFilteredList = [];
 let activeStatus = 'ALL';
 let activeType = 'ALL';
+
+// State Management (Analisa DCS/DELIMa) - BARU
+let dcsDataList = [];
+let charts = { donut: null, bar: null };
 
 // Queue State (Tindakan Pantas)
 let reminderQueue = [];
@@ -44,10 +48,15 @@ function initAdminPanel() {
         helpdeskTabBtn.addEventListener('shown.bs.tab', function () { loadTiketAdmin(); });
     }
 
-    // LISTENER BARU: Tab Pengurusan Admin
     const adminUsersTabBtn = document.getElementById('admin-users-tab');
     if (adminUsersTabBtn) {
         adminUsersTabBtn.addEventListener('shown.bs.tab', function () { loadAdminList(); });
+    }
+
+    // LISTENER BARU: Tab Analisa
+    const analisaTabBtn = document.getElementById('analisa-tab');
+    if (analisaTabBtn) {
+        analisaTabBtn.addEventListener('shown.bs.tab', function () { loadDcsAdmin(); });
     }
     
     // 3. Mula muat data utama
@@ -144,7 +153,7 @@ function runFilter() {
     });
 
     currentFilteredList = filtered;
-    updateBadgeCounts(filtered);
+    updateBadgeCounts();
     renderGrid(filtered);
 }
 
@@ -187,8 +196,6 @@ function renderGrid(data) {
         let html = `<div class="mb-4 fade-up"><h6 class="category-header">${jenis} (${items.length})</h6><div class="row g-3">`;
         
         items.forEach(s => {
-            // [UI FIX] TUKAR TEKS KEPADA IKON UNTUK JIMAT RUANG
-            // Hijau = Lengkap, Merah = Belum
             const statusBadge = s.is_lengkap 
                 ? `<span class="badge bg-success status-badge p-2 shadow-sm" title="Data Lengkap"><i class="fas fa-check fa-lg"></i></span>` 
                 : `<span class="badge bg-danger status-badge p-2 shadow-sm" title="Belum Lengkap"><i class="fas fa-times fa-lg"></i></span>`;
@@ -207,7 +214,7 @@ function renderGrid(data) {
                 return buttonsHtml;
             };
 
-            // DROPDOWN MENU KEBAB (CLEAN UI)
+            // DROPDOWN MENU KEBAB
             html += `
             <div class="col-6 col-md-4 col-lg-3">
               <div class="card school-card h-100 position-relative" onclick="viewSchoolProfile('${s.kod_sekolah}')">
@@ -293,7 +300,7 @@ async function resetPasswordSekolah(kod) {
 }
 
 // ==========================================
-// 5. PENGURUSAN ADMIN (DIPERBAIKI)
+// 5. PENGURUSAN ADMIN
 // ==========================================
 
 async function loadAdminList() {
@@ -366,13 +373,11 @@ async function tambahAdmin() {
     window.toggleLoading(true);
 
     try {
-        // [FIX] JANA UUID KERANA DB TIDAK AUTO-INCREMENT
         const newId = crypto.randomUUID();
-
         const { error } = await window.supabaseClient
             .from('smpid_users')
             .insert([{ 
-                id: newId, // Manual ID
+                id: newId, 
                 kod_sekolah: 'M030', 
                 email: email, 
                 password: password, 
@@ -715,6 +720,262 @@ async function padamTiket(id) {
     });
 }
 
+// ==========================================
+// 10. MODUL ANALISA: DCS & DELIMA (DIKEMASKINI)
+// ==========================================
+
+function getKategoriDcs(score) {
+    if (score === null || score === 0) return { label: 'Tiada Data', color: '#6c757d', class: 'bg-secondary' };
+    if (score < 2.00) return { label: 'Beginner', color: '#dc3545', class: 'bg-danger' };
+    if (score <= 3.00) return { label: 'Novice', color: '#fd7e14', class: 'bg-warning text-dark' };
+    if (score <= 4.00) return { label: 'Intermediate', color: '#ffc107', class: 'bg-warning' };
+    if (score <= 4.74) return { label: 'Advance', color: '#0d6efd', class: 'bg-primary' };
+    return { label: 'Innovator', color: '#198754', class: 'bg-success' };
+}
+
+async function loadDcsAdmin() {
+    try {
+        const { data, error } = await window.supabaseClient.from('smpid_dcs_analisa').select('*').order('nama_sekolah');
+        if (error) throw error;
+        dcsDataList = data;
+        updateDashboardAnalisa();
+    } catch (err) { console.error("DCS Err", err); }
+}
+
+function updateDashboardAnalisa() {
+    const year = document.getElementById('pilihTahunAnalisa').value; 
+    const dcsField = `dcs_${year}`;
+    const aktifField = `peratus_aktif_${year}`;
+
+    document.getElementById('lblYearDcs').innerText = year;
+    document.getElementById('lblYearAktif').innerText = year;
+
+    processDcsPanel(dcsField);
+    processActivePanel(aktifField);
+    renderAnalisaTable(year);
+}
+
+function processDcsPanel(field) {
+    // 1. DAPATKAN DATA PPD (M030) UNTUK KPI UTAMA
+    // Logik: Ambil terus nilai M030, bukan purata
+    const ppdData = dcsDataList.find(d => d.kod_sekolah === 'M030');
+    const ppdScore = (ppdData && ppdData[field]) ? ppdData[field] : 0;
+
+    // Update UI KPI
+    document.getElementById('kpiDcsScore').innerText = ppdScore.toFixed(2);
+    
+    // Update Label Kategori
+    const catPpd = getKategoriDcs(ppdScore);
+    const lbl = document.getElementById('kpiDcsLabel');
+    lbl.innerText = catPpd.label;
+    lbl.className = `badge rounded-pill mt-2 px-3 py-2 ${catPpd.class}`;
+
+    // 2. TAPIS DATA (SEKOLAH SAHAJA) UNTUK CARTA & TOP 5
+    // Logik: Kecualikan M030 supaya carta taburan adil untuk sekolah
+    const schoolOnlyList = dcsDataList.filter(d => d.kod_sekolah !== 'M030');
+
+    // Kira Taburan Kategori (Guna schoolOnlyList)
+    let cats = { 'Beginner': 0, 'Novice': 0, 'Intermediate': 0, 'Advance': 0, 'Innovator': 0 };
+    schoolOnlyList.forEach(d => {
+        const val = d[field];
+        if (val !== null && val > 0) {
+            const cat = getKategoriDcs(val).label;
+            if (cats[cat] !== undefined) cats[cat]++;
+        }
+    });
+
+    // Render Carta Donut
+    const ctx = document.getElementById('chartDcsDonut');
+    if (charts.donut) charts.donut.destroy();
+    charts.donut = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(cats),
+            datasets: [{
+                data: Object.values(cats),
+                backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#0d6efd', '#198754'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right' } }
+        }
+    });
+
+    // 3. TOP 5 SEKOLAH (Guna schoolOnlyList)
+    const top5 = [...schoolOnlyList]
+        .sort((a,b) => (b[field]||0) - (a[field]||0))
+        .slice(0, 5);
+        
+    const top5HTML = top5.map((d,i) => `
+        <tr>
+            <td class="fw-bold">${i+1}</td>
+            <td class="text-truncate" style="max-width:140px" title="${d.nama_sekolah}">${d.nama_sekolah}</td>
+            <td class="text-end fw-bold text-primary">${d[field]?.toFixed(2) || '-'}</td>
+        </tr>`).join('');
+    document.getElementById('tableTopDcs').innerHTML = `<tbody>${top5HTML}</tbody>`;
+}
+
+function processActivePanel(field) {
+    // 1. DAPATKAN DATA PPD (M030) UNTUK KPI UTAMA
+    const ppdData = dcsDataList.find(d => d.kod_sekolah === 'M030');
+    const ppdActive = (ppdData && ppdData[field]) ? ppdData[field] : 0;
+
+    // Update UI KPI
+    document.getElementById('kpiActiveScore').innerText = ppdActive;
+
+    // 2. TAPIS DATA (SEKOLAH SAHAJA) UNTUK CARTA & TOP 5
+    const schoolOnlyList = dcsDataList.filter(d => d.kod_sekolah !== 'M030');
+
+    // Kira Taburan (Guna schoolOnlyList)
+    let ranges = { 'Tinggi (>80%)': 0, 'Sederhana (50-79%)': 0, 'Rendah (<50%)': 0 };
+    schoolOnlyList.forEach(d => {
+        const val = d[field];
+        if (val !== null && val > 0) {
+            if (val >= 80) ranges['Tinggi (>80%)']++;
+            else if (val >= 50) ranges['Sederhana (50-79%)']++;
+            else ranges['Rendah (<50%)']++;
+        }
+    });
+
+    // Render Carta Bar
+    const ctx = document.getElementById('chartActiveBar');
+    if (charts.bar) charts.bar.destroy();
+    charts.bar = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(ranges),
+            datasets: [{
+                label: 'Bilangan Sekolah',
+                data: Object.values(ranges),
+                backgroundColor: ['#198754', '#ffc107', '#dc3545'],
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    // 3. TOP 5 AKTIF (Guna schoolOnlyList)
+    const top5 = [...schoolOnlyList]
+        .sort((a,b) => (b[field]||0) - (a[field]||0))
+        .slice(0, 5);
+
+    const top5HTML = top5.map((d,i) => `
+        <tr>
+            <td class="fw-bold">${i+1}</td>
+            <td class="text-truncate" style="max-width:140px" title="${d.nama_sekolah}">${d.nama_sekolah}</td>
+            <td class="text-end fw-bold text-success">${d[field] || '-'}%</td>
+        </tr>`).join('');
+    document.getElementById('tableTopActive').innerHTML = `<tbody>${top5HTML}</tbody>`;
+}
+
+function renderAnalisaTable(year) {
+    const wrapper = document.getElementById('tableAnalisaBody');
+    if (!wrapper) return;
+    
+    const keyword = document.getElementById('searchAnalisa').value.toUpperCase();
+    
+    // NOTA: M030 dibiarkan ada dalam senarai ini untuk tujuan semakan/edit admin
+    const list = keyword ? dcsDataList.filter(d => d.nama_sekolah.includes(keyword) || d.kod_sekolah.includes(keyword)) : dcsDataList;
+
+    if(list.length === 0) return wrapper.innerHTML = `<tr><td colspan="5" class="text-center py-4">Tiada rekod.</td></tr>`;
+
+    const dcsField = `dcs_${year}`;
+    const activeField = `peratus_aktif_${year}`;
+
+    const html = list.map(d => {
+        const dcsVal = d[dcsField];
+        const activeVal = d[activeField];
+        const cat = getKategoriDcs(dcsVal);
+        const barColor = (activeVal >= 80) ? 'bg-success' : (activeVal >= 50 ? 'bg-warning' : 'bg-danger');
+        const width = activeVal || 0;
+
+        return `
+        <tr>
+            <td class="fw-bold text-secondary">${d.kod_sekolah}</td>
+            <td class="text-truncate" style="max-width: 250px;" title="${d.nama_sekolah}">${d.nama_sekolah}</td>
+            <td class="text-center">
+                <div class="fw-bold text-dark">${dcsVal?.toFixed(2) || '-'}</div>
+                <span class="badge ${cat.class} d-block mt-1" style="font-size:0.65rem">${cat.label}</span>
+            </td>
+            <td class="text-center align-middle">
+                <div class="d-flex align-items-center">
+                    <span class="fw-bold me-2" style="width: 30px;">${activeVal || 0}%</span>
+                    <div class="progress flex-grow-1" style="height: 6px;">
+                        <div class="progress-bar ${barColor}" role="progressbar" style="width: ${width}%"></div>
+                    </div>
+                </div>
+            </td>
+            <td class="text-center">
+                <button onclick="openEditDcs('${d.kod_sekolah}')" class="btn btn-sm btn-light border text-primary shadow-sm">
+                    <i class="fas fa-edit"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+    
+    wrapper.innerHTML = html;
+}
+
+function filterAnalisaTable() {
+    renderAnalisaTable(document.getElementById('pilihTahunAnalisa').value);
+}
+
+// Fungsi Modal Suntingan
+function openEditDcs(kod) {
+    const item = dcsDataList.find(d => d.kod_sekolah === kod);
+    if (!item) return;
+
+    document.getElementById('editKodSekolah').value = item.kod_sekolah;
+    document.getElementById('displayEditNama').value = item.nama_sekolah;
+    
+    document.getElementById('editDcsVal').value = item.dcs_2025 !== null ? item.dcs_2025 : '';
+    document.getElementById('editAktifVal').value = item.peratus_aktif_2025 !== null ? item.peratus_aktif_2025 : '';
+
+    const modal = new bootstrap.Modal(document.getElementById('modalEditDcs'));
+    modal.show();
+}
+
+async function simpanDcs() {
+    const kod = document.getElementById('editKodSekolah').value;
+    const dcsVal = document.getElementById('editDcsVal').value;
+    const aktifVal = document.getElementById('editAktifVal').value;
+    const btn = document.querySelector('#formEditDcs button[type="submit"]');
+
+    if (btn) btn.disabled = true;
+    window.toggleLoading(true);
+
+    try {
+        const payload = {
+            dcs_2025: dcsVal ? parseFloat(dcsVal) : null,
+            peratus_aktif_2025: aktifVal ? parseFloat(aktifVal) : null
+        };
+
+        const { error } = await window.supabaseClient.from('smpid_dcs_analisa').update(payload).eq('kod_sekolah', kod);
+        if (error) throw error;
+
+        bootstrap.Modal.getInstance(document.getElementById('modalEditDcs')).hide();
+        window.toggleLoading(false);
+        if (btn) btn.disabled = false;
+
+        Swal.fire({ icon: 'success', title: 'Disimpan', timer: 1000, showConfirmButton: false });
+        loadDcsAdmin(); 
+
+    } catch (err) {
+        window.toggleLoading(false);
+        if (btn) btn.disabled = false;
+        Swal.fire('Ralat', 'Gagal menyimpan.', 'error');
+    }
+}
+
+
 // Bind Global Functions
 window.setFilter = setFilter;
 window.setType = setType;
@@ -731,8 +992,15 @@ window.loadTiketAdmin = loadTiketAdmin;
 window.submitBalasanAdmin = submitBalasanAdmin;
 window.padamTiket = padamTiket;
 
-// Bind Fungsi Baru
+// Bind Fungsi Baru (Admin + Analisa)
 window.loadAdminList = loadAdminList;
 window.tambahAdmin = tambahAdmin;
 window.padamAdmin = padamAdmin;
 window.resetPasswordSekolah = resetPasswordSekolah;
+
+// Bind Fungsi Analisa
+window.loadDcsAdmin = loadDcsAdmin;
+window.updateDashboardAnalisa = updateDashboardAnalisa;
+window.filterAnalisaTable = filterAnalisaTable;
+window.openEditDcs = openEditDcs;
+window.simpanDcs = simpanDcs;

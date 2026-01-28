@@ -1,11 +1,14 @@
 /**
  * SMPID USER PORTAL MODULE (js/user.js)
- * Versi: 2.3 (Full - No Redeclare Fix)
- * Fungsi: Logik Dashboard Sekolah, Profil & Aduan
+ * Versi: 3.0 (Gabungan Stable + Analisa DCS)
+ * Fungsi: Logik Dashboard Sekolah, Profil, Aduan & Analisa Digital
  * Halaman: user.html
  */
 
 // NOTA: Variable global (DENO_API_URL, SUPABASE_URL) diambil dari window (utils.js)
+
+// Global Chart Instance (untuk elak overlap bila render semula)
+let analisaChart = null;
 
 // ==========================================
 // 1. INITIALIZATION
@@ -62,12 +65,14 @@ function showSection(section) {
     const menuSection = document.getElementById('section-menu');
     const profilSection = document.getElementById('section-profil');
     const aduanSection = document.getElementById('section-aduan');
+    const analisaSection = document.getElementById('section-analisa'); // Ditambah
     const welcomeText = document.getElementById('welcomeText');
 
     // Reset semua ke hidden dulu
     menuSection.classList.add('hidden');
     profilSection.classList.add('hidden');
     aduanSection.classList.add('hidden');
+    if(analisaSection) analisaSection.classList.add('hidden');
 
     if (section === 'menu') {
         menuSection.classList.remove('hidden');
@@ -78,8 +83,11 @@ function showSection(section) {
     } else if (section === 'aduan') {
         aduanSection.classList.remove('hidden');
         welcomeText.innerText = "Helpdesk & Aduan";
-        // Muat data tiket bila tab dibuka
         loadTiketUser(); 
+    } else if (section === 'analisa') {
+        analisaSection.classList.remove('hidden');
+        welcomeText.innerText = "Analisa Digital";
+        loadAnalisaSekolah(); // Panggil fungsi analisa
     }
 }
 
@@ -195,7 +203,177 @@ async function simpanProfil() {
 }
 
 // ==========================================
-// 4. HELPDESK / ADUAN
+// 4. ANALISA DIGITAL (DCS & DELIMa) - BARU
+// ==========================================
+
+async function loadAnalisaSekolah() {
+    const kod = sessionStorage.getItem('smpid_user_kod');
+    const tableBody = document.getElementById('tableAnalisaBody');
+
+    // Reset Paparan
+    document.getElementById('valDcs').innerText = '-';
+    document.getElementById('valAktif').innerText = '-';
+    if(tableBody) tableBody.innerHTML = `<tr><td colspan="3" class="text-muted py-3">Memuatkan data...</td></tr>`;
+
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('smpid_dcs_analisa')
+            .select('*')
+            .eq('kod_sekolah', kod)
+            .single();
+
+        if (error) {
+            // Jika data tiada (mungkin sekolah baru/belum import)
+            if(tableBody) tableBody.innerHTML = `<tr><td colspan="3" class="text-danger py-3">Data analisa belum tersedia.</td></tr>`;
+            return;
+        }
+
+        // 1. Tentukan Data Terkini (Cek 2025 dulu, jika null guna 2024)
+        // Nota: 0 dikira sebagai data, null dikira tiada data.
+        let dcsLatest = (data.dcs_2025 !== null) ? data.dcs_2025 : data.dcs_2024;
+        let aktifLatest = (data.peratus_aktif_2025 !== null) ? data.peratus_aktif_2025 : data.peratus_aktif_2024;
+        let dcsPrev = data.dcs_2023; // Banding dengan 2023 untuk trend asas
+
+        // Jika data terkini adalah 2025, banding dengan 2024
+        if (data.dcs_2025 !== null) dcsPrev = data.dcs_2024;
+
+        // 2. Render Kad Ringkasan
+        document.getElementById('valDcs').innerText = dcsLatest ? dcsLatest.toFixed(2) : "0.00";
+        document.getElementById('valAktif').innerText = aktifLatest ? aktifLatest : "0";
+
+        // Logic Trend Badge
+        const trendEl = document.getElementById('trendDcs');
+        if (dcsLatest > dcsPrev) {
+            trendEl.innerHTML = `<i class="fas fa-arrow-up me-1"></i>Meningkat`;
+            trendEl.className = "badge bg-white text-success mt-2 rounded-pill px-2 border border-success";
+        } else if (dcsLatest < dcsPrev) {
+            trendEl.innerHTML = `<i class="fas fa-arrow-down me-1"></i>Menurun`;
+            trendEl.className = "badge bg-white text-danger mt-2 rounded-pill px-2 border border-danger";
+        } else {
+            trendEl.innerHTML = `<i class="fas fa-minus me-1"></i>Tiada Perubahan`;
+            trendEl.className = "badge bg-white text-secondary mt-2 rounded-pill px-2 border";
+        }
+
+        // 3. Render Jadual
+        let rows = '';
+        const createRow = (year, dcs, aktif) => {
+            if (dcs === null && aktif === null) return ''; // Skip jika kosong
+            return `<tr>
+                <td class="fw-bold text-secondary">${year}</td>
+                <td><span class="badge ${dcs >= 3.0 ? 'bg-success' : 'bg-warning'} text-white">${dcs !== null ? dcs.toFixed(2) : '-'}</span></td>
+                <td>${aktif !== null ? aktif + '%' : '-'}</td>
+            </tr>`;
+        };
+
+        rows += createRow(2023, data.dcs_2023, data.peratus_aktif_2023);
+        rows += createRow(2024, data.dcs_2024, data.peratus_aktif_2024);
+        rows += createRow(2025, data.dcs_2025, data.peratus_aktif_2025);
+
+        if(tableBody) tableBody.innerHTML = rows;
+
+        // 4. Render Chart (Chart.js)
+        renderDcsChart(data);
+
+    } catch (err) {
+        console.error("Analisa Error:", err);
+        if(tableBody) tableBody.innerHTML = `<tr><td colspan="3" class="text-danger py-3">Ralat memuatkan data.</td></tr>`;
+    }
+}
+
+function renderDcsChart(data) {
+    const ctx = document.getElementById('chartAnalisa');
+    if (!ctx) return;
+
+    // Hapus carta lama jika ada
+    if (analisaChart) {
+        analisaChart.destroy();
+    }
+
+    // Penyediaan Data
+    const labels = ['2023', '2024', '2025'];
+    
+    // Data DCS (Null jika tiada)
+    const dataDcs = [data.dcs_2023, data.dcs_2024, data.dcs_2025];
+    
+    // Data Aktif (Null jika tiada)
+    const dataAktif = [data.peratus_aktif_2023, data.peratus_aktif_2024, data.peratus_aktif_2025];
+
+    analisaChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Skor DCS (0-5)',
+                    data: dataDcs,
+                    borderColor: '#0d6efd', // Bootstrap Primary
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    yAxisID: 'y',
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                },
+                {
+                    label: '% Aktif DELIMa',
+                    data: dataAktif,
+                    borderColor: '#198754', // Bootstrap Success
+                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                    yAxisID: 'y1',
+                    tension: 0.3,
+                    borderDash: [5, 5], // Garisan putus-putus
+                    pointStyle: 'rectRot',
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) label += ': ';
+                            if (context.parsed.y !== null) label += context.parsed.y;
+                            if (context.dataset.yAxisID === 'y1') label += '%';
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    min: 0,
+                    max: 5,
+                    title: { display: true, text: 'Skala DCS' }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    min: 0,
+                    max: 100,
+                    grid: { drawOnChartArea: false }, // Elak grid serabut
+                    title: { display: true, text: 'Peratus (%)' }
+                }
+            }
+        }
+    });
+}
+
+// ==========================================
+// 5. HELPDESK / ADUAN
 // ==========================================
 
 async function hantarTiket() {
@@ -344,7 +522,7 @@ async function loadTiketUser() {
 }
 
 // ==========================================
-// 5. TUKAR KATA LALUAN
+// 6. TUKAR KATA LALUAN
 // ==========================================
 
 async function ubahKataLaluan() {
@@ -422,7 +600,7 @@ async function ubahKataLaluan() {
 }
 
 // ==========================================
-// 6. ADMIN RESET (KHAS)
+// 7. ADMIN RESET (KHAS)
 // ==========================================
 
 async function resetDataSekolah() {
@@ -467,7 +645,6 @@ async function resetDataSekolah() {
 }
 
 // Bind Global Window Functions
-// Ini memastikan fungsi HTML onclick dapat mencari fungsi JS ini
 window.showSection = showSection;
 window.simpanProfil = simpanProfil;
 window.salinData = salinData;
@@ -475,3 +652,7 @@ window.hantarTiket = hantarTiket;
 window.loadTiketUser = loadTiketUser;
 window.ubahKataLaluan = ubahKataLaluan;
 window.resetDataSekolah = resetDataSekolah;
+
+// Bind Fungsi Analisa Baru
+window.loadAnalisaSekolah = loadAnalisaSekolah;
+window.renderDcsChart = renderDcsChart;

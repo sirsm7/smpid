@@ -17,9 +17,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link href="css/style.css" rel="stylesheet">
   
-  <!-- Library JS -->
+  <!-- Library JS: Supabase, SweetAlert2 & Chart.js (Ditambah dari devtest) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 </head>
 <body id="page-admin">
 
@@ -86,6 +88,12 @@
                 <i class="fas fa-tachometer-alt me-2"></i>Status Pendaftaran
             </button>
           </li>
+          <!-- TAB ANALISA (Disuntik dari devtest) -->
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold" id="analisa-tab" data-bs-toggle="pill" data-bs-target="#tab-analisa" type="button" role="tab">
+                <i class="fas fa-chart-pie me-2"></i>Analisa
+            </button>
+          </li>
           <li class="nav-item" role="presentation">
             <button class="nav-link fw-bold" id="email-tab" data-bs-toggle="pill" data-bs-target="#tab-email" type="button" role="tab">
                 <i class="fas fa-paper-plane me-2"></i>Email Blaster
@@ -96,7 +104,6 @@
                 <i class="fas fa-headset me-2"></i>Helpdesk / Aduan
             </button>
           </li>
-          <!-- TAB BARU: PENGURUSAN ADMIN -->
           <li class="nav-item" role="presentation">
             <button class="nav-link fw-bold" id="admin-users-tab" data-bs-toggle="pill" data-bs-target="#tab-admin-users" type="button" role="tab">
                 <i class="fas fa-users-cog me-2"></i>Pengurusan Admin
@@ -107,7 +114,7 @@
         <!-- TAB CONTENT -->
         <div class="tab-content" id="adminTabsContent">
           
-          <!-- TAB 1: DASHBOARD -->
+          <!-- TAB 1: DASHBOARD (Asas smpid) -->
           <div class="tab-pane fade show active" id="tab-dashboard" role="tabpanel">
             <div id="dashboardCard" class="card p-4 shadow-sm border-top-primary border-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
@@ -125,7 +132,6 @@
                     <button onclick="eksportDataTapis()" class="btn btn-secondary btn-sm fw-bold text-white shadow-sm">
                       <i class="fas fa-file-export me-1"></i> Eksport Paparan
                     </button>
-                    <!-- Fungsi keluarSistem() ada dalam utils.js -->
                     <button onclick="keluarSistem()" class="btn btn-outline-danger btn-sm fw-bold">
                         <i class="fas fa-sign-out-alt me-1"></i> Log Keluar
                     </button>
@@ -138,7 +144,132 @@
             </div>
           </div>
 
-          <!-- TAB 2: EMAIL BLASTER -->
+          <!-- TAB 2: ANALISA (Disuntik dari devtest) -->
+          <div class="tab-pane fade" id="tab-analisa" role="tabpanel">
+            <div class="card p-4 shadow-sm border-top border-dark border-4 bg-white">
+                
+                <!-- Header & Filter Tahun -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h5 class="fw-bold mb-0 text-dark">Laporan Pencapaian Daerah</h5>
+                        <small class="text-muted">Paparan Dua Lensa: Kualiti (DCS) & Kuantiti (DELIMa)</small>
+                    </div>
+                    <div>
+                        <select id="pilihTahunAnalisa" class="form-select form-select-sm fw-bold shadow-sm bg-light" onchange="updateDashboardAnalisa()">
+                            <option value="2025" selected>DATA TAHUN 2025 (TERKINI)</option>
+                            <option value="2024">DATA TAHUN 2024 (ARKIB)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    
+                    <!-- KOLUM KIRI: LENSA KUALITI (DCS) -->
+                    <div class="col-lg-6 border-end-lg">
+                        <div class="p-2">
+                            <h6 class="text-primary fw-bold text-uppercase border-bottom pb-2 mb-3">
+                                <i class="fas fa-award me-2"></i>Lensa Kualiti: Skor DCS
+                            </h6>
+
+                            <!-- KPI Card DCS -->
+                            <div class="card border-0 bg-primary bg-opacity-10 mb-3 rounded-4">
+                                <div class="card-body text-center p-3">
+                                    <small class="text-primary fw-bold text-uppercase">Purata Skor Daerah</small>
+                                    <h1 class="display-4 fw-bold text-primary mb-0" id="kpiDcsScore">-</h1>
+                                    <span class="badge bg-primary px-3 py-2 rounded-pill mt-2" id="kpiDcsLabel">Memuatkan...</span>
+                                </div>
+                            </div>
+
+                            <!-- Carta DCS -->
+                            <div class="card border-0 shadow-sm rounded-4 mb-3 p-3">
+                                <h6 class="small fw-bold text-center text-muted mb-3">Pecahan Kategori Kompetensi</h6>
+                                <div style="height: 250px; position: relative;">
+                                    <canvas id="chartDcsDonut"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Top 5 DCS -->
+                            <div class="card border-0 shadow-sm rounded-4">
+                                <div class="card-header bg-primary text-white small fw-bold">
+                                    <i class="fas fa-star me-2"></i>5 Sekolah Terbaik (DCS)
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0 small" id="tableTopDcs">
+                                        <tbody><tr><td class="p-3 text-center">Memuatkan...</td></tr></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KOLUM KANAN: LENSA KUANTITI (DELIMa) -->
+                    <div class="col-lg-6">
+                        <div class="p-2">
+                            <h6 class="text-success fw-bold text-uppercase border-bottom pb-2 mb-3">
+                                <i class="fas fa-chart-line me-2"></i>Lensa Kuantiti: % Aktif
+                            </h6>
+
+                            <!-- KPI Card DELIMa -->
+                            <div class="card border-0 bg-success bg-opacity-10 mb-3 rounded-4">
+                                <div class="card-body text-center p-3">
+                                    <small class="text-success fw-bold text-uppercase">Purata % Aktif Daerah</small>
+                                    <h1 class="display-4 fw-bold text-success mb-0"><span id="kpiActiveScore">-</span>%</h1>
+                                    <span class="badge bg-success px-3 py-2 rounded-pill mt-2">Pencapaian Semasa</span>
+                                </div>
+                            </div>
+
+                            <!-- Carta DELIMa -->
+                            <div class="card border-0 shadow-sm rounded-4 mb-3 p-3">
+                                <h6 class="small fw-bold text-center text-muted mb-3">Taburan Tahap Penggunaan</h6>
+                                <div style="height: 250px; position: relative;">
+                                    <canvas id="chartActiveBar"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Top 5 Active -->
+                            <div class="card border-0 shadow-sm rounded-4">
+                                <div class="card-header bg-success text-white small fw-bold">
+                                    <i class="fas fa-fire me-2"></i>5 Sekolah Paling Aktif
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0 small" id="tableTopActive">
+                                        <tbody><tr><td class="p-3 text-center">Memuatkan...</td></tr></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div> <!-- End Row Split -->
+
+                <!-- JADUAL INDUK (FULL LIST) -->
+                <div class="mt-5">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold m-0 text-dark"><i class="fas fa-list me-2"></i>Data Terperinci Sekolah</h6>
+                        <input type="text" id="searchAnalisa" class="form-control form-control-sm w-25" placeholder="Cari Sekolah..." onkeyup="filterAnalisaTable()">
+                    </div>
+                    <div class="table-responsive border rounded-3" style="max-height: 500px;">
+                        <table class="table table-hover table-striped mb-0 small align-middle">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th style="width: 10%;">Kod</th>
+                                    <th style="width: 35%;">Nama Sekolah</th>
+                                    <th style="width: 25%;" class="text-center bg-primary bg-opacity-25">DCS <span id="lblYearDcs">2025</span></th>
+                                    <th style="width: 20%;" class="text-center bg-success bg-opacity-25">% Aktif <span id="lblYearAktif">2025</span></th>
+                                    <th style="width: 10%;" class="text-center">Tindakan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableAnalisaBody">
+                                <tr><td colspan="5" class="text-center py-4">Memuatkan data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+          </div>
+
+          <!-- TAB 3: EMAIL BLASTER (Asas smpid) -->
           <div class="tab-pane fade" id="tab-email" role="tabpanel">
             <div class="card p-4 shadow-sm border-top-warning border-4">
                 <div class="card-body p-0">
@@ -204,7 +335,7 @@ PPD Alor Gajah.</textarea>
             </div>
           </div>
 
-          <!-- TAB 3: HELPDESK / ADUAN -->
+          <!-- TAB 4: HELPDESK (Asas smpid) -->
           <div class="tab-pane fade" id="tab-helpdesk" role="tabpanel">
             <div class="card p-4 shadow-sm border-top border-danger border-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
@@ -227,7 +358,7 @@ PPD Alor Gajah.</textarea>
             </div>
           </div>
 
-          <!-- TAB 4: PENGURUSAN ADMIN (BARU) -->
+          <!-- TAB 5: PENGURUSAN ADMIN (Asas smpid) -->
           <div class="tab-pane fade" id="tab-admin-users" role="tabpanel">
             <div class="card p-4 shadow-sm border-top border-dark border-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
@@ -274,6 +405,45 @@ PPD Alor Gajah.</textarea>
         </div>
 
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL EDIT DCS (Disuntik dari devtest) -->
+  <div class="modal fade" id="modalEditDcs" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header bg-primary text-white">
+                <h6 class="modal-title fw-bold">Kemaskini Data 2025 (Sasaran)</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formEditDcs" onsubmit="event.preventDefault(); simpanDcs();">
+                    <input type="hidden" id="editKodSekolah">
+                    
+                    <div class="mb-3">
+                        <label class="form-label small text-muted fw-bold">NAMA SEKOLAH</label>
+                        <input type="text" id="displayEditNama" class="form-control bg-light fw-bold text-dark" readonly>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label small text-primary fw-bold">SKOR DCS 2025</label>
+                            <input type="number" step="0.01" min="0" max="5" id="editDcsVal" class="form-control fw-bold border-primary" placeholder="0.00 - 5.00">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small text-success fw-bold">% AKTIF 2025</label>
+                            <input type="number" step="1" min="0" max="100" id="editAktifVal" class="form-control fw-bold border-success" placeholder="0 - 100">
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-grid">
+                        <button type="submit" class="btn btn-primary fw-bold">
+                            <i class="fas fa-save me-2"></i> SIMPAN PERUBAHAN
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
   </div>
 
