@@ -9,13 +9,15 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#198754">
   <link rel="apple-touch-icon" href="icoppdag.png">
-  
   <link rel="icon" href="icoppdag.png">
+  
+  <!-- CSS Bootstrap & FontAwesome -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link href="css/style.css" rel="stylesheet">
   
+  <!-- Library JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
@@ -29,7 +31,7 @@
     </div>
   </div>
 
-  <!-- QUEUE MODAL (Untuk Tindakan Pantas) -->
+  <!-- QUEUE MODAL (Untuk Tindakan Pantas WhatsApp) -->
   <div id="queueModal" class="queue-overlay hidden">
       <div class="queue-card">
           <button class="btn-close-queue" onclick="document.getElementById('queueModal').classList.add('hidden')" title="Tutup">&times;</button>
@@ -89,10 +91,15 @@
                 <i class="fas fa-paper-plane me-2"></i>Email Blaster
             </button>
           </li>
-          <!-- TAB BARU: Helpdesk -->
           <li class="nav-item" role="presentation">
             <button class="nav-link fw-bold" id="helpdesk-tab" data-bs-toggle="pill" data-bs-target="#tab-helpdesk" type="button" role="tab">
                 <i class="fas fa-headset me-2"></i>Helpdesk / Aduan
+            </button>
+          </li>
+          <!-- TAB BARU: PENGURUSAN ADMIN -->
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold" id="admin-users-tab" data-bs-toggle="pill" data-bs-target="#tab-admin-users" type="button" role="tab">
+                <i class="fas fa-users-cog me-2"></i>Pengurusan Admin
             </button>
           </li>
         </ul>
@@ -118,12 +125,14 @@
                     <button onclick="eksportDataTapis()" class="btn btn-secondary btn-sm fw-bold text-white shadow-sm">
                       <i class="fas fa-file-export me-1"></i> Eksport Paparan
                     </button>
+                    <!-- Fungsi keluarSistem() ada dalam utils.js -->
                     <button onclick="keluarSistem()" class="btn btn-outline-danger btn-sm fw-bold">
                         <i class="fas fa-sign-out-alt me-1"></i> Log Keluar
                     </button>
                   </div>
                 </div>
       
+                <!-- Filter Grid & Paparan Sekolah -->
                 <div class="mb-4" id="filterContainer"></div>
                 <div id="schoolGridWrapper"></div>
             </div>
@@ -195,7 +204,7 @@ PPD Alor Gajah.</textarea>
             </div>
           </div>
 
-          <!-- TAB 3: HELPDESK / ADUAN (NEW) -->
+          <!-- TAB 3: HELPDESK / ADUAN -->
           <div class="tab-pane fade" id="tab-helpdesk" role="tabpanel">
             <div class="card p-4 shadow-sm border-top border-danger border-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
@@ -218,6 +227,44 @@ PPD Alor Gajah.</textarea>
             </div>
           </div>
 
+          <!-- TAB 4: PENGURUSAN ADMIN (BARU) -->
+          <div class="tab-pane fade" id="tab-admin-users" role="tabpanel">
+            <div class="card p-4 shadow-sm border-top border-dark border-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
+                    <div>
+                         <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-users-cog me-2"></i>Pengurusan Akses Admin</h5>
+                         <small class="text-muted">Tambah atau buang akses pentadbir sistem (Kod: M030)</small>
+                    </div>
+                </div>
+                
+                <!-- Borang Tambah Admin -->
+                <div class="bg-light p-3 rounded mb-4 border">
+                    <h6 class="fw-bold mb-3">Tambah Admin Baru</h6>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-5">
+                            <label class="small fw-bold text-muted">Emel Pengguna</label>
+                            <input type="email" id="inputNewAdminEmail" class="form-control" placeholder="nama@moe.gov.my">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="small fw-bold text-muted">Kata Laluan</label>
+                            <input type="text" id="inputNewAdminPass" class="form-control" placeholder="Kata laluan">
+                        </div>
+                        <div class="col-md-3">
+                            <button onclick="tambahAdmin()" class="btn btn-dark w-100 fw-bold">
+                                <i class="fas fa-plus me-1"></i> Tambah
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Senarai Admin -->
+                <h6 class="fw-bold mt-4 mb-3">Senarai Admin Semasa</h6>
+                <div id="adminListWrapper" class="table-responsive">
+                    <div class="text-center text-muted">Memuatkan...</div>
+                </div>
+            </div>
+          </div>
+
         </div> <!-- End Tab Content -->
 
         <div class="text-center mt-5">
@@ -231,6 +278,20 @@ PPD Alor Gajah.</textarea>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="js/app.js"></script>
+  
+  <!-- MODULAR JS: LOAD UTILS DAHULU, KEMUDIAN ADMIN.JS -->
+  <script src="js/utils.js"></script>
+  <script src="js/admin.js"></script>
+
+  <!-- PWA REGISTRATION (Inline) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('SW Registered'))
+                .catch(err => console.log('SW Fail', err));
+        });
+    }
+  </script>
 </body>
 </html>

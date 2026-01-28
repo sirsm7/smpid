@@ -1,18 +1,26 @@
 /**
  * SMPID Service Worker
- * Versi: 1.0 (Cache-First Strategy untuk Aset Statik)
+ * Versi: 2.4 (UI Fix: Badge Icons)
+ * Strategi: Cache-First untuk Aset Statik, Network-Only untuk API Supabase
  */
 
-const CACHE_NAME = 'smpid-cache-v1';
+const CACHE_NAME = 'smpid-cache-v2.4'; // Versi dinaikkan untuk UI baru
 
-// Senarai fail yang PERLU disimpan dalam cache supaya app laju & boleh buka offline
+// Senarai fail yang WAJIB ada dalam cache untuk berfungsi offline
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './user.html',
   './admin.html',
   './css/style.css',
-  './js/app.js',
+  
+  // Modul JS
+  './js/utils.js',
+  './js/auth.js',
+  './js/user.js',
+  './js/admin.js',
+  
+  // Ikon
   './icoppdag.png',
   
   // CDN Luar (Penting untuk UI tidak pecah bila offline)
@@ -26,7 +34,7 @@ const ASSETS_TO_CACHE = [
 
 // 1. INSTALL: Download semua aset bila user mula-mula buka web
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing New Version...');
+  console.log('[Service Worker] Installing v2.4...');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[Service Worker] Caching App Shell');
@@ -36,9 +44,9 @@ self.addEventListener('install', (event) => {
   self.skipWaiting(); // Paksa SW baru aktif segera
 });
 
-// 2. ACTIVATE: Buang cache lama jika ada update version baru
+// 2. ACTIVATE: Buang cache lama
 self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activating...');
+  console.log('[Service Worker] Activating & Cleaning Old Cache...');
   event.waitUntil(
     caches.keys().then((keyList) => {
       return Promise.all(
@@ -56,11 +64,18 @@ self.addEventListener('activate', (event) => {
 
 // 3. FETCH: Pintas request network
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // [CRITICAL FIX] ABAIKAN REQUEST KE SUPABASE / API LUAR
+  // Jangan cache request database, biarkan browser urus (Network Only) untuk elak isu CORS
+  if (url.href.includes('supabase') || url.href.includes('tech4ag.my')) {
+      return; 
+  }
+
   // Hanya proses request GET
   if (event.request.method !== 'GET') return;
 
   // Strategi: Network First, Fallback to Cache (Untuk HTML)
-  // Ini memastikan user dapat version terkini, tapi kalau offline, guna cache.
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
@@ -71,12 +86,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategi: Stale-While-Revalidate (Untuk Aset CSS/JS/Gambar)
-  // Guna cache dulu (laju), lepas tu update cache di background.
+  // Strategi: Stale-While-Revalidate (Untuk Aset CSS/JS/Gambar Local)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // Simpan copy baru dalam cache
+        // Simpan copy baru dalam cache jika berjaya fetch
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
              const responseClone = networkResponse.clone();
              caches.open(CACHE_NAME).then((cache) => {

@@ -87,7 +87,11 @@
     </div>
   </div>
 
-  <!-- Pautan JS Tunggal -->
-  <script src="js/app.js"></script>
+  <!-- MODULAR SCRIPTS (PERUBAHAN UTAMA DI SINI) -->
+  <!-- 1. Utils dimuatkan dahulu untuk init Supabase -->
+  <script src="js/utils.js"></script>
+  <!-- 2. Auth dimuatkan kemudian untuk logik login -->
+  <script src="js/auth.js"></script>
+  
 </body>
 </html>
