@@ -1,20 +1,21 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 2.7 (UI Fix: Status Badge to Icons)
- * Fungsi: Dashboard, Email Blaster, Helpdesk & User Management
- * Halaman: admin.html
+ * Versi: 7.0 (Restored Filters + Analisa DCS Integrated)
+ * Fungsi: Dashboard Penuh (Grid/Reset Pass), Email, Helpdesk, Admin Mgmt & Analisa DCS/DELIMa
  */
 
-// NOTA: Variable global diambil dari window (utils.js)
-
-// State Management
+// Global State
 let dashboardData = [];
 let emailRawData = [];
 let currentFilteredList = [];
 let activeStatus = 'ALL';
 let activeType = 'ALL';
 
-// Queue State (Tindakan Pantas)
+// Analisa State
+let dcsDataList = [];
+let charts = { donut: null, bar: null };
+
+// Queue State
 let reminderQueue = [];
 let qIndex = 0;
 
@@ -27,35 +28,30 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initAdminPanel() {
-    // 1. Semakan Keselamatan
     if (sessionStorage.getItem('smpid_auth') !== 'true') {
         window.location.replace('index.html');
         return;
     }
     
-    // 2. Setup Event Listeners untuk Tab
-    const emailTabBtn = document.getElementById('email-tab');
-    if (emailTabBtn) {
-        emailTabBtn.addEventListener('shown.bs.tab', function () { generateList(); });
-    }
+    // Tab Listeners
+    const tabMap = {
+        'email-tab': generateList,
+        'helpdesk-tab': loadTiketAdmin,
+        'admin-users-tab': loadAdminList,
+        'analisa-tab': loadDcsAdmin // Load data analisa bila tab dibuka
+    };
 
-    const helpdeskTabBtn = document.getElementById('helpdesk-tab');
-    if (helpdeskTabBtn) {
-        helpdeskTabBtn.addEventListener('shown.bs.tab', function () { loadTiketAdmin(); });
-    }
-
-    // LISTENER BARU: Tab Pengurusan Admin
-    const adminUsersTabBtn = document.getElementById('admin-users-tab');
-    if (adminUsersTabBtn) {
-        adminUsersTabBtn.addEventListener('shown.bs.tab', function () { loadAdminList(); });
+    for (const [id, func] of Object.entries(tabMap)) {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('shown.bs.tab', func);
     }
     
-    // 3. Mula muat data utama
+    // Muat data dashboard utama (Grid Sekolah) secara default
     fetchDashboardData(); 
 }
 
 // ==========================================
-// 2. DATA FETCHING & DASHBOARD
+// 2. DASHBOARD UTAMA (Grid Sekolah)
 // ==========================================
 
 async function fetchDashboardData() {
@@ -68,30 +64,22 @@ async function fetchDashboardData() {
             
         if (error) throw error;
         
-        // Proses Data Mentah
         dashboardData = data.map(i => {
-            const requiredFields = [
-                i.nama_gpict, i.no_telefon_gpict, i.emel_delima_gpict, 
-                i.nama_admin_delima, i.no_telefon_admin_delima, i.emel_delima_admin_delima
-            ];
-            const isDataComplete = requiredFields.every(field => field && field.trim() !== "");
-            
+            const requiredFields = [i.nama_gpict, i.no_telefon_gpict, i.emel_delima_gpict, i.nama_admin_delima, i.no_telefon_admin_delima, i.emel_delima_admin_delima];
+            const isDataComplete = requiredFields.every(f => f && f.trim() !== "");
             const telG = window.cleanPhone(i.no_telefon_gpict);
             const telA = window.cleanPhone(i.no_telefon_admin_delima);
-            const isSama = (telG && telA) && (telG === telA);
-            const isBerbeza = (telG && telA) && (telG !== telA);
 
             return { 
                 ...i, 
                 jenis: i.jenis_sekolah || 'LAIN-LAIN', 
                 is_lengkap: isDataComplete, 
-                is_sama: isSama, 
-                is_berbeza: isBerbeza 
+                is_sama: (telG && telA) && (telG === telA), 
+                is_berbeza: (telG && telA) && (telG !== telA) 
             };
         });
-
-        emailRawData = data; 
         
+        emailRawData = data; 
         renderFilters();
         runFilter();
         generateList(); 
@@ -100,13 +88,9 @@ async function fetchDashboardData() {
     } catch (err) { 
         console.error(err);
         window.toggleLoading(false); 
-        Swal.fire('Ralat', 'Gagal memuatkan data dashboard.', 'error'); 
+        Swal.fire('Ralat', 'Gagal memuatkan data pendaftaran.', 'error'); 
     }
 }
-
-// ==========================================
-// 3. FILTERING & RENDERING
-// ==========================================
 
 function renderFilters() {
     const types = [...new Set(dashboardData.map(i => i.jenis))].sort();
@@ -121,6 +105,7 @@ function renderFilters() {
             <span onclick="setFilter('ALL')" id="badgeAll" class="badge bg-secondary cursor-pointer filter-badge active p-2">Semua <span id="cntAll" class="badge bg-light text-dark ms-1">0</span></span>
             <span onclick="setFilter('LENGKAP')" id="badgeLengkap" class="badge bg-success cursor-pointer filter-badge p-2">Lengkap <span id="cntLengkap" class="badge bg-light text-dark ms-1">0</span></span>
             <span onclick="setFilter('BELUM')" id="badgeBelum" class="badge bg-danger cursor-pointer filter-badge p-2">Belum <span id="cntBelum" class="badge bg-light text-dark ms-1">0</span></span>
+            <!-- RESTORED FILTERS: JAWATAN SAMA & BERBEZA -->
             <span onclick="setFilter('SAMA')" id="badgeSama" class="badge bg-purple cursor-pointer filter-badge p-2">Jawatan Sama <span id="cntSama" class="badge bg-light text-dark ms-1">0</span></span>
             <span onclick="setFilter('BERBEZA')" id="badgeBerbeza" class="badge bg-orange cursor-pointer filter-badge p-2">Jawatan Berbeza <span id="cntBerbeza" class="badge bg-light text-dark ms-1">0</span></span>
           </div>
@@ -137,58 +122,56 @@ function runFilter() {
         const statMatch = (activeStatus === 'ALL') || 
                           (activeStatus === 'LENGKAP' && i.is_lengkap) || 
                           (activeStatus === 'BELUM' && !i.is_lengkap) ||
-                          (activeStatus === 'SAMA' && i.is_sama) ||
-                          (activeStatus === 'BERBEZA' && i.is_berbeza); 
+                          (activeStatus === 'SAMA' && i.is_sama) ||      // Added Logic
+                          (activeStatus === 'BERBEZA' && i.is_berbeza);   // Added Logic
+        
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
         return statMatch && typeMatch;
     });
-
     currentFilteredList = filtered;
-    updateBadgeCounts(filtered);
+    updateBadgeCounts();
     renderGrid(filtered);
 }
 
 function updateBadgeCounts() {
+    // 1. Reset Active Class
     document.querySelectorAll('.filter-badge').forEach(e => e.classList.remove('active'));
     
-    // Highlight Active Badge
-    const map = {
-        'ALL': 'badgeAll', 'LENGKAP': 'badgeLengkap', 'BELUM': 'badgeBelum', 
-        'SAMA': 'badgeSama', 'BERBEZA': 'badgeBerbeza'
-    };
-    if (map[activeStatus]) document.getElementById(map[activeStatus])?.classList.add('active');
+    // 2. Set Active Badge Highlight
+    let badgeId = 'badgeAll';
+    if (activeStatus === 'LENGKAP') badgeId = 'badgeLengkap';
+    else if (activeStatus === 'BELUM') badgeId = 'badgeBelum';
+    else if (activeStatus === 'SAMA') badgeId = 'badgeSama';
+    else if (activeStatus === 'BERBEZA') badgeId = 'badgeBerbeza';
     
-    // Recalculate Numbers based on Active Type
+    if (document.getElementById(badgeId)) {
+        document.getElementById(badgeId).classList.add('active');
+    }
+
+    // 3. Update Numbers
     const context = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
     
-    const setTxt = (id, count) => { if(document.getElementById(id)) document.getElementById(id).innerText = count; };
-    
-    setTxt('cntAll', context.length);
-    setTxt('cntLengkap', context.filter(i => i.is_lengkap).length);
-    setTxt('cntBelum', context.filter(i => !i.is_lengkap).length);
-    setTxt('cntSama', context.filter(i => i.is_sama).length);
-    setTxt('cntBerbeza', context.filter(i => i.is_berbeza).length);
+    const safeSetText = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
+
+    safeSetText('cntAll', context.length);
+    safeSetText('cntLengkap', context.filter(i => i.is_lengkap).length);
+    safeSetText('cntBelum', context.filter(i => !i.is_lengkap).length);
+    safeSetText('cntSama', context.filter(i => i.is_sama).length);
+    safeSetText('cntBerbeza', context.filter(i => i.is_berbeza).length);
 }
 
 function renderGrid(data) {
     const wrapper = document.getElementById('schoolGridWrapper');
     if (!wrapper) return;
     wrapper.innerHTML = "";
-    
-    if (data.length === 0) { 
-        wrapper.innerHTML = `<div class="alert alert-light text-center w-100 mt-4">Tiada data untuk paparan ini.</div>`; 
-        return; 
-    }
+    if (data.length === 0) return wrapper.innerHTML = `<div class="alert alert-light text-center w-100 mt-4">Tiada data untuk paparan ini.</div>`; 
 
     const groups = data.reduce((acc, i) => { (acc[i.jenis] = acc[i.jenis] || []).push(i); return acc; }, {});
 
     Object.keys(groups).sort().forEach(jenis => {
         const items = groups[jenis];
         let html = `<div class="mb-4 fade-up"><h6 class="category-header">${jenis} (${items.length})</h6><div class="row g-3">`;
-        
         items.forEach(s => {
-            // [UI FIX] TUKAR TEKS KEPADA IKON UNTUK JIMAT RUANG
-            // Hijau = Lengkap, Merah = Belum
             const statusBadge = s.is_lengkap 
                 ? `<span class="badge bg-success status-badge p-2 shadow-sm" title="Data Lengkap"><i class="fas fa-check fa-lg"></i></span>` 
                 : `<span class="badge bg-danger status-badge p-2 shadow-sm" title="Belum Lengkap"><i class="fas fa-times fa-lg"></i></span>`;
@@ -198,6 +181,7 @@ function renderGrid(data) {
             const hasTeleG = s.telegram_id_gpict;
             const hasTeleA = s.telegram_id_admin;
 
+            // Logik butang WhatsApp
             const renderActions = (hasTele, linkRaw) => {
                 let buttonsHtml = '<div class="d-flex align-items-center gap-1 justify-content-end">';
                 if (hasTele) buttonsHtml += `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary"><i class="fas fa-check-circle"></i> OK</span>`;
@@ -206,13 +190,12 @@ function renderGrid(data) {
                 buttonsHtml += '</div>';
                 return buttonsHtml;
             };
-
-            // DROPDOWN MENU KEBAB (CLEAN UI)
+            
             html += `
             <div class="col-6 col-md-4 col-lg-3">
               <div class="card school-card h-100 position-relative" onclick="viewSchoolProfile('${s.kod_sekolah}')">
                 
-                <!-- DROPDOWN BUTTON (Start) -->
+                <!-- DROPDOWN MENU KEBAB -->
                 <div class="dropdown position-absolute top-0 end-0 m-2" style="z-index: 5;">
                   <button class="btn btn-sm btn-light rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" 
                           type="button" data-bs-toggle="dropdown" aria-expanded="false" 
@@ -230,7 +213,6 @@ function renderGrid(data) {
                     </li>
                   </ul>
                 </div>
-                <!-- DROPDOWN BUTTON (End) -->
 
                 <div class="card-body p-3 d-flex flex-column">
                   <div class="d-flex justify-content-between align-items-center mb-2 pe-4">
@@ -251,15 +233,13 @@ function renderGrid(data) {
     });
 }
 
+// Fungsi viewSchoolProfile
 function viewSchoolProfile(kod) {
     sessionStorage.setItem('smpid_user_kod', kod);
     window.location.href = 'user.html'; 
 }
 
-// ==========================================
-// 4. RESET PASSWORD SEKOLAH
-// ==========================================
-
+// Fungsi Reset Password Sekolah
 async function resetPasswordSekolah(kod) {
     Swal.fire({
         title: 'Reset Password?',
@@ -273,10 +253,9 @@ async function resetPasswordSekolah(kod) {
         if (result.isConfirmed) {
             window.toggleLoading(true);
             try {
-                // Update ke table smpid_users
                 const { error } = await window.supabaseClient
                     .from('smpid_users')
-                    .update({ password: 'ppdag@12345' }) // Password default
+                    .update({ password: 'ppdag@12345' }) // Default Password
                     .eq('kod_sekolah', kod);
                 
                 if (error) throw error;
@@ -293,446 +272,377 @@ async function resetPasswordSekolah(kod) {
 }
 
 // ==========================================
-// 5. PENGURUSAN ADMIN (DIPERBAIKI)
+// 3. MODUL ANALISA: DCS & DELIMA (TERPISAH)
 // ==========================================
 
-async function loadAdminList() {
-    const wrapper = document.getElementById('adminListWrapper');
-    if (!wrapper) return;
-    
-    wrapper.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>`;
-
-    try {
-        const { data, error } = await window.supabaseClient
-            .from('smpid_users')
-            .select('*')
-            .eq('role', 'ADMIN')
-            .order('email', { ascending: true });
-
-        if (error) throw error;
-
-        if (data.length === 0) {
-            wrapper.innerHTML = `<div class="alert alert-warning">Tiada data admin dijumpai.</div>`;
-            return;
-        }
-
-        let html = `
-        <table class="table table-hover table-bordered align-middle mb-0 bg-white">
-            <thead class="bg-light">
-                <tr>
-                    <th class="small text-uppercase text-secondary">Emel</th>
-                    <th class="small text-uppercase text-secondary">Kata Laluan</th>
-                    <th class="small text-uppercase text-secondary text-center" style="width: 100px;">Tindakan</th>
-                </tr>
-            </thead>
-            <tbody>`;
-
-        data.forEach(user => {
-            html += `
-            <tr>
-                <td class="fw-bold text-dark small">${user.email}</td>
-                <td class="font-monospace text-muted small">${user.password}</td>
-                <td class="text-center">
-                    <button onclick="padamAdmin('${user.id}', '${user.email}')" class="btn btn-sm btn-outline-danger" title="Padam Akaun">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                </td>
-            </tr>`;
-        });
-
-        html += `</tbody></table>`;
-        wrapper.innerHTML = html;
-
-    } catch (err) {
-        console.error(err);
-        wrapper.innerHTML = `<div class="alert alert-danger">Gagal memuatkan senarai admin.</div>`;
-    }
+function getKategoriDcs(score) {
+    if (score === null || score === 0) return { label: 'Tiada Data', color: '#6c757d', class: 'bg-secondary' };
+    if (score < 2.00) return { label: 'Beginner', color: '#dc3545', class: 'bg-danger' };
+    if (score <= 3.00) return { label: 'Novice', color: '#fd7e14', class: 'bg-warning text-dark' };
+    if (score <= 4.00) return { label: 'Intermediate', color: '#ffc107', class: 'bg-warning' };
+    if (score <= 4.74) return { label: 'Advance', color: '#0d6efd', class: 'bg-primary' };
+    return { label: 'Innovator', color: '#198754', class: 'bg-success' };
 }
 
-async function tambahAdmin() {
-    const emailInput = document.getElementById('inputNewAdminEmail');
-    const passInput = document.getElementById('inputNewAdminPass');
-    
-    if (!emailInput || !passInput) return;
-    
-    const email = emailInput.value.trim();
-    const password = passInput.value.trim();
+async function loadDcsAdmin() {
+    try {
+        const { data, error } = await window.supabaseClient.from('smpid_dcs_analisa').select('*').order('nama_sekolah');
+        if (error) throw error;
+        dcsDataList = data;
+        updateDashboardAnalisa();
+    } catch (err) { console.error("DCS Err", err); }
+}
 
-    if (!email || !password) {
-        Swal.fire('Ralat', 'Sila isi emel dan kata laluan.', 'warning');
-        return;
-    }
+function updateDashboardAnalisa() {
+    const year = document.getElementById('pilihTahunAnalisa').value; 
+    const dcsField = `dcs_${year}`;
+    const aktifField = `peratus_aktif_${year}`;
 
+    document.getElementById('lblYearDcs').innerText = year;
+    document.getElementById('lblYearAktif').innerText = year;
+
+    processDcsPanel(dcsField);
+    processActivePanel(aktifField);
+    renderAnalisaTable(year);
+}
+
+function processDcsPanel(field) {
+    let totalScore = 0, count = 0;
+    const cats = { 'Beginner': 0, 'Novice': 0, 'Intermediate': 0, 'Advance': 0, 'Innovator': 0 };
+
+    dcsDataList.forEach(d => {
+        const val = d[field];
+        if (val !== null && val > 0) {
+            totalScore += val;
+            count++;
+            const cat = getKategoriDcs(val).label;
+            if(cats[cat] !== undefined) cats[cat]++;
+        }
+    });
+
+    const avg = count > 0 ? (totalScore / count).toFixed(2) : "0.00";
+    const catAvg = getKategoriDcs(parseFloat(avg));
+    document.getElementById('kpiDcsScore').innerText = avg;
+    const lbl = document.getElementById('kpiDcsLabel');
+    lbl.innerText = catAvg.label;
+    lbl.className = `badge rounded-pill mt-2 px-3 py-2 ${catAvg.class}`;
+
+    const ctx = document.getElementById('chartDcsDonut');
+    if (charts.donut) charts.donut.destroy();
+    charts.donut = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(cats),
+            datasets: [{
+                data: Object.values(cats),
+                backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#0d6efd', '#198754'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right' } }
+        }
+    });
+
+    const top5 = [...dcsDataList].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0, 5);
+    const top5HTML = top5.map((d,i) => `
+        <tr>
+            <td class="fw-bold">${i+1}</td>
+            <td class="text-truncate" style="max-width:140px" title="${d.nama_sekolah}">${d.nama_sekolah}</td>
+            <td class="text-end fw-bold text-primary">${d[field]?.toFixed(2) || '-'}</td>
+        </tr>`).join('');
+    document.getElementById('tableTopDcs').innerHTML = `<tbody>${top5HTML}</tbody>`;
+}
+
+function processActivePanel(field) {
+    let totalPct = 0, count = 0;
+    const ranges = { 'Tinggi (>80%)': 0, 'Sederhana (50-79%)': 0, 'Rendah (<50%)': 0 };
+
+    dcsDataList.forEach(d => {
+        const val = d[field];
+        if (val !== null && val > 0) {
+            totalPct += val;
+            count++;
+            if (val >= 80) ranges['Tinggi (>80%)']++;
+            else if (val >= 50) ranges['Sederhana (50-79%)']++;
+            else ranges['Rendah (<50%)']++;
+        }
+    });
+
+    const avg = count > 0 ? (totalPct / count).toFixed(0) : "0";
+    document.getElementById('kpiActiveScore').innerText = avg;
+
+    const ctx = document.getElementById('chartActiveBar');
+    if (charts.bar) charts.bar.destroy();
+    charts.bar = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(ranges),
+            datasets: [{
+                label: 'Bilangan Sekolah',
+                data: Object.values(ranges),
+                backgroundColor: ['#198754', '#ffc107', '#dc3545'],
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    const top5 = [...dcsDataList].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0, 5);
+    const top5HTML = top5.map((d,i) => `
+        <tr>
+            <td class="fw-bold">${i+1}</td>
+            <td class="text-truncate" style="max-width:140px" title="${d.nama_sekolah}">${d.nama_sekolah}</td>
+            <td class="text-end fw-bold text-success">${d[field] || '-'}%</td>
+        </tr>`).join('');
+    document.getElementById('tableTopActive').innerHTML = `<tbody>${top5HTML}</tbody>`;
+}
+
+function renderAnalisaTable(year) {
+    const wrapper = document.getElementById('tableAnalisaBody');
+    if (!wrapper) return;
+    
+    const keyword = document.getElementById('searchAnalisa').value.toUpperCase();
+    const list = keyword ? dcsDataList.filter(d => d.nama_sekolah.includes(keyword) || d.kod_sekolah.includes(keyword)) : dcsDataList;
+
+    if(list.length === 0) return wrapper.innerHTML = `<tr><td colspan="5" class="text-center py-4">Tiada rekod.</td></tr>`;
+
+    const dcsField = `dcs_${year}`;
+    const activeField = `peratus_aktif_${year}`;
+
+    const html = list.map(d => {
+        const dcsVal = d[dcsField];
+        const activeVal = d[activeField];
+        const cat = getKategoriDcs(dcsVal);
+        const barColor = (activeVal >= 80) ? 'bg-success' : (activeVal >= 50 ? 'bg-warning' : 'bg-danger');
+        const width = activeVal || 0;
+
+        return `
+        <tr>
+            <td class="fw-bold text-secondary">${d.kod_sekolah}</td>
+            <td class="text-truncate" style="max-width: 250px;" title="${d.nama_sekolah}">${d.nama_sekolah}</td>
+            <td class="text-center">
+                <div class="fw-bold text-dark">${dcsVal?.toFixed(2) || '-'}</div>
+                <span class="badge ${cat.class} d-block mt-1" style="font-size:0.65rem">${cat.label}</span>
+            </td>
+            <td class="text-center align-middle">
+                <div class="d-flex align-items-center">
+                    <span class="fw-bold me-2" style="width: 30px;">${activeVal || 0}%</span>
+                    <div class="progress flex-grow-1" style="height: 6px;">
+                        <div class="progress-bar ${barColor}" role="progressbar" style="width: ${width}%"></div>
+                    </div>
+                </div>
+            </td>
+            <td class="text-center">
+                <button onclick="openEditDcs('${d.kod_sekolah}')" class="btn btn-sm btn-light border text-primary shadow-sm">
+                    <i class="fas fa-edit"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+    
+    wrapper.innerHTML = html;
+}
+
+function filterAnalisaTable() {
+    renderAnalisaTable(document.getElementById('pilihTahunAnalisa').value);
+}
+
+// ==========================================
+// 4. FUNGSI SUNTINGAN (EDIT)
+// ==========================================
+
+function openEditDcs(kod) {
+    const item = dcsDataList.find(d => d.kod_sekolah === kod);
+    if (!item) return;
+
+    document.getElementById('editKodSekolah').value = item.kod_sekolah;
+    document.getElementById('displayEditNama').value = item.nama_sekolah;
+    
+    document.getElementById('editDcsVal').value = item.dcs_2025 !== null ? item.dcs_2025 : '';
+    document.getElementById('editAktifVal').value = item.peratus_aktif_2025 !== null ? item.peratus_aktif_2025 : '';
+
+    const modal = new bootstrap.Modal(document.getElementById('modalEditDcs'));
+    modal.show();
+}
+
+async function simpanDcs() {
+    const kod = document.getElementById('editKodSekolah').value;
+    const dcsVal = document.getElementById('editDcsVal').value;
+    const aktifVal = document.getElementById('editAktifVal').value;
+    const btn = document.querySelector('#formEditDcs button[type="submit"]');
+
+    if (btn) btn.disabled = true;
     window.toggleLoading(true);
 
     try {
-        // [FIX] JANA UUID KERANA DB TIDAK AUTO-INCREMENT
-        const newId = crypto.randomUUID();
+        const payload = {
+            dcs_2025: dcsVal ? parseFloat(dcsVal) : null,
+            peratus_aktif_2025: aktifVal ? parseFloat(aktifVal) : null
+        };
 
-        const { error } = await window.supabaseClient
-            .from('smpid_users')
-            .insert([{ 
-                id: newId, // Manual ID
-                kod_sekolah: 'M030', 
-                email: email, 
-                password: password, 
-                role: 'ADMIN' 
-            }]);
-
+        const { error } = await window.supabaseClient.from('smpid_dcs_analisa').update(payload).eq('kod_sekolah', kod);
         if (error) throw error;
 
+        bootstrap.Modal.getInstance(document.getElementById('modalEditDcs')).hide();
         window.toggleLoading(false);
-        Swal.fire('Berjaya', 'Admin baru telah ditambah.', 'success').then(() => {
-            emailInput.value = '';
-            passInput.value = '';
-            loadAdminList(); // Refresh list
-        });
+        if (btn) btn.disabled = false;
+
+        Swal.fire({ icon: 'success', title: 'Disimpan', timer: 1000, showConfirmButton: false });
+        loadDcsAdmin(); 
 
     } catch (err) {
         window.toggleLoading(false);
-        console.error(err);
-        Swal.fire('Ralat', 'Gagal menambah admin. Pastikan emel unik.', 'error');
+        if (btn) btn.disabled = false;
+        Swal.fire('Ralat', 'Gagal menyimpan.', 'error');
     }
 }
 
-async function padamAdmin(id, email) {
-    Swal.fire({
-        title: 'Padam Admin?',
-        text: `Anda pasti mahu memadam akses untuk ${email}?`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Ya, Padam'
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            window.toggleLoading(true);
-            try {
-                const { error } = await window.supabaseClient
-                    .from('smpid_users')
-                    .delete()
-                    .eq('id', id);
-
-                if (error) throw error;
-
-                window.toggleLoading(false);
-                Swal.fire('Berjaya', 'Akaun admin dipadam.', 'success').then(() => loadAdminList());
-            } catch (err) {
-                window.toggleLoading(false);
-                Swal.fire('Ralat', 'Gagal memadam.', 'error');
-            }
-        }
-    });
-}
-
 // ==========================================
-// 6. EXPORT & COPY TOOLS
-// ==========================================
-
-function eksportDataTapis() {
-    if (!currentFilteredList || currentFilteredList.length === 0) { 
-        Swal.fire('Tiada Data', 'Tiada data dalam paparan.', 'info'); 
-        return; 
-    }
-    let csvContent = "BIL,KOD SEKOLAH,NAMA SEKOLAH,JENIS,NAMA GPICT,NO TEL GPICT,NAMA ADMIN DELIMA,NO TEL ADMIN,STATUS DATA,CATATAN\n";
-
-    currentFilteredList.forEach((s, index) => {
-        const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
-        let statusStr = s.is_lengkap ? 'LENGKAP' : 'BELUM LENGKAP';
-        let catatan = [];
-        if (s.is_sama) catatan.push("Jawatan Sama");
-        if (s.is_berbeza) catatan.push("Jawatan Berbeza");
-        
-        let row = [
-            index + 1, clean(s.kod_sekolah), clean(s.nama_sekolah), clean(s.jenis),
-            clean(s.nama_gpict), clean(s.no_telefon_gpict), clean(s.nama_admin_delima), clean(s.no_telefon_admin_delima),
-            statusStr, clean(catatan.join(' & '))
-        ];
-        csvContent += row.join(",") + "\n";
-    });
-
-    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `SMPID_Eksport_${activeStatus}_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-}
-
-function janaSenaraiTelegram() {
-    let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
-    let txt = `**STATUS PENGISIAN SMPID (${activeType})**\n\n`;
-    const pending = list.filter(i => !i.is_lengkap);
-    
-    if(pending.length === 0) { 
-        Swal.fire('Hebat', 'Semua sekolah dah lengkap!', 'success'); 
-        return; 
-    }
-    
-    pending.forEach(i => txt += `- ${i.kod_sekolah} ${i.nama_sekolah}\n`);
-    txt += `\nMohon tindakan segera.`;
-    navigator.clipboard.writeText(txt).then(() => Swal.fire('Disalin!', 'Senarai disalin.', 'success'));
-}
-
-// ==========================================
-// 7. EMAIL BLASTER
-// ==========================================
-
-function generateList() {
-    const includeGpict = document.getElementById('checkGpict').checked;
-    const includeAdmin = document.getElementById('checkAdmin').checked;
-    const filterStatus = document.getElementById('statusFilter').value;
-    const uniqueEmails = new Set();
-    
-    if(!emailRawData || emailRawData.length === 0) {
-        document.getElementById('countEmail').innerText = "0";
-        document.getElementById('emailOutput').value = "";
-        return;
-    }
-
-    emailRawData.forEach(row => {
-        if (includeGpict && row.emel_delima_gpict) {
-            const hasId = row.telegram_id_gpict;
-            if (filterStatus === 'all' || (filterStatus === 'unregistered' && !hasId) || (filterStatus === 'registered' && hasId)) {
-                uniqueEmails.add(row.emel_delima_gpict.trim());
-            }
-        }
-        if (includeAdmin && row.emel_delima_admin_delima) {
-            const hasId = row.telegram_id_admin;
-            if (filterStatus === 'all' || (filterStatus === 'unregistered' && !hasId) || (filterStatus === 'registered' && hasId)) {
-                uniqueEmails.add(row.emel_delima_admin_delima.trim());
-            }
-        }
-    });
-
-    const arr = Array.from(uniqueEmails);
-    document.getElementById('countEmail').innerText = arr.length;
-    document.getElementById('emailOutput').value = arr.join(', ');
-    
-    // Update Mailto Link
-    const subject = encodeURIComponent(document.getElementById('msgSubject').value);
-    const body = encodeURIComponent(document.getElementById('msgBody').value);
-    document.getElementById('mailtoLink').href = `mailto:?bcc=${arr.join(',')}&subject=${subject}&body=${body}`;
-}
-
-function copyEmails() { 
-    const el = document.getElementById("emailOutput"); 
-    if(!el.value) return; 
-    el.select(); 
-    navigator.clipboard.writeText(el.value).then(() => Swal.fire('Disalin', '', 'success')); 
-}
-
-function copyTemplate() { 
-    navigator.clipboard.writeText(document.getElementById("msgBody").value).then(() => Swal.fire('Disalin', '', 'success')); 
-}
-
-// ==========================================
-// 8. TINDAKAN PANTAS (QUEUE)
+// 5. HELPER LAIN (Admin, Email, Queue)
 // ==========================================
 
 function mulaTindakanPantas() {
     let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
     reminderQueue = [];
-    
     list.forEach(i => {
-        if (i.no_telefon_gpict && !i.telegram_id_gpict) {
-            reminderQueue.push({role:'GPICT', ...i, targetName: i.nama_gpict, targetTel: i.no_telefon_gpict});
-        }
-        if (i.no_telefon_admin_delima && !i.telegram_id_admin) {
-            reminderQueue.push({role:'Admin', ...i, targetName: i.nama_admin_delima, targetTel: i.no_telefon_admin_delima});
-        }
+        if (i.no_telefon_gpict && !i.telegram_id_gpict) reminderQueue.push({role:'GPICT', ...i, targetName: i.nama_gpict, targetTel: i.no_telefon_gpict});
+        if (i.no_telefon_admin_delima && !i.telegram_id_admin) reminderQueue.push({role:'Admin', ...i, targetName: i.nama_admin_delima, targetTel: i.no_telefon_admin_delima});
     });
-    
-    if (reminderQueue.length === 0) { 
-        Swal.fire('Tiada Sasaran', 'Semua lengkap/tiada no telefon.', 'info'); 
-        return; 
-    }
-    
-    qIndex = 0; 
-    document.getElementById('queueModal').classList.remove('hidden'); 
-    renderQueue();
+    if (reminderQueue.length === 0) return Swal.fire('Tiada Sasaran', 'Semua lengkap.', 'info'); 
+    qIndex = 0; document.getElementById('queueModal').classList.remove('hidden'); renderQueue();
 }
-
 function renderQueue() {
-    if (qIndex >= reminderQueue.length) { 
-        document.getElementById('queueModal').classList.add('hidden'); 
-        Swal.fire('Selesai', 'Semakan tamat.', 'success'); 
-        return; 
-    }
-    
+    if (qIndex >= reminderQueue.length) { document.getElementById('queueModal').classList.add('hidden'); return Swal.fire('Selesai', '', 'success'); }
     const item = reminderQueue[qIndex];
     document.getElementById('qProgress').innerText = `${qIndex + 1} / ${reminderQueue.length}`;
     document.getElementById('qRoleBadge').innerText = item.role;
-    document.getElementById('qRoleBadge').className = item.role === 'GPICT' ? 'badge bg-info text-dark mb-3' : 'badge bg-warning text-dark mb-3';
     document.getElementById('qSchoolName').innerText = item.nama_sekolah;
     document.getElementById('qCode').innerText = item.kod_sekolah;
     document.getElementById('qPersonName').innerText = item.targetName || "-";
-    
     const link = window.generateWhatsAppLink(item.targetName, item.targetTel);
     const btn = document.getElementById('qWaBtn');
-    
-    if (link) { 
-        btn.href = link; 
-        btn.classList.remove('disabled'); 
-    } else { 
-        btn.removeAttribute('href'); 
-        btn.classList.add('disabled'); 
-    }
+    if (link) { btn.href = link; btn.classList.remove('disabled'); } else { btn.removeAttribute('href'); btn.classList.add('disabled'); }
 }
-
 function nextQueue() { qIndex++; renderQueue(); }
 function prevQueue() { if(qIndex > 0) qIndex--; renderQueue(); }
 
-// ==========================================
-// 9. HELPDESK ADMIN
-// ==========================================
+function generateList() { 
+    const includeGpict = document.getElementById('checkGpict').checked;
+    const includeAdmin = document.getElementById('checkAdmin').checked;
+    const filterStatus = document.getElementById('statusFilter').value;
+    const uniqueEmails = new Set();
+    if(!emailRawData) return;
+    emailRawData.forEach(row => {
+        if (includeGpict && row.emel_delima_gpict) {
+            const hasId = row.telegram_id_gpict;
+            if (filterStatus === 'all' || (filterStatus === 'unregistered' && !hasId) || (filterStatus === 'registered' && hasId)) uniqueEmails.add(row.emel_delima_gpict.trim());
+        }
+        if (includeAdmin && row.emel_delima_admin_delima) {
+            const hasId = row.telegram_id_admin;
+            if (filterStatus === 'all' || (filterStatus === 'unregistered' && !hasId) || (filterStatus === 'registered' && hasId)) uniqueEmails.add(row.emel_delima_admin_delima.trim());
+        }
+    });
+    const arr = Array.from(uniqueEmails);
+    document.getElementById('countEmail').innerText = arr.length;
+    document.getElementById('emailOutput').value = arr.join(', ');
+    document.getElementById('mailtoLink').href = `mailto:?bcc=${arr.join(',')}&subject=${encodeURIComponent(document.getElementById('msgSubject').value)}&body=${encodeURIComponent(document.getElementById('msgBody').value)}`;
+}
+function copyEmails() { const el = document.getElementById("emailOutput"); if(el.value) { el.select(); navigator.clipboard.writeText(el.value).then(() => Swal.fire('Disalin', '', 'success')); }}
+function copyTemplate() { navigator.clipboard.writeText(document.getElementById("msgBody").value).then(() => Swal.fire('Disalin', '', 'success')); }
+function janaSenaraiTelegram() {
+    let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
+    let txt = `**STATUS PENGISIAN SMPID (${activeType})**\n\n`;
+    const pending = list.filter(i => !i.is_lengkap);
+    if(pending.length === 0) return Swal.fire('Hebat', 'Semua lengkap!', 'success'); 
+    pending.forEach(i => txt += `- ${i.kod_sekolah} ${i.nama_sekolah}\n`);
+    navigator.clipboard.writeText(txt).then(() => Swal.fire('Disalin!', '', 'success'));
+}
+function eksportDataTapis() {
+    if (!currentFilteredList || currentFilteredList.length === 0) return Swal.fire('Tiada Data', '', 'info');
+    let csvContent = "BIL,KOD SEKOLAH,NAMA SEKOLAH,JENIS,STATUS DATA\n";
+    currentFilteredList.forEach((s, index) => csvContent += `${index+1},"${s.kod_sekolah}","${s.nama_sekolah}","${s.jenis}",${s.is_lengkap ? 'LENGKAP' : 'BELUM'}\n`);
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `SMPID_List.csv`; link.click();
+}
 
-async function loadTiketAdmin() {
+async function loadTiketAdmin() { 
     const wrapper = document.getElementById('adminTiketWrapper');
     const filter = document.getElementById('filterTiketAdmin')?.value || 'ALL';
     if(!wrapper) return;
-
     wrapper.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>`;
-
     try {
         let query = window.supabaseClient.from('smpid_aduan').select('*').order('created_at', { ascending: false });
         if (filter !== 'ALL') query = query.eq('status', filter);
-
         const { data, error } = await query;
         if (error) throw error;
-
         wrapper.innerHTML = "";
-        if (data.length === 0) {
-            wrapper.innerHTML = `<div class="alert alert-light text-center">Tiada tiket dalam kategori ini.</div>`;
-            return;
-        }
-
+        if (data.length === 0) return wrapper.innerHTML = `<div class="alert alert-light text-center">Tiada tiket.</div>`;
         data.forEach(t => {
-            const date = new Date(t.created_at).toLocaleString('ms-MY');
-            const bgClass = t.status === 'SELESAI' ? 'bg-light opacity-75' : 'bg-white border-danger';
-            
-            let actionArea = "";
-            if (t.status !== 'SELESAI') {
-                actionArea = `
-                <div class="mt-3 border-top pt-3 bg-light p-3 rounded">
-                    <label class="small fw-bold mb-1">Balasan Admin PPD:</label>
-                    <textarea id="reply-${t.id}" class="form-control form-control-sm mb-2" rows="2" placeholder="Tulis penyelesaian..." onblur="this.value = window.formatSentenceCase(this.value)"></textarea>
-                    <div class="d-flex justify-content-between">
-                        <button onclick="submitBalasanAdmin(${t.id}, '${t.kod_sekolah}', '${t.peranan_pengirim}', '${t.tajuk}')" class="btn btn-sm btn-primary">
-                            <i class="fas fa-reply me-1"></i> Hantar & Tutup Tiket
-                        </button>
-                        <button onclick="padamTiket(${t.id})" class="btn btn-sm btn-outline-danger" title="Padam Tiket Ini"><i class="fas fa-trash-alt"></i></button>
-                    </div>
-                </div>`;
-            } else {
-                actionArea = `
-                <div class="d-flex justify-content-between align-items-end mt-2">
-                    <div class="text-success small"><i class="fas fa-check-circle"></i> Diselesaikan pada: ${t.tarikh_balas ? new Date(t.tarikh_balas).toLocaleDateString() : '-'} <br> <b>Respon:</b> ${t.balasan_admin}</div>
-                    <button onclick="padamTiket(${t.id})" class="btn btn-sm btn-outline-danger ms-2" title="Padam Tiket Ini"><i class="fas fa-trash-alt"></i></button>
-                </div>`;
-            }
-
-            const card = `
-            <div class="card mb-3 shadow-sm ${bgClass}">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <span class="badge bg-dark me-2">${t.kod_sekolah}</span>
-                            <span class="badge bg-secondary">${t.peranan_pengirim}</span>
-                            <h6 class="mt-2 fw-bold text-dark">${t.tajuk}</h6>
-                        </div>
-                        <small class="text-muted">${date}</small>
-                    </div>
-                    <p class="text-secondary small mb-1 bg-light p-2 rounded">${t.butiran_masalah}</p>
-                    ${actionArea}
-                </div>
-            </div>`;
-            wrapper.innerHTML += card;
+            const actionArea = t.status !== 'SELESAI' ? 
+                `<button onclick="submitBalasanAdmin(${t.id}, '${t.kod_sekolah}', '${t.peranan_pengirim}', '${t.tajuk}')" class="btn btn-sm btn-primary w-100 mt-2">Tutup Tiket</button>` : 
+                `<div class="text-success small mt-2"><i class="fas fa-check"></i> Selesai</div>`;
+            wrapper.innerHTML += `<div class="card mb-3 shadow-sm p-3"><h6 class="fw-bold">${t.tajuk}</h6><p class="small mb-1">${t.butiran_masalah}</p>${actionArea}</div>`;
         });
-
-    } catch (e) { 
-        console.error(e);
-        wrapper.innerHTML = `<div class="text-danger text-center">Ralat memuatkan tiket.</div>`;
-    }
+    } catch (e) { wrapper.innerHTML = 'Ralat tiket.'; }
 }
-
 async function submitBalasanAdmin(id, kod, peranan, tajuk) {
-    const replyText = document.getElementById(`reply-${id}`).value;
-    if(!replyText) return Swal.fire('Kosong', 'Sila tulis balasan.', 'warning');
-    
-    const btn = event.currentTarget; 
-    if(btn) btn.disabled = true;
-
-    window.toggleLoading(true);
-    try {
-        const { error } = await window.supabaseClient
-            .from('smpid_aduan')
-            .update({ status: 'SELESAI', balasan_admin: replyText, tarikh_balas: new Date().toISOString() })
-            .eq('id', id);
-        
-        if (error) throw error;
-
-        // Notifikasi Balasan ke Telegram User
-        if (window.DENO_API_URL) {
-            fetch(`${window.DENO_API_URL}/reply-ticket`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ kod: kod, peranan: peranan, tajuk: tajuk, balasan: replyText })
-            }).catch(e => console.warn("Bot offline:", e));
-        }
-
-        window.toggleLoading(false);
-        if(btn) btn.disabled = false;
-        Swal.fire('Selesai', 'Tiket ditutup & notifikasi dihantar.', 'success').then(() => loadTiketAdmin());
-
-    } catch (e) {
-        window.toggleLoading(false);
-        if(btn) btn.disabled = false;
-        Swal.fire('Ralat', 'Gagal menyimpan.', 'error');
+    const { value: text } = await Swal.fire({ input: 'textarea', inputPlaceholder: 'Tulis balasan...', showCancelButton: true });
+    if(text) {
+        await window.supabaseClient.from('smpid_aduan').update({ status: 'SELESAI', balasan_admin: text, tarikh_balas: new Date().toISOString() }).eq('id', id);
+        if (window.DENO_API_URL) fetch(`${window.DENO_API_URL}/reply-ticket`, { method: 'POST', body: JSON.stringify({ kod, peranan, tajuk, balasan: text }) }).catch(()=>{});
+        loadTiketAdmin();
     }
 }
-
-async function padamTiket(id) {
-    Swal.fire({
-        title: 'Padam Tiket Ini?',
-        text: "Tindakan ini akan memadam rekod tiket secara kekal.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Ya, Padam!'
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            window.toggleLoading(true);
-            try {
-                const { error } = await window.supabaseClient.from('smpid_aduan').delete().eq('id', id);
-                if (error) throw error;
-                window.toggleLoading(false);
-                Swal.fire('Dipadam', 'Tiket telah dihapuskan.', 'success').then(() => loadTiketAdmin());
-            } catch (err) {
-                window.toggleLoading(false);
-                Swal.fire('Ralat', 'Gagal memadam tiket.', 'error');
-            }
-        }
-    });
+async function loadAdminList() { 
+    const wrapper = document.getElementById('adminListWrapper');
+    if (!wrapper) return;
+    try {
+        const { data } = await window.supabaseClient.from('smpid_users').select('*').eq('role', 'ADMIN');
+        wrapper.innerHTML = data.length ? data.map(u => `<div class="d-flex justify-content-between border-bottom py-2"><span>${u.email}</span><button onclick="padamAdmin('${u.id}', '${u.email}')" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button></div>`).join('') : '<div class="alert alert-warning">Tiada admin.</div>';
+    } catch (err) {}
+}
+async function tambahAdmin() {
+    const email = document.getElementById('inputNewAdminEmail').value.trim();
+    const password = document.getElementById('inputNewAdminPass').value.trim();
+    if(email && password) {
+        await window.supabaseClient.from('smpid_users').insert([{ id: crypto.randomUUID(), kod_sekolah: 'M030', email, password, role: 'ADMIN' }]);
+        Swal.fire('Berjaya', '', 'success'); loadAdminList();
+    }
+}
+async function padamAdmin(id, email) {
+    if(confirm(`Padam ${email}?`)) { await window.supabaseClient.from('smpid_users').delete().eq('id', id); loadAdminList(); }
 }
 
 // Bind Global Functions
-window.setFilter = setFilter;
-window.setType = setType;
-window.viewSchoolProfile = viewSchoolProfile;
 window.mulaTindakanPantas = mulaTindakanPantas;
-window.janaSenaraiTelegram = janaSenaraiTelegram;
-window.eksportDataTapis = eksportDataTapis;
+window.nextQueue = nextQueue;
+window.prevQueue = prevQueue;
 window.generateList = generateList;
 window.copyEmails = copyEmails;
 window.copyTemplate = copyTemplate;
-window.nextQueue = nextQueue;
-window.prevQueue = prevQueue;
+window.janaSenaraiTelegram = janaSenaraiTelegram;
+window.eksportDataTapis = eksportDataTapis;
 window.loadTiketAdmin = loadTiketAdmin;
 window.submitBalasanAdmin = submitBalasanAdmin;
-window.padamTiket = padamTiket;
-
-// Bind Fungsi Baru
 window.loadAdminList = loadAdminList;
 window.tambahAdmin = tambahAdmin;
 window.padamAdmin = padamAdmin;
-window.resetPasswordSekolah = resetPasswordSekolah;
+window.setFilter = setFilter;
+window.setType = setType;
+window.viewSchoolProfile = viewSchoolProfile; // DIKEMBALIKAN
+window.resetPasswordSekolah = resetPasswordSekolah; // DIKEMBALIKAN
+
+// Bind Fungsi Analisa Baru
+window.loadDcsAdmin = loadDcsAdmin;
+window.updateDashboardAnalisa = updateDashboardAnalisa;
+window.filterAnalisaTable = filterAnalisaTable;
+window.openEditDcs = openEditDcs;
+window.simpanDcs = simpanDcs;
