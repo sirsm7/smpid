@@ -555,12 +555,20 @@ async function simpanPencapaian() {
     }
 
     const program = document.getElementById('pInputProgram').value.trim().toUpperCase();
-    const tahun = document.getElementById('pInputTahun').value;
+    // UPDATE: Ambil data dari input manual
+    const tahunInput = document.getElementById('pInputTahun').value;
     const pencapaian = document.getElementById('pInputPencapaian').value.trim().toUpperCase();
     const link = document.getElementById('pInputLink').value.trim();
 
-    if (!nama || !program || !pencapaian || !link) {
+    if (!nama || !program || !pencapaian || !link || !tahunInput) {
         Swal.fire('Tidak Lengkap', 'Sila isi semua maklumat yang bertanda.', 'warning');
+        return;
+    }
+
+    // UPDATE: Validasi Tahun Manual
+    const tahun = parseInt(tahunInput);
+    if (tahun < 2023) {
+        Swal.fire('Tahun Tidak Sah', 'Rekod mestilah dari tahun 2023 dan ke atas.', 'warning');
         return;
     }
 
@@ -574,7 +582,7 @@ async function simpanPencapaian() {
             nama_peserta: nama,
             nama_pertandingan: program,
             peringkat: peringkat,
-            tahun: parseInt(tahun),
+            tahun: tahun,
             pencapaian: pencapaian,
             pautan_bukti: link,
             // NEW FIELDS
