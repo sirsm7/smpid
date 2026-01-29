@@ -87,11 +87,42 @@
     </div>
   </div>
 
-  <!-- MODULAR SCRIPTS (PERUBAHAN UTAMA DI SINI) -->
-  <!-- 1. Utils dimuatkan dahulu untuk init Supabase -->
+  <!-- MODULAR SCRIPTS -->
   <script src="js/utils.js"></script>
-  <!-- 2. Auth dimuatkan kemudian untuk logik login -->
   <script src="js/auth.js"></script>
-  
+
+  <!-- PWA AUTO-UPDATE SCRIPT -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').then(reg => {
+        
+        // 1. Jika ada SW yang sedang menunggu (waiting), paksa update
+        if (reg.waiting) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+
+        // 2. Jika SW baru dijumpai
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            // Jika SW baru siap install, reload page
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+               window.location.reload();
+            }
+          });
+        });
+
+      }).catch(err => console.log('SW Fail', err));
+
+      // 3. Listener Global: Jika SW berubah (contoh: selepas skipWaiting), reload page
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          window.location.reload();
+          refreshing = true;
+        }
+      });
+    }
+  </script>
 </body>
 </html>
