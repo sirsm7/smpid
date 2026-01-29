@@ -89,14 +89,14 @@
             </button>
           </li>
           
-          <!-- TAB 2: DCS & DELIMA (Nama Diubah) -->
+          <!-- TAB 2: DCS & DELIMA -->
           <li class="nav-item" role="presentation">
             <button class="nav-link fw-bold" id="analisa-tab" data-bs-toggle="pill" data-bs-target="#tab-analisa" type="button" role="tab">
                 <i class="fas fa-chart-pie me-2"></i>Pencapaian DCS & DELIMa
             </button>
           </li>
 
-          <!-- TAB 3: PENCAPAIAN & KEMENJADIAN (BARU) -->
+          <!-- TAB 3: PENCAPAIAN & KEMENJADIAN -->
           <li class="nav-item" role="presentation">
             <button class="nav-link fw-bold" id="pencapaian-tab" data-bs-toggle="pill" data-bs-target="#tab-pencapaian" type="button" role="tab">
                 <i class="fas fa-trophy me-2"></i>Pencapaian & Kemenjadian
@@ -278,7 +278,7 @@
             </div>
           </div>
 
-          <!-- TAB 3: PENCAPAIAN & KEMENJADIAN (BARU) -->
+          <!-- TAB 3: PENCAPAIAN & KEMENJADIAN (MODUL V2) -->
           <div class="tab-pane fade" id="tab-pencapaian" role="tabpanel">
             <div class="card p-4 shadow-sm border-purple border-4 border-top">
                 
@@ -286,13 +286,21 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                          <h5 class="fw-bold mb-0 text-purple">Analisa Kemenjadian</h5>
-                         <small class="text-muted">Rekod pencapaian Kebangsaan & Antarabangsa</small>
+                         <small class="text-muted">Rekod pencapaian Kebangsaan & Pensijilan Antarabangsa</small>
                     </div>
                     <div class="d-flex gap-2">
-                        <select id="filterTahunPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="loadMasterPencapaian()">
-                            <option value="2025" selected>TAHUN 2025</option>
-                            <option value="2024">TAHUN 2024</option>
+                        <!-- Filter Jenis Rekod -->
+                        <select id="filterJenisPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="loadMasterPencapaian()">
+                            <option value="ALL" selected>SEMUA JENIS REKOD</option>
+                            <option value="PERTANDINGAN">PERTANDINGAN</option>
+                            <option value="PENSIJILAN">PENSIJILAN PROFESIONAL</option>
                         </select>
+                        
+                        <!-- NEW: Dynamic Year Filter -->
+                        <select id="filterTahunPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="loadMasterPencapaian()">
+                            <option value="" disabled selected>Memuatkan...</option>
+                        </select>
+
                         <select id="filterKategoriPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="loadMasterPencapaian()">
                             <option value="ALL" selected>SEMUA KATEGORI</option>
                             <option value="MURID">MURID</option>
@@ -302,8 +310,8 @@
                     </div>
                 </div>
 
-                <!-- KPI CARDS -->
-                <div class="row g-3 mb-4">
+                <!-- LAPISAN 1: KPI UTAMA -->
+                <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <div class="card bg-purple text-white h-100 border-0 shadow-sm rounded-4">
                             <div class="card-body text-center p-3">
@@ -316,10 +324,46 @@
                          <div class="card bg-orange text-white h-100 border-0 shadow-sm rounded-4">
                             <div class="card-body text-center p-3">
                                 <h2 class="fw-bold mb-0 display-5" id="statAntarabangsa">-</h2>
-                                <small class="text-white-50 text-uppercase fw-bold">Peringkat Antarabangsa</small>
+                                <small class="text-white-50 text-uppercase fw-bold">Antarabangsa / Pensijilan</small>
                             </div>
                         </div>
                     </div>
+                </div>
+                
+                <!-- LAPISAN 2: STATISTIK PENSIJILAN (BARU) -->
+                <div class="row g-2 mb-4">
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm h-100 bg-google-sub border-google border-start border-3">
+                            <div class="card-body p-2 text-center">
+                                <h4 class="fw-bold mb-0 text-google" id="statGoogle">-</h4>
+                                <small class="fw-bold text-muted" style="font-size: 0.65rem;">GOOGLE</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm h-100 bg-apple-sub border-apple border-start border-3">
+                            <div class="card-body p-2 text-center">
+                                <h4 class="fw-bold mb-0 text-apple" id="statApple">-</h4>
+                                <small class="fw-bold text-muted" style="font-size: 0.65rem;">APPLE</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                         <div class="card border-0 shadow-sm h-100 bg-microsoft-sub border-microsoft border-start border-3">
+                            <div class="card-body p-2 text-center">
+                                <h4 class="fw-bold mb-0 text-microsoft" id="statMicrosoft">-</h4>
+                                <small class="fw-bold text-muted" style="font-size: 0.65rem;">MICROSOFT</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm h-100 bg-light border-secondary border-start border-3">
+                           <div class="card-body p-2 text-center">
+                               <h4 class="fw-bold mb-0 text-dark" id="statLain">-</h4>
+                               <small class="fw-bold text-muted" style="font-size: 0.65rem;">LAIN-LAIN</small>
+                           </div>
+                       </div>
+                   </div>
                 </div>
 
                 <!-- MASTER TABLE -->
@@ -332,8 +376,8 @@
                                 <th style="width: 20%;">Nama Sekolah</th>
                                 <th style="width: 8%;" class="text-center">Kategori</th>
                                 <th style="width: 20%;">Nama Peserta</th>
-                                <th style="width: 15%;">Pertandingan</th>
-                                <th style="width: 10%;" class="text-center">Peringkat</th>
+                                <th style="width: 15%;">Pertandingan / Sijil</th>
+                                <th style="width: 10%;" class="text-center">Taraf</th>
                                 <th style="width: 10%;" class="text-center">Pencapaian</th>
                                 <th style="width: 5%;" class="text-center">Bukti</th>
                                 <th style="width: 4%;" class="text-center">Hapus</th>

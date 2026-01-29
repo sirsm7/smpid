@@ -288,7 +288,7 @@
             </div>
         </div>
 
-        <!-- SECTION: REKOD PENCAPAIAN (MODUL BARU) -->
+        <!-- SECTION: REKOD PENCAPAIAN (MODUL UPDATE) -->
         <div id="section-pencapaian" class="hidden fade-up">
             <div class="d-flex align-items-center mb-3">
                 <button onclick="showSection('menu')" class="btn btn-sm btn-white border shadow-sm rounded-circle me-3" style="width: 40px; height: 40px;">
@@ -298,7 +298,7 @@
             </div>
 
             <!-- Tab Kategori -->
-            <ul class="nav nav-pills nav-fill mb-4 bg-white p-1 rounded-pill border shadow-sm" id="pencapaianTabs" role="tablist">
+            <ul class="nav nav-pills nav-fill mb-3 bg-white p-1 rounded-pill border shadow-sm" id="pencapaianTabs" role="tablist">
                 <li class="nav-item">
                     <button class="nav-link active rounded-pill small fw-bold" id="tab-p-murid" data-bs-toggle="pill" data-bs-target="#content-p-murid" type="button" onclick="setPencapaianType('MURID')">MURID</button>
                 </li>
@@ -309,23 +309,48 @@
                     <button class="nav-link rounded-pill small fw-bold" id="tab-p-sekolah" data-bs-toggle="pill" data-bs-target="#content-p-sekolah" type="button" onclick="setPencapaianType('SEKOLAH')">SEKOLAH</button>
                 </li>
             </ul>
+            
+            <!-- NEW: Toggle Jenis Rekod (Hanya Muncul Untuk Guru) -->
+            <div id="wrapperJenisRekod" class="mb-3 hidden text-center fade-up">
+                <div class="btn-group w-100 shadow-sm" role="group">
+                    <input type="radio" class="btn-check" name="radioJenis" id="radioPertandingan" autocomplete="off" checked onchange="toggleJenisPencapaian()">
+                    <label class="btn btn-outline-primary fw-bold" for="radioPertandingan">PERTANDINGAN</label>
+
+                    <input type="radio" class="btn-check" name="radioJenis" id="radioPensijilan" autocomplete="off" onchange="toggleJenisPencapaian()">
+                    <label class="btn btn-outline-warning fw-bold text-dark" for="radioPensijilan">PENSIJILAN PROFESIONAL</label>
+                </div>
+            </div>
 
             <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 border-top border-purple border-4">
                 <h6 class="fw-bold text-purple mb-3"><i class="fas fa-pen me-2"></i>Isi Maklumat Pencapaian</h6>
+                
                 <form id="formPencapaian" onsubmit="event.preventDefault(); simpanPencapaian();">
                     <input type="hidden" id="pencapaianKategori" value="MURID">
+                    <!-- NEW: Field Tersembunyi Jenis Rekod -->
+                    <input type="hidden" id="pInputJenisRekod" value="PERTANDINGAN">
                     
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-muted" id="labelNamaPeserta">NAMA MURID</label>
                         <input type="text" id="pInputNama" class="form-control uppercase-input fw-bold" placeholder="Taip nama penuh..." oninput="this.value = this.value.toUpperCase()" required>
                     </div>
+                    
+                    <!-- NEW: Dropdown Penyedia (Google/Apple/etc) - Hidden by Default -->
+                    <div id="divInputPenyedia" class="mb-3 hidden fade-up">
+                        <label class="form-label small fw-bold text-muted text-warning">PENYEDIA / JENAMA</label>
+                        <select id="pInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning">
+                            <option value="LAIN-LAIN" selected>LAIN-LAIN (AWS/CISCO/DLL)</option>
+                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
+                            <option value="APPLE">APPLE EDUCATION</option>
+                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
+                        </select>
+                    </div>
 
                     <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted">NAMA PERTANDINGAN</label>
+                        <label class="form-label small fw-bold text-muted" id="lblProgram">NAMA PERTANDINGAN</label>
                         <input type="text" id="pInputProgram" class="form-control uppercase-input" placeholder="Contoh: DIGITAL COMPETENCY 2025" oninput="this.value = this.value.toUpperCase()" required>
                     </div>
 
-                    <div class="row g-2 mb-3">
+                    <div class="row g-2 mb-3" id="rowPeringkat">
                         <div class="col-6">
                             <label class="form-label small fw-bold text-muted">PERINGKAT</label>
                             <select id="pInputPeringkat" class="form-select bg-light" required>
@@ -343,12 +368,12 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted">PENCAPAIAN</label>
+                        <label class="form-label small fw-bold text-muted" id="lblPencapaian">PENCAPAIAN</label>
                         <input type="text" id="pInputPencapaian" class="form-control uppercase-input" placeholder="Contoh: JOHAN / EMAS / PENYERTAAN" oninput="this.value = this.value.toUpperCase()" required>
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label small fw-bold text-muted">PAUTAN BUKTI (Google Drive)</label>
+                        <label class="form-label small fw-bold text-muted">PAUTAN BUKTI</label>
                         <input type="url" id="pInputLink" class="form-control text-primary" placeholder="https://drive.google.com/..." required>
                         <div class="form-text small fst-italic">Sila pastikan link diset kepada 'Everyone with the link' (Viewer).</div>
                     </div>

@@ -1,7 +1,7 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 4.0 (Modul Pencapaian & Kemenjadian Ditambah)
- * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management, DCS & Pencapaian
+ * Versi: 5.1 (Modul Pensijilan + Tahun Dinamik)
+ * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management, DCS & Pencapaian V2
  */
 
 // NOTA: Variable global diambil dari window (utils.js)
@@ -61,10 +61,10 @@ function initAdminPanel() {
         analisaTabBtn.addEventListener('shown.bs.tab', function () { loadDcsAdmin(); });
     }
 
-    // LISTENER BARU: Tab Pencapaian
+    // LISTENER BARU: Tab Pencapaian (Update: Panggil populateTahunFilter dahulu)
     const pencapaianTabBtn = document.getElementById('pencapaian-tab');
     if (pencapaianTabBtn) {
-        pencapaianTabBtn.addEventListener('shown.bs.tab', function () { loadMasterPencapaian(); });
+        pencapaianTabBtn.addEventListener('shown.bs.tab', function () { populateTahunFilter(); });
     }
     
     // 3. Mula muat data utama
@@ -954,16 +954,80 @@ async function simpanDcs() {
 }
 
 // ==========================================
-// 11. MODUL PENCAPAIAN & KEMENJADIAN (BARU)
+// 11. MODUL PENCAPAIAN & KEMENJADIAN (V2.1 - DYNAMIC YEAR)
 // ==========================================
+
+// NEW: Fungsi untuk populate dropdown tahun secara automatik dari DB
+async function populateTahunFilter() {
+    const select = document.getElementById('filterTahunPencapaian');
+    if (!select) return;
+
+    // UI Loading state
+    select.innerHTML = '<option value="" disabled selected>Memuatkan...</option>';
+    select.disabled = true;
+
+    try {
+        // Fetch all distinct years from DB
+        const { data, error } = await window.supabaseClient
+            .from('smpid_pencapaian')
+            .select('tahun');
+
+        if (error) throw error;
+
+        // Extract unique years using Set & Sort Descending (2026, 2025...)
+        const years = [...new Set(data.map(item => item.tahun))].sort((a, b) => b - a);
+
+        select.innerHTML = ''; // Clear loading
+
+        if (years.length === 0) {
+            // Case: Empty DB
+            select.innerHTML = '<option value="" disabled selected>TIADA REKOD</option>';
+            select.disabled = true;
+            
+            // Clear table & stats manually since loadMasterPencapaian won't run
+            const tbody = document.getElementById('tbodyPencapaianMaster');
+            if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted fst-italic">Tiada rekod pencapaian dalam pangkalan data.</td></tr>`;
+            
+            // Reset Stats to 0
+            ['statKebangsaan', 'statAntarabangsa', 'statGoogle', 'statApple', 'statMicrosoft', 'statLain'].forEach(id => {
+                if(document.getElementById(id)) document.getElementById(id).innerText = '-';
+            });
+
+        } else {
+            // Case: Years Found
+            years.forEach(y => {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.innerText = `TAHUN ${y}`;
+                select.appendChild(opt);
+            });
+            select.disabled = false;
+            
+            // Select first (latest) year automatically & Load Data
+            select.value = years[0];
+            loadMasterPencapaian();
+        }
+
+    } catch (err) {
+        console.error("Year Filter Error:", err);
+        select.innerHTML = '<option value="" disabled selected>Ralat</option>';
+    }
+}
 
 async function loadMasterPencapaian() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
     if (!tbody) return;
+    
+    // Safety check: Jika dropdown tahun disabled (tiada rekod), jangan fetch
+    const tahunInput = document.getElementById('filterTahunPencapaian');
+    if(tahunInput.disabled || !tahunInput.value) return;
+
     tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>`;
 
-    const tahun = document.getElementById('filterTahunPencapaian').value;
+    // Ambil Filter
+    const tahun = tahunInput.value;
     const kategoriFilter = document.getElementById('filterKategoriPencapaian').value;
+    const jenisFilter = document.getElementById('filterJenisPencapaian').value;
 
     try {
         const { data, error } = await window.supabaseClient
@@ -975,16 +1039,33 @@ async function loadMasterPencapaian() {
         if (error) throw error;
         pencapaianList = data;
 
-        // 1. UPDATE KPI STATISTIK (Berdasarkan Tahun Sahaja)
+        // --- 1. PENGIRAAN KPI STATISTIK UTAMA ---
         const totalKeb = data.filter(i => i.peringkat === 'KEBANGSAAN').length;
-        const totalInt = data.filter(i => i.peringkat === 'ANTARABANGSA').length;
+        const totalInt = data.filter(i => i.peringkat === 'ANTARABANGSA' || i.jenis_rekod === 'PENSIJILAN').length;
+        
         document.getElementById('statKebangsaan').innerText = totalKeb;
         document.getElementById('statAntarabangsa').innerText = totalInt;
 
-        // 2. TAPIS UNTUK TABLE
+        // --- 2. PENGIRAAN KPI PENSIJILAN (LAPISAN 2) ---
+        const countGoogle = data.filter(i => i.jenis_rekod === 'PENSIJILAN' && i.penyedia === 'GOOGLE').length;
+        const countApple = data.filter(i => i.jenis_rekod === 'PENSIJILAN' && i.penyedia === 'APPLE').length;
+        const countMicrosoft = data.filter(i => i.jenis_rekod === 'PENSIJILAN' && i.penyedia === 'MICROSOFT').length;
+        const countLain = data.filter(i => i.jenis_rekod === 'PENSIJILAN' && i.penyedia === 'LAIN-LAIN').length;
+
+        document.getElementById('statGoogle').innerText = countGoogle;
+        document.getElementById('statApple').innerText = countApple;
+        document.getElementById('statMicrosoft').innerText = countMicrosoft;
+        document.getElementById('statLain').innerText = countLain;
+
+        // --- 3. TAPIS UNTUK TABLE DISPLAY ---
         let filteredData = data;
+        
         if (kategoriFilter !== 'ALL') {
-            filteredData = data.filter(i => i.kategori === kategoriFilter);
+            filteredData = filteredData.filter(i => i.kategori === kategoriFilter);
+        }
+        
+        if (jenisFilter !== 'ALL') {
+             filteredData = filteredData.filter(i => i.jenis_rekod === jenisFilter);
         }
 
         if (filteredData.length === 0) {
@@ -994,27 +1075,44 @@ async function loadMasterPencapaian() {
 
         let html = '';
         filteredData.forEach(item => {
-            // Mapping Nama Sekolah dari dashboardData
             const sekolahInfo = dashboardData.find(s => s.kod_sekolah === item.kod_sekolah);
             const namaSekolah = sekolahInfo ? sekolahInfo.nama_sekolah : "NAMA TIDAK DIJUMPAI";
 
-            // Badge UI
             let badgeClass = 'bg-secondary';
             if (item.kategori === 'MURID') badgeClass = 'bg-info text-dark';
             else if (item.kategori === 'GURU') badgeClass = 'bg-warning text-dark';
             else if (item.kategori === 'SEKOLAH') badgeClass = 'bg-purple';
 
-            let peringkatBadge = item.peringkat === 'KEBANGSAAN' ? 'bg-primary' : 'bg-orange';
+            let displayProgram = '';
+            let displayPeringkat = '';
+            let displayPencapaian = '';
+
+            if (item.jenis_rekod === 'PENSIJILAN') {
+                let providerBadge = 'bg-secondary';
+                if(item.penyedia === 'GOOGLE') providerBadge = 'bg-google';
+                else if(item.penyedia === 'APPLE') providerBadge = 'bg-apple';
+                else if(item.penyedia === 'MICROSOFT') providerBadge = 'bg-microsoft';
+
+                displayProgram = `<span class="badge ${providerBadge} me-1 small"><i class="fas fa-certificate"></i></span> <span class="fw-bold small">${item.nama_pertandingan}</span>`;
+                displayPeringkat = `<span class="badge bg-dark small">PRO</span>`;
+                displayPencapaian = `<span class="fw-bold text-dark small">${item.pencapaian}</span>`;
+
+            } else {
+                displayProgram = `<div class="small text-uppercase fw-bold text-primary">${item.nama_pertandingan}</div>`;
+                let rankBadge = item.peringkat === 'KEBANGSAAN' ? 'bg-primary' : 'bg-orange';
+                displayPeringkat = `<span class="badge ${rankBadge} small">${item.peringkat}</span>`;
+                displayPencapaian = `<span class="fw-bold text-success small">${item.pencapaian}</span>`;
+            }
 
             html += `
             <tr>
-                <td class="fw-bold">${item.kod_sekolah}</td>
-                <td class="small text-truncate" style="max-width: 200px;" title="${namaSekolah}">${namaSekolah}</td>
-                <td class="text-center"><span class="badge ${badgeClass} shadow-sm">${item.kategori}</span></td>
-                <td><div class="fw-bold text-dark small">${item.nama_peserta}</div></td>
-                <td><div class="small text-uppercase">${item.nama_pertandingan}</div></td>
-                <td class="text-center"><span class="badge ${peringkatBadge}">${item.peringkat}</span></td>
-                <td class="text-center"><span class="fw-bold text-success">${item.pencapaian}</span></td>
+                <td class="fw-bold small">${item.kod_sekolah}</td>
+                <td class="small text-truncate" style="max-width: 180px;" title="${namaSekolah}">${namaSekolah}</td>
+                <td class="text-center"><span class="badge ${badgeClass} shadow-sm" style="font-size: 0.7em">${item.kategori}</span></td>
+                <td><div class="fw-bold text-dark small text-truncate" style="max-width: 150px;" title="${item.nama_peserta}">${item.nama_peserta}</div></td>
+                <td>${displayProgram}</td>
+                <td class="text-center">${displayPeringkat}</td>
+                <td class="text-center">${displayPencapaian}</td>
                 <td class="text-center">
                     <a href="${item.pautan_bukti}" target="_blank" class="btn btn-sm btn-light border text-primary" title="Lihat Bukti">
                         <i class="fas fa-link"></i>
@@ -1092,3 +1190,4 @@ window.simpanDcs = simpanDcs;
 // Bind Fungsi Pencapaian (BARU)
 window.loadMasterPencapaian = loadMasterPencapaian;
 window.hapusPencapaianAdmin = hapusPencapaianAdmin;
+window.populateTahunFilter = populateTahunFilter;

@@ -1,6 +1,6 @@
 /**
  * SMPID USER PORTAL MODULE (js/user.js)
- * Versi: 4.0 (Modul Pencapaian Ditambah)
+ * Versi: 5.0 (Modul Pensijilan Guru Ditambah)
  * Fungsi: Logik Dashboard Sekolah, Profil, Aduan, Analisa & Pencapaian
  */
 
@@ -65,7 +65,7 @@ function showSection(section) {
     const profilSection = document.getElementById('section-profil');
     const aduanSection = document.getElementById('section-aduan');
     const analisaSection = document.getElementById('section-analisa');
-    const pencapaianSection = document.getElementById('section-pencapaian'); // Modul Baru
+    const pencapaianSection = document.getElementById('section-pencapaian');
     const welcomeText = document.getElementById('welcomeText');
 
     // Reset semua ke hidden dulu
@@ -445,7 +445,7 @@ async function loadTiketUser() {
 }
 
 // ==========================================
-// 6. MODUL PENCAPAIAN & KEMENJADIAN (BARU)
+// 6. MODUL PENCAPAIAN & KEMENJADIAN (V2)
 // ==========================================
 
 // Fungsi Tab & UI Control
@@ -453,7 +453,18 @@ function setPencapaianType(type) {
     // 1. Update Hidden Input
     document.getElementById('pencapaianKategori').value = type;
     
-    // 2. Update Label
+    // 2. Control Wrapper Jenis Rekod (Hanya untuk GURU)
+    const wrapperJenis = document.getElementById('wrapperJenisRekod');
+    if (type === 'GURU') {
+        wrapperJenis.classList.remove('hidden');
+    } else {
+        wrapperJenis.classList.add('hidden');
+        // Reset radio ke default jika bukan guru
+        document.getElementById('radioPertandingan').checked = true;
+        toggleJenisPencapaian(); // Reset UI
+    }
+
+    // 3. Update Label
     const lbl = document.getElementById('labelNamaPeserta');
     const inpName = document.getElementById('pInputNama');
     
@@ -475,16 +486,75 @@ function setPencapaianType(type) {
     }
 }
 
+// Fungsi Toggle Antara Pertandingan vs Pensijilan
+function toggleJenisPencapaian() {
+    const isPensijilan = document.getElementById('radioPensijilan').checked;
+    
+    // Elements
+    const divPenyedia = document.getElementById('divInputPenyedia');
+    const rowPeringkat = document.getElementById('rowPeringkat'); // Mengandungi Peringkat & Tahun
+    const selectPeringkat = document.getElementById('pInputPeringkat');
+    
+    const lblProgram = document.getElementById('lblProgram');
+    const inpProgram = document.getElementById('pInputProgram');
+    
+    const lblPencapaian = document.getElementById('lblPencapaian');
+    const inpPencapaian = document.getElementById('pInputPencapaian');
+    
+    // Update Hidden Input untuk Logic Simpan
+    document.getElementById('pInputJenisRekod').value = isPensijilan ? 'PENSIJILAN' : 'PERTANDINGAN';
+
+    if (isPensijilan) {
+        // UI MODE: PENSIJILAN
+        divPenyedia.classList.remove('hidden');
+        
+        // Sembunyikan kolum Peringkat, tapi TAHUN mesti kekal
+        // Kita ubah struktur DOM sikit:
+        selectPeringkat.parentElement.classList.add('hidden'); // Sembunyi dropdown peringkat
+        
+        // Ubah Label
+        lblProgram.innerText = "NAMA SIJIL / PROGRAM";
+        inpProgram.placeholder = "Contoh: GOOGLE CERTIFIED EDUCATOR L1";
+        
+        lblPencapaian.innerText = "TAHAP / SKOR / BAND";
+        inpPencapaian.placeholder = "Contoh: LULUS / BAND C2 / LEVEL 1";
+
+    } else {
+        // UI MODE: PERTANDINGAN (Default)
+        divPenyedia.classList.add('hidden');
+        selectPeringkat.parentElement.classList.remove('hidden'); // Tunjuk balik dropdown peringkat
+        
+        lblProgram.innerText = "NAMA PERTANDINGAN";
+        inpProgram.placeholder = "Contoh: DIGITAL COMPETENCY 2025";
+        
+        lblPencapaian.innerText = "PENCAPAIAN";
+        inpPencapaian.placeholder = "Contoh: JOHAN / EMAS / PENYERTAAN";
+    }
+}
+
 // Fungsi Simpan Rekod
 async function simpanPencapaian() {
     const kod = sessionStorage.getItem('smpid_user_kod'); // SECURITY: Ambil dari session
     const btn = document.querySelector('#formPencapaian button[type="submit"]');
 
-    // Ambil Data
+    // Ambil Data Asas
     const kategori = document.getElementById('pencapaianKategori').value;
+    const jenisRekod = document.getElementById('pInputJenisRekod').value;
     const nama = document.getElementById('pInputNama').value.trim().toUpperCase();
+    
+    // Logic Data Dinamik
+    let penyedia = 'LAIN-LAIN';
+    let peringkat = 'KEBANGSAAN';
+    
+    if (jenisRekod === 'PENSIJILAN') {
+        penyedia = document.getElementById('pInputPenyedia').value;
+        peringkat = 'ANTARABANGSA'; // Default untuk sijil profesional
+    } else {
+        penyedia = 'LAIN-LAIN'; // Default pertandingan biasa
+        peringkat = document.getElementById('pInputPeringkat').value;
+    }
+
     const program = document.getElementById('pInputProgram').value.trim().toUpperCase();
-    const peringkat = document.getElementById('pInputPeringkat').value;
     const tahun = document.getElementById('pInputTahun').value;
     const pencapaian = document.getElementById('pInputPencapaian').value.trim().toUpperCase();
     const link = document.getElementById('pInputLink').value.trim();
@@ -506,7 +576,10 @@ async function simpanPencapaian() {
             peringkat: peringkat,
             tahun: parseInt(tahun),
             pencapaian: pencapaian,
-            pautan_bukti: link
+            pautan_bukti: link,
+            // NEW FIELDS
+            jenis_rekod: jenisRekod,
+            penyedia: penyedia
         };
 
         const { error } = await window.supabaseClient
@@ -567,6 +640,23 @@ async function loadPencapaianSekolah() {
             else if (item.kategori === 'GURU') badgeClass = 'bg-warning text-dark';
             else if (item.kategori === 'SEKOLAH') badgeClass = 'bg-purple';
 
+            // Logic Paparan Nama Program (Ada Badge jika Pensijilan)
+            let displayProgram = item.nama_pertandingan;
+            let displayPeringkat = item.peringkat;
+
+            if (item.jenis_rekod === 'PENSIJILAN') {
+                let badgeProvider = 'bg-secondary';
+                if (item.penyedia === 'GOOGLE') badgeProvider = 'bg-google';
+                else if (item.penyedia === 'APPLE') badgeProvider = 'bg-apple';
+                else if (item.penyedia === 'MICROSOFT') badgeProvider = 'bg-microsoft';
+                
+                displayProgram = `<span class="badge ${badgeProvider} me-1"><i class="fas fa-certificate"></i> ${item.penyedia}</span> <span class="fw-bold text-dark">${item.nama_pertandingan}</span>`;
+                displayPeringkat = `<span class="badge bg-dark">PRO</span>`; // Tukar badge peringkat jadi PRO
+            } else {
+                 displayProgram = `<div class="text-primary small fw-bold text-uppercase mb-1">${item.nama_pertandingan}</div>`;
+                 displayPeringkat = `<span class="badge bg-light text-dark border">${item.peringkat}</span>`;
+            }
+
             html += `
             <tr>
                 <td class="text-center align-middle">
@@ -575,9 +665,9 @@ async function loadPencapaianSekolah() {
                 </td>
                 <td class="align-middle">
                     <div class="fw-bold text-dark small text-truncate" style="max-width: 200px;">${item.nama_peserta}</div>
-                    <div class="text-primary small fw-bold text-uppercase mb-1">${item.nama_pertandingan}</div>
-                    <div class="d-flex gap-2">
-                        <span class="badge bg-light text-dark border">${item.peringkat}</span>
+                    ${displayProgram}
+                    <div class="d-flex gap-2 mt-1">
+                        ${displayPeringkat}
                         <span class="badge bg-success bg-opacity-10 text-success border border-success">${item.pencapaian}</span>
                     </div>
                     <a href="${item.pautan_bukti}" target="_blank" class="btn btn-link btn-sm p-0 mt-1 text-decoration-none small">
@@ -753,3 +843,5 @@ window.setPencapaianType = setPencapaianType;
 window.simpanPencapaian = simpanPencapaian;
 window.loadPencapaianSekolah = loadPencapaianSekolah;
 window.padamPencapaian = padamPencapaian;
+// BIND FUNGSI TOGGLE JENIS (PENTING)
+window.toggleJenisPencapaian = toggleJenisPencapaian;

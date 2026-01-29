@@ -1,10 +1,10 @@
 /**
  * SMPID Service Worker
- * Versi: 2.7 (Fix: Auto-Reload & Cache Busting)
+ * Versi: 3.0 (Fix: Auto-Reload & Cache Busting)
  * Strategi: Cache-First untuk Aset Statik, Network-Only untuk API & Analytics
  */
 
-const CACHE_NAME = 'smpid-cache-v2.7'; // Versi dinaikkan untuk paksa update
+const CACHE_NAME = 'smpid-cache-v3.0'; // Versi dinaikkan untuk paksa update
 
 // Senarai fail yang WAJIB ada dalam cache untuk berfungsi offline
 const ASSETS_TO_CACHE = [
@@ -34,7 +34,7 @@ const ASSETS_TO_CACHE = [
 
 // 1. INSTALL: Download semua aset bila user mula-mula buka web
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing v2.7...');
+  console.log('[Service Worker] Installing v3.0...');
   self.skipWaiting(); // PENTING: Paksa SW baru aktif segera tanpa tunggu tab tutup
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
