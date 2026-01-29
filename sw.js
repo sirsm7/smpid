@@ -1,10 +1,10 @@
 /**
  * SMPID Service Worker
- * Versi: 2.5 (Fix: Cloudflare Insights & AdBlocker Issue)
+ * Versi: 2.6 (Fix: Cloudflare Insights & AdBlocker Issue - Diselaraskan dengan Live Site)
  * Strategi: Cache-First untuk Aset Statik, Network-Only untuk API & Analytics
  */
 
-const CACHE_NAME = 'smpid-cache-v2.5'; // Versi dinaikkan
+const CACHE_NAME = 'smpid-cache-v2.6'; // Versi dinaikkan
 
 // Senarai fail yang WAJIB ada dalam cache untuk berfungsi offline
 const ASSETS_TO_CACHE = [
@@ -34,7 +34,7 @@ const ASSETS_TO_CACHE = [
 
 // 1. INSTALL: Download semua aset bila user mula-mula buka web
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing v2.5...');
+  console.log('[Service Worker] Installing v2.6...');
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[Service Worker] Caching App Shell');

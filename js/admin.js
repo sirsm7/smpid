@@ -1,8 +1,7 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 3.1 (Logik KPI PPD M030)
- * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management & Analisa Digital
- * Halaman: admin.html
+ * Versi: 4.0 (Modul Pencapaian & Kemenjadian Ditambah)
+ * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management, DCS & Pencapaian
  */
 
 // NOTA: Variable global diambil dari window (utils.js)
@@ -14,9 +13,12 @@ let currentFilteredList = [];
 let activeStatus = 'ALL';
 let activeType = 'ALL';
 
-// State Management (Analisa DCS/DELIMa) - BARU
+// State Management (Analisa DCS/DELIMa)
 let dcsDataList = [];
 let charts = { donut: null, bar: null };
+
+// State Management (Pencapaian) - BARU
+let pencapaianList = [];
 
 // Queue State (Tindakan Pantas)
 let reminderQueue = [];
@@ -53,10 +55,16 @@ function initAdminPanel() {
         adminUsersTabBtn.addEventListener('shown.bs.tab', function () { loadAdminList(); });
     }
 
-    // LISTENER BARU: Tab Analisa
+    // LISTENER: Tab Analisa DCS (Nama Lama: Analisa)
     const analisaTabBtn = document.getElementById('analisa-tab');
     if (analisaTabBtn) {
         analisaTabBtn.addEventListener('shown.bs.tab', function () { loadDcsAdmin(); });
+    }
+
+    // LISTENER BARU: Tab Pencapaian
+    const pencapaianTabBtn = document.getElementById('pencapaian-tab');
+    if (pencapaianTabBtn) {
+        pencapaianTabBtn.addEventListener('shown.bs.tab', function () { loadMasterPencapaian(); });
     }
     
     // 3. Mula muat data utama
@@ -114,7 +122,7 @@ async function fetchDashboardData() {
 }
 
 // ==========================================
-// 3. FILTERING & RENDERING
+// 3. FILTERING & RENDERING (DASHBOARD)
 // ==========================================
 
 function renderFilters() {
@@ -214,12 +222,10 @@ function renderGrid(data) {
                 return buttonsHtml;
             };
 
-            // DROPDOWN MENU KEBAB
             html += `
             <div class="col-6 col-md-4 col-lg-3">
               <div class="card school-card h-100 position-relative" onclick="viewSchoolProfile('${s.kod_sekolah}')">
                 
-                <!-- DROPDOWN BUTTON (Start) -->
                 <div class="dropdown position-absolute top-0 end-0 m-2" style="z-index: 5;">
                   <button class="btn btn-sm btn-light rounded-circle shadow-sm border-0 d-flex align-items-center justify-content-center" 
                           type="button" data-bs-toggle="dropdown" aria-expanded="false" 
@@ -237,7 +243,6 @@ function renderGrid(data) {
                     </li>
                   </ul>
                 </div>
-                <!-- DROPDOWN BUTTON (End) -->
 
                 <div class="card-body p-3 d-flex flex-column">
                   <div class="d-flex justify-content-between align-items-center mb-2 pe-4">
@@ -280,14 +285,12 @@ async function resetPasswordSekolah(kod) {
         if (result.isConfirmed) {
             window.toggleLoading(true);
             try {
-                // Update ke table smpid_users
                 const { error } = await window.supabaseClient
                     .from('smpid_users')
-                    .update({ password: 'ppdag@12345' }) // Password default
+                    .update({ password: 'ppdag@12345' })
                     .eq('kod_sekolah', kod);
                 
                 if (error) throw error;
-                
                 window.toggleLoading(false);
                 Swal.fire('Berjaya', `Kata laluan ${kod} telah di-reset kepada: ppdag@12345`, 'success');
             } catch (err) {
@@ -317,7 +320,6 @@ async function loadAdminList() {
             .order('email', { ascending: true });
 
         if (error) throw error;
-
         if (data.length === 0) {
             wrapper.innerHTML = `<div class="alert alert-warning">Tiada data admin dijumpai.</div>`;
             return;
@@ -390,7 +392,7 @@ async function tambahAdmin() {
         Swal.fire('Berjaya', 'Admin baru telah ditambah.', 'success').then(() => {
             emailInput.value = '';
             passInput.value = '';
-            loadAdminList(); // Refresh list
+            loadAdminList(); 
         });
 
     } catch (err) {
@@ -418,7 +420,6 @@ async function padamAdmin(id, email) {
                     .eq('id', id);
 
                 if (error) throw error;
-
                 window.toggleLoading(false);
                 Swal.fire('Berjaya', 'Akaun admin dipadam.', 'success').then(() => loadAdminList());
             } catch (err) {
@@ -513,7 +514,6 @@ function generateList() {
     document.getElementById('countEmail').innerText = arr.length;
     document.getElementById('emailOutput').value = arr.join(', ');
     
-    // Update Mailto Link
     const subject = encodeURIComponent(document.getElementById('msgSubject').value);
     const body = encodeURIComponent(document.getElementById('msgBody').value);
     document.getElementById('mailtoLink').href = `mailto:?bcc=${arr.join(',')}&subject=${subject}&body=${body}`;
@@ -721,7 +721,7 @@ async function padamTiket(id) {
 }
 
 // ==========================================
-// 10. MODUL ANALISA: DCS & DELIMA (DIKEMASKINI)
+// 10. MODUL ANALISA: DCS & DELIMA
 // ==========================================
 
 function getKategoriDcs(score) {
@@ -756,25 +756,17 @@ function updateDashboardAnalisa() {
 }
 
 function processDcsPanel(field) {
-    // 1. DAPATKAN DATA PPD (M030) UNTUK KPI UTAMA
-    // Logik: Ambil terus nilai M030, bukan purata
     const ppdData = dcsDataList.find(d => d.kod_sekolah === 'M030');
     const ppdScore = (ppdData && ppdData[field]) ? ppdData[field] : 0;
 
-    // Update UI KPI
     document.getElementById('kpiDcsScore').innerText = ppdScore.toFixed(2);
-    
-    // Update Label Kategori
     const catPpd = getKategoriDcs(ppdScore);
     const lbl = document.getElementById('kpiDcsLabel');
     lbl.innerText = catPpd.label;
     lbl.className = `badge rounded-pill mt-2 px-3 py-2 ${catPpd.class}`;
 
-    // 2. TAPIS DATA (SEKOLAH SAHAJA) UNTUK CARTA & TOP 5
-    // Logik: Kecualikan M030 supaya carta taburan adil untuk sekolah
     const schoolOnlyList = dcsDataList.filter(d => d.kod_sekolah !== 'M030');
 
-    // Kira Taburan Kategori (Guna schoolOnlyList)
     let cats = { 'Beginner': 0, 'Novice': 0, 'Intermediate': 0, 'Advance': 0, 'Innovator': 0 };
     schoolOnlyList.forEach(d => {
         const val = d[field];
@@ -784,7 +776,6 @@ function processDcsPanel(field) {
         }
     });
 
-    // Render Carta Donut
     const ctx = document.getElementById('chartDcsDonut');
     if (charts.donut) charts.donut.destroy();
     charts.donut = new Chart(ctx, {
@@ -804,7 +795,6 @@ function processDcsPanel(field) {
         }
     });
 
-    // 3. TOP 5 SEKOLAH (Guna schoolOnlyList)
     const top5 = [...schoolOnlyList]
         .sort((a,b) => (b[field]||0) - (a[field]||0))
         .slice(0, 5);
@@ -819,17 +809,11 @@ function processDcsPanel(field) {
 }
 
 function processActivePanel(field) {
-    // 1. DAPATKAN DATA PPD (M030) UNTUK KPI UTAMA
     const ppdData = dcsDataList.find(d => d.kod_sekolah === 'M030');
     const ppdActive = (ppdData && ppdData[field]) ? ppdData[field] : 0;
-
-    // Update UI KPI
     document.getElementById('kpiActiveScore').innerText = ppdActive;
 
-    // 2. TAPIS DATA (SEKOLAH SAHAJA) UNTUK CARTA & TOP 5
     const schoolOnlyList = dcsDataList.filter(d => d.kod_sekolah !== 'M030');
-
-    // Kira Taburan (Guna schoolOnlyList)
     let ranges = { 'Tinggi (>80%)': 0, 'Sederhana (50-79%)': 0, 'Rendah (<50%)': 0 };
     schoolOnlyList.forEach(d => {
         const val = d[field];
@@ -840,7 +824,6 @@ function processActivePanel(field) {
         }
     });
 
-    // Render Carta Bar
     const ctx = document.getElementById('chartActiveBar');
     if (charts.bar) charts.bar.destroy();
     charts.bar = new Chart(ctx, {
@@ -862,7 +845,6 @@ function processActivePanel(field) {
         }
     });
 
-    // 3. TOP 5 AKTIF (Guna schoolOnlyList)
     const top5 = [...schoolOnlyList]
         .sort((a,b) => (b[field]||0) - (a[field]||0))
         .slice(0, 5);
@@ -881,8 +863,6 @@ function renderAnalisaTable(year) {
     if (!wrapper) return;
     
     const keyword = document.getElementById('searchAnalisa').value.toUpperCase();
-    
-    // NOTA: M030 dibiarkan ada dalam senarai ini untuk tujuan semakan/edit admin
     const list = keyword ? dcsDataList.filter(d => d.nama_sekolah.includes(keyword) || d.kod_sekolah.includes(keyword)) : dcsDataList;
 
     if(list.length === 0) return wrapper.innerHTML = `<tr><td colspan="5" class="text-center py-4">Tiada rekod.</td></tr>`;
@@ -928,14 +908,12 @@ function filterAnalisaTable() {
     renderAnalisaTable(document.getElementById('pilihTahunAnalisa').value);
 }
 
-// Fungsi Modal Suntingan
 function openEditDcs(kod) {
     const item = dcsDataList.find(d => d.kod_sekolah === kod);
     if (!item) return;
 
     document.getElementById('editKodSekolah').value = item.kod_sekolah;
     document.getElementById('displayEditNama').value = item.nama_sekolah;
-    
     document.getElementById('editDcsVal').value = item.dcs_2025 !== null ? item.dcs_2025 : '';
     document.getElementById('editAktifVal').value = item.peratus_aktif_2025 !== null ? item.peratus_aktif_2025 : '';
 
@@ -975,6 +953,112 @@ async function simpanDcs() {
     }
 }
 
+// ==========================================
+// 11. MODUL PENCAPAIAN & KEMENJADIAN (BARU)
+// ==========================================
+
+async function loadMasterPencapaian() {
+    const tbody = document.getElementById('tbodyPencapaianMaster');
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>`;
+
+    const tahun = document.getElementById('filterTahunPencapaian').value;
+    const kategoriFilter = document.getElementById('filterKategoriPencapaian').value;
+
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('smpid_pencapaian')
+            .select('*')
+            .eq('tahun', tahun)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        pencapaianList = data;
+
+        // 1. UPDATE KPI STATISTIK (Berdasarkan Tahun Sahaja)
+        const totalKeb = data.filter(i => i.peringkat === 'KEBANGSAAN').length;
+        const totalInt = data.filter(i => i.peringkat === 'ANTARABANGSA').length;
+        document.getElementById('statKebangsaan').innerText = totalKeb;
+        document.getElementById('statAntarabangsa').innerText = totalInt;
+
+        // 2. TAPIS UNTUK TABLE
+        let filteredData = data;
+        if (kategoriFilter !== 'ALL') {
+            filteredData = data.filter(i => i.kategori === kategoriFilter);
+        }
+
+        if (filteredData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted fst-italic">Tiada rekod untuk paparan ini.</td></tr>`;
+            return;
+        }
+
+        let html = '';
+        filteredData.forEach(item => {
+            // Mapping Nama Sekolah dari dashboardData
+            const sekolahInfo = dashboardData.find(s => s.kod_sekolah === item.kod_sekolah);
+            const namaSekolah = sekolahInfo ? sekolahInfo.nama_sekolah : "NAMA TIDAK DIJUMPAI";
+
+            // Badge UI
+            let badgeClass = 'bg-secondary';
+            if (item.kategori === 'MURID') badgeClass = 'bg-info text-dark';
+            else if (item.kategori === 'GURU') badgeClass = 'bg-warning text-dark';
+            else if (item.kategori === 'SEKOLAH') badgeClass = 'bg-purple';
+
+            let peringkatBadge = item.peringkat === 'KEBANGSAAN' ? 'bg-primary' : 'bg-orange';
+
+            html += `
+            <tr>
+                <td class="fw-bold">${item.kod_sekolah}</td>
+                <td class="small text-truncate" style="max-width: 200px;" title="${namaSekolah}">${namaSekolah}</td>
+                <td class="text-center"><span class="badge ${badgeClass} shadow-sm">${item.kategori}</span></td>
+                <td><div class="fw-bold text-dark small">${item.nama_peserta}</div></td>
+                <td><div class="small text-uppercase">${item.nama_pertandingan}</div></td>
+                <td class="text-center"><span class="badge ${peringkatBadge}">${item.peringkat}</span></td>
+                <td class="text-center"><span class="fw-bold text-success">${item.pencapaian}</span></td>
+                <td class="text-center">
+                    <a href="${item.pautan_bukti}" target="_blank" class="btn btn-sm btn-light border text-primary" title="Lihat Bukti">
+                        <i class="fas fa-link"></i>
+                    </a>
+                </td>
+                <td class="text-center">
+                    <button onclick="hapusPencapaianAdmin(${item.id})" class="btn btn-sm btn-outline-danger" title="Padam Rekod">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+
+    } catch (err) {
+        console.error(err);
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-danger">Gagal memuatkan data.</td></tr>`;
+    }
+}
+
+async function hapusPencapaianAdmin(id) {
+    Swal.fire({
+        title: 'Padam Rekod?',
+        text: "Tindakan ini kekal dan tidak boleh dikembalikan.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Ya, Padam',
+        cancelButtonText: 'Batal'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            window.toggleLoading(true);
+            try {
+                const { error } = await window.supabaseClient.from('smpid_pencapaian').delete().eq('id', id);
+                if (error) throw error;
+                window.toggleLoading(false);
+                Swal.fire('Dipadam', 'Rekod berjaya dipadam.', 'success').then(() => loadMasterPencapaian());
+            } catch (err) {
+                window.toggleLoading(false);
+                Swal.fire('Ralat', 'Gagal memadam.', 'error');
+            }
+        }
+    });
+}
 
 // Bind Global Functions
 window.setFilter = setFilter;
@@ -992,15 +1076,19 @@ window.loadTiketAdmin = loadTiketAdmin;
 window.submitBalasanAdmin = submitBalasanAdmin;
 window.padamTiket = padamTiket;
 
-// Bind Fungsi Baru (Admin + Analisa)
+// Bind Fungsi Admin (Users)
 window.loadAdminList = loadAdminList;
 window.tambahAdmin = tambahAdmin;
 window.padamAdmin = padamAdmin;
 window.resetPasswordSekolah = resetPasswordSekolah;
 
-// Bind Fungsi Analisa
+// Bind Fungsi Analisa DCS
 window.loadDcsAdmin = loadDcsAdmin;
 window.updateDashboardAnalisa = updateDashboardAnalisa;
 window.filterAnalisaTable = filterAnalisaTable;
 window.openEditDcs = openEditDcs;
 window.simpanDcs = simpanDcs;
+
+// Bind Fungsi Pencapaian (BARU)
+window.loadMasterPencapaian = loadMasterPencapaian;
+window.hapusPencapaianAdmin = hapusPencapaianAdmin;

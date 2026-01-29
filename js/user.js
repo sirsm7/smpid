@@ -1,8 +1,7 @@
 /**
  * SMPID USER PORTAL MODULE (js/user.js)
- * Versi: 3.0 (Gabungan Stable + Analisa DCS)
- * Fungsi: Logik Dashboard Sekolah, Profil, Aduan & Analisa Digital
- * Halaman: user.html
+ * Versi: 4.0 (Modul Pencapaian Ditambah)
+ * Fungsi: Logik Dashboard Sekolah, Profil, Aduan, Analisa & Pencapaian
  */
 
 // NOTA: Variable global (DENO_API_URL, SUPABASE_URL) diambil dari window (utils.js)
@@ -65,7 +64,8 @@ function showSection(section) {
     const menuSection = document.getElementById('section-menu');
     const profilSection = document.getElementById('section-profil');
     const aduanSection = document.getElementById('section-aduan');
-    const analisaSection = document.getElementById('section-analisa'); // Ditambah
+    const analisaSection = document.getElementById('section-analisa');
+    const pencapaianSection = document.getElementById('section-pencapaian'); // Modul Baru
     const welcomeText = document.getElementById('welcomeText');
 
     // Reset semua ke hidden dulu
@@ -73,6 +73,7 @@ function showSection(section) {
     profilSection.classList.add('hidden');
     aduanSection.classList.add('hidden');
     if(analisaSection) analisaSection.classList.add('hidden');
+    if(pencapaianSection) pencapaianSection.classList.add('hidden');
 
     if (section === 'menu') {
         menuSection.classList.remove('hidden');
@@ -87,7 +88,11 @@ function showSection(section) {
     } else if (section === 'analisa') {
         analisaSection.classList.remove('hidden');
         welcomeText.innerText = "Analisa Digital";
-        loadAnalisaSekolah(); // Panggil fungsi analisa
+        loadAnalisaSekolah();
+    } else if (section === 'pencapaian') {
+        pencapaianSection.classList.remove('hidden');
+        welcomeText.innerText = "Rekod Pencapaian";
+        loadPencapaianSekolah(); // Panggil fungsi load senarai
     }
 }
 
@@ -174,7 +179,6 @@ async function simpanProfil() {
         if (error) throw error;
 
         // Notifikasi Telegram (Fire & Forget)
-        // Gunakan window.DENO_API_URL dari utils.js
         if (window.DENO_API_URL) {
             fetch(`${window.DENO_API_URL}/notify`, {
                 method: 'POST',
@@ -196,14 +200,13 @@ async function simpanProfil() {
     } catch (err) {
         window.toggleLoading(false); 
         if(btnSubmit) btnSubmit.disabled = false;
-        
         console.error(err);
         Swal.fire('Ralat', 'Gagal menyimpan data ke database.', 'error');
     }
 }
 
 // ==========================================
-// 4. ANALISA DIGITAL (DCS & DELIMa) - BARU
+// 4. ANALISA DIGITAL (DCS & DELIMa)
 // ==========================================
 
 async function loadAnalisaSekolah() {
@@ -223,25 +226,21 @@ async function loadAnalisaSekolah() {
             .single();
 
         if (error) {
-            // Jika data tiada (mungkin sekolah baru/belum import)
             if(tableBody) tableBody.innerHTML = `<tr><td colspan="3" class="text-danger py-3">Data analisa belum tersedia.</td></tr>`;
             return;
         }
 
-        // 1. Tentukan Data Terkini (Cek 2025 dulu, jika null guna 2024)
-        // Nota: 0 dikira sebagai data, null dikira tiada data.
+        // Logic Data Terkini (Prioriti 2025 > 2024)
         let dcsLatest = (data.dcs_2025 !== null) ? data.dcs_2025 : data.dcs_2024;
         let aktifLatest = (data.peratus_aktif_2025 !== null) ? data.peratus_aktif_2025 : data.peratus_aktif_2024;
-        let dcsPrev = data.dcs_2023; // Banding dengan 2023 untuk trend asas
-
-        // Jika data terkini adalah 2025, banding dengan 2024
+        let dcsPrev = data.dcs_2023; 
         if (data.dcs_2025 !== null) dcsPrev = data.dcs_2024;
 
-        // 2. Render Kad Ringkasan
+        // Render UI
         document.getElementById('valDcs').innerText = dcsLatest ? dcsLatest.toFixed(2) : "0.00";
         document.getElementById('valAktif').innerText = aktifLatest ? aktifLatest : "0";
 
-        // Logic Trend Badge
+        // Logic Trend
         const trendEl = document.getElementById('trendDcs');
         if (dcsLatest > dcsPrev) {
             trendEl.innerHTML = `<i class="fas fa-arrow-up me-1"></i>Meningkat`;
@@ -254,10 +253,10 @@ async function loadAnalisaSekolah() {
             trendEl.className = "badge bg-white text-secondary mt-2 rounded-pill px-2 border";
         }
 
-        // 3. Render Jadual
+        // Render Jadual
         let rows = '';
         const createRow = (year, dcs, aktif) => {
-            if (dcs === null && aktif === null) return ''; // Skip jika kosong
+            if (dcs === null && aktif === null) return ''; 
             return `<tr>
                 <td class="fw-bold text-secondary">${year}</td>
                 <td><span class="badge ${dcs >= 3.0 ? 'bg-success' : 'bg-warning'} text-white">${dcs !== null ? dcs.toFixed(2) : '-'}</span></td>
@@ -271,7 +270,6 @@ async function loadAnalisaSekolah() {
 
         if(tableBody) tableBody.innerHTML = rows;
 
-        // 4. Render Chart (Chart.js)
         renderDcsChart(data);
 
     } catch (err) {
@@ -283,19 +281,10 @@ async function loadAnalisaSekolah() {
 function renderDcsChart(data) {
     const ctx = document.getElementById('chartAnalisa');
     if (!ctx) return;
+    if (analisaChart) analisaChart.destroy();
 
-    // Hapus carta lama jika ada
-    if (analisaChart) {
-        analisaChart.destroy();
-    }
-
-    // Penyediaan Data
     const labels = ['2023', '2024', '2025'];
-    
-    // Data DCS (Null jika tiada)
     const dataDcs = [data.dcs_2023, data.dcs_2024, data.dcs_2025];
-    
-    // Data Aktif (Null jika tiada)
     const dataAktif = [data.peratus_aktif_2023, data.peratus_aktif_2024, data.peratus_aktif_2025];
 
     analisaChart = new Chart(ctx, {
@@ -306,67 +295,29 @@ function renderDcsChart(data) {
                 {
                     label: 'Skor DCS (0-5)',
                     data: dataDcs,
-                    borderColor: '#0d6efd', // Bootstrap Primary
+                    borderColor: '#0d6efd',
                     backgroundColor: 'rgba(13, 110, 253, 0.1)',
                     yAxisID: 'y',
                     tension: 0.3,
-                    fill: true,
-                    pointRadius: 5,
-                    pointHoverRadius: 7
+                    fill: true
                 },
                 {
                     label: '% Aktif DELIMa',
                     data: dataAktif,
-                    borderColor: '#198754', // Bootstrap Success
+                    borderColor: '#198754',
                     backgroundColor: 'rgba(25, 135, 84, 0.1)',
                     yAxisID: 'y1',
                     tension: 0.3,
-                    borderDash: [5, 5], // Garisan putus-putus
-                    pointStyle: 'rectRot',
-                    pointRadius: 6,
-                    pointHoverRadius: 8
+                    borderDash: [5, 5]
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
-            plugins: {
-                legend: { position: 'bottom' },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) label += ': ';
-                            if (context.parsed.y !== null) label += context.parsed.y;
-                            if (context.dataset.yAxisID === 'y1') label += '%';
-                            return label;
-                        }
-                    }
-                }
-            },
             scales: {
-                y: {
-                    type: 'linear',
-                    display: true,
-                    position: 'left',
-                    min: 0,
-                    max: 5,
-                    title: { display: true, text: 'Skala DCS' }
-                },
-                y1: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                    min: 0,
-                    max: 100,
-                    grid: { drawOnChartArea: false }, // Elak grid serabut
-                    title: { display: true, text: 'Peratus (%)' }
-                }
+                y: { min: 0, max: 5, position: 'left' },
+                y1: { min: 0, max: 100, position: 'right', grid: { drawOnChartArea: false } }
             }
         }
     });
@@ -381,7 +332,6 @@ async function hantarTiket() {
     const peranan = document.getElementById('tiketPeranan').value;
     const tajuk = document.getElementById('tiketTajuk').value.toUpperCase();
     const mesej = window.formatSentenceCase(document.getElementById('tiketMesej').value);
-
     const btnSubmit = document.querySelector('#formTiket button[type="submit"]');
 
     if (!peranan) { 
@@ -418,12 +368,8 @@ async function hantarTiket() {
         
         Swal.fire('Tiket Dihantar', 'Pihak PPD telah dimaklumkan.', 'success').then(() => {
             document.getElementById('formTiket').reset();
-            // Pindah ke tab sejarah tiket
             const tabBtn = document.querySelector('#tab-semak-aduan');
-            if(tabBtn) {
-                const tab = new bootstrap.Tab(tabBtn);
-                tab.show();
-            }
+            if(tabBtn) { const tab = new bootstrap.Tab(tabBtn); tab.show(); }
             loadTiketUser();
         });
 
@@ -439,13 +385,7 @@ async function loadTiketUser() {
     const container = document.getElementById('senaraiTiketContainer');
     
     if(!container) return;
-
-    // Loader Tempatan
-    container.innerHTML = `
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="small text-muted mt-2">Memuatkan sejarah tiket...</p>
-        </div>`;
+    container.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>`;
 
     try {
         const { data, error } = await window.supabaseClient
@@ -463,66 +403,235 @@ async function loadTiketUser() {
             <div class="text-center py-5 opacity-50">
                 <i class="fas fa-folder-open fa-3x mb-3 text-secondary"></i>
                 <p class="fw-bold text-dark">Tiada Rekod Aduan</p>
-                <small>Sebarang tiket yang dihantar akan disenaraikan di sini.</small>
             </div>`;
             return;
         }
 
-        // Render Kad Tiket
         data.forEach(t => {
             const dateObj = new Date(t.created_at);
             const dateStr = dateObj.toLocaleDateString('ms-MY', { day: 'numeric', month: 'short', year: 'numeric' });
-            const timeStr = dateObj.toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' });
-
+            
             let statusBadge = t.status === 'SELESAI' 
-                ? `<span class="badge bg-success bg-gradient shadow-sm"><i class="fas fa-check-circle me-1"></i>SELESAI</span>`
-                : `<span class="badge bg-warning text-dark bg-gradient shadow-sm"><i class="fas fa-clock me-1"></i>DALAM PROSES</span>`;
+                ? `<span class="badge bg-success bg-gradient shadow-sm">SELESAI</span>`
+                : `<span class="badge bg-warning text-dark bg-gradient shadow-sm">DALAM PROSES</span>`;
 
             let responHTML = t.balasan_admin ? `
                 <div class="bg-primary bg-opacity-10 p-3 rounded-3 border border-primary border-opacity-25 mt-3 position-relative">
                     <span class="position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary mt-1 shadow-sm">Respon PPD</span>
                     <p class="mb-1 text-dark small mt-2 fw-semibold">${t.balasan_admin}</p>
-                    <div class="text-end"><small class="text-muted" style="font-size: 0.7rem;">${t.tarikh_balas ? new Date(t.tarikh_balas).toLocaleDateString('ms-MY') : ''}</small></div>
                 </div>` : `
                 <div class="bg-light p-2 rounded-3 border border-dashed mt-3 text-center">
-                    <small class="text-muted fst-italic"><i class="fas fa-hourglass-half me-2"></i>Menunggu tindakan pegawai PPD...</small>
+                    <small class="text-muted fst-italic"><i class="fas fa-hourglass-half me-2"></i>Menunggu tindakan...</small>
                 </div>`;
 
             const cardHTML = `
             <div class="card shadow-sm border-0 rounded-4 mb-1 overflow-hidden">
-                <div class="card-body p-0">
-                    <div class="p-3 border-bottom bg-white d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center gap-2">
-                             <div class="bg-light rounded-circle d-flex align-items-center justify-content-center text-secondary border" style="width: 35px; height: 35px;">
-                                <i class="fas ${t.peranan_pengirim === 'GPICT' ? 'fa-laptop-code' : 'fa-user-shield'}"></i>
-                             </div>
-                             <div>
-                                <small class="text-secondary d-block lh-1" style="font-size: 0.7rem;">${dateStr} • ${timeStr}</small>
-                                <span class="fw-bold text-dark small">${t.peranan_pengirim}</span>
-                             </div>
-                        </div>
-                        ${statusBadge}
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between mb-2">
+                         <span class="fw-bold small text-muted">${dateStr}</span>
+                         ${statusBadge}
                     </div>
-                    <div class="p-3 bg-white">
-                        <h6 class="fw-bold text-dark mb-2">${t.tajuk}</h6>
-                        <p class="text-secondary small mb-0 text-break">${t.butiran_masalah}</p>
-                        ${responHTML}
-                    </div>
+                    <h6 class="fw-bold text-dark mb-2">${t.tajuk}</h6>
+                    <p class="text-secondary small mb-0 text-break">${t.butiran_masalah}</p>
+                    ${responHTML}
                 </div>
-                <div class="position-absolute top-0 start-0 bottom-0 bg-${t.status === 'SELESAI' ? 'success' : 'warning'}" style="width: 4px;"></div>
             </div>`;
-
             container.innerHTML += cardHTML;
         });
 
     } catch (e) { 
-        console.error(e); 
-        container.innerHTML = `<div class="alert alert-danger small">Gagal memuatkan tiket. Sila cuba lagi.</div>`;
+        container.innerHTML = `<div class="alert alert-danger small">Gagal memuatkan tiket.</div>`;
     }
 }
 
 // ==========================================
-// 6. TUKAR KATA LALUAN
+// 6. MODUL PENCAPAIAN & KEMENJADIAN (BARU)
+// ==========================================
+
+// Fungsi Tab & UI Control
+function setPencapaianType(type) {
+    // 1. Update Hidden Input
+    document.getElementById('pencapaianKategori').value = type;
+    
+    // 2. Update Label
+    const lbl = document.getElementById('labelNamaPeserta');
+    const inpName = document.getElementById('pInputNama');
+    
+    if (type === 'MURID') {
+        lbl.innerText = "NAMA MURID";
+        inpName.value = "";
+        inpName.readOnly = false;
+        inpName.placeholder = "Taip nama penuh murid...";
+    } else if (type === 'GURU') {
+        lbl.innerText = "NAMA GURU";
+        inpName.value = "";
+        inpName.readOnly = false;
+        inpName.placeholder = "Taip nama penuh guru...";
+    } else if (type === 'SEKOLAH') {
+        lbl.innerText = "NAMA SEKOLAH";
+        // Auto-fill nama sekolah dari sesi paparan
+        inpName.value = document.getElementById('dispNamaSekolah').innerText;
+        inpName.readOnly = true; // Kunci supaya tak boleh ubah
+    }
+}
+
+// Fungsi Simpan Rekod
+async function simpanPencapaian() {
+    const kod = sessionStorage.getItem('smpid_user_kod'); // SECURITY: Ambil dari session
+    const btn = document.querySelector('#formPencapaian button[type="submit"]');
+
+    // Ambil Data
+    const kategori = document.getElementById('pencapaianKategori').value;
+    const nama = document.getElementById('pInputNama').value.trim().toUpperCase();
+    const program = document.getElementById('pInputProgram').value.trim().toUpperCase();
+    const peringkat = document.getElementById('pInputPeringkat').value;
+    const tahun = document.getElementById('pInputTahun').value;
+    const pencapaian = document.getElementById('pInputPencapaian').value.trim().toUpperCase();
+    const link = document.getElementById('pInputLink').value.trim();
+
+    if (!nama || !program || !pencapaian || !link) {
+        Swal.fire('Tidak Lengkap', 'Sila isi semua maklumat yang bertanda.', 'warning');
+        return;
+    }
+
+    if(btn) btn.disabled = true;
+    window.toggleLoading(true);
+
+    try {
+        const payload = {
+            kod_sekolah: kod,
+            kategori: kategori,
+            nama_peserta: nama,
+            nama_pertandingan: program,
+            peringkat: peringkat,
+            tahun: parseInt(tahun),
+            pencapaian: pencapaian,
+            pautan_bukti: link
+        };
+
+        const { error } = await window.supabaseClient
+            .from('smpid_pencapaian')
+            .insert([payload]);
+
+        if (error) throw error;
+
+        window.toggleLoading(false);
+        if(btn) btn.disabled = false;
+
+        Swal.fire('Berjaya', 'Rekod pencapaian telah disimpan.', 'success').then(() => {
+            // Reset Borang (Kecuali jika kategori Sekolah, nama kekal)
+            document.getElementById('pInputProgram').value = "";
+            document.getElementById('pInputPencapaian').value = "";
+            document.getElementById('pInputLink').value = "";
+            if(kategori !== 'SEKOLAH') document.getElementById('pInputNama').value = "";
+            
+            // Refresh Senarai
+            loadPencapaianSekolah();
+        });
+
+    } catch (err) {
+        window.toggleLoading(false);
+        if(btn) btn.disabled = false;
+        console.error(err);
+        Swal.fire('Ralat', 'Gagal menyimpan rekod.', 'error');
+    }
+}
+
+// Fungsi Muat Turun Senarai (Read)
+async function loadPencapaianSekolah() {
+    const kod = sessionStorage.getItem('smpid_user_kod');
+    const tbody = document.getElementById('tbodyRekodPencapaian');
+    
+    if(!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="3" class="text-center py-4"><div class="spinner-border text-primary spinner-border-sm"></div> Memuatkan...</td></tr>`;
+
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('smpid_pencapaian')
+            .select('*')
+            .eq('kod_sekolah', kod)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-muted fst-italic">Tiada rekod dijumpai.</td></tr>`;
+            return;
+        }
+
+        let html = '';
+        data.forEach(item => {
+            // Badge Warna Kategori
+            let badgeClass = 'bg-secondary';
+            if (item.kategori === 'MURID') badgeClass = 'bg-info text-dark';
+            else if (item.kategori === 'GURU') badgeClass = 'bg-warning text-dark';
+            else if (item.kategori === 'SEKOLAH') badgeClass = 'bg-purple';
+
+            html += `
+            <tr>
+                <td class="text-center align-middle">
+                    <span class="badge ${badgeClass} shadow-sm">${item.kategori}</span>
+                    <div class="small text-muted mt-1 fw-bold">${item.tahun}</div>
+                </td>
+                <td class="align-middle">
+                    <div class="fw-bold text-dark small text-truncate" style="max-width: 200px;">${item.nama_peserta}</div>
+                    <div class="text-primary small fw-bold text-uppercase mb-1">${item.nama_pertandingan}</div>
+                    <div class="d-flex gap-2">
+                        <span class="badge bg-light text-dark border">${item.peringkat}</span>
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success">${item.pencapaian}</span>
+                    </div>
+                    <a href="${item.pautan_bukti}" target="_blank" class="btn btn-link btn-sm p-0 mt-1 text-decoration-none small">
+                        <i class="fas fa-external-link-alt me-1"></i>Lihat Bukti
+                    </a>
+                </td>
+                <td class="text-center align-middle">
+                    <button onclick="padamPencapaian(${item.id})" class="btn btn-sm btn-outline-danger shadow-sm" title="Padam Rekod">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+
+    } catch (err) {
+        console.error(err);
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-danger">Gagal memuatkan data.</td></tr>`;
+    }
+}
+
+// Fungsi Padam (Delete)
+async function padamPencapaian(id) {
+    Swal.fire({
+        title: 'Padam Rekod?',
+        text: "Data ini tidak boleh dikembalikan.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Ya, Padam',
+        cancelButtonText: 'Batal'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            window.toggleLoading(true);
+            try {
+                const { error } = await window.supabaseClient
+                    .from('smpid_pencapaian')
+                    .delete()
+                    .eq('id', id); // Row ID
+
+                if (error) throw error;
+
+                window.toggleLoading(false);
+                Swal.fire('Dipadam', 'Rekod berjaya dipadam.', 'success').then(() => loadPencapaianSekolah());
+            } catch (err) {
+                window.toggleLoading(false);
+                Swal.fire('Ralat', 'Gagal memadam rekod.', 'error');
+            }
+        }
+    });
+}
+
+// ==========================================
+// 7. TUKAR KATA LALUAN & RESET
 // ==========================================
 
 async function ubahKataLaluan() {
@@ -551,19 +660,12 @@ async function ubahKataLaluan() {
     if (formValues) {
         const [oldPass, newPass] = formValues;
 
-        if (!oldPass || !newPass) {
-            Swal.fire('Ralat', 'Sila isi kedua-dua ruang.', 'warning');
-            return;
-        }
-        if (newPass.length < 6) {
-            Swal.fire('Ralat', 'Kata laluan baru terlalu pendek (min 6).', 'warning');
-            return;
-        }
+        if (!oldPass || !newPass) { Swal.fire('Ralat', 'Sila isi kedua-dua ruang.', 'warning'); return; }
+        if (newPass.length < 6) { Swal.fire('Ralat', 'Kata laluan baru terlalu pendek (min 6).', 'warning'); return; }
 
         window.toggleLoading(true);
 
         try {
-            // Sahkan Password Lama
             const { data: userData, error: fetchError } = await window.supabaseClient
                 .from('smpid_users')
                 .select('password')
@@ -571,14 +673,12 @@ async function ubahKataLaluan() {
                 .single();
 
             if (fetchError || !userData) throw new Error("User tidak dijumpai.");
-
             if (userData.password !== oldPass) {
                 window.toggleLoading(false);
                 Swal.fire('Gagal', 'Kata laluan lama tidak sah.', 'error');
                 return;
             }
 
-            // Update Password Baru
             const { error: updateError } = await window.supabaseClient
                 .from('smpid_users')
                 .update({ password: newPass })
@@ -587,21 +687,14 @@ async function ubahKataLaluan() {
             if (updateError) throw updateError;
 
             window.toggleLoading(false);
-            Swal.fire('Berjaya', 'Kata laluan telah ditukar. Sila log masuk semula.', 'success').then(() => {
-                window.keluarSistem();
-            });
+            Swal.fire('Berjaya', 'Kata laluan telah ditukar.', 'success').then(() => window.keluarSistem());
 
         } catch (err) {
             window.toggleLoading(false);
-            console.error(err);
             Swal.fire('Ralat', 'Gagal menukar kata laluan.', 'error');
         }
     }
 }
-
-// ==========================================
-// 7. ADMIN RESET (KHAS)
-// ==========================================
 
 async function resetDataSekolah() {
     const kod = document.getElementById('hiddenKodSekolah').value;
@@ -613,7 +706,7 @@ async function resetDataSekolah() {
         confirmButtonText: 'Sahkan'
     });
 
-    if (password === 'pkgag') { // Hardcoded master key untuk admin
+    if (password === 'pkgag') { // Master Key
          Swal.fire({
             title: 'Pasti Reset Data?',
             text: "Semua data GPICT/Admin akan dipadam (NULL). Kod sekolah kekal.",
@@ -652,7 +745,11 @@ window.hantarTiket = hantarTiket;
 window.loadTiketUser = loadTiketUser;
 window.ubahKataLaluan = ubahKataLaluan;
 window.resetDataSekolah = resetDataSekolah;
-
-// Bind Fungsi Analisa Baru
 window.loadAnalisaSekolah = loadAnalisaSekolah;
 window.renderDcsChart = renderDcsChart;
+
+// BIND FUNGSI PENCAPAIAN (BARU)
+window.setPencapaianType = setPencapaianType;
+window.simpanPencapaian = simpanPencapaian;
+window.loadPencapaianSekolah = loadPencapaianSekolah;
+window.padamPencapaian = padamPencapaian;

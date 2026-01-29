@@ -13,6 +13,10 @@ body { background-color: #f0f2f5; font-family: 'Inter', sans-serif; min-height: 
 .bg-orange { background-color: #fd7e14 !important; color: white; }
 .text-orange { color: #fd7e14 !important; }
 
+/* Warna Teal Blue (Permintaan User untuk butang Pencapaian) */
+.btn-teal { background-color: #008080 !important; color: white !important; border: none; }
+.btn-teal:hover { background-color: #006666 !important; color: white !important; }
+
 /* --- HEADER --- */
 .header-bg {
   background: linear-gradient(135deg, #198754 0%, #0d6efd 100%);
@@ -25,7 +29,7 @@ body { background-color: #f0f2f5; font-family: 'Inter', sans-serif; min-height: 
 .border-top-primary { border-top: 4px solid #0d6efd !important; }
 .border-top-warning { border-top: 4px solid #ffc107 !important; }
 
-/* --- DASHBOARD SCHOOL CARDS (Dipulihkan) --- */
+/* --- DASHBOARD SCHOOL CARDS --- */
 .school-card {
   transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; height: 100%;
   border: 1px solid rgba(0,0,0,0.05); background: white;
@@ -34,7 +38,7 @@ body { background-color: #f0f2f5; font-family: 'Inter', sans-serif; min-height: 
 .school-name { font-size: 0.85rem; font-weight: 700; color: #212529; line-height: 1.4; margin-bottom: 0.5rem; }
 .status-badge { font-size: 0.7rem; padding: 4px 6px; border-radius: 20px; font-weight: 700; }
 
-/* WhatsApp & Status Row (Dipulihkan) */
+/* WhatsApp & Status Row */
 .tele-status-row { 
     background-color: #f8f9fa; border-top: 1px solid #eee; padding: 0; 
     border-radius: 0 0 12px 12px; font-size: 0.75rem; 
@@ -54,7 +58,7 @@ body { background-color: #f0f2f5; font-family: 'Inter', sans-serif; min-height: 
 /* Warna Icon Menu */
 .icon-ai { background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; }
 .icon-school { background-color: rgba(25, 135, 84, 0.1); color: #198754; }
-.icon-gemini { background-color: rgba(111, 66, 193, 0.1); color: #6f42c1; } /* UNGU GEMINI */
+.icon-gemini { background-color: rgba(111, 66, 193, 0.1); color: #6f42c1; } 
 
 .btn-menu { border-radius: 50px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 

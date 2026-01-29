@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link href="css/style.css" rel="stylesheet">
   
-  <!-- Library JS: Supabase, SweetAlert2 & Chart.js (Ditambah untuk Analisa) -->
+  <!-- Library JS: Supabase, SweetAlert2 & Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -104,7 +104,7 @@
                             </div>
                         </div>
 
-                        <!-- 5. ANALISA DIGITAL (Menggantikan Portal DELIMa) -->
+                        <!-- 5. ANALISA DIGITAL -->
                         <div class="col-6 col-md-4">
                             <div onclick="showSection('analisa')" class="card btn-menu h-100 text-center p-3 border-0 bg-warning bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -136,6 +136,11 @@
                             <i class="fas fa-key me-2"></i>Tukar Kata Laluan
                         </button>
                         
+                        <!-- NEW: Butang Rekod Pencapaian (Update Warna Teal) -->
+                        <button onclick="showSection('pencapaian')" class="btn btn-teal fw-bold text-white shadow-sm py-2">
+                            <i class="fas fa-trophy me-2"></i>Rekod Pencapaian & Kemenjadian
+                        </button>
+
                         <!-- Butang Log Keluar -->
                         <button id="btnLogoutMenu" onclick="keluarSistem()" class="btn btn-outline-danger fw-bold py-2">
                             <i class="fas fa-sign-out-alt me-2"></i>Log Keluar
@@ -157,7 +162,7 @@
             </div>
         </div>
 
-        <!-- SECTION: PROFIL SEKOLAH (Asas smpid) -->
+        <!-- SECTION: PROFIL SEKOLAH -->
         <div id="section-profil" class="hidden fade-up">
             <div class="d-flex align-items-center mb-3">
                 <button onclick="showSection('menu')" class="btn btn-sm btn-white border shadow-sm rounded-circle me-3" style="width: 40px; height: 40px;">
@@ -221,7 +226,7 @@
             </div>
         </div>
 
-        <!-- SECTION: ANALISA DIGITAL (Suntikan Baru) -->
+        <!-- SECTION: ANALISA DIGITAL -->
         <div id="section-analisa" class="hidden fade-up">
             <div class="d-flex align-items-center mb-3">
                 <button onclick="showSection('menu')" class="btn btn-sm btn-white border shadow-sm rounded-circle me-3" style="width: 40px; height: 40px;">
@@ -283,7 +288,103 @@
             </div>
         </div>
 
-        <!-- SECTION: HELPDESK (Asas smpid) -->
+        <!-- SECTION: REKOD PENCAPAIAN (MODUL BARU) -->
+        <div id="section-pencapaian" class="hidden fade-up">
+            <div class="d-flex align-items-center mb-3">
+                <button onclick="showSection('menu')" class="btn btn-sm btn-white border shadow-sm rounded-circle me-3" style="width: 40px; height: 40px;">
+                    <i class="fas fa-arrow-left text-dark"></i>
+                </button>
+                <h5 class="fw-bold m-0 text-dark">Rekod Pencapaian</h5>
+            </div>
+
+            <!-- Tab Kategori -->
+            <ul class="nav nav-pills nav-fill mb-4 bg-white p-1 rounded-pill border shadow-sm" id="pencapaianTabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active rounded-pill small fw-bold" id="tab-p-murid" data-bs-toggle="pill" data-bs-target="#content-p-murid" type="button" onclick="setPencapaianType('MURID')">MURID</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link rounded-pill small fw-bold" id="tab-p-guru" data-bs-toggle="pill" data-bs-target="#content-p-guru" type="button" onclick="setPencapaianType('GURU')">GURU</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link rounded-pill small fw-bold" id="tab-p-sekolah" data-bs-toggle="pill" data-bs-target="#content-p-sekolah" type="button" onclick="setPencapaianType('SEKOLAH')">SEKOLAH</button>
+                </li>
+            </ul>
+
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 border-top border-purple border-4">
+                <h6 class="fw-bold text-purple mb-3"><i class="fas fa-pen me-2"></i>Isi Maklumat Pencapaian</h6>
+                <form id="formPencapaian" onsubmit="event.preventDefault(); simpanPencapaian();">
+                    <input type="hidden" id="pencapaianKategori" value="MURID">
+                    
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted" id="labelNamaPeserta">NAMA MURID</label>
+                        <input type="text" id="pInputNama" class="form-control uppercase-input fw-bold" placeholder="Taip nama penuh..." oninput="this.value = this.value.toUpperCase()" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">NAMA PERTANDINGAN</label>
+                        <input type="text" id="pInputProgram" class="form-control uppercase-input" placeholder="Contoh: DIGITAL COMPETENCY 2025" oninput="this.value = this.value.toUpperCase()" required>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-muted">PERINGKAT</label>
+                            <select id="pInputPeringkat" class="form-select bg-light" required>
+                                <option value="KEBANGSAAN">KEBANGSAAN</option>
+                                <option value="ANTARABANGSA">ANTARABANGSA</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                             <label class="form-label small fw-bold text-muted">TAHUN</label>
+                             <select id="pInputTahun" class="form-select bg-light" required>
+                                <option value="2025">2025</option>
+                                <option value="2024">2024</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">PENCAPAIAN</label>
+                        <input type="text" id="pInputPencapaian" class="form-control uppercase-input" placeholder="Contoh: JOHAN / EMAS / PENYERTAAN" oninput="this.value = this.value.toUpperCase()" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-muted">PAUTAN BUKTI (Google Drive)</label>
+                        <input type="url" id="pInputLink" class="form-control text-primary" placeholder="https://drive.google.com/..." required>
+                        <div class="form-text small fst-italic">Sila pastikan link diset kepada 'Everyone with the link' (Viewer).</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-purple w-100 fw-bold py-3 rounded-3 shadow-sm">
+                        <i class="fas fa-save me-2"></i>SIMPAN REKOD
+                    </button>
+                </form>
+            </div>
+
+            <!-- Senarai Rekod Terdahulu -->
+            <div class="card border-0 shadow-sm rounded-4 p-3 mb-5">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold text-secondary m-0 px-2">Senarai Rekod Terdahulu</h6>
+                    <button class="btn btn-sm btn-light border" onclick="loadPencapaianSekolah()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+                <div class="table-responsive rounded-3 border">
+                    <table class="table table-striped table-hover mb-0 small align-middle">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="py-2 text-center">Kategori</th>
+                                <th class="py-2">Butiran Pertandingan</th>
+                                <th class="py-2 text-center">Tindakan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyRekodPencapaian">
+                            <tr><td colspan="3" class="text-muted text-center py-4">Memuatkan data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: HELPDESK & ADUAN -->
         <div id="section-aduan" class="hidden fade-up">
             <div class="d-flex align-items-center mb-3">
                 <button onclick="showSection('menu')" class="btn btn-sm btn-white border shadow-sm rounded-circle me-3" style="width: 40px; height: 40px;">

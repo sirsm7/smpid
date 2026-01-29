@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link href="css/style.css" rel="stylesheet">
   
-  <!-- Library JS: Supabase, SweetAlert2 & Chart.js (Ditambah dari devtest) -->
+  <!-- Library JS: Supabase, SweetAlert2 & Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -88,12 +88,21 @@
                 <i class="fas fa-tachometer-alt me-2"></i>Status Pendaftaran
             </button>
           </li>
-          <!-- TAB ANALISA (Disuntik dari devtest) -->
+          
+          <!-- TAB 2: DCS & DELIMA (Nama Diubah) -->
           <li class="nav-item" role="presentation">
             <button class="nav-link fw-bold" id="analisa-tab" data-bs-toggle="pill" data-bs-target="#tab-analisa" type="button" role="tab">
-                <i class="fas fa-chart-pie me-2"></i>Analisa
+                <i class="fas fa-chart-pie me-2"></i>Pencapaian DCS & DELIMa
             </button>
           </li>
+
+          <!-- TAB 3: PENCAPAIAN & KEMENJADIAN (BARU) -->
+          <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold" id="pencapaian-tab" data-bs-toggle="pill" data-bs-target="#tab-pencapaian" type="button" role="tab">
+                <i class="fas fa-trophy me-2"></i>Pencapaian & Kemenjadian
+            </button>
+          </li>
+
           <li class="nav-item" role="presentation">
             <button class="nav-link fw-bold" id="email-tab" data-bs-toggle="pill" data-bs-target="#tab-email" type="button" role="tab">
                 <i class="fas fa-paper-plane me-2"></i>Email Blaster
@@ -114,7 +123,7 @@
         <!-- TAB CONTENT -->
         <div class="tab-content" id="adminTabsContent">
           
-          <!-- TAB 1: DASHBOARD (Asas smpid) -->
+          <!-- TAB 1: DASHBOARD UTAMA -->
           <div class="tab-pane fade show active" id="tab-dashboard" role="tabpanel">
             <div id="dashboardCard" class="card p-4 shadow-sm border-top-primary border-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
@@ -144,7 +153,7 @@
             </div>
           </div>
 
-          <!-- TAB 2: ANALISA (Disuntik dari devtest) -->
+          <!-- TAB 2: ANALISA DCS & DELIMA -->
           <div class="tab-pane fade" id="tab-analisa" role="tabpanel">
             <div class="card p-4 shadow-sm border-top border-dark border-4 bg-white">
                 
@@ -269,7 +278,77 @@
             </div>
           </div>
 
-          <!-- TAB 3: EMAIL BLASTER (Asas smpid) -->
+          <!-- TAB 3: PENCAPAIAN & KEMENJADIAN (BARU) -->
+          <div class="tab-pane fade" id="tab-pencapaian" role="tabpanel">
+            <div class="card p-4 shadow-sm border-purple border-4 border-top">
+                
+                <!-- HEADER & FILTER -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                         <h5 class="fw-bold mb-0 text-purple">Analisa Kemenjadian</h5>
+                         <small class="text-muted">Rekod pencapaian Kebangsaan & Antarabangsa</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <select id="filterTahunPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="loadMasterPencapaian()">
+                            <option value="2025" selected>TAHUN 2025</option>
+                            <option value="2024">TAHUN 2024</option>
+                        </select>
+                        <select id="filterKategoriPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="loadMasterPencapaian()">
+                            <option value="ALL" selected>SEMUA KATEGORI</option>
+                            <option value="MURID">MURID</option>
+                            <option value="GURU">GURU</option>
+                            <option value="SEKOLAH">SEKOLAH</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- KPI CARDS -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="card bg-purple text-white h-100 border-0 shadow-sm rounded-4">
+                            <div class="card-body text-center p-3">
+                                <h2 class="fw-bold mb-0 display-5" id="statKebangsaan">-</h2>
+                                <small class="text-white-50 text-uppercase fw-bold">Peringkat Kebangsaan</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                         <div class="card bg-orange text-white h-100 border-0 shadow-sm rounded-4">
+                            <div class="card-body text-center p-3">
+                                <h2 class="fw-bold mb-0 display-5" id="statAntarabangsa">-</h2>
+                                <small class="text-white-50 text-uppercase fw-bold">Peringkat Antarabangsa</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MASTER TABLE -->
+                <h6 class="fw-bold text-secondary mb-3"><i class="fas fa-database me-2"></i>Senarai Penuh Pencapaian</h6>
+                <div class="table-responsive border rounded-3" style="max-height: 600px; background: white;">
+                    <table class="table table-hover table-striped table-bordered align-middle small mb-0">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                <th style="width: 8%;">Kod</th>
+                                <th style="width: 20%;">Nama Sekolah</th>
+                                <th style="width: 8%;" class="text-center">Kategori</th>
+                                <th style="width: 20%;">Nama Peserta</th>
+                                <th style="width: 15%;">Pertandingan</th>
+                                <th style="width: 10%;" class="text-center">Peringkat</th>
+                                <th style="width: 10%;" class="text-center">Pencapaian</th>
+                                <th style="width: 5%;" class="text-center">Bukti</th>
+                                <th style="width: 4%;" class="text-center">Hapus</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyPencapaianMaster">
+                            <tr><td colspan="9" class="text-center py-5 text-muted">Sila pilih filter untuk memuatkan data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+          </div>
+
+          <!-- TAB 4: EMAIL BLASTER -->
           <div class="tab-pane fade" id="tab-email" role="tabpanel">
             <div class="card p-4 shadow-sm border-top-warning border-4">
                 <div class="card-body p-0">
@@ -335,7 +414,7 @@ PPD Alor Gajah.</textarea>
             </div>
           </div>
 
-          <!-- TAB 4: HELPDESK (Asas smpid) -->
+          <!-- TAB 5: HELPDESK -->
           <div class="tab-pane fade" id="tab-helpdesk" role="tabpanel">
             <div class="card p-4 shadow-sm border-top border-danger border-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
@@ -358,7 +437,7 @@ PPD Alor Gajah.</textarea>
             </div>
           </div>
 
-          <!-- TAB 5: PENGURUSAN ADMIN (Asas smpid) -->
+          <!-- TAB 6: PENGURUSAN ADMIN -->
           <div class="tab-pane fade" id="tab-admin-users" role="tabpanel">
             <div class="card p-4 shadow-sm border-top border-dark border-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
@@ -408,7 +487,7 @@ PPD Alor Gajah.</textarea>
     </div>
   </div>
 
-  <!-- MODAL EDIT DCS (Disuntik dari devtest) -->
+  <!-- MODAL EDIT DCS -->
   <div class="modal fade" id="modalEditDcs" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
