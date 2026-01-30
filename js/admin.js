@@ -1,6 +1,6 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 7.0 (Role-Based Access & Admin Management Update)
+ * Versi: 7.1 (Merge: Role-Based Access + Remove 'Taraf' + 'All Years')
  * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management (Role Editing), DCS & Pencapaian V2
  */
 
@@ -50,17 +50,18 @@ function initAdminPanel() {
         // Kemaskini Badge Header
         if(displayRole) displayRole.innerHTML = "UNIT PPD VIEW";
 
-        // Sorokkan Tab Yang Tidak Berkaitan (Dashboard, Analisa, Email, Helpdesk, Admin Users)
+        // Sorokkan Tab Yang Tidak Berkaitan
         const tabsToHide = ['dashboard-tab', 'analisa-tab', 'email-tab', 'helpdesk-tab', 'admin-users-tab'];
         tabsToHide.forEach(id => {
             const el = document.getElementById(id);
             if(el) el.parentElement.classList.add('hidden'); // Sorokkan <li> parent
         });
 
-        // Sorokkan Butang Log Keluar Utama (Bawah) dan Tunjuk Butang Khas di Tab Pencapaian
+        // Sorokkan Butang Log Keluar Utama
         const btnMainLogout = document.getElementById('btnMainLogout');
         if(btnMainLogout) btnMainLogout.classList.add('hidden');
         
+        // Tunjuk Butang Khas (Jika ada elemen ini dalam HTML)
         const btnUnitLogout = document.getElementById('btnLogoutUnitPPD');
         if(btnUnitLogout) btnUnitLogout.classList.remove('hidden');
 
@@ -99,7 +100,7 @@ function initAdminPanel() {
         pencapaianTabBtn.addEventListener('shown.bs.tab', function () { populateTahunFilter(); });
     }
     
-    // 4. Mula muat data utama (Hanya jika ADMIN penuh, untuk jimat bandwidth)
+    // 4. Mula muat data utama (Hanya jika ADMIN penuh)
     if (userRole !== 'PPD_UNIT') {
         fetchDashboardData(); 
     } else {
@@ -144,7 +145,7 @@ async function fetchDashboardData() {
             };
         });
 
-        // 2. Simpan Data Penuh untuk Email Blaster (Termasuk PPD jika perlu contact)
+        // 2. Simpan Data Penuh untuk Email Blaster
         emailRawData = data; 
 
         // 3. TAPIS DASHBOARD: Buang PPD dari grid paparan utama & statistik
@@ -411,13 +412,15 @@ async function loadAdminList() {
 // FUNGSI BARU: Tambah Admin dengan Pilihan Role
 async function tambahAdmin() {
     const emailInput = document.getElementById('inputNewAdminEmail');
-    const roleInput = document.getElementById('inputNewAdminRole');
+    const roleInput = document.getElementById('inputNewAdminRole'); // Pastikan ID ini wujud dalam HTML modal/form
     const passInput = document.getElementById('inputNewAdminPass');
     
-    if (!emailInput || !passInput || !roleInput) return;
+    // Fallback jika elemen role tiada (default ADMIN)
+    const role = roleInput ? roleInput.value : 'ADMIN';
+    
+    if (!emailInput || !passInput) return;
     
     const email = emailInput.value.trim();
-    const role = roleInput.value;
     const password = passInput.value.trim();
 
     if (!email || !password) {
@@ -1236,14 +1239,8 @@ async function loadMasterPencapaian() {
             if (item.kod_sekolah === 'M030') {
                 namaSekolah = '<span class="fw-bold text-indigo">PEJABAT PENDIDIKAN DAERAH ALOR GAJAH</span>';
             } else {
-                // Untuk PPD_UNIT yang tidak fetch dashboardData, mungkin nama sekolah tiada
-                // Jadi kita fallback kepada kod sekolah jika dashboardData kosong
                 const sekolahInfo = dashboardData.find(s => s.kod_sekolah === item.kod_sekolah);
-                if (sekolahInfo) {
-                    namaSekolah = sekolahInfo.nama_sekolah;
-                } else {
-                    namaSekolah = `<span class="text-muted fst-italic">${item.kod_sekolah} (Data Sekolah Belum Dimuat)</span>`;
-                }
+                if (sekolahInfo) namaSekolah = sekolahInfo.nama_sekolah;
             }
 
             let badgeClass = 'bg-secondary';
@@ -1517,3 +1514,4 @@ window.openModalPPD = openModalPPD;
 window.toggleKategoriPPD = toggleKategoriPPD;
 window.toggleJenisPencapaianPPD = toggleJenisPencapaianPPD;
 window.simpanPencapaianPPD = simpanPencapaianPPD;
+}
