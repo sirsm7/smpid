@@ -17,6 +17,17 @@ body { background-color: #f0f2f5; font-family: 'Inter', sans-serif; min-height: 
 .btn-teal { background-color: #008080 !important; color: white !important; border: none; }
 .btn-teal:hover { background-color: #006666 !important; color: white !important; }
 
+/* Butang Hijau Teks Hitam (Custom Request - Modul Pencapaian) */
+.btn-hijau-aksi {
+    background-color: #2ecc71 !important; /* Emerald Green cerah */
+    color: #000 !important; /* Teks Hitam */
+    border: none;
+}
+.btn-hijau-aksi:hover {
+    background-color: #27ae60 !important; /* Gelap sikit bila hover */
+    color: #000 !important;
+}
+
 /* --- BRANDING COLORS (PENSIJILAN TEKNOLOGI) --- */
 /* Google Red */
 .bg-google { background-color: #DB4437 !important; color: white; }

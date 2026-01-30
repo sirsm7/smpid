@@ -1,6 +1,6 @@
 /**
  * SMPID USER PORTAL MODULE (js/user.js)
- * Versi: 5.0 (Modul Pensijilan Guru Ditambah)
+ * Versi: 5.1 (UI Update: Butang Hijau & Label Dinamik Guru)
  * Fungsi: Logik Dashboard Sekolah, Profil, Aduan, Analisa & Pencapaian
  */
 
@@ -453,36 +453,41 @@ function setPencapaianType(type) {
     // 1. Update Hidden Input
     document.getElementById('pencapaianKategori').value = type;
     
-    // 2. Control Wrapper Jenis Rekod (Hanya untuk GURU)
     const wrapperJenis = document.getElementById('wrapperJenisRekod');
-    if (type === 'GURU') {
-        wrapperJenis.classList.remove('hidden');
-    } else {
-        wrapperJenis.classList.add('hidden');
-        // Reset radio ke default jika bukan guru
-        document.getElementById('radioPertandingan').checked = true;
-        toggleJenisPencapaian(); // Reset UI
-    }
-
-    // 3. Update Label
     const lbl = document.getElementById('labelNamaPeserta');
     const inpName = document.getElementById('pInputNama');
-    
-    if (type === 'MURID') {
-        lbl.innerText = "NAMA MURID";
-        inpName.value = "";
-        inpName.readOnly = false;
-        inpName.placeholder = "Taip nama penuh murid...";
-    } else if (type === 'GURU') {
-        lbl.innerText = "NAMA GURU";
+
+    if (type === 'GURU') {
+        // Tunjuk pilihan Pertandingan/Sijil
+        wrapperJenis.classList.remove('hidden');
+        
+        // PENTING: Panggil fungsi toggle untuk set label yang betul
+        // berdasarkan radio button mana yang tengah active (default: Pertandingan)
+        toggleJenisPencapaian();
+        
         inpName.value = "";
         inpName.readOnly = false;
         inpName.placeholder = "Taip nama penuh guru...";
-    } else if (type === 'SEKOLAH') {
-        lbl.innerText = "NAMA SEKOLAH";
-        // Auto-fill nama sekolah dari sesi paparan
-        inpName.value = document.getElementById('dispNamaSekolah').innerText;
-        inpName.readOnly = true; // Kunci supaya tak boleh ubah
+    
+    } else {
+        // Jika MURID atau SEKOLAH
+        wrapperJenis.classList.add('hidden');
+        
+        // Reset radio ke default (Pertandingan) supaya bila masuk balik GURU, dia reset
+        document.getElementById('radioPertandingan').checked = true;
+        toggleJenisPencapaian(); // Reset UI field lain
+
+        if (type === 'MURID') {
+            lbl.innerText = "NAMA MURID";
+            inpName.value = "";
+            inpName.readOnly = false;
+            inpName.placeholder = "Taip nama penuh murid...";
+        } else if (type === 'SEKOLAH') {
+            lbl.innerText = "NAMA SEKOLAH";
+            // Auto-fill nama sekolah dari sesi paparan
+            inpName.value = document.getElementById('dispNamaSekolah').innerText;
+            inpName.readOnly = true; // Kunci supaya tak boleh ubah
+        }
     }
 }
 
@@ -504,15 +509,12 @@ function toggleJenisPencapaian() {
     // Update Hidden Input untuk Logic Simpan
     document.getElementById('pInputJenisRekod').value = isPensijilan ? 'PENSIJILAN' : 'PERTANDINGAN';
 
+    // LOGIK UI MEDAN
     if (isPensijilan) {
         // UI MODE: PENSIJILAN
         divPenyedia.classList.remove('hidden');
-        
-        // Sembunyikan kolum Peringkat, tapi TAHUN mesti kekal
-        // Kita ubah struktur DOM sikit:
         selectPeringkat.parentElement.classList.add('hidden'); // Sembunyi dropdown peringkat
         
-        // Ubah Label
         lblProgram.innerText = "NAMA SIJIL / PROGRAM";
         inpProgram.placeholder = "Contoh: GOOGLE CERTIFIED EDUCATOR L1";
         
@@ -529,6 +531,18 @@ function toggleJenisPencapaian() {
         
         lblPencapaian.innerText = "PENCAPAIAN";
         inpPencapaian.placeholder = "Contoh: JOHAN / EMAS / PENYERTAAN";
+    }
+
+    // UPDATE: LOGIK LABEL NAMA GURU (DYNAMIC)
+    const kategori = document.getElementById('pencapaianKategori').value;
+    const lblNama = document.getElementById('labelNamaPeserta');
+    
+    if (kategori === 'GURU') {
+        if (isPensijilan) {
+            lblNama.innerText = "NAMA GURU";
+        } else {
+            lblNama.innerText = "NAMA GURU / KUMPULAN";
+        }
     }
 }
 
