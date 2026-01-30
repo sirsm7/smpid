@@ -1,6 +1,6 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 5.2 (Auto-Discovery DCS Year)
+ * Versi: 6.0 (Rekod Pencapaian PPD M030)
  * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management, DCS & Pencapaian V2
  */
 
@@ -1143,13 +1143,22 @@ async function loadMasterPencapaian() {
 
         let html = '';
         filteredData.forEach(item => {
-            const sekolahInfo = dashboardData.find(s => s.kod_sekolah === item.kod_sekolah);
-            const namaSekolah = sekolahInfo ? sekolahInfo.nama_sekolah : "NAMA TIDAK DIJUMPAI";
+            // LOGIK KHAS M030:
+            let namaSekolah = "NAMA TIDAK DIJUMPAI";
+            
+            if (item.kod_sekolah === 'M030') {
+                namaSekolah = '<span class="fw-bold text-indigo">PEJABAT PENDIDIKAN DAERAH ALOR GAJAH</span>';
+            } else {
+                const sekolahInfo = dashboardData.find(s => s.kod_sekolah === item.kod_sekolah);
+                if (sekolahInfo) namaSekolah = sekolahInfo.nama_sekolah;
+            }
 
             let badgeClass = 'bg-secondary';
             if (item.kategori === 'MURID') badgeClass = 'bg-info text-dark';
             else if (item.kategori === 'GURU') badgeClass = 'bg-warning text-dark';
             else if (item.kategori === 'SEKOLAH') badgeClass = 'bg-purple';
+            else if (item.kategori === 'PEGAWAI') badgeClass = 'bg-dark text-white'; // Badge Pegawai
+            else if (item.kategori === 'PPD') badgeClass = 'bg-primary text-white'; // Badge Unit
 
             let displayProgram = '';
             let displayPeringkat = '';
@@ -1175,7 +1184,7 @@ async function loadMasterPencapaian() {
             html += `
             <tr>
                 <td class="fw-bold small">${item.kod_sekolah}</td>
-                <td class="small text-truncate" style="max-width: 180px;" title="${namaSekolah}">${namaSekolah}</td>
+                <td class="small text-truncate" style="max-width: 180px;" title="${namaSekolah.replace(/<[^>]*>?/gm, '')}">${namaSekolah}</td>
                 <td class="text-center"><span class="badge ${badgeClass} shadow-sm" style="font-size: 0.7em">${item.kategori}</span></td>
                 <td><div class="fw-bold text-dark small text-truncate" style="max-width: 150px;" title="${item.nama_peserta}">${item.nama_peserta}</div></td>
                 <td>${displayProgram}</td>
@@ -1226,6 +1235,154 @@ async function hapusPencapaianAdmin(id) {
     });
 }
 
+// ==========================================
+// 12. LOGIK REKOD PPD (NEW MODULE)
+// ==========================================
+
+function openModalPPD() {
+    const modal = new bootstrap.Modal(document.getElementById('modalRekodPPD'));
+    modal.show();
+}
+
+function toggleKategoriPPD() {
+    const isUnit = document.getElementById('radUnit').checked;
+    const lbl = document.getElementById('lblPpdNamaPeserta');
+    const inp = document.getElementById('ppdInputNama');
+    
+    if (isUnit) {
+        lbl.innerText = "NAMA UNIT / SEKTOR";
+        inp.placeholder = "Contoh: SEKTOR PEMBELAJARAN";
+    } else {
+        lbl.innerText = "NAMA PEGAWAI";
+        inp.placeholder = "Taip nama penuh...";
+    }
+}
+
+function toggleJenisPencapaianPPD() {
+    const isPensijilan = document.getElementById('radPpdPensijilan').checked;
+    
+    // Elements
+    const divPenyedia = document.getElementById('divPpdPenyedia');
+    const rowPeringkat = document.getElementById('rowPpdPeringkat');
+    const divTahunOnly = document.getElementById('divPpdTahunOnly');
+    
+    const lblProgram = document.getElementById('lblPpdProgram');
+    const inpProgram = document.getElementById('ppdInputProgram');
+    
+    const lblPencapaian = document.getElementById('lblPpdPencapaian');
+    const inpPencapaian = document.getElementById('ppdInputPencapaian');
+
+    // Update Hidden Input (Important for save logic)
+    document.getElementById('ppdInputJenisRekod').value = isPensijilan ? 'PENSIJILAN' : 'PERTANDINGAN';
+
+    if (isPensijilan) {
+        // UI MODE: PENSIJILAN
+        divPenyedia.classList.remove('hidden');
+        rowPeringkat.classList.add('hidden'); // Sembunyi dropdown peringkat
+        divTahunOnly.classList.remove('hidden'); // Tunjuk input tahun sahaja
+
+        lblProgram.innerText = "NAMA SIJIL / PROGRAM";
+        inpProgram.placeholder = "Contoh: GOOGLE CERTIFIED EDUCATOR L1";
+        
+        lblPencapaian.innerText = "TAHAP / SKOR / BAND";
+        inpPencapaian.placeholder = "Contoh: LULUS / BAND C2 / LEVEL 1";
+
+    } else {
+        // UI MODE: PERTANDINGAN (Default)
+        divPenyedia.classList.add('hidden');
+        rowPeringkat.classList.remove('hidden'); // Tunjuk dropdown peringkat
+        divTahunOnly.classList.add('hidden');
+
+        lblProgram.innerText = "NAMA PERTANDINGAN";
+        inpProgram.placeholder = "Contoh: DIGITAL COMPETENCY 2025";
+        
+        lblPencapaian.innerText = "PENCAPAIAN";
+        inpPencapaian.placeholder = "Contoh: JOHAN / EMAS / PENYERTAAN";
+    }
+}
+
+async function simpanPencapaianPPD() {
+    const btn = document.querySelector('#formPencapaianPPD button[type="submit"]');
+
+    // Ambil Data Asas
+    const radKategori = document.querySelector('input[name="radKatPPD"]:checked').value; // PEGAWAI atau PPD
+    const jenisRekod = document.getElementById('ppdInputJenisRekod').value;
+    const nama = document.getElementById('ppdInputNama').value.trim().toUpperCase();
+    
+    // Logic Data Dinamik
+    let penyedia = 'LAIN-LAIN';
+    let peringkat = 'KEBANGSAAN';
+    let tahun = 2024;
+    
+    if (jenisRekod === 'PENSIJILAN') {
+        penyedia = document.getElementById('ppdInputPenyedia').value;
+        peringkat = 'ANTARABANGSA'; // Default Profesional
+        tahun = document.getElementById('ppdInputTahun2').value; // Ambil dari input tahun standalone
+    } else {
+        penyedia = 'LAIN-LAIN';
+        peringkat = document.getElementById('ppdInputPeringkat').value;
+        tahun = document.getElementById('ppdInputTahun').value; // Ambil dari row peringkat
+    }
+
+    const program = document.getElementById('ppdInputProgram').value.trim().toUpperCase();
+    const pencapaian = document.getElementById('ppdInputPencapaian').value.trim().toUpperCase();
+    const link = document.getElementById('ppdInputLink').value.trim();
+
+    // Validasi
+    if (!nama || !program || !pencapaian || !link || !tahun) {
+        Swal.fire('Tidak Lengkap', 'Sila isi semua maklumat.', 'warning');
+        return;
+    }
+
+    if (parseInt(tahun) < 2023) {
+        Swal.fire('Tahun Tidak Sah', 'Rekod mestilah dari tahun 2023 dan ke atas.', 'warning');
+        return;
+    }
+
+    if(btn) btn.disabled = true;
+    window.toggleLoading(true);
+
+    try {
+        const payload = {
+            kod_sekolah: 'M030', // FIXED KOD
+            kategori: radKategori,
+            nama_peserta: nama,
+            nama_pertandingan: program,
+            peringkat: peringkat,
+            tahun: parseInt(tahun),
+            pencapaian: pencapaian,
+            pautan_bukti: link,
+            jenis_rekod: jenisRekod,
+            penyedia: penyedia
+        };
+
+        const { error } = await window.supabaseClient
+            .from('smpid_pencapaian')
+            .insert([payload]);
+
+        if (error) throw error;
+
+        window.toggleLoading(false);
+        if(btn) btn.disabled = false;
+
+        // Tutup Modal & Refresh
+        bootstrap.Modal.getInstance(document.getElementById('modalRekodPPD')).hide();
+        document.getElementById('formPencapaianPPD').reset();
+
+        Swal.fire('Berjaya', 'Rekod PPD telah disimpan.', 'success').then(() => {
+            // Pastikan tab PPD dipilih dalam filter jika mahu lihat terus?
+            // Atau sekadar reload list
+            populateTahunFilter(); // Reload senarai
+        });
+
+    } catch (err) {
+        window.toggleLoading(false);
+        if(btn) btn.disabled = false;
+        console.error(err);
+        Swal.fire('Ralat', 'Gagal menyimpan rekod PPD.', 'error');
+    }
+}
+
 // Bind Global Functions
 window.setFilter = setFilter;
 window.setType = setType;
@@ -1260,3 +1417,9 @@ window.populateDcsYears = populateDcsYears;
 window.loadMasterPencapaian = loadMasterPencapaian;
 window.hapusPencapaianAdmin = hapusPencapaianAdmin;
 window.populateTahunFilter = populateTahunFilter;
+
+// Bind Fungsi PPD (NEW)
+window.openModalPPD = openModalPPD;
+window.toggleKategoriPPD = toggleKategoriPPD;
+window.toggleJenisPencapaianPPD = toggleJenisPencapaianPPD;
+window.simpanPencapaianPPD = simpanPencapaianPPD;

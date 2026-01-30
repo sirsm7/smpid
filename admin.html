@@ -22,6 +22,12 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+  <!-- Custom Style untuk Butang PPD -->
+  <style>
+      .btn-indigo { background-color: #4b0082; color: white; border: none; }
+      .btn-indigo:hover { background-color: #3a006b; color: white; }
+  </style>
 </head>
 <body id="page-admin">
 
@@ -283,12 +289,20 @@
             <div class="card p-4 shadow-sm border-purple border-4 border-top">
                 
                 <!-- HEADER & FILTER -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
                     <div>
                          <h5 class="fw-bold mb-0 text-purple">Analisa Kemenjadian</h5>
                          <small class="text-muted">Rekod pencapaian Kebangsaan & Pensijilan Antarabangsa</small>
                     </div>
-                    <div class="d-flex gap-2">
+                    
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <!-- BUTTON REKOD PPD -->
+                        <button onclick="openModalPPD()" class="btn btn-indigo btn-sm fw-bold shadow-sm text-nowrap">
+                            <i class="fas fa-plus-circle me-1"></i> Rekod PPD (M030)
+                        </button>
+                        
+                        <div class="vr mx-1"></div>
+
                         <!-- Filter Jenis Rekod -->
                         <select id="filterJenisPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="loadMasterPencapaian()">
                             <option value="ALL" selected>SEMUA JENIS REKOD</option>
@@ -306,6 +320,8 @@
                             <option value="MURID">MURID</option>
                             <option value="GURU">GURU</option>
                             <option value="SEKOLAH">SEKOLAH</option>
+                            <option value="PEGAWAI">PEGAWAI PPD</option>
+                            <option value="PPD">UNIT PPD</option>
                         </select>
                     </div>
                 </div>
@@ -373,7 +389,7 @@
                         <thead class="table-dark sticky-top">
                             <tr>
                                 <th style="width: 8%;">Kod</th>
-                                <th style="width: 20%;">Nama Sekolah</th>
+                                <th style="width: 20%;">Nama Sekolah / PPD</th>
                                 <th style="width: 8%;" class="text-center">Kategori</th>
                                 <th style="width: 20%;">Nama Peserta</th>
                                 <th style="width: 15%;">Pertandingan / Sijil</th>
@@ -564,6 +580,105 @@ PPD Alor Gajah.</textarea>
                             <i class="fas fa-save me-2"></i> SIMPAN PERUBAHAN
                         </button>
                     </div>
+                </form>
+            </div>
+        </div>
+    </div>
+  </div>
+
+  <!-- MODAL REKOD PPD (NEW: BORANG SAMA SEPERTI GURU) -->
+  <div class="modal fade" id="modalRekodPPD" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header bg-indigo text-white" style="background-color: #4b0082;">
+                <h6 class="modal-title fw-bold"><i class="fas fa-plus-circle me-2"></i>Rekod Pencapaian PPD</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formPencapaianPPD" onsubmit="event.preventDefault(); simpanPencapaianPPD();">
+                    <input type="hidden" id="ppdInputJenisRekod" value="PERTANDINGAN">
+                    
+                    <!-- Pilihan Kategori PPD -->
+                    <div class="mb-3 text-center">
+                        <div class="btn-group w-100 shadow-sm" role="group">
+                            <input type="radio" class="btn-check" name="radKatPPD" id="radPegawai" value="PEGAWAI" checked onchange="toggleKategoriPPD()">
+                            <label class="btn btn-outline-dark fw-bold" for="radPegawai">PEGAWAI</label>
+
+                            <input type="radio" class="btn-check" name="radKatPPD" id="radUnit" value="PPD" onchange="toggleKategoriPPD()">
+                            <label class="btn btn-outline-dark fw-bold" for="radUnit">UNIT / SEKTOR</label>
+                        </div>
+                    </div>
+
+                    <!-- Pilihan Jenis Rekod -->
+                    <div class="mb-3 text-center">
+                        <div class="btn-group w-100 shadow-sm" role="group">
+                            <input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPertandingan" checked onchange="toggleJenisPencapaianPPD()">
+                            <label class="btn btn-outline-primary fw-bold" for="radPpdPertandingan">PERTANDINGAN</label>
+
+                            <input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPensijilan" onchange="toggleJenisPencapaianPPD()">
+                            <label class="btn btn-outline-warning fw-bold text-dark" for="radPpdPensijilan">PENSIJILAN</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">ORGANISASI</label>
+                        <input type="text" class="form-control bg-light fw-bold text-dark" value="PEJABAT PENDIDIKAN DAERAH ALOR GAJAH" readonly disabled>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted" id="lblPpdNamaPeserta">NAMA PEGAWAI</label>
+                        <input type="text" id="ppdInputNama" class="form-control uppercase-input fw-bold" placeholder="Taip nama penuh..." oninput="this.value = this.value.toUpperCase()" required>
+                    </div>
+
+                    <!-- Input Penyedia (Hidden by Default) -->
+                    <div id="divPpdPenyedia" class="mb-3 hidden">
+                        <label class="form-label small fw-bold text-muted text-warning">PENYEDIA / JENAMA</label>
+                        <select id="ppdInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning">
+                            <option value="LAIN-LAIN" selected>LAIN-LAIN</option>
+                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
+                            <option value="APPLE">APPLE EDUCATION</option>
+                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted" id="lblPpdProgram">NAMA PERTANDINGAN</label>
+                        <input type="text" id="ppdInputProgram" class="form-control uppercase-input" placeholder="Contoh: DIGITAL COMPETENCY 2025" oninput="this.value = this.value.toUpperCase()" required>
+                    </div>
+
+                    <div class="row g-2 mb-3" id="rowPpdPeringkat">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-muted">PERINGKAT</label>
+                            <select id="ppdInputPeringkat" class="form-select bg-light" required>
+                                <option value="KEBANGSAAN">KEBANGSAAN</option>
+                                <option value="ANTARABANGSA">ANTARABANGSA</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                             <label class="form-label small fw-bold text-muted">TAHUN</label>
+                             <input type="number" id="ppdInputTahun" class="form-control bg-light fw-bold" placeholder="2026" min="2023" required>
+                        </div>
+                    </div>
+                    
+                    <!-- Input Tahun Sahaja (Bila Peringkat Hidden) -->
+                    <div id="divPpdTahunOnly" class="mb-3 hidden">
+                         <label class="form-label small fw-bold text-muted">TAHUN PEROLEHAN</label>
+                         <input type="number" id="ppdInputTahun2" class="form-control bg-light fw-bold" placeholder="2026" min="2023">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted" id="lblPpdPencapaian">PENCAPAIAN</label>
+                        <input type="text" id="ppdInputPencapaian" class="form-control uppercase-input" placeholder="Contoh: JOHAN / EMAS / PENYERTAAN" oninput="this.value = this.value.toUpperCase()" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-muted">PAUTAN BUKTI</label>
+                        <input type="url" id="ppdInputLink" class="form-control text-primary" placeholder="https://drive.google.com/..." required>
+                    </div>
+
+                    <button type="submit" class="btn btn-indigo w-100 fw-bold py-3 rounded-3 shadow-sm" style="background-color: #4b0082; color: white;">
+                        <i class="fas fa-save me-2"></i>SIMPAN REKOD PPD
+                    </button>
                 </form>
             </div>
         </div>
