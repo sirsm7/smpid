@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Prompt & Kata Kunci - SirSM.AI</title>
+    <link rel="icon" type="image/png" href="SirSM.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Lexend', 'sans-serif'] },
+                    colors: { brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 900: '#1e3a8a' } }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+    <nav class="bg-white/95 backdrop-blur-md fixed w-full z-50 border-b border-slate-200 shadow-sm">
+        <div class="container mx-auto px-4 h-20 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img src="SirSM.png" onerror="this.src='https://ui-avatars.com/api/?name=Sir+SM&background=2563eb&color=fff'" alt="Logo" class="w-10 h-10 rounded-full shadow-md border-2 border-white object-cover">
+                <div class="flex flex-col">
+                    <span class="font-bold text-lg leading-none text-slate-800 tracking-tight">Sir<span class="text-brand-600">SM</span>.AI</span>
+                </div>
+            </div>
+            <div class="hidden md:flex gap-8 text-sm font-semibold text-slate-600">
+                <a href="index.html#concept" class="hover:text-brand-600 transition py-2 border-b-2 border-transparent hover:border-brand-600">Konsep S.P.K.A</a>
+                <a href="generator.html" class="hover:text-brand-600 transition py-2 border-b-2 border-transparent hover:border-brand-600">Mesin Prompt</a>
+                <a href="examples.html" class="text-brand-600 transition py-2 border-b-2 border-brand-600">Bank Prompt</a>
+                <a href="quiz.html" class="hover:text-brand-600 transition py-2 border-b-2 border-transparent hover:border-brand-600"><i class="fa-solid fa-star mr-1"></i> Kuiz</a>
+            </div>
+             <a href="generator.html" class="inline-flex items-center gap-2 bg-slate-900 text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-slate-800 transition">
+                Mula <i class="fa-solid fa-bolt"></i>
+            </a>
+        </div>
+    </nav>
+
+    <section id="examples" class="pt-32 pb-24 bg-slate-50">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-12">
+                <span class="text-brand-600 font-bold tracking-wider text-xs uppercase bg-brand-100 px-3 py-1 rounded-full">Rujukan Pantas</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mt-3 mb-4">Bank Prompt Mengikut Sektor</h2>
+                <p class="text-slate-500 mb-10 max-w-2xl mx-auto">
+                    Koleksi contoh prompt yang telah diuji keberkesanannya. Termasuk prompt khas untuk menjana sistem/aplikasi.
+                </p>
+            </div>
+            
+            <div id="tabs-container" class="flex flex-wrap justify-center gap-3 mb-12 max-w-4xl mx-auto">
+                </div>
+
+            <div id="content-container" class="max-w-7xl mx-auto min-h-[400px]">
+                </div>
+        </div>
+    </section>
+
+    <section class="py-24 bg-white border-t border-slate-200">
+         <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold text-slate-900 mb-4">Kata Kunci <span class="text-brand-600">"Power"</span> (Dwibahasa)</h2>
+                <p class="text-slate-500">
+                    Gunakan istilah teknikal ini dalam prompt anda untuk memanipulasi cara AI berfikir.
+                </p>
+            </div>
+            <div id="keywords-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+                </div>
+         </div>
+    </section>
+
+    <footer class="bg-slate-900 text-slate-400 py-16 text-center border-t border-slate-800">
+        <div class="container mx-auto px-4">
+            <p class="text-xs text-slate-600">&copy; <span id="currentYear"></span> Hak Cipta Terpelihara SirSM.</p>
+        </div>
+    </footer>
+
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

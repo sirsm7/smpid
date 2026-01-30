@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ujian Kecekapan S.P.K.A - SirSM.AI</title>
+    <link rel="icon" type="image/png" href="SirSM.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Lexend', 'sans-serif'] },
+                    colors: { brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 900: '#1e3a8a' } },
+                    animation: { 'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both' },
+                    keyframes: { shake: { '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' }, '20%, 80%': { transform: 'translate3d(2px, 0, 0)' }, '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' }, '40%, 60%': { transform: 'translate3d(4px, 0, 0)' } } }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+    <nav class="bg-white/95 backdrop-blur-md fixed w-full z-50 border-b border-slate-200 shadow-sm">
+        <div class="container mx-auto px-4 h-20 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img src="SirSM.png" onerror="this.src='https://ui-avatars.com/api/?name=Sir+SM&background=2563eb&color=fff'" alt="Logo" class="w-10 h-10 rounded-full shadow-md border-2 border-white object-cover">
+                <div class="flex flex-col">
+                    <span class="font-bold text-lg leading-none text-slate-800 tracking-tight">Sir<span class="text-brand-600">SM</span>.AI</span>
+                </div>
+            </div>
+            <div class="hidden md:flex gap-8 text-sm font-semibold text-slate-600">
+                <a href="index.html#concept" class="hover:text-brand-600 transition py-2 border-b-2 border-transparent hover:border-brand-600">Konsep S.P.K.A</a>
+                <a href="generator.html" class="hover:text-brand-600 transition py-2 border-b-2 border-transparent hover:border-brand-600">Mesin Prompt</a>
+                <a href="examples.html" class="hover:text-brand-600 transition py-2 border-b-2 border-transparent hover:border-brand-600">Bank Prompt</a>
+                <a href="quiz.html" class="text-brand-600 transition py-2 border-b-2 border-brand-600"><i class="fa-solid fa-star mr-1"></i> Kuiz</a>
+            </div>
+             <a href="generator.html" class="inline-flex items-center gap-2 bg-slate-900 text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-slate-800 transition">
+                Mula <i class="fa-solid fa-bolt"></i>
+            </a>
+        </div>
+    </nav>
+
+    <section id="quiz" class="pt-32 pb-24 bg-slate-100 min-h-screen">
+        <div class="container mx-auto px-4 max-w-4xl">
+            <div class="text-center mb-12">
+                <span class="text-brand-600 font-bold tracking-wider text-xs uppercase bg-brand-100 px-3 py-1 rounded-full">Mod Cabaran</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mt-3 mb-4">Ujian Kecekapan S.P.K.A</h2>
+                <p class="text-xs text-red-500 font-mono mb-2 tracking-widest">[ V3: SISTEM KOCAKAN AKTIF ]</p>
+                <p class="text-slate-500 text-lg">Soalan akan diacak secara rawak. Anda ada 20 saat untuk setiap soalan.</p>
+            </div>
+
+            <div id="quiz-container" class="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200 relative min-h-[550px] flex flex-col transition-all duration-300">
+                
+                <div id="quiz-start" class="p-10 text-center flex flex-col items-center justify-center flex-grow space-y-6 z-10 bg-white">
+                    <div class="w-24 h-24 bg-gradient-to-tr from-brand-500 to-purple-600 text-white rounded-full flex items-center justify-center text-4xl mb-4 shadow-xl animate-pulse">
+                        <i class="fa-solid fa-brain"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-800">Adakah Anda Bersedia?</h3>
+                    <ul class="text-left text-slate-500 text-sm space-y-2 bg-slate-50 p-6 rounded-xl border border-slate-100 inline-block mx-auto">
+                        <li><i class="fa-solid fa-shuffle text-brand-500 mr-2"></i> Soalan & Jawapan diacak (Randomized)</li>
+                        <li><i class="fa-solid fa-stopwatch text-red-500 mr-2"></i> 20 Saat setiap soalan</li>
+                        <li><i class="fa-solid fa-certificate text-yellow-500 mr-2"></i> Perlu skor 80% ke atas untuk lulus</li>
+                    </ul>
+                    <button onclick="quizEnginePro.start()" class="bg-slate-900 text-white px-12 py-4 rounded-full font-bold hover:bg-slate-800 transition shadow-lg shadow-slate-900/30 transform hover:-translate-y-1 hover:scale-105">
+                        Mula Cabaran Sekarang
+                    </button>
+                </div>
+
+                <div id="quiz-question" class="hidden p-8 md:p-12 flex-grow flex flex-col relative">
+                    <div class="timer-track"><div id="timer-bar" class="timer-fill"></div></div>
+                    <div class="flex justify-between items-center mb-6">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">Soalan <span id="q-current" class="text-brand-600 text-base">1</span> / <span id="q-total">10</span></span>
+                        <div class="text-xs font-mono text-slate-400" id="timer-text">20s</div>
+                    </div>
+                    <h3 id="q-text" class="text-xl md:text-2xl font-bold text-slate-800 mb-8 leading-relaxed min-h-[80px]"></h3>
+                    <div id="q-options" class="space-y-3 mb-6 flex-grow"></div>
+                    <div id="q-explanation" class="hidden mb-4">
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-5 rounded-r-xl explanation-box shadow-sm">
+                            <div class="flex items-start gap-3">
+                                <i class="fa-solid fa-lightbulb text-blue-600 mt-1 text-lg"></i>
+                                <div>
+                                    <h4 class="font-bold text-blue-900 text-sm uppercase mb-1">Analisis Pakar:</h4>
+                                    <p id="q-explanation-text" class="text-slate-700 text-sm leading-relaxed"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-auto flex justify-end h-14">
+                        <button id="btn-next-q" onclick="quizEnginePro.next()" class="hidden bg-brand-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-brand-700 transition shadow-lg flex items-center gap-2">
+                            Terus <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="quiz-result" class="hidden p-10 text-center flex flex-col items-center justify-center flex-grow bg-white z-20"></div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-slate-900 text-slate-400 py-16 text-center border-t border-slate-800">
+        <div class="container mx-auto px-4">
+            <p class="text-xs text-slate-600">&copy; <span id="currentYear"></span> Hak Cipta Terpelihara SirSM.</p>
+        </div>
+    </footer>
+
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

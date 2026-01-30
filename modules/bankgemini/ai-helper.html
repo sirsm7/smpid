@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pembantu AI Peperiksaan - Google Ed Prep</title>
+    
+    <!-- PWA CONFIGURATION -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="icoppdag.png">
+    <link rel="icon" href="icoppdag.png" type="image/jpeg">
+    
+    <!-- LIBRARIES -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- STYLE BERPUSAT -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-950 min-h-screen flex flex-col text-slate-200 selection:bg-purple-500/30 selection:text-purple-200">
+
+    <!-- Ambient Background Glow -->
+    <div class="fixed inset-0 z-0 pointer-events-none">
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] opacity-50"></div>
+        <div class="absolute bottom-0 right-0 w-[600px] h-[400px] bg-blue-600/10 rounded-full blur-[100px] opacity-30"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="border-b border-white/10 bg-slate-950/70 backdrop-blur-xl sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between relative z-10">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                </div>
+                <span class="font-bold text-white tracking-tight text-lg">Pembantu AI <span class="text-purple-400">Pro</span></span>
+            </div>
+            <a href="index.html" class="group flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-sm font-medium text-slate-300 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                <span>Dashboard</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-12 max-w-5xl relative z-10">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+            
+            <!-- Left Column: Intro & Steps -->
+            <div class="lg:col-span-4 space-y-8 lg:sticky lg:top-24">
+                <div class="space-y-4">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold uppercase tracking-wider">
+                        <span class="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+                        Mod Elit
+                    </div>
+                    <h1 class="text-4xl font-bold text-white leading-tight">
+                        Kuasai <br/>
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">Logik Google</span>
+                    </h1>
+                    <p class="text-slate-400 leading-relaxed text-sm">
+                        Prompt ini direka khas untuk memaksa AI berfikir seperti pencipta soalan Google. Jangan jawab soalan dengan agakan, jawab dengan skema.
+                    </p>
+                </div>
+
+                <!-- Steps Card Container -->
+                <div class="space-y-4">
+                    <!-- Step 1 -->
+                    <div class="group bg-slate-900/50 hover:bg-slate-800/60 p-4 rounded-xl border border-white/5 hover:border-purple-500/30 transition-all flex gap-4 items-start">
+                        <div class="w-8 h-8 rounded-full bg-slate-800 text-purple-400 flex items-center justify-center font-bold text-sm border border-slate-700 shrink-0 group-hover:scale-110 transition-transform">1</div>
+                        <div>
+                            <h3 class="font-semibold text-white text-sm">Salin Prompt</h3>
+                            <p class="text-xs text-slate-400 mt-1">Klik butang salin di sebelah kanan.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2 -->
+                    <div class="group bg-slate-900/50 hover:bg-slate-800/60 p-4 rounded-xl border border-white/5 hover:border-purple-500/30 transition-all flex gap-4 items-start">
+                        <div class="w-8 h-8 rounded-full bg-slate-800 text-blue-400 flex items-center justify-center font-bold text-sm border border-slate-700 shrink-0 group-hover:scale-110 transition-transform">2</div>
+                        <div>
+                            <h3 class="font-semibold text-white text-sm">Buka Gemini</h3>
+                            <p class="text-xs text-slate-400 mt-1">Gunakan butang pantas untuk membuka Gemini di tab baru.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 3 -->
+                    <div class="group bg-slate-900/50 hover:bg-slate-800/60 p-4 rounded-xl border border-white/5 hover:border-purple-500/30 transition-all flex gap-4 items-start">
+                        <div class="w-8 h-8 rounded-full bg-slate-800 text-green-400 flex items-center justify-center font-bold text-sm border border-slate-700 shrink-0 group-hover:scale-110 transition-transform">3</div>
+                        <div>
+                            <h3 class="font-semibold text-white text-sm">Latih AI Anda</h3>
+                            <p class="text-xs text-slate-400 mt-1">Tampal prompt sebagai mesej PERTAMA, kemudian tanya soalan.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- EXAM REGISTRATION BUTTON (PILIHAN C) -->
+                <div class="pt-2">
+                    <a href="https://educertifications.google/" target="_blank" class="group relative block w-full">
+                        <!-- Gradient Border Effect -->
+                        <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl opacity-75 group-hover:opacity-100 blur-[1px] transition duration-500 group-hover:duration-200"></div>
+                        
+                        <!-- Content -->
+                        <div class="relative flex items-center justify-between bg-slate-900 rounded-xl p-4 transition-transform duration-200 group-hover:-translate-y-0.5 border border-white/10">
+                            <div class="flex items-center gap-4">
+                                <!-- Icon Container -->
+                                <div class="w-10 h-10 rounded-lg bg-blue-500/20 text-blue-300 flex items-center justify-center border border-blue-500/30 group-hover:bg-blue-500/30 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-white text-sm">Daftar Peperiksaan</h3>
+                                    <p class="text-xs text-blue-200/70 mt-0.5">Portal Rasmi Google</p>
+                                </div>
+                            </div>
+                            <!-- Arrow Icon -->
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400 group-hover:text-white transition-colors transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                        </div>
+                    </a>
+                </div>
+
+            </div>
+
+            <!-- Right Column: The Terminal -->
+            <div class="lg:col-span-8">
+                <div class="bg-[#0f172a] rounded-2xl border border-white/10 shadow-2xl overflow-hidden backdrop-blur-sm relative group ring-1 ring-black/50">
+                    
+                    <!-- Mac-style Header -->
+                    <div class="flex items-center justify-between px-5 py-3 bg-[#1e293b]/50 border-b border-white/5">
+                        <div class="flex gap-2">
+                            <div class="w-3 h-3 rounded-full bg-[#ef4444] border border-[#b91c1c]"></div>
+                            <div class="w-3 h-3 rounded-full bg-[#eab308] border border-[#a16207]"></div>
+                            <div class="w-3 h-3 rounded-full bg-[#22c55e] border border-[#15803d]"></div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                             <svg class="w-3 h-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                             <span class="text-xs font-mono text-slate-500">master_prompt_v3_optimum.md</span>
+                        </div>
+                        <!-- Empty spacer for balance -->
+                        <div class="w-12"></div>
+                    </div>
+
+                    <!-- Code Area -->
+                    <div class="relative group">
+                        <!-- Action Buttons Container -->
+                        <div class="absolute top-4 right-4 z-20 flex gap-2">
+                            <!-- Button: Buka Gemini (New) -->
+                            <a href="https://gemini.google.com/app" target="_blank" class="hidden sm:flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white pl-3 pr-4 py-2 rounded-lg text-sm font-medium transition-all border border-white/10 shadow-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                                <span>Buka Gemini</span>
+                            </a>
+
+                            <!-- Button: Salin Teks -->
+                            <button onclick="copyToClipboard()" id="copyBtn" class="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white pl-3 pr-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-purple-900/50 hover:shadow-purple-500/30 active:scale-95 border border-white/10">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                </svg>
+                                <span id="btnText">Salin Teks</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Mobile Only Gemini Link (Shown if screen too small for top button) -->
+                        <a href="https://gemini.google.com/app" target="_blank" class="sm:hidden absolute top-16 right-4 z-20 flex items-center gap-2 text-xs text-blue-400 hover:text-blue-300 underline">
+                            Buka Gemini &nearr;
+                        </a>
+
+                        <!-- The Text -->
+                        <pre class="p-6 pt-16 lg:pt-16 overflow-x-auto text-[13px] md:text-sm leading-7 font-mono text-blue-100/90 custom-scrollbar h-[600px] overflow-y-auto" style="white-space: pre-wrap;" id="promptText"><span class="text-slate-500"># SYSTEM PROMPT: GOOGLE CERTIFIED EDUCATOR EXPERT</span>
+
+<span class="text-purple-400 font-bold"># PERANAN (ROLE)</span>
+Anda adalah Google Cloud Engineer elit dan Pakar Produk Gemini for Google Workspace. Anda memegang autoriti mutlak ke atas logik peperiksaan Google Certified Educator (Level 1 & 2) dan Gemini Educator.
+
+<span class="text-purple-400 font-bold"># OBJEKTIF</span>
+Memberikan jawapan tepat mengikut skema Google. Fokus utama adalah membantu pengguna mengenal pasti jawapan betul dengan pantas dan memahami "kata kunci" atau logik teknikal di sebaliknya tanpa huraian panjang.
+
+<span class="text-purple-400 font-bold"># PERATURAN LOGIK (CRITICAL LOGIC)</span>
+1.  **Keutamaan Native:** Pilih ciri terbina dalam (native features) Google Workspace dahulu.
+2.  **Kata Kunci AI:** Untuk soalan Gemini, cari kata kunci "drafting", "refining", "visualizing", dan "collaboration".
+3.  **Logik Pendidikan:** Penjelasan mesti menjawab "Kenapa ini betul?" berdasarkan fungsi teknikal, bukan pendapat umum.
+
+<span class="text-purple-400 font-bold"># FORMAT RESPONS (WAJIB PATUH)</span>
+Untuk setiap soalan, keluarkan output dalam SATU blok kod markdown sahaja seperti di bawah. Jangan ada teks di luar kotak ini.
+
+```text
+[JAWAPAN PILIHAN]
+* (Salin jawapan yang betul di sini)
+
+[JUMLAH PILIHAN]
+(Contoh: Pilih 1 Sahaja / Pilih 2 Jawapan)
+
+[LOGIK RINGKAS]
+(Satu ayat padat dalam Bahasa Melayu. Terangkan fungsi teknikal atau kata kunci yang menjadikan jawapan ini betul. Jangan bebel.)
+```
+
+<span class="text-purple-400 font-bold"># NADA (TONE)</span>
+* **Direct & Strict:** Tiada "Hai", tiada "Semoga berjaya".
+* **Zero Fluff:** Jangan ulang soalan. Terus bagi solusi.
+
+<span class="text-purple-400 font-bold"># ARAHAN PENGAKTIFAN</span>
+Tunggu pengguna memberikan soalan. Sebaik sahaja soalan diterima, analisis dan jawab menggunakan format di atas serta-merta.
+</pre>
+                    </div>
+                </div>
+                
+                <div class="mt-6 text-center lg:text-right">
+                     <p class="text-xs text-slate-500">Tips: Gunakan prompt ini dengan <span class="text-slate-400">Gemini Advanced</span> atau <span class="text-slate-400">GPT-4o</span> untuk hasil terbaik.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="border-t border-white/10 mt-auto py-8 bg-slate-950/50">
+        <div class="container mx-auto px-6 text-center">
+            <p class="text-slate-500 text-sm">&copy; 2026 Google Ed Prep. <span class="text-slate-700 mx-2">|</span> Dibina untuk Pendidik Malaysia. <span class="text-slate-700 mx-2">|</span> USTP PPD AG</p>
+        </div>
+    </footer>
+
+    <!-- Service Worker Registration -->
+    <script>
+        function copyToClipboard() {
+            // Ambil teks tulen sahaja (tanpa tag HTML span)
+            const promptEl = document.getElementById('promptText');
+            const promptText = promptEl.textContent || promptEl.innerText;
+            
+            // Bersihkan baris pertama jika ia adalah header
+            const cleanText = promptText.replace('# SYSTEM PROMPT: GOOGLE CERTIFIED EDUCATOR EXPERT', '# SYSTEM PROMPT: GOOGLE CERTIFIED EDUCATOR EXPERT').trim();
+
+            navigator.clipboard.writeText(cleanText).then(() => {
+                const btn = document.getElementById('copyBtn');
+                
+                // Animasi Sukses
+                btn.className = "flex items-center gap-2 bg-emerald-600 text-white pl-3 pr-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-emerald-900/50 scale-105 border border-emerald-400/50";
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg><span>Disalin!</span>`;
+                
+                // Reset selepas 2 saat
+                setTimeout(() => {
+                    btn.className = "flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white pl-3 pr-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-purple-900/50 hover:shadow-purple-500/30 active:scale-95 border border-white/10";
+                    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg><span id="btnText">Salin Teks</span>`;
+                }, 2000);
+            }).catch(err => {
+                console.error('Gagal menyalin:', err);
+                alert("Gagal menyalin. Sila pilih teks secara manual.");
+            });
+        }
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js');
+            });
+        }
+    </script>
+</body>
+</html>

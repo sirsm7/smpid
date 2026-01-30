@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini for Education: Hab Persediaan Interaktif</title>
+    
+    <!-- AUTH BRIDGE: Keselamatan Modul -->
+    <script src="../../js/auth-bridge.js"></script>
+
+    <!-- NOTA: Manifest dibuang supaya ikut induk (SMPID) -->
+    <!-- <link rel="manifest" href="manifest.json"> -->
+    <meta name="theme-color" content="#2563eb">
+    <link rel="apple-touch-icon" href="icoppdag.png">
+    
+    <!-- FAVICON -->
+    <link rel="icon" href="icoppdag.png" type="image/jpeg">
+    
+    <!-- LIBRARIES -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- External CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col">
+
+    <!-- Navigation -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm safe-area-inset-top">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg" alt="Google Gemini Logo" class="h-8 w-auto">
+                    <span class="font-semibold text-slate-800 text-lg tracking-tight hidden md:block">Nota Persediaan Gemini for Education</span>
+                    <span class="font-semibold text-slate-800 text-lg tracking-tight md:hidden">Gemini Ed. Prep</span>
+                </div>
+                <div class="flex items-center space-x-2 md:space-x-4">
+                    <button onclick="switchView('dashboard')" id="nav-dashboard" class="px-3 py-2 rounded-md text-sm font-medium text-blue-600 bg-blue-50 transition-colors">Utama</button>
+                    <button onclick="switchView('study')" id="nav-study" class="px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors">Bank Soalan</button>
+                    <!-- Butang Kembali ke SMPID -->
+                    <a href="../../user.html" class="px-3 py-2 rounded-md text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 transition-colors shadow-sm">
+                        &larr; Portal
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8 max-w-7xl">
+        <div id="view-dashboard" class="fade-in space-y-8">
+            <div class="text-center max-w-3xl mx-auto mb-10">
+                <h1 class="text-3xl font-bold text-slate-900 mb-4">Pusat Kawalan Pembelajaran</h1>
+                <p class="text-slate-600 leading-relaxed">
+                    Selamat datang ke hab interaktif untuk pensijilan <strong>Google Gemini for Education</strong>. 
+                    Aplikasi ini menganalisis <strong id="stat-intro-count" class="text-blue-600">...</strong> soalan utama daripada bank soalan terkini.
+                </p>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm card-hover">
+                    <div class="text-sm font-medium text-slate-500 mb-1">Jumlah Soalan</div>
+                    <div id="stat-total-q" class="text-4xl font-bold text-blue-600 animate-pulse">...</div>
+                    <div class="text-xs text-green-600 mt-2 font-medium bg-green-50 inline-block px-2 py-1 rounded">100% Data Disahkan</div>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm card-hover">
+                    <div class="text-sm font-medium text-slate-500 mb-1">Kategori Utama</div>
+                    <div id="stat-total-cat" class="text-4xl font-bold text-indigo-600 animate-pulse">...</div>
+                    <div class="text-xs text-slate-400 mt-2">Topik Diversifikasi</div>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm card-hover">
+                    <div class="text-sm font-medium text-slate-500 mb-1">Fokus Terbesar</div>
+                    <div id="stat-top-cat" class="text-3xl font-bold text-teal-600 animate-pulse">...</div>
+                    <div id="stat-top-cat-desc" class="text-xs text-slate-400 mt-2">Sedang mengira data...</div>
+                </div>
+            </div>
+
+            <!-- Chart Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-2">Taburan Topik Peperiksaan</h3>
+                    <p class="text-sm text-slate-500 mb-6">Analisis pecahan soalan mengikut kategori untuk merancang strategi ulang kaji anda.</p>
+                    <div class="chart-container">
+                        <canvas id="topicChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">Laluan Pantas</h3>
+                    <div class="space-y-4 flex-grow">
+                        <button onclick="switchView('study')" class="w-full group p-4 border border-slate-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all text-left flex items-center justify-between">
+                            <div>
+                                <div class="font-medium text-slate-900 group-hover:text-blue-700">Semak Bank Soalan</div>
+                                <div class="text-sm text-slate-500">Lihat senarai lengkap dengan jawapan dan nota pakar.</div>
+                            </div>
+                            <span class="text-2xl text-slate-300 group-hover:text-blue-500">&rarr;</span>
+                        </button>
+                        <button onclick="switchView('flashcards')" class="w-full group p-4 border border-slate-200 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 transition-all text-left flex items-center justify-between">
+                            <div>
+                                <div class="font-medium text-slate-900 group-hover:text-indigo-700">Mula Latihan Kad Imbasan</div>
+                                <div class="text-sm text-slate-500">Uji ingatan aktif anda dengan mod interaktif rawak.</div>
+                            </div>
+                            <span class="text-2xl text-slate-300 group-hover:text-indigo-500">&rarr;</span>
+                        </button>
+                        <a href="ai-helper.html" class="w-full group p-4 border border-slate-200 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition-all text-left flex items-center justify-between">
+                            <div>
+                                <div class="font-medium text-slate-900 group-hover:text-purple-700 flex items-center gap-2">
+                                    <span>Pembantu AI Peperiksaan</span>
+                                    <span class="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded-full border border-purple-200 uppercase tracking-wide font-bold">Rahsia</span>
+                                </div>
+                                <div class="text-sm text-slate-500">Dapatkan 'Master Prompt' untuk menjawab soalan dengan tepat.</div>
+                            </div>
+                            <span class="text-2xl text-slate-300 group-hover:text-purple-500">✨</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STUDY LIST VIEW -->
+        <div id="view-study" class="hidden fade-in">
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-slate-900">Bank Soalan Lengkap</h2>
+                <p class="text-slate-600 mt-2">Teroka kesemua <span id="stat-total-q-2" class="font-bold text-blue-600">...</span> soalan. Gunakan penapis di bawah untuk fokus kepada topik tertentu.</p>
+            </div>
+            <div class="flex flex-wrap gap-2 mb-6" id="category-filters">
+                <button onclick="filterQuestions('all')" class="filter-btn active px-4 py-2 rounded-full text-sm font-medium bg-slate-800 text-white transition-all shadow-sm">Semua</button>
+            </div>
+            <div id="questions-list" class="space-y-4"></div>
+        </div>
+
+        <!-- FLASHCARDS VIEW -->
+        <div id="view-flashcards" class="hidden fade-in flex flex-col items-center justify-center min-h-[60vh]">
+            <div class="text-center mb-8 max-w-lg">
+                <h2 class="text-2xl font-bold text-slate-900">Mod Kad Imbasan</h2>
+                <p class="text-slate-600 mt-2">Fikirkan jawapan sebelum menterbalikkan kad. Nilaikan diri anda untuk menjejak kemajuan sesi ini.</p>
+            </div>
+            <div class="flashcard w-full max-w-2xl h-96 cursor-pointer group select-none" onclick="flipCard()">
+                <div id="flashcard-inner" class="flashcard-inner shadow-xl rounded-2xl bg-white border border-slate-200">
+                    <div class="flashcard-front flex flex-col items-center justify-center p-8 bg-white rounded-2xl">
+                        <span id="fc-category" class="absolute top-6 left-6 text-[10px] font-bold tracking-wider text-blue-600 uppercase bg-blue-50 px-2 py-1 rounded border border-blue-100">Kategori</span>
+                        <div class="flex-grow flex items-center justify-center w-full">
+                            <h3 id="fc-question" class="text-xl md:text-2xl font-medium text-slate-800 leading-relaxed text-center">
+                                Soalan akan muncul di sini...
+                            </h3>
+                        </div>
+                        <p class="text-slate-400 text-sm mt-4 animate-pulse flex items-center gap-2">
+                            <span>Klik untuk lihat jawapan</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        </p>
+                    </div>
+                    <div class="flashcard-back flex flex-col items-center justify-center p-8 bg-slate-900 text-white rounded-2xl">
+                        <div class="flex-grow flex flex-col items-center justify-center space-y-4 w-full">
+                            <div class="text-xs text-slate-400 uppercase tracking-widest border-b border-slate-700 pb-1">Jawapan</div>
+                            <h3 id="fc-answer" class="text-xl font-bold text-blue-300 text-center">Jawapan</h3>
+                            <div class="w-16 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full my-3"></div>
+                            <p id="fc-note" class="text-slate-300 text-sm leading-relaxed max-w-md text-center italic">Penjelasan pakar...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-4 mt-8 opacity-0 transition-opacity duration-300" id="fc-controls">
+                <button onclick="nextCard(false, event)" class="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-red-50 hover:border-red-200 hover:text-red-600 font-medium shadow-sm transition-all flex items-center gap-2">
+                    <span class="text-red-500">&#10005;</span> Perlu Ulangkaji
+                </button>
+                <button onclick="nextCard(true, event)" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium shadow-md shadow-blue-200 transition-all flex items-center gap-2 transform active:scale-95">
+                    <span class="text-white">&#10003;</span> Saya Tahu
+                </button>
+            </div>
+            <div class="mt-6 text-sm text-slate-400 font-medium">
+                Kad <span id="fc-counter" class="text-slate-600">1</span> / <span id="fc-total">0</span> dalam sesi ini
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 mt-12 py-8">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-slate-500 text-sm">Dijana daripada Laporan Sumber Gemini for Education Certification.</p>
+            <p class="text-slate-400 text-xs mt-2">Bukan bahan rasmi Google. Untuk tujuan pembelajaran sahaja.</p>
+        </div>
+    </footer>
+
+    <!-- SKRIP SERVICE WORKER DIHAPUSKAN -->
+    <!-- External JS (ORDER SANGAT PENTING: Data Dahulu, Kemudian Logic) -->
+    <script src="questions.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+body { 
+    font-family: 'Inter', sans-serif; 
+    background-color: #f8fafc; 
+    color: #334155; 
+}
+
+/* Custom Scrollbar (Global) */
+::-webkit-scrollbar { 
+    width: 8px; 
+    height: 8px; /* Added height for horizontal scroll */
+}
+::-webkit-scrollbar-track { 
+    background: #f1f5f9; 
+}
+::-webkit-scrollbar-thumb { 
+    background: #cbd5e1; 
+    border-radius: 4px; 
+}
+::-webkit-scrollbar-thumb:hover { 
+    background: #94a3b8; 
+}
+
+/* Chart Container Styling */
+.chart-container {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    height: 300px;
+    max-height: 400px;
+}
+@media (min-width: 768px) {
+    .chart-container { height: 350px; }
+}
+
+/* Animations */
+.fade-in { 
+    animation: fadeIn 0.5s ease-out; 
+}
+
+@keyframes fadeIn { 
+    from { opacity: 0; transform: translateY(10px); } 
+    to { opacity: 1; transform: translateY(0); } 
+}
+
+.card-hover { 
+    transition: all 0.3s ease; 
+}
+.card-hover:hover { 
+    transform: translateY(-2px); 
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); 
+}
+
+/* --- CRITICAL FLASHCARD CSS FIXES --- */
+.flashcard { 
+    perspective: 1000px; 
+}
+
+.flashcard-inner { 
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.6s; 
+    transform-style: preserve-3d; 
+}
+
+.flashcard.flipped .flashcard-inner { 
+    transform: rotateY(180deg); 
+}
+
+.flashcard-front, .flashcard-back { 
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    -webkit-backface-visibility: hidden; /* Safari */
+    backface-visibility: hidden;
+    border-radius: 1rem; /* Matches rounded-2xl */
+}
+
+.flashcard-front {
+    z-index: 2; /* Force Front to be on top initially */
+    background-color: white;
+    transform: rotateY(0deg);
+}
+
+.flashcard-back { 
+    transform: rotateY(180deg); /* Pre-rotate back side */
+    z-index: 1;
+}
+
+/* --- AI HELPER PAGE STYLES (Merged) --- */
+
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+
+/* Dark Mode Scrollbar for AI Helper Terminals */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #1e293b;
+    border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
