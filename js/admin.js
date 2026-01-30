@@ -1,6 +1,6 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 6.2 (Fix: Hide PPD from Dashboard Grid)
+ * Versi: 6.3 (Fix: Remove 'Taraf' & Add 'All Years' Option)
  * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management, DCS & Pencapaian V2
  */
 
@@ -1066,6 +1066,12 @@ async function populateTahunFilter() {
             });
 
         } else {
+            // Option 1: SEMUA TAHUN
+            const optAll = document.createElement('option');
+            optAll.value = "ALL";
+            optAll.innerText = "SEMUA TAHUN";
+            select.appendChild(optAll);
+
             // Case: Years Found
             years.forEach(y => {
                 const opt = document.createElement('option');
@@ -1075,8 +1081,8 @@ async function populateTahunFilter() {
             });
             select.disabled = false;
             
-            // Select first (latest) year automatically & Load Data
-            select.value = years[0];
+            // Select ALL as default
+            select.value = "ALL";
             loadMasterPencapaian();
         }
 
@@ -1102,11 +1108,19 @@ async function loadMasterPencapaian() {
     const jenisFilter = document.getElementById('filterJenisPencapaian').value;
 
     try {
-        const { data, error } = await window.supabaseClient
+        let query = window.supabaseClient
             .from('smpid_pencapaian')
-            .select('*')
-            .eq('tahun', tahun)
-            .order('created_at', { ascending: false });
+            .select('*');
+
+        // Apply Year Filter (If not ALL)
+        if (tahun !== 'ALL') {
+            query = query.eq('tahun', tahun);
+        }
+
+        // Apply Ordering
+        query = query.order('created_at', { ascending: false });
+
+        const { data, error } = await query;
 
         if (error) throw error;
         pencapaianList = data;
@@ -1129,7 +1143,7 @@ async function loadMasterPencapaian() {
         document.getElementById('statMicrosoft').innerText = countMicrosoft;
         document.getElementById('statLain').innerText = countLain;
 
-        // --- 3. TAPIS UNTUK TABLE DISPLAY ---
+        // --- 3. TAPIS UNTUK TABLE DISPLAY (FILTER TEMPATAN) ---
         let filteredData = data;
         
         if (kategoriFilter !== 'ALL') {
@@ -1165,7 +1179,7 @@ async function loadMasterPencapaian() {
             else if (item.kategori === 'PPD') badgeClass = 'bg-primary text-white'; // Badge Unit
 
             let displayProgram = '';
-            let displayPeringkat = '';
+            // let displayPeringkat = ''; // REMOVED as per request
             let displayPencapaian = '';
 
             if (item.jenis_rekod === 'PENSIJILAN') {
@@ -1175,13 +1189,13 @@ async function loadMasterPencapaian() {
                 else if(item.penyedia === 'MICROSOFT') providerBadge = 'bg-microsoft';
 
                 displayProgram = `<span class="badge ${providerBadge} me-1 small"><i class="fas fa-certificate"></i></span> <span class="fw-bold small">${item.nama_pertandingan}</span>`;
-                displayPeringkat = `<span class="badge bg-dark small">PRO</span>`;
+                // displayPeringkat = `<span class="badge bg-dark small">PRO</span>`; // REMOVED
                 displayPencapaian = `<span class="fw-bold text-dark small">${item.pencapaian}</span>`;
 
             } else {
                 displayProgram = `<div class="small text-uppercase fw-bold text-primary">${item.nama_pertandingan}</div>`;
-                let rankBadge = item.peringkat === 'KEBANGSAAN' ? 'bg-primary' : 'bg-orange';
-                displayPeringkat = `<span class="badge ${rankBadge} small">${item.peringkat}</span>`;
+                // let rankBadge = item.peringkat === 'KEBANGSAAN' ? 'bg-primary' : 'bg-orange';
+                // displayPeringkat = `<span class="badge ${rankBadge} small">${item.peringkat}</span>`; // REMOVED
                 displayPencapaian = `<span class="fw-bold text-success small">${item.pencapaian}</span>`;
             }
 
@@ -1192,7 +1206,7 @@ async function loadMasterPencapaian() {
                 <td class="text-center"><span class="badge ${badgeClass} shadow-sm" style="font-size: 0.7em">${item.kategori}</span></td>
                 <td><div class="fw-bold text-dark small text-truncate" style="max-width: 150px;" title="${item.nama_peserta}">${item.nama_peserta}</div></td>
                 <td>${displayProgram}</td>
-                <td class="text-center">${displayPeringkat}</td>
+                <!-- KOLUM TARAF DIBUANG -->
                 <td class="text-center">${displayPencapaian}</td>
                 <td class="text-center">
                     <a href="${item.pautan_bukti}" target="_blank" class="btn btn-sm btn-light border text-primary" title="Lihat Bukti">
