@@ -1,6 +1,6 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 5.1 (Modul Pensijilan + Tahun Dinamik)
+ * Versi: 5.2 (Auto-Discovery DCS Year)
  * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management, DCS & Pencapaian V2
  */
 
@@ -721,7 +721,7 @@ async function padamTiket(id) {
 }
 
 // ==========================================
-// 10. MODUL ANALISA: DCS & DELIMA
+// 10. MODUL ANALISA: DCS & DELIMA (AUTO DISCOVERY YEAR)
 // ==========================================
 
 function getKategoriDcs(score) {
@@ -738,17 +738,74 @@ async function loadDcsAdmin() {
         const { data, error } = await window.supabaseClient.from('smpid_dcs_analisa').select('*').order('nama_sekolah');
         if (error) throw error;
         dcsDataList = data;
+        
+        // AUTO-DISCOVERY YEAR: Panggil fungsi untuk kesan tahun
+        populateDcsYears();
+
+        // Update Dashboard (Guna tahun pertama dalam dropdown)
         updateDashboardAnalisa();
     } catch (err) { console.error("DCS Err", err); }
 }
 
+// NEW FUNCTION: KESAN TAHUN DARI DATABASE
+function populateDcsYears() {
+    const select = document.getElementById('pilihTahunAnalisa');
+    if (!select || dcsDataList.length === 0) return;
+
+    // Ambil sampel data pertama
+    const sample = dcsDataList[0];
+    const years = [];
+
+    // Regex untuk cari 'dcs_2023', 'dcs_2024' dll.
+    Object.keys(sample).forEach(key => {
+        const match = key.match(/^dcs_(\d{4})$/);
+        if (match) {
+            years.push(parseInt(match[1]));
+        }
+    });
+
+    // Susun Tahun (Descending: 2025, 2024...)
+    years.sort((a, b) => b - a);
+
+    // Jika tiada tahun dijumpai
+    if (years.length === 0) {
+        select.innerHTML = '<option value="" disabled>Tiada Data Tahun</option>';
+        return;
+    }
+
+    // Bina HTML Options
+    let html = '';
+    years.forEach((y, index) => {
+        const label = (index === 0) ? `DATA TAHUN ${y} (TERKINI)` : `DATA TAHUN ${y} (ARKIB)`;
+        html += `<option value="${y}">${label}</option>`;
+    });
+
+    select.innerHTML = html;
+    
+    // Auto-select tahun terkini
+    select.value = years[0];
+}
+
 function updateDashboardAnalisa() {
     const year = document.getElementById('pilihTahunAnalisa').value; 
+    
+    // Safety check jika tahun belum diload
+    if (!year) return;
+
     const dcsField = `dcs_${year}`;
     const aktifField = `peratus_aktif_${year}`;
 
-    document.getElementById('lblYearDcs').innerText = year;
-    document.getElementById('lblYearAktif').innerText = year;
+    // Kemaskini Label Tajuk Jadual
+    const lblYearDcs = document.getElementById('lblYearDcs');
+    const lblYearAktif = document.getElementById('lblYearAktif');
+    if (lblYearDcs) lblYearDcs.innerText = year;
+    if (lblYearAktif) lblYearAktif.innerText = year;
+
+    // Kemaskini Tajuk Modal Edit (Kelas helper)
+    document.querySelectorAll('.year-label').forEach(el => el.innerText = year);
+    if(document.getElementById('modalDcsYearTitle')) {
+        document.getElementById('modalDcsYearTitle').innerText = year;
+    }
 
     processDcsPanel(dcsField);
     processActivePanel(aktifField);
@@ -912,10 +969,17 @@ function openEditDcs(kod) {
     const item = dcsDataList.find(d => d.kod_sekolah === kod);
     if (!item) return;
 
+    // Get current selected year from dropdown
+    const year = document.getElementById('pilihTahunAnalisa').value;
+    const dcsField = `dcs_${year}`;
+    const activeField = `peratus_aktif_${year}`;
+
     document.getElementById('editKodSekolah').value = item.kod_sekolah;
     document.getElementById('displayEditNama').value = item.nama_sekolah;
-    document.getElementById('editDcsVal').value = item.dcs_2025 !== null ? item.dcs_2025 : '';
-    document.getElementById('editAktifVal').value = item.peratus_aktif_2025 !== null ? item.peratus_aktif_2025 : '';
+    
+    // Load data based on selected year dynamically
+    document.getElementById('editDcsVal').value = (item[dcsField] !== null) ? item[dcsField] : '';
+    document.getElementById('editAktifVal').value = (item[activeField] !== null) ? item[activeField] : '';
 
     const modal = new bootstrap.Modal(document.getElementById('modalEditDcs'));
     modal.show();
@@ -927,14 +991,18 @@ async function simpanDcs() {
     const aktifVal = document.getElementById('editAktifVal').value;
     const btn = document.querySelector('#formEditDcs button[type="submit"]');
 
+    // Get current selected year
+    const year = document.getElementById('pilihTahunAnalisa').value;
+    if (!year) { Swal.fire('Ralat', 'Tahun tidak dipilih.', 'error'); return; }
+
     if (btn) btn.disabled = true;
     window.toggleLoading(true);
 
     try {
-        const payload = {
-            dcs_2025: dcsVal ? parseFloat(dcsVal) : null,
-            peratus_aktif_2025: aktifVal ? parseFloat(aktifVal) : null
-        };
+        // Construct payload with dynamic keys
+        const payload = {};
+        payload[`dcs_${year}`] = dcsVal ? parseFloat(dcsVal) : null;
+        payload[`peratus_aktif_${year}`] = aktifVal ? parseFloat(aktifVal) : null;
 
         const { error } = await window.supabaseClient.from('smpid_dcs_analisa').update(payload).eq('kod_sekolah', kod);
         if (error) throw error;
@@ -944,7 +1012,7 @@ async function simpanDcs() {
         if (btn) btn.disabled = false;
 
         Swal.fire({ icon: 'success', title: 'Disimpan', timer: 1000, showConfirmButton: false });
-        loadDcsAdmin(); 
+        loadDcsAdmin(); // Reload data to reflect changes
 
     } catch (err) {
         window.toggleLoading(false);
@@ -1186,6 +1254,7 @@ window.updateDashboardAnalisa = updateDashboardAnalisa;
 window.filterAnalisaTable = filterAnalisaTable;
 window.openEditDcs = openEditDcs;
 window.simpanDcs = simpanDcs;
+window.populateDcsYears = populateDcsYears;
 
 // Bind Fungsi Pencapaian (BARU)
 window.loadMasterPencapaian = loadMasterPencapaian;
