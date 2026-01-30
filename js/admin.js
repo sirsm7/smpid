@@ -1,6 +1,6 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 6.3 (Fix: Remove 'Taraf' & Add 'All Years' Option)
+ * Versi: 7.0 (Role-Based Access Control & Unit PPD Support)
  * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management, DCS & Pencapaian V2
  */
 
@@ -25,7 +25,7 @@ let reminderQueue = [];
 let qIndex = 0;
 
 // ==========================================
-// 1. INITIALIZATION
+// 1. INITIALIZATION & RBAC (ROLE CHECK)
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -33,46 +33,83 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initAdminPanel() {
-    // 1. Semakan Keselamatan
+    // 1. Semakan Keselamatan Asas
     if (sessionStorage.getItem('smpid_auth') !== 'true') {
         window.location.replace('index.html');
         return;
     }
-    
-    // 2. Setup Event Listeners untuk Tab
-    const emailTabBtn = document.getElementById('email-tab');
-    if (emailTabBtn) {
-        emailTabBtn.addEventListener('shown.bs.tab', function () { generateList(); });
+
+    // 2. Semakan Peranan (Role Based Access Control)
+    const userRole = sessionStorage.getItem('smpid_user_role'); // Diset dalam auth.js
+    const displayRole = document.getElementById('displayUserRole');
+
+    if (userRole === 'PPD_UNIT') {
+        // --- LOGIK UNTUK PENGGUNA UNIT PPD (TERHAD) ---
+        console.log("🔒 Mod PPD_UNIT diaktifkan. Menghadkan akses...");
+        
+        // Kemaskini Badge Header
+        if(displayRole) displayRole.innerHTML = "UNIT PPD VIEW";
+
+        // Sorokkan Tab Yang Tidak Berkaitan (Dashboard, Analisa, Email, Helpdesk, Admin Users)
+        // Kita sorokkan parent element (<li>) supaya tab tidak boleh diklik
+        const tabsToHide = ['dashboard-tab', 'analisa-tab', 'email-tab', 'helpdesk-tab', 'admin-users-tab'];
+        tabsToHide.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.parentElement.classList.add('hidden'); 
+        });
+
+        // Sorokkan Butang Log Keluar Utama (Bawah) dan Tunjuk Butang Khas di Tab Pencapaian
+        const btnMainLogout = document.getElementById('btnMainLogout');
+        if(btnMainLogout) btnMainLogout.classList.add('hidden');
+        
+        const btnUnitLogout = document.getElementById('btnLogoutUnitPPD');
+        if(btnUnitLogout) btnUnitLogout.classList.remove('hidden');
+
+        // Paksa Buka Tab Pencapaian (Satu-satunya tab yang tinggal)
+        const tabPencapaianEl = document.getElementById('pencapaian-tab');
+        if(tabPencapaianEl) {
+            const tabPencapaian = new bootstrap.Tab(tabPencapaianEl);
+            tabPencapaian.show();
+        }
+
+        // PENTING: Jangan fetchDashboardData() untuk Unit PPD demi keselamatan data guru
+        // Terus load filter tahun untuk modul pencapaian
+        populateTahunFilter();
+
+    } else {
+        // --- LOGIK UNTUK ADMIN PENUH ---
+        console.log("🔓 Mod ADMIN penuh diaktifkan.");
+        
+        // Setup Event Listeners untuk Tab Lain (Hanya perlu untuk Admin Penuh)
+        setupAdminTabs();
+        
+        // Muat turun data dashboard sepenuhnya
+        fetchDashboardData(); 
     }
 
-    const helpdeskTabBtn = document.getElementById('helpdesk-tab');
-    if (helpdeskTabBtn) {
-        helpdeskTabBtn.addEventListener('shown.bs.tab', function () { loadTiketAdmin(); });
-    }
-
-    const adminUsersTabBtn = document.getElementById('admin-users-tab');
-    if (adminUsersTabBtn) {
-        adminUsersTabBtn.addEventListener('shown.bs.tab', function () { loadAdminList(); });
-    }
-
-    // LISTENER: Tab Analisa DCS (Nama Lama: Analisa)
-    const analisaTabBtn = document.getElementById('analisa-tab');
-    if (analisaTabBtn) {
-        analisaTabBtn.addEventListener('shown.bs.tab', function () { loadDcsAdmin(); });
-    }
-
-    // LISTENER BARU: Tab Pencapaian (Update: Panggil populateTahunFilter dahulu)
+    // Listener Tab Pencapaian (Perlu untuk kedua-dua role)
     const pencapaianTabBtn = document.getElementById('pencapaian-tab');
     if (pencapaianTabBtn) {
         pencapaianTabBtn.addEventListener('shown.bs.tab', function () { populateTahunFilter(); });
     }
-    
-    // 3. Mula muat data utama
-    fetchDashboardData(); 
+}
+
+function setupAdminTabs() {
+    const emailTabBtn = document.getElementById('email-tab');
+    if (emailTabBtn) emailTabBtn.addEventListener('shown.bs.tab', function () { generateList(); });
+
+    const helpdeskTabBtn = document.getElementById('helpdesk-tab');
+    if (helpdeskTabBtn) helpdeskTabBtn.addEventListener('shown.bs.tab', function () { loadTiketAdmin(); });
+
+    const adminUsersTabBtn = document.getElementById('admin-users-tab');
+    if (adminUsersTabBtn) adminUsersTabBtn.addEventListener('shown.bs.tab', function () { loadAdminList(); });
+
+    const analisaTabBtn = document.getElementById('analisa-tab');
+    if (analisaTabBtn) analisaTabBtn.addEventListener('shown.bs.tab', function () { loadDcsAdmin(); });
 }
 
 // ==========================================
-// 2. DATA FETCHING & DASHBOARD
+// 2. DATA FETCHING & DASHBOARD (ADMIN ONLY)
 // ==========================================
 
 async function fetchDashboardData() {
@@ -307,7 +344,7 @@ async function resetPasswordSekolah(kod) {
 }
 
 // ==========================================
-// 5. PENGURUSAN ADMIN
+// 5. PENGURUSAN ADMIN & ROLE MANAGEMENT
 // ==========================================
 
 async function loadAdminList() {
@@ -320,7 +357,8 @@ async function loadAdminList() {
         const { data, error } = await window.supabaseClient
             .from('smpid_users')
             .select('*')
-            .eq('role', 'ADMIN')
+            // Tarik ADMIN dan PPD_UNIT
+            .in('role', ['ADMIN', 'PPD_UNIT']) 
             .order('email', { ascending: true });
 
         if (error) throw error;
@@ -334,18 +372,27 @@ async function loadAdminList() {
             <thead class="bg-light">
                 <tr>
                     <th class="small text-uppercase text-secondary">Emel</th>
+                    <th class="small text-uppercase text-secondary">Peranan</th>
                     <th class="small text-uppercase text-secondary">Kata Laluan</th>
-                    <th class="small text-uppercase text-secondary text-center" style="width: 100px;">Tindakan</th>
+                    <th class="small text-uppercase text-secondary text-center" style="width: 150px;">Tindakan</th>
                 </tr>
             </thead>
             <tbody>`;
 
         data.forEach(user => {
+            const roleBadge = user.role === 'ADMIN' 
+                ? `<span class="badge bg-primary">ADMIN</span>` 
+                : `<span class="badge bg-indigo" style="background-color: #4b0082;">UNIT PPD</span>`;
+
             html += `
             <tr>
                 <td class="fw-bold text-dark small">${user.email}</td>
+                <td class="small">${roleBadge}</td>
                 <td class="font-monospace text-muted small">${user.password}</td>
                 <td class="text-center">
+                    <button onclick="updateAdminRole('${user.id}', '${user.role}')" class="btn btn-sm btn-outline-primary me-1" title="Tukar Peranan">
+                        <i class="fas fa-edit"></i>
+                    </button>
                     <button onclick="padamAdmin('${user.id}', '${user.email}')" class="btn btn-sm btn-outline-danger" title="Padam Akaun">
                         <i class="fas fa-trash-alt"></i>
                     </button>
@@ -364,11 +411,13 @@ async function loadAdminList() {
 
 async function tambahAdmin() {
     const emailInput = document.getElementById('inputNewAdminEmail');
+    const roleInput = document.getElementById('inputNewAdminRole');
     const passInput = document.getElementById('inputNewAdminPass');
     
-    if (!emailInput || !passInput) return;
+    if (!emailInput || !passInput || !roleInput) return;
     
     const email = emailInput.value.trim();
+    const role = roleInput.value;
     const password = passInput.value.trim();
 
     if (!email || !password) {
@@ -387,13 +436,13 @@ async function tambahAdmin() {
                 kod_sekolah: 'M030', 
                 email: email, 
                 password: password, 
-                role: 'ADMIN' 
+                role: role // Simpan role yang dipilih
             }]);
 
         if (error) throw error;
 
         window.toggleLoading(false);
-        Swal.fire('Berjaya', 'Admin baru telah ditambah.', 'success').then(() => {
+        Swal.fire('Berjaya', `Pengguna (${role}) telah ditambah.`, 'success').then(() => {
             emailInput.value = '';
             passInput.value = '';
             loadAdminList(); 
@@ -403,6 +452,40 @@ async function tambahAdmin() {
         window.toggleLoading(false);
         console.error(err);
         Swal.fire('Ralat', 'Gagal menambah admin. Pastikan emel unik.', 'error');
+    }
+}
+
+// FUNGSI BARU: Edit Peranan Admin Sedia Ada
+async function updateAdminRole(id, currentRole) {
+    const { value: newRole } = await Swal.fire({
+        title: 'Kemaskini Peranan',
+        input: 'radio',
+        inputOptions: {
+            'ADMIN': 'ADMIN (Akses Penuh)',
+            'PPD_UNIT': 'UNIT PPD (Pencapaian Sahaja)'
+        },
+        inputValue: currentRole,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan',
+        cancelButtonText: 'Batal'
+    });
+
+    if (newRole && newRole !== currentRole) {
+        window.toggleLoading(true);
+        try {
+            const { error } = await window.supabaseClient
+                .from('smpid_users')
+                .update({ role: newRole })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            window.toggleLoading(false);
+            Swal.fire('Berjaya', 'Peranan pengguna dikemaskini.', 'success').then(() => loadAdminList());
+        } catch (err) {
+            window.toggleLoading(false);
+            Swal.fire('Ralat', 'Gagal mengemaskini peranan.', 'error');
+        }
     }
 }
 
@@ -425,7 +508,7 @@ async function padamAdmin(id, email) {
 
                 if (error) throw error;
                 window.toggleLoading(false);
-                Swal.fire('Berjaya', 'Akaun admin dipadam.', 'success').then(() => loadAdminList());
+                Swal.fire('Berjaya', 'Akaun dipadam.', 'success').then(() => loadAdminList());
             } catch (err) {
                 window.toggleLoading(false);
                 Swal.fire('Ralat', 'Gagal memadam.', 'error');
