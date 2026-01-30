@@ -1,7 +1,7 @@
 /**
  * SMPID AUTHENTICATION MODULE (js/auth.js)
- * Versi: 2.0 (Modular)
- * Fungsi: Logik Log Masuk & Pengurusan Sesi Login
+ * Versi: 2.1 (Role-Based Access Update)
+ * Fungsi: Logik Log Masuk & Pengurusan Sesi Login dengan Sokongan PPD_UNIT
  * Halaman: index.html
  */
 
@@ -80,8 +80,6 @@ async function prosesLogin() {
         }
 
         // Ralat: Password Salah
-        // Nota: Password disimpan plain-text dalam versi asal. 
-        // Cadangan masa depan: Gunakan hashing.
         if (data.password !== password) {
             Swal.fire('Maaf', 'Kata laluan salah.', 'error');
             return;
@@ -89,20 +87,27 @@ async function prosesLogin() {
         
         // LOGIN BERJAYA: Simpan Sesi
         sessionStorage.setItem('smpid_user_kod', data.kod_sekolah);
+        sessionStorage.setItem('smpid_user_role', data.role); // SIMPAN ROLE (ADMIN / PPD_UNIT)
         
         // Redirect Logic
-        if (data.role === 'ADMIN') {
+        if (data.role === 'ADMIN' || data.role === 'PPD_UNIT') {
+            // Kedua-dua role ini masuk ke admin.html, tapi paparan akan berbeza (diuruskan oleh admin.js)
             sessionStorage.setItem('smpid_auth', 'true');
+            
+            let welcomeTitle = (data.role === 'PPD_UNIT') ? 'Akses Unit PPD' : 'Admin Disahkan';
+            let welcomeMsg = (data.role === 'PPD_UNIT') ? 'Log masuk sebagai Unit PPD.' : 'Selamat kembali, Admin PPD.';
+
             Swal.fire({
                 icon: 'success', 
-                title: 'Admin Disahkan', 
-                text: 'Selamat kembali, Admin PPD.',
+                title: welcomeTitle, 
+                text: welcomeMsg,
                 timer: 800, 
                 showConfirmButton: false
             }).then(() => {
                 window.location.replace('admin.html');
             });
         } else {
+            // Sekolah
             sessionStorage.setItem('smpid_auth', 'false'); 
             Swal.fire({
                 icon: 'success', 

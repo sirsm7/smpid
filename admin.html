@@ -78,7 +78,7 @@
     <p class="opacity-75 mb-0">Pengurusan Data & Komunikasi</p>
     <div class="mt-3">
         <span class="badge bg-white text-primary border border-primary shadow-sm px-3 py-2 rounded-pill">
-            <i class="fas fa-user-shield me-2"></i>MOD ADMIN
+            <i class="fas fa-user-shield me-2"></i><span id="displayUserRole">MOD ADMIN</span>
         </span>
     </div>
   </div>
@@ -290,9 +290,15 @@
                 
                 <!-- HEADER & FILTER -->
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
-                    <div>
-                         <h5 class="fw-bold mb-0 text-purple">Analisa Kemenjadian</h5>
-                         <small class="text-muted">Rekod pencapaian Kebangsaan & Pensijilan Antarabangsa</small>
+                    <div class="d-flex align-items-center">
+                         <!-- Butang Log Keluar Khas untuk PPD_UNIT -->
+                         <button id="btnLogoutUnitPPD" onclick="keluarSistem()" class="btn btn-outline-danger btn-sm fw-bold me-3 hidden">
+                            <i class="fas fa-sign-out-alt me-1"></i> Log Keluar
+                         </button>
+                         <div>
+                            <h5 class="fw-bold mb-0 text-purple">Analisa Kemenjadian</h5>
+                            <small class="text-muted">Rekod pencapaian Kebangsaan & Pensijilan Antarabangsa</small>
+                         </div>
                     </div>
                     
                     <div class="d-flex gap-2 align-items-center flex-wrap">
@@ -389,18 +395,18 @@
                         <thead class="table-dark sticky-top">
                             <tr>
                                 <th style="width: 8%;">Kod</th>
-                                <th style="width: 25%;">Nama Sekolah / PPD</th>
-                                <th style="width: 10%;" class="text-center">Kategori</th>
-                                <th style="width: 25%;">Nama Peserta</th>
+                                <th style="width: 20%;">Nama Sekolah / PPD</th>
+                                <th style="width: 8%;" class="text-center">Kategori</th>
+                                <th style="width: 20%;">Nama Peserta</th>
                                 <th style="width: 15%;">Pertandingan / Sijil</th>
-                                <!-- KOLUM TARAF DIBUANG -->
-                                <th style="width: 12%;" class="text-center">Pencapaian</th>
+                                <th style="width: 10%;" class="text-center">Taraf</th>
+                                <th style="width: 10%;" class="text-center">Pencapaian</th>
                                 <th style="width: 5%;" class="text-center">Bukti</th>
-                                <th style="width: 5%;" class="text-center">Hapus</th>
+                                <th style="width: 4%;" class="text-center">Hapus</th>
                             </tr>
                         </thead>
                         <tbody id="tbodyPencapaianMaster">
-                            <tr><td colspan="8" class="text-center py-5 text-muted">Sila pilih filter untuk memuatkan data...</td></tr>
+                            <tr><td colspan="9" class="text-center py-5 text-muted">Sila pilih filter untuk memuatkan data...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -507,19 +513,26 @@ PPD Alor Gajah.</textarea>
                     </div>
                 </div>
                 
-                <!-- Borang Tambah Admin -->
+                <!-- Borang Tambah Admin (UPDATED) -->
                 <div class="bg-light p-3 rounded mb-4 border">
-                    <h6 class="fw-bold mb-3">Tambah Admin Baru</h6>
+                    <h6 class="fw-bold mb-3">Tambah Admin / Pegawai Baru</h6>
                     <div class="row g-2 align-items-end">
-                        <div class="col-md-5">
+                        <div class="col-md-4">
                             <label class="small fw-bold text-muted">Emel Pengguna</label>
                             <input type="email" id="inputNewAdminEmail" class="form-control" placeholder="nama@moe.gov.my">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <label class="small fw-bold text-muted">Peranan</label>
+                            <select id="inputNewAdminRole" class="form-select">
+                                <option value="ADMIN">ADMIN (Akses Penuh)</option>
+                                <option value="PPD_UNIT">UNIT PPD (Pencapaian Sahaja)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
                             <label class="small fw-bold text-muted">Kata Laluan</label>
                             <input type="text" id="inputNewAdminPass" class="form-control" placeholder="Kata laluan">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <button onclick="tambahAdmin()" class="btn btn-dark w-100 fw-bold">
                                 <i class="fas fa-plus me-1"></i> Tambah
                             </button>
@@ -538,7 +551,7 @@ PPD Alor Gajah.</textarea>
         </div> <!-- End Tab Content -->
 
         <div class="text-center mt-5">
-            <button onclick="keluarSistem()" class="btn btn-outline-danger btn-sm">
+            <button id="btnMainLogout" onclick="keluarSistem()" class="btn btn-outline-danger btn-sm">
                 <i class="fas fa-sign-out-alt me-2"></i>Log Keluar Admin
             </button>
         </div>
