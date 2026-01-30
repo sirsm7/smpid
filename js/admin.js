@@ -1,6 +1,6 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 7.0 (Role-Based Access Control & Unit PPD Support)
+ * Versi: 8.0 (Fix: Role Redirect & User Management Table)
  * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management, DCS & Pencapaian V2
  */
 
@@ -55,7 +55,7 @@ function initAdminPanel() {
         const tabsToHide = ['dashboard-tab', 'analisa-tab', 'email-tab', 'helpdesk-tab', 'admin-users-tab'];
         tabsToHide.forEach(id => {
             const el = document.getElementById(id);
-            if(el) el.parentElement.classList.add('hidden'); 
+            if(el && el.parentElement) el.parentElement.classList.add('hidden'); 
         });
 
         // Sorokkan Butang Log Keluar Utama (Bawah) dan Tunjuk Butang Khas di Tab Pencapaian
@@ -65,7 +65,7 @@ function initAdminPanel() {
         const btnUnitLogout = document.getElementById('btnLogoutUnitPPD');
         if(btnUnitLogout) btnUnitLogout.classList.remove('hidden');
 
-        // Paksa Buka Tab Pencapaian (Satu-satunya tab yang tinggal)
+        // AUTO-REDIRECT: Paksa Buka Tab Pencapaian
         const tabPencapaianEl = document.getElementById('pencapaian-tab');
         if(tabPencapaianEl) {
             const tabPencapaian = new bootstrap.Tab(tabPencapaianEl);
@@ -80,6 +80,8 @@ function initAdminPanel() {
         // --- LOGIK UNTUK ADMIN PENUH ---
         console.log("🔓 Mod ADMIN penuh diaktifkan.");
         
+        if(displayRole) displayRole.innerHTML = "MOD ADMIN";
+
         // Setup Event Listeners untuk Tab Lain (Hanya perlu untuk Admin Penuh)
         setupAdminTabs();
         
@@ -354,6 +356,7 @@ async function loadAdminList() {
     wrapper.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>`;
 
     try {
+        // UPDATE: Guna jadual 'smpid_users' bukan 'smpid_admin_users'
         const { data, error } = await window.supabaseClient
             .from('smpid_users')
             .select('*')
@@ -429,6 +432,7 @@ async function tambahAdmin() {
 
     try {
         const newId = crypto.randomUUID();
+        // UPDATE: Guna 'smpid_users' untuk login web
         const { error } = await window.supabaseClient
             .from('smpid_users')
             .insert([{ 
@@ -436,7 +440,7 @@ async function tambahAdmin() {
                 kod_sekolah: 'M030', 
                 email: email, 
                 password: password, 
-                role: role // Simpan role yang dipilih
+                role: role // Simpan role yang dipilih (ADMIN / PPD_UNIT)
             }]);
 
         if (error) throw error;
@@ -1141,7 +1145,7 @@ async function populateTahunFilter() {
             
             // Clear table & stats manually since loadMasterPencapaian won't run
             const tbody = document.getElementById('tbodyPencapaianMaster');
-            if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted fst-italic">Tiada rekod pencapaian dalam pangkalan data.</td></tr>`;
+            if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted fst-italic">Tiada rekod pencapaian dalam pangkalan data.</td></tr>`;
             
             // Reset Stats to 0
             ['statKebangsaan', 'statAntarabangsa', 'statGoogle', 'statApple', 'statMicrosoft', 'statLain'].forEach(id => {
@@ -1183,7 +1187,7 @@ async function loadMasterPencapaian() {
     const tahunInput = document.getElementById('filterTahunPencapaian');
     if(tahunInput.disabled || !tahunInput.value) return;
 
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>`;
 
     // Ambil Filter
     const tahun = tahunInput.value;
@@ -1238,7 +1242,7 @@ async function loadMasterPencapaian() {
         }
 
         if (filteredData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted fst-italic">Tiada rekod untuk paparan ini.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted fst-italic">Tiada rekod untuk paparan ini.</td></tr>`;
             return;
         }
 
@@ -1289,7 +1293,7 @@ async function loadMasterPencapaian() {
                 <td class="text-center"><span class="badge ${badgeClass} shadow-sm" style="font-size: 0.7em">${item.kategori}</span></td>
                 <td><div class="fw-bold text-dark small text-truncate" style="max-width: 150px;" title="${item.nama_peserta}">${item.nama_peserta}</div></td>
                 <td>${displayProgram}</td>
-                <!-- KOLUM TARAF DIBUANG -->
+                <!-- KOLUM TARAF DIBUANG DALAM HTML DAN JS -->
                 <td class="text-center">${displayPencapaian}</td>
                 <td class="text-center">
                     <a href="${item.pautan_bukti}" target="_blank" class="btn btn-sm btn-light border text-primary" title="Lihat Bukti">
@@ -1307,7 +1311,7 @@ async function loadMasterPencapaian() {
 
     } catch (err) {
         console.error(err);
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-danger">Gagal memuatkan data.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-danger">Gagal memuatkan data.</td></tr>`;
     }
 }
 
@@ -1503,6 +1507,7 @@ window.padamTiket = padamTiket;
 // Bind Fungsi Admin (Users)
 window.loadAdminList = loadAdminList;
 window.tambahAdmin = tambahAdmin;
+window.updateAdminRole = updateAdminRole; // FUNGSI BARU DI BIND
 window.padamAdmin = padamAdmin;
 window.resetPasswordSekolah = resetPasswordSekolah;
 
