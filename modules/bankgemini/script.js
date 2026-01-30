@@ -1,6 +1,6 @@
 /**
  * GEMINI CERTIFICATION FOR EDUCATORS - LOGIC CONTROLLER
- * Versi: 3.0 (Refactored)
+ * Versi: 3.1 (Fix: Nav Element Check)
  * Tarikh Kemaskini: 2026
  * * NOTA: Fail ini bergantung kepada 'questions.js' yang mesti dimuatkan
  * SEBELUM fail ini dalam HTML.
@@ -92,15 +92,32 @@ function updateDashboardStats() {
 function switchView(viewName) {
     // Hide all
     ['dashboard', 'study', 'flashcards'].forEach(v => {
-        document.getElementById(`view-${v}`).classList.add('hidden');
-        document.getElementById(`nav-${v}`).classList.remove('bg-blue-50', 'text-blue-600');
-        document.getElementById(`nav-${v}`).classList.add('text-slate-600');
+        const viewEl = document.getElementById(`view-${v}`);
+        const navEl = document.getElementById(`nav-${v}`);
+
+        // Safety check: Pastikan elemen wujud sebelum ubah class
+        if (viewEl) {
+            viewEl.classList.add('hidden');
+        }
+        
+        if (navEl) {
+            navEl.classList.remove('bg-blue-50', 'text-blue-600');
+            navEl.classList.add('text-slate-600');
+        }
     });
 
     // Show selected
-    document.getElementById(`view-${viewName}`).classList.remove('hidden');
-    document.getElementById(`nav-${viewName}`).classList.add('bg-blue-50', 'text-blue-600');
-    document.getElementById(`nav-${viewName}`).classList.remove('text-slate-600');
+    const selectedView = document.getElementById(`view-${viewName}`);
+    const selectedNav = document.getElementById(`nav-${viewName}`);
+
+    if (selectedView) {
+        selectedView.classList.remove('hidden');
+    }
+    
+    if (selectedNav) {
+        selectedNav.classList.add('bg-blue-50', 'text-blue-600');
+        selectedNav.classList.remove('text-slate-600');
+    }
     
     currentView = viewName;
     
@@ -168,12 +185,15 @@ function renderCategories() {
     const categories = [...new Set(rawData.map(q => q.category))].sort();
     const container = document.getElementById('category-filters');
     
+    // Kosongkan container dulu untuk elak duplikasi jika dipanggil semula
+    if (container) container.innerHTML = '<button onclick="filterQuestions(\'all\')" class="filter-btn active px-4 py-2 rounded-full text-sm font-medium bg-slate-800 text-white transition-all shadow-sm">Semua</button>';
+
     categories.forEach(cat => {
         const btn = document.createElement('button');
         btn.className = `filter-btn px-4 py-2 rounded-full text-sm font-medium bg-white border border-slate-200 text-slate-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm`;
         btn.textContent = cat;
         btn.onclick = () => filterQuestions(cat, btn);
-        container.appendChild(btn);
+        if(container) container.appendChild(btn);
     });
 }
 
@@ -187,8 +207,11 @@ function filterQuestions(category, btnElement) {
     });
     
     if (category === 'all') {
-        document.querySelector('button[onclick="filterQuestions(\'all\')"]').classList.add('bg-slate-800', 'text-white', 'border-transparent');
-        document.querySelector('button[onclick="filterQuestions(\'all\')"]').classList.remove('bg-white', 'text-slate-600');
+        const allBtn = document.querySelector('button[onclick="filterQuestions(\'all\')"]');
+        if(allBtn) {
+            allBtn.classList.add('bg-slate-800', 'text-white', 'border-transparent');
+            allBtn.classList.remove('bg-white', 'text-slate-600');
+        }
     } else if (btnElement) {
         btnElement.classList.add('bg-slate-800', 'text-white', 'border-transparent');
         btnElement.classList.remove('bg-white', 'text-slate-600');
@@ -199,6 +222,8 @@ function filterQuestions(category, btnElement) {
 
 function renderQuestions() {
     const list = document.getElementById('questions-list');
+    if(!list) return;
+
     list.innerHTML = '';
     
     const filtered = currentCategoryFilter === 'all' 
@@ -262,7 +287,8 @@ function toggleAccordion(id) {
 function setupFlashcards() {
     shuffledFlashcards = [...rawData].sort(() => Math.random() - 0.5);
     flashcardIndex = 0;
-    document.getElementById('fc-total').textContent = shuffledFlashcards.length;
+    const totalEl = document.getElementById('fc-total');
+    if(totalEl) totalEl.textContent = shuffledFlashcards.length;
     loadCard();
 }
 
