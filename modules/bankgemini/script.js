@@ -1,6 +1,6 @@
 /**
  * GEMINI CERTIFICATION FOR EDUCATORS - LOGIC CONTROLLER
- * Versi: 3.1 (Fix: Nav Element Check)
+ * Versi: 3.2 (Fix: Null Element Check & Stats)
  * Tarikh Kemaskini: 2026
  * * NOTA: Fail ini bergantung kepada 'questions.js' yang mesti dimuatkan
  * SEBELUM fail ini dalam HTML.
@@ -20,13 +20,13 @@ let flashcardRevealed = false;
 
 // --- INIT & NAVIGATION ---
 function init() {
-    updateDashboardStats(); // PANGGILAN FUNGSI DINAMIK
+    updateDashboardStats();
     renderChart();
     renderCategories();
     renderQuestions();
 }
 
-// --- FUNGSI BARU: KIRA STATISTIK AUTOMATIK ---
+// --- FUNGSI KIRA STATISTIK AUTOMATIK ---
 function updateDashboardStats() {
     // 1. Kemaskini Jumlah Soalan (Dashboard & Intro)
     const totalQ = rawData.length;
@@ -95,7 +95,8 @@ function switchView(viewName) {
         const viewEl = document.getElementById(`view-${v}`);
         const navEl = document.getElementById(`nav-${v}`);
 
-        // Safety check: Pastikan elemen wujud sebelum ubah class
+        // FIX: Safety check - Pastikan elemen wujud sebelum ubah class
+        // Ini menghalang ralat "Cannot read properties of null" jika butang tiada (cth: flashcards)
         if (viewEl) {
             viewEl.classList.add('hidden');
         }
@@ -121,6 +122,7 @@ function switchView(viewName) {
     
     currentView = viewName;
     
+    // Init Flashcards jika pertama kali buka
     if(viewName === 'flashcards' && shuffledFlashcards.length === 0) {
         setupFlashcards();
     }
@@ -128,8 +130,9 @@ function switchView(viewName) {
 
 // --- DASHBOARD CHARTS ---
 function renderChart() {
-    const ctx = document.getElementById('topicChart').getContext('2d');
-    
+    const ctx = document.getElementById('topicChart');
+    if (!ctx) return; // Safety check jika canvas tiada
+
     // Aggregation
     const categoryCounts = {};
     rawData.forEach(q => {
@@ -147,7 +150,7 @@ function renderChart() {
         '#C58AF9', '#F6AEA9', '#D2E3FC'
     ];
 
-    new Chart(ctx, {
+    new Chart(ctx.getContext('2d'), {
         type: 'doughnut',
         data: {
             labels: labels,
@@ -182,18 +185,20 @@ function renderChart() {
 
 // --- STUDY LIST LOGIC ---
 function renderCategories() {
-    const categories = [...new Set(rawData.map(q => q.category))].sort();
     const container = document.getElementById('category-filters');
+    if (!container) return;
+
+    const categories = [...new Set(rawData.map(q => q.category))].sort();
     
-    // Kosongkan container dulu untuk elak duplikasi jika dipanggil semula
-    if (container) container.innerHTML = '<button onclick="filterQuestions(\'all\')" class="filter-btn active px-4 py-2 rounded-full text-sm font-medium bg-slate-800 text-white transition-all shadow-sm">Semua</button>';
+    // Kosongkan container dulu
+    container.innerHTML = '<button onclick="filterQuestions(\'all\')" class="filter-btn active px-4 py-2 rounded-full text-sm font-medium bg-slate-800 text-white transition-all shadow-sm">Semua</button>';
 
     categories.forEach(cat => {
         const btn = document.createElement('button');
         btn.className = `filter-btn px-4 py-2 rounded-full text-sm font-medium bg-white border border-slate-200 text-slate-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm`;
         btn.textContent = cat;
         btn.onclick = () => filterQuestions(cat, btn);
-        if(container) container.appendChild(btn);
+        container.appendChild(btn);
     });
 }
 

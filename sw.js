@@ -1,9 +1,9 @@
 /**
  * SMPID Service Worker
- * Versi: 4.1 (Fix: CORS Tailwind CSS)
+ * Versi: 4.2 (Fix: Ignore External Beacons & Fetch Handling)
  */
 
-const CACHE_NAME = 'smpid-cache-v4.1';
+const CACHE_NAME = 'smpid-cache-v4.2';
 
 // Senarai fail kritikal yang perlu dicache
 const ASSETS_TO_CACHE = [
@@ -40,10 +40,9 @@ const ASSETS_TO_CACHE = [
   './modules/bankgemini/style.css',
   './modules/bankgemini/script.js',
   './modules/bankgemini/questions.js',
-  './modules/bankgemini/icoppdag.png', // Tambahan: Ikon dalam folder modul jika ada
+  './modules/bankgemini/icoppdag.png',
   
   // --- EXTERNAL LIBRARIES (YANG STABIL SAHAJA) ---
-  // Nota: Tailwind CDN dibuang untuk elak isu CORS. Modul akan load Tailwind bila online.
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap',
@@ -51,17 +50,15 @@ const ASSETS_TO_CACHE = [
   'https://cdn.jsdelivr.net/npm/sweetalert2@11',
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
   'https://cdn.jsdelivr.net/npm/chart.js',
-  // 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js' // Dibuang jika menyebabkan isu sama
 ];
 
 // 1. INSTALL
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing v4.1 (CORS Fix)...');
+  console.log('[Service Worker] Installing v4.2...');
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[Service Worker] Caching Assets...');
-      // Guna Promise.allSettled untuk elak satu fail gagal, semua gagal
       return cache.addAll(ASSETS_TO_CACHE).catch(err => {
           console.error("Gagal cache sebahagian fail:", err);
       });
@@ -91,12 +88,20 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  if (url.href.includes('supabase') || url.href.includes('tech4ag.my')) {
-      return; 
+  // FIX: Abaikan domain luaran yang bermasalah (Beacon, Supabase API, dll)
+  // Ini mengelakkan ralat "Failed to convert value to 'Response'"
+  if (
+      url.href.includes('supabase') || 
+      url.href.includes('tech4ag.my') || 
+      url.href.includes('cloudflareinsights') ||
+      url.href.includes('beacon.min.js')
+  ) {
+      return; // Biarkan browser uruskan secara langsung tanpa SW
   }
 
   if (event.request.method !== 'GET') return;
 
+  // Mod Navigasi (HTML)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
@@ -107,10 +112,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Mod Aset (JS, CSS, Images)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
+      // Strategy: Stale-While-Revalidate
+      // Kita pulangkan cache jika ada, tapi kita fetch update di background
       const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // Hanya cache respons yang sah dan dari origin yang sama atau CDN yang dibenarkan
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
              const responseClone = networkResponse.clone();
              caches.open(CACHE_NAME).then((cache) => {
@@ -119,8 +126,12 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       }).catch(err => {
-          // Abaikan error fetch background
+          // Jika network fail, kita abaikan sahaja (guna cache)
+          // Jika tiada cache, ini akan return undefined yang boleh menyebabkan error,
+          // tapi sebab kita return 'cachedResponse || fetchPromise', ia akan diuruskan browser
+          console.warn('SW Fetch fail (offline?):', event.request.url);
       });
+      
       return cachedResponse || fetchPromise;
     })
   );
