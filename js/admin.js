@@ -1,6 +1,6 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 6.0 (Rekod Pencapaian PPD M030)
+ * Versi: 6.2 (Fix: Hide PPD from Dashboard Grid)
  * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management, DCS & Pencapaian V2
  */
 
@@ -85,8 +85,8 @@ async function fetchDashboardData() {
             
         if (error) throw error;
         
-        // Proses Data Mentah
-        dashboardData = data.map(i => {
+        // 1. Proses Data Mentah (Mapping)
+        const processedData = data.map(i => {
             const requiredFields = [
                 i.nama_gpict, i.no_telefon_gpict, i.emel_delima_gpict, 
                 i.nama_admin_delima, i.no_telefon_admin_delima, i.emel_delima_admin_delima
@@ -107,7 +107,11 @@ async function fetchDashboardData() {
             };
         });
 
+        // 2. Simpan Data Penuh untuk Email Blaster (Termasuk PPD jika perlu contact)
         emailRawData = data; 
+
+        // 3. TAPIS DASHBOARD: Buang PPD dari grid paparan utama & statistik
+        dashboardData = processedData.filter(item => item.jenis !== 'PPD');
         
         renderFilters();
         runFilter();
