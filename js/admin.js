@@ -1,6 +1,6 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 7.1 (Merge: Role-Based Access + Remove 'Taraf' + 'All Years')
+ * Versi: 7.2 (Fix: Syntax Error '}', Restore updateAdminRole, Merge All Features)
  * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management (Role Editing), DCS & Pencapaian V2
  */
 
@@ -40,21 +40,18 @@ function initAdminPanel() {
     }
 
     // 2. Semakan Peranan (Role Based Access Control)
-    const userRole = sessionStorage.getItem('smpid_user_role');
-    const displayRole = document.getElementById('displayUserRole');
+    const userRole = sessionStorage.getItem('smpid_user_role'); // Pastikan auth.js set item ini
+    const displayRole = document.getElementById('displayUserRole'); // Pastikan ID ini wujud jika nak update UI
 
     if (userRole === 'PPD_UNIT') {
         // --- LOGIK UNTUK PENGGUNA UNIT PPD (TERHAD) ---
         console.log("🔒 Mod PPD_UNIT diaktifkan. Menghadkan akses...");
         
-        // Kemaskini Badge Header
-        if(displayRole) displayRole.innerHTML = "UNIT PPD VIEW";
-
         // Sorokkan Tab Yang Tidak Berkaitan
         const tabsToHide = ['dashboard-tab', 'analisa-tab', 'email-tab', 'helpdesk-tab', 'admin-users-tab'];
         tabsToHide.forEach(id => {
             const el = document.getElementById(id);
-            if(el) el.parentElement.classList.add('hidden'); // Sorokkan <li> parent
+            if(el && el.parentElement) el.parentElement.classList.add('hidden'); // Sorokkan <li> parent
         });
 
         // Sorokkan Butang Log Keluar Utama
@@ -66,8 +63,11 @@ function initAdminPanel() {
         if(btnUnitLogout) btnUnitLogout.classList.remove('hidden');
 
         // Paksa Buka Tab Pencapaian
-        const tabPencapaian = new bootstrap.Tab(document.getElementById('pencapaian-tab'));
-        tabPencapaian.show();
+        const tabEl = document.getElementById('pencapaian-tab');
+        if (tabEl) {
+            const tabPencapaian = new bootstrap.Tab(tabEl);
+            tabPencapaian.show();
+        }
 
     } else {
         // --- LOGIK UNTUK ADMIN PENUH ---
@@ -345,7 +345,7 @@ async function resetPasswordSekolah(kod) {
 }
 
 // ==========================================
-// 5. PENGURUSAN ADMIN & ROLE EDITING
+// 5. PENGURUSAN ADMIN & ROLE EDITING (RESTORED from v7.0)
 // ==========================================
 
 async function loadAdminList() {
@@ -409,7 +409,7 @@ async function loadAdminList() {
     }
 }
 
-// FUNGSI BARU: Tambah Admin dengan Pilihan Role
+// FUNGSI: Tambah Admin dengan Pilihan Role
 async function tambahAdmin() {
     const emailInput = document.getElementById('inputNewAdminEmail');
     const roleInput = document.getElementById('inputNewAdminRole'); // Pastikan ID ini wujud dalam HTML modal/form
@@ -458,7 +458,7 @@ async function tambahAdmin() {
     }
 }
 
-// FUNGSI BARU: Edit Peranan Admin Sedia Ada
+// FUNGSI: Edit Peranan Admin Sedia Ada (RESTORED)
 async function updateAdminRole(id, currentRole) {
     const { value: newRole } = await Swal.fire({
         title: 'Kemaskini Peranan',
@@ -1112,7 +1112,7 @@ async function simpanDcs() {
 }
 
 // ==========================================
-// 11. MODUL PENCAPAIAN & KEMENJADIAN (V2.1 - DYNAMIC YEAR)
+// 11. MODUL PENCAPAIAN & KEMENJADIAN (V2.1 - DYNAMIC YEAR + ALL)
 // ==========================================
 
 // NEW: Fungsi untuk populate dropdown tahun secara automatik dari DB
@@ -1142,7 +1142,7 @@ async function populateTahunFilter() {
             select.innerHTML = '<option value="" disabled selected>TIADA REKOD</option>';
             select.disabled = true;
             
-            // Clear table & stats manually since loadMasterPencapaian won't run
+            // Clear table & stats manually
             const tbody = document.getElementById('tbodyPencapaianMaster');
             if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted fst-italic">Tiada rekod pencapaian dalam pangkalan data.</td></tr>`;
             
@@ -1152,6 +1152,12 @@ async function populateTahunFilter() {
             });
 
         } else {
+            // Option 1: SEMUA TAHUN (Default)
+            const optAll = document.createElement('option');
+            optAll.value = "ALL";
+            optAll.innerText = "SEMUA TAHUN";
+            select.appendChild(optAll);
+
             // Case: Years Found
             years.forEach(y => {
                 const opt = document.createElement('option');
@@ -1161,8 +1167,8 @@ async function populateTahunFilter() {
             });
             select.disabled = false;
             
-            // Select first (latest) year automatically & Load Data
-            select.value = years[0];
+            // Select ALL as default
+            select.value = "ALL";
             loadMasterPencapaian();
         }
 
@@ -1188,11 +1194,19 @@ async function loadMasterPencapaian() {
     const jenisFilter = document.getElementById('filterJenisPencapaian').value;
 
     try {
-        const { data, error } = await window.supabaseClient
+        let query = window.supabaseClient
             .from('smpid_pencapaian')
-            .select('*')
-            .eq('tahun', tahun)
-            .order('created_at', { ascending: false });
+            .select('*');
+
+        // Apply Year Filter (If not ALL)
+        if (tahun !== 'ALL') {
+            query = query.eq('tahun', tahun);
+        }
+
+        // Apply Ordering
+        query = query.order('created_at', { ascending: false });
+
+        const { data, error } = await query;
 
         if (error) throw error;
         pencapaianList = data;
@@ -1215,7 +1229,7 @@ async function loadMasterPencapaian() {
         document.getElementById('statMicrosoft').innerText = countMicrosoft;
         document.getElementById('statLain').innerText = countLain;
 
-        // --- 3. TAPIS UNTUK TABLE DISPLAY ---
+        // --- 3. TAPIS UNTUK TABLE DISPLAY (FILTER TEMPATAN) ---
         let filteredData = data;
         
         if (kategoriFilter !== 'ALL') {
@@ -1237,10 +1251,14 @@ async function loadMasterPencapaian() {
             let namaSekolah = "NAMA TIDAK DIJUMPAI";
             
             if (item.kod_sekolah === 'M030') {
-                namaSekolah = '<span class="fw-bold text-indigo">PEJABAT PENDIDIKAN DAERAH ALOR GAJAH</span>';
+                namaSekolah = '<span class="fw-bold text-indigo" style="color: #4b0082;">PEJABAT PENDIDIKAN DAERAH ALOR GAJAH</span>';
             } else {
                 const sekolahInfo = dashboardData.find(s => s.kod_sekolah === item.kod_sekolah);
-                if (sekolahInfo) namaSekolah = sekolahInfo.nama_sekolah;
+                if (sekolahInfo) {
+                    namaSekolah = sekolahInfo.nama_sekolah;
+                } else {
+                    namaSekolah = `<span class="text-muted fst-italic">${item.kod_sekolah}</span>`;
+                }
             }
 
             let badgeClass = 'bg-secondary';
@@ -1251,7 +1269,7 @@ async function loadMasterPencapaian() {
             else if (item.kategori === 'PPD') badgeClass = 'bg-primary text-white'; // Badge Unit
 
             let displayProgram = '';
-            let displayPeringkat = '';
+            // let displayPeringkat = ''; // REMOVED (Kolum Taraf Dibuang)
             let displayPencapaian = '';
 
             if (item.jenis_rekod === 'PENSIJILAN') {
@@ -1261,24 +1279,21 @@ async function loadMasterPencapaian() {
                 else if(item.penyedia === 'MICROSOFT') providerBadge = 'bg-microsoft';
 
                 displayProgram = `<span class="badge ${providerBadge} me-1 small"><i class="fas fa-certificate"></i></span> <span class="fw-bold small">${item.nama_pertandingan}</span>`;
-                displayPeringkat = `<span class="badge bg-dark small">PRO</span>`;
                 displayPencapaian = `<span class="fw-bold text-dark small">${item.pencapaian}</span>`;
 
             } else {
                 displayProgram = `<div class="small text-uppercase fw-bold text-primary">${item.nama_pertandingan}</div>`;
-                let rankBadge = item.peringkat === 'KEBANGSAAN' ? 'bg-primary' : 'bg-orange';
-                displayPeringkat = `<span class="badge ${rankBadge} small">${item.peringkat}</span>`;
                 displayPencapaian = `<span class="fw-bold text-success small">${item.pencapaian}</span>`;
             }
 
             html += `
             <tr>
                 <td class="fw-bold small">${item.kod_sekolah}</td>
-                <td class="small text-truncate" style="max-width: 180px;" title="${namaSekolah.replace(/<[^>]*>?/gm, '')}">${namaSekolah}</td>
+                <td class="small text-truncate" style="max-width: 250px;" title="${namaSekolah.replace(/<[^>]*>?/gm, '')}">${namaSekolah}</td>
                 <td class="text-center"><span class="badge ${badgeClass} shadow-sm" style="font-size: 0.7em">${item.kategori}</span></td>
-                <td><div class="fw-bold text-dark small text-truncate" style="max-width: 150px;" title="${item.nama_peserta}">${item.nama_peserta}</div></td>
+                <td><div class="fw-bold text-dark small text-truncate" style="max-width: 180px;" title="${item.nama_peserta}">${item.nama_peserta}</div></td>
                 <td>${displayProgram}</td>
-                <td class="text-center">${displayPeringkat}</td>
+                <!-- KOLUM TARAF DIBUANG -->
                 <td class="text-center">${displayPencapaian}</td>
                 <td class="text-center">
                     <a href="${item.pautan_bukti}" target="_blank" class="btn btn-sm btn-light border text-primary" title="Lihat Bukti">
@@ -1326,7 +1341,7 @@ async function hapusPencapaianAdmin(id) {
 }
 
 // ==========================================
-// 12. LOGIK REKOD PPD (NEW MODULE)
+// 12. LOGIK REKOD PPD (NEW MODULE: AUTO-FIX M030)
 // ==========================================
 
 function openModalPPD() {
@@ -1433,6 +1448,27 @@ async function simpanPencapaianPPD() {
     window.toggleLoading(true);
 
     try {
+        // LANGKAH 1 (FIX): Pastikan Profil PPD Wujud (Auto-Create M030)
+        // Jika M030 tiada dalam jadual sekolah, insert pencapaian akan gagal (FK Error 409)
+        const { data: checkData } = await window.supabaseClient
+            .from('smpid_sekolah_data')
+            .select('kod_sekolah')
+            .eq('kod_sekolah', 'M030')
+            .single();
+
+        if (!checkData) {
+            console.log("⚙️ Profil M030 tiada. Mencipta profil PPD automatik...");
+            await window.supabaseClient
+                .from('smpid_sekolah_data')
+                .insert([{
+                    kod_sekolah: 'M030',
+                    nama_sekolah: 'PEJABAT PENDIDIKAN DAERAH ALOR GAJAH',
+                    jenis_sekolah: 'PPD',
+                    daerah: 'ALOR GAJAH'
+                }]);
+        }
+
+        // LANGKAH 2: Simpan Pencapaian
         const payload = {
             kod_sekolah: 'M030', // FIXED KOD
             kategori: radKategori,
@@ -1460,8 +1496,6 @@ async function simpanPencapaianPPD() {
         document.getElementById('formPencapaianPPD').reset();
 
         Swal.fire('Berjaya', 'Rekod PPD telah disimpan.', 'success').then(() => {
-            // Pastikan tab PPD dipilih dalam filter jika mahu lihat terus?
-            // Atau sekadar reload list
             populateTahunFilter(); // Reload senarai
         });
 
@@ -1469,7 +1503,10 @@ async function simpanPencapaianPPD() {
         window.toggleLoading(false);
         if(btn) btn.disabled = false;
         console.error(err);
-        Swal.fire('Ralat', 'Gagal menyimpan rekod PPD.', 'error');
+        
+        // Mesej Ralat Spesifik
+        if(err.code === '23505') Swal.fire('Duplikasi', 'Rekod yang sama sudah wujud.', 'warning');
+        else Swal.fire('Ralat', 'Gagal menyimpan rekod PPD.', 'error');
     }
 }
 
@@ -1492,7 +1529,7 @@ window.padamTiket = padamTiket;
 // Bind Fungsi Admin (Users)
 window.loadAdminList = loadAdminList;
 window.tambahAdmin = tambahAdmin;
-window.updateAdminRole = updateAdminRole; // BARU
+window.updateAdminRole = updateAdminRole; // RESTORED
 window.padamAdmin = padamAdmin;
 window.resetPasswordSekolah = resetPasswordSekolah;
 
@@ -1514,4 +1551,3 @@ window.openModalPPD = openModalPPD;
 window.toggleKategoriPPD = toggleKategoriPPD;
 window.toggleJenisPencapaianPPD = toggleJenisPencapaianPPD;
 window.simpanPencapaianPPD = simpanPencapaianPPD;
-}
