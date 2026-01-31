@@ -5,26 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SMPID - Portal Sekolah</title>
   
-  <!-- PWA Meta Tags -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#198754">
   <link rel="apple-touch-icon" href="icoppdag.png">
   <link rel="icon" href="icoppdag.png">
   
-  <!-- CSS Bootstrap & FontAwesome -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link href="css/style.css" rel="stylesheet">
   
-  <!-- Library JS: Supabase, SweetAlert2 & Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body id="page-user" class="bg-light">
 
-  <!-- LOADING OVERLAY -->
   <div id="loadingOverlay" class="hidden">
     <div class="text-center">
       <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
@@ -32,15 +28,13 @@
     </div>
   </div>
 
-  <!-- HEADER SECTION -->
   <div class="header-bg text-center pb-5 pt-4">
     <img src="icoppdag.png" alt="Logo PPD" class="mb-2" style="width: 80px; height: auto;">
     
-    <!-- Nama Sekolah (Dimuatkan oleh JS) -->
-    <h5 class="fw-bold text-dark px-3 mb-1" id="dispNamaSekolah">MEMUATKAN DATA...</h5>
-    <p class="text-secondary small fw-bold mb-3" id="dispKodDaerah">KOD: - | DAERAH: -</p>
+    <h5 class="fw-bold text-white px-3 mb-1" id="dispNamaSekolah">MEMUATKAN DATA...</h5>
     
-    <!-- Lencana Kod Sekolah -->
+    <p class="text-white small fw-bold mb-3" id="dispKodDaerah">KOD: - | DAERAH: -</p>
+    
     <div class="d-flex justify-content-center gap-2">
         <span class="badge bg-white text-dark border shadow-sm px-3 py-2 rounded-pill" id="displayKodSekolah">
             <i class="fas fa-spinner fa-spin me-2"></i>Sila Tunggu
@@ -48,12 +42,10 @@
     </div>
   </div>
 
-  <!-- MAIN CONTENT CONTAINER -->
   <div class="container main-container" style="margin-top: -30px;">
     <div class="row justify-content-center">
       <div class="col-md-10 col-lg-8">
 
-        <!-- SECTION: MENU UTAMA (DASHBOARD) -->
         <div id="section-menu" class="fade-up">
             <div class="card shadow border-0 rounded-4 p-4 mb-4">
                 <div class="card-body p-2">
@@ -61,10 +53,8 @@
                         Menu Utama
                     </h6>
                     
-                    <!-- GRID MENU UTAMA -->
                     <div class="row g-3">
                         
-                        <!-- 1. KEMASKINI PROFIL -->
                         <div class="col-6 col-md-4">
                             <div onclick="showSection('profil')" class="card btn-menu h-100 text-center p-3 border-0 bg-primary bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -74,7 +64,6 @@
                             </div>
                         </div>
 
-                        <!-- 2. HELPDESK & ADUAN -->
                         <div class="col-6 col-md-4">
                             <div onclick="showSection('aduan')" class="card btn-menu h-100 text-center p-3 border-0 bg-danger bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -84,7 +73,6 @@
                             </div>
                         </div>
 
-                        <!-- 3. LAPORAN PPPDM -->
                         <div class="col-6 col-md-4">
                             <div onclick="window.open('https://ppdm.tech4ag.my/', '_blank')" class="card btn-menu h-100 text-center p-3 border-0 bg-success bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -94,9 +82,7 @@
                             </div>
                         </div>
 
-                        <!-- 4. BELAJAR AI (SPKA - INTEGRATED) -->
                         <div class="col-6 col-md-4">
-                            <!-- Update: Link ke modul dalaman -->
                             <div onclick="window.location.href='modules/spka/index.html'" class="card btn-menu h-100 text-center p-3 border-0 bg-info bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
                                     <i class="fas fa-robot fa-2x text-info"></i>
@@ -105,7 +91,6 @@
                             </div>
                         </div>
 
-                        <!-- 5. ANALISA DIGITAL -->
                         <div class="col-6 col-md-4">
                             <div onclick="showSection('analisa')" class="card btn-menu h-100 text-center p-3 border-0 bg-warning bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
@@ -115,9 +100,7 @@
                             </div>
                         </div>
 
-                         <!-- 6. PENSIJILAN GOOGLE (BANK GEMINI - INTEGRATED) -->
                          <div class="col-6 col-md-4">
-                            <!-- Update: Link ke modul dalaman -->
                             <div onclick="window.location.href='modules/bankgemini/index.html'" class="card btn-menu h-100 text-center p-3 border-0 bg-secondary bg-opacity-10 shadow-sm cursor-pointer hover-scale">
                                 <div class="mb-2">
                                     <i class="fas fa-certificate fa-2x text-secondary"></i>
@@ -127,29 +110,22 @@
                         </div>
 
                     </div>
-                    <!-- END GRID -->
-
                     <hr class="my-4 text-muted opacity-25">
 
-                    <!-- Ruang Akaun & Keselamatan -->
                     <div class="d-grid gap-2">
-                        <!-- Butang Tukar Password -->
                         <button onclick="ubahKataLaluan()" class="btn btn-warning fw-bold text-dark shadow-sm py-2">
                             <i class="fas fa-key me-2"></i>Tukar Kata Laluan
                         </button>
                         
-                        <!-- NEW: Butang Rekod Pencapaian (Update Warna Teal) -->
                         <button onclick="showSection('pencapaian')" class="btn btn-teal fw-bold text-white shadow-sm py-2">
                             <i class="fas fa-trophy me-2"></i>Rekod Pencapaian & Kemenjadian
                         </button>
 
-                        <!-- Butang Log Keluar -->
                         <button id="btnLogoutMenu" onclick="keluarSistem()" class="btn btn-outline-danger fw-bold py-2">
                             <i class="fas fa-sign-out-alt me-2"></i>Log Keluar
                         </button>
                     </div>
 
-                    <!-- Admin Only Actions -->
                     <div class="text-center mt-3">
                          <button id="btnResetData" onclick="resetDataSekolah()" class="btn btn-link text-danger text-decoration-none small hidden opacity-75">
                             <i class="fas fa-trash-alt me-1"></i> [Admin] Reset Data Sekolah Ini
@@ -164,7 +140,6 @@
             </div>
         </div>
 
-        <!-- SECTION: PROFIL SEKOLAH -->
         <div id="section-profil" class="hidden fade-up">
             <div class="d-flex align-items-center mb-3">
                 <button onclick="showSection('menu')" class="btn btn-sm btn-white border shadow-sm rounded-circle me-3" style="width: 40px; height: 40px;">
@@ -228,7 +203,6 @@
             </div>
         </div>
 
-        <!-- SECTION: ANALISA DIGITAL -->
         <div id="section-analisa" class="hidden fade-up">
             <div class="d-flex align-items-center mb-3">
                 <button onclick="showSection('menu')" class="btn btn-sm btn-white border shadow-sm rounded-circle me-3" style="width: 40px; height: 40px;">
@@ -237,7 +211,6 @@
                 <h5 class="fw-bold m-0 text-dark">Analisa Digital Sekolah</h5>
             </div>
 
-            <!-- Kad Ringkasan -->
             <div class="row g-3 mb-4">
                 <div class="col-6">
                     <div class="card border-0 shadow-sm rounded-4 h-100 bg-primary bg-gradient text-white">
@@ -259,7 +232,6 @@
                 </div>
             </div>
 
-            <!-- Butang Pautan Dashboard PowerBI (Dikemaskini) -->
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
                     <a href="https://app.powerbi.com/view?r=eyJrIjoiNWRmOGRhYTgtNWU3Mi00ZDI5LTkyZDctNWQ5ZjYyN2JiNjNiIiwidCI6ImU5N2QwMDA1LTcyZTQtNGM3YS1hOWMwLThmOWZkZWY1ZmY2OCIsImMiOjEwfQ%3D%3D" target="_blank" class="btn btn-outline-primary w-100 fw-bold py-3 shadow-sm rounded-3">
@@ -273,7 +245,6 @@
                 </div>
             </div>
 
-            <!-- Carta Trend -->
             <div class="card border-0 shadow-sm rounded-4 p-3 mb-4">
                 <h6 class="fw-bold text-secondary mb-3 px-2">Trend Pencapaian</h6>
                 <div class="chart-container" style="position: relative; height:300px; width:100%">
@@ -281,7 +252,6 @@
                 </div>
             </div>
 
-            <!-- Jadual Data -->
             <div class="card border-0 shadow-sm rounded-4 p-3 mb-5">
                 <h6 class="fw-bold text-secondary mb-3 px-2">Data Terperinci</h6>
                 <div class="table-responsive rounded-3 border">
@@ -304,7 +274,6 @@
             </div>
         </div>
 
-        <!-- SECTION: REKOD PENCAPAIAN (MODUL UPDATE) -->
         <div id="section-pencapaian" class="hidden fade-up">
             <div class="d-flex align-items-center mb-3">
                 <button onclick="showSection('menu')" class="btn btn-sm btn-white border shadow-sm rounded-circle me-3" style="width: 40px; height: 40px;">
@@ -313,7 +282,6 @@
                 <h5 class="fw-bold m-0 text-dark">Rekod Pencapaian & Kemenjadian</h5>
             </div>
 
-            <!-- Tab Kategori -->
             <ul class="nav nav-pills nav-fill mb-3 bg-white p-1 rounded-pill border shadow-sm" id="pencapaianTabs" role="tablist">
                 <li class="nav-item">
                     <button class="nav-link active rounded-pill small fw-bold" id="tab-p-murid" data-bs-toggle="pill" data-bs-target="#content-p-murid" type="button" onclick="setPencapaianType('MURID')">MURID</button>
@@ -326,7 +294,6 @@
                 </li>
             </ul>
             
-            <!-- NEW: Toggle Jenis Rekod (Hanya Muncul Untuk Guru) -->
             <div id="wrapperJenisRekod" class="mb-3 hidden text-center fade-up">
                 <div class="btn-group w-100 shadow-sm" role="group">
                     <input type="radio" class="btn-check" name="radioJenis" id="radioPertandingan" autocomplete="off" checked onchange="toggleJenisPencapaian()">
@@ -342,7 +309,6 @@
                 
                 <form id="formPencapaian" onsubmit="event.preventDefault(); simpanPencapaian();">
                     <input type="hidden" id="pencapaianKategori" value="MURID">
-                    <!-- NEW: Field Tersembunyi Jenis Rekod -->
                     <input type="hidden" id="pInputJenisRekod" value="PERTANDINGAN">
                     
                     <div class="mb-3">
@@ -350,7 +316,6 @@
                         <input type="text" id="pInputNama" class="form-control uppercase-input fw-bold" placeholder="Taip nama penuh..." oninput="this.value = this.value.toUpperCase()" required>
                     </div>
                     
-                    <!-- NEW: Dropdown Penyedia (Google/Apple/etc) - Hidden by Default -->
                     <div id="divInputPenyedia" class="mb-3 hidden fade-up">
                         <label class="form-label small fw-bold text-muted text-warning">PENYEDIA / JENAMA</label>
                         <select id="pInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning">
@@ -376,7 +341,6 @@
                         </div>
                         <div class="col-6">
                              <label class="form-label small fw-bold text-muted">TAHUN</label>
-                             <!-- UPDATE: Input Tahun Manual (Validation di JS) -->
                              <input type="number" id="pInputTahun" class="form-control bg-light fw-bold" placeholder="Contoh: 2026" min="2023" required>
                         </div>
                     </div>
@@ -398,7 +362,6 @@
                 </form>
             </div>
 
-            <!-- Senarai Rekod Terdahulu -->
             <div class="card border-0 shadow-sm rounded-4 p-3 mb-5">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h6 class="fw-bold text-secondary m-0 px-2">Senarai Rekod Terdahulu</h6>
@@ -423,7 +386,6 @@
             </div>
         </div>
 
-        <!-- SECTION: HELPDESK & ADUAN -->
         <div id="section-aduan" class="hidden fade-up">
             <div class="d-flex align-items-center mb-3">
                 <button onclick="showSection('menu')" class="btn btn-sm btn-white border shadow-sm rounded-circle me-3" style="width: 40px; height: 40px;">
@@ -484,11 +446,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   
-  <!-- MODULAR JS: DIMUATKAN MENGIKUT URUTAN -->
   <script src="js/utils.js"></script>
   <script src="js/user.js"></script>
 
-  <!-- PWA AUTO-UPDATE SCRIPT -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').then(reg => {
