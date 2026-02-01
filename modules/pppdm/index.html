@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisa PPPDM - Transformasi Digital</title>
+    
+    <!-- PENTING: Library MESTI dimuatkan dahulu sebelum utils.js -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- CORE UTILS & AUTH (Pautan Relatif) -->
+    <script src="../../js/utils.js"></script>
+    <script src="../../js/auth-bridge.js"></script>
+
+    <!-- GAYA KAD & VISUAL (Pautan Fail CSS) -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- ASSETS -->
+    <link rel="icon" type="image/png" href="../../icoppdag.png">
+    <meta name="theme-color" content="#4f46e5">
+</head>
+<body class="text-slate-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- Navbar Fixed -->
+    <nav class="bg-white border-b border-slate-200 z-50 flex-none shadow-sm sticky top-0">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <img src="../../icoppdag.png" class="h-9 w-auto" alt="Logo">
+                    <div class="leading-tight">
+                        <h1 class="font-bold text-slate-900 text-lg">Analisa PPPDM</h1>
+                        <p class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Unit Sumber Teknologi Pendidikan</p>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <a href="../../user.html" class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition border border-slate-200">
+                        <i class="fas fa-arrow-left"></i> <span class="hidden sm:inline">Portal Utama</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Scrollable Area -->
+    <div class="flex-grow overflow-y-auto custom-scrollbar bg-slate-50 min-h-screen pb-20">
+        <main class="max-w-7xl mx-auto px-4 py-6">
+
+            <!-- TAB NAVIGATION -->
+            <div class="flex space-x-1 bg-white p-1 rounded-xl shadow-sm border border-slate-200 mb-6 sticky top-2 z-40 mx-auto max-w-lg">
+                <button onclick="switchTab('analisa')" id="btn-analisa" class="tab-btn active flex-1 py-2.5 text-sm font-bold rounded-lg text-center">
+                    <i class="fas fa-chart-pie me-2"></i> Analisa
+                </button>
+                <button onclick="switchTab('semakan')" id="btn-semakan" class="tab-btn flex-1 py-2.5 text-sm font-bold rounded-lg text-center">
+                    <i class="fas fa-search me-2"></i> Semakan
+                </button>
+            </div>
+
+            <!-- VIEW 1: ANALISA (Dashboard) -->
+            <div id="view-analisa" class="fade-in space-y-6">
+                
+                <!-- NEW KPI GRID (6 CARDS INTERACTIVE) -->
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    
+                    <!-- Card 1: Jumlah Sekolah (Universe) -->
+                    <div id="card-ALL" onclick="setCardFilter('ALL')" class="kpi-card glass-card p-3 border-l-4 border-slate-500 cursor-pointer hover:bg-slate-50 transition group">
+                        <p class="text-[9px] text-slate-500 uppercase font-bold mb-1 tracking-wider group-hover:text-slate-700">Jumlah Sekolah</p>
+                        <h3 id="kpi-total-schools" class="text-xl font-black text-slate-700">...</h3>
+                        <p class="text-[9px] text-slate-400 mt-1">Populasi Daerah</p>
+                    </div>
+
+                    <!-- Card 2: Sekolah Terlibat (Active Only) -->
+                    <div id="card-ACTIVE" onclick="setCardFilter('ACTIVE')" class="kpi-card glass-card p-3 border-l-4 border-blue-500 cursor-pointer hover:bg-blue-50 transition group">
+                        <p class="text-[9px] text-blue-500 uppercase font-bold mb-1 tracking-wider group-hover:text-blue-700">Sekolah Terlibat</p>
+                        <h3 id="kpi-active-schools" class="text-xl font-black text-slate-800">...</h3>
+                        <p class="text-[9px] text-blue-400 mt-1">Minima 1 Aktiviti</p>
+                    </div>
+
+                    <!-- Card 3: Total Penyertaan -->
+                    <div id="card-TOTAL_ACTS" onclick="setCardFilter('TOTAL_ACTS')" class="kpi-card glass-card p-3 border-l-4 border-indigo-500 cursor-pointer hover:bg-indigo-50 transition group">
+                        <p class="text-[9px] text-indigo-500 uppercase font-bold mb-1 tracking-wider group-hover:text-indigo-700">Total Penyertaan</p>
+                        <h3 id="kpi-total-acts" class="text-xl font-black text-slate-800">...</h3>
+                        <p class="text-[9px] text-indigo-400 mt-1">Terkumpul</p>
+                    </div>
+
+                    <!-- Card 4: Penyertaan Terkini (Current Year) -->
+                    <div id="card-CURRENT" onclick="setCardFilter('CURRENT')" class="kpi-card glass-card p-3 border-l-4 border-green-500 cursor-pointer hover:bg-green-50 transition group">
+                        <p class="text-[9px] text-green-500 uppercase font-bold mb-1 tracking-wider group-hover:text-green-700" id="label-year-curr">Tahun Semasa</p>
+                        <h3 id="kpi-year-curr" class="text-xl font-black text-slate-800">...</h3>
+                        <p class="text-[9px] text-green-400 mt-1">Sekolah Aktif</p>
+                    </div>
+
+                    <!-- Card 5: Status Transform -->
+                    <div id="card-TRANSFORM" onclick="setCardFilter('TRANSFORM')" class="kpi-card glass-card p-3 border-l-4 border-orange-500 cursor-pointer hover:bg-orange-50 transition group">
+                        <p class="text-[9px] text-orange-500 uppercase font-bold mb-1 tracking-wider group-hover:text-orange-700">Transform</p>
+                        <h3 id="kpi-transform" class="text-xl font-black text-slate-800">...</h3>
+                        <p class="text-[9px] text-orange-400 mt-1">Meningkat</p>
+                    </div>
+
+                    <!-- Card 6: Tiada Penyertaan (Zero) -->
+                    <div id="card-ZERO" onclick="setCardFilter('ZERO')" class="kpi-card glass-card p-3 border-l-4 border-red-500 cursor-pointer hover:bg-red-50 transition group">
+                        <p class="text-[9px] text-red-500 uppercase font-bold mb-1 tracking-wider group-hover:text-red-700">Tiada Rekod</p>
+                        <h3 id="kpi-zero" class="text-xl font-black text-red-600">...</h3>
+                        <p class="text-[9px] text-red-400 mt-1 font-bold">Perlu Tindakan</p>
+                    </div>
+
+                </div>
+
+                <!-- Comparison Table -->
+                <div class="glass-card overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center bg-slate-50 gap-4">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2 text-sm">
+                            <div class="p-2 bg-blue-100 rounded-lg text-blue-600"><i class="fas fa-filter"></i></div>
+                            Status: <span id="displayFilterStatus" class="uppercase text-blue-600 font-extrabold ml-1">SEMUA SEKOLAH</span>
+                        </h3>
+                        
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <select id="filterParlimen" class="text-xs font-bold p-2.5 rounded-lg border border-slate-300 bg-white shadow-sm outline-none w-full md:w-48 focus:ring-2 focus:ring-blue-500" onchange="applyFilters()">
+                                <option value="ALL">SEMUA PARLIMEN</option>
+                            </select>
+
+                            <button onclick="downloadCSV()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 shadow-sm whitespace-nowrap">
+                                <i class="fas fa-download"></i> CSV
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto max-h-[500px]">
+                        <table class="w-full text-sm text-left relative">
+                            <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                                <tr>
+                                    <th class="px-6 py-3 font-bold bg-slate-50">Kod</th>
+                                    <th class="px-6 py-3 font-bold bg-slate-50">Nama Sekolah</th>
+                                    <th class="px-6 py-3 text-center bg-green-50 text-green-700 border-b-2 border-green-400 font-extrabold" id="header-year-curr">Terkini</th>
+                                    <th class="px-6 py-3 text-center bg-slate-100 text-slate-600 font-bold" id="header-year-prev">Terdahulu</th>
+                                    <th class="px-6 py-3 text-center font-bold bg-slate-50">Status</th>
+                                    <th class="px-6 py-3 text-center font-bold bg-slate-50">Tindakan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="comparisonTableBody" class="divide-y divide-slate-100 bg-white">
+                                <tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Memuatkan data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="bg-slate-50 p-2 text-center border-t border-slate-100">
+                        <small class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Data tidak termasuk PPD (M030)</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 2: SEMAKAN (Detail Search) -->
+            <div id="view-semakan" class="hidden fade-in max-w-3xl mx-auto">
+                
+                <div class="glass-card p-8 mb-6 text-center">
+                    <h3 class="text-xl font-bold mb-2 text-slate-800">Semakan Profil Digital</h3>
+                    <p class="text-sm text-slate-500 mb-6">Cari sekolah untuk melihat sejarah penyertaan penuh.</p>
+                    
+                    <div class="relative max-w-xl mx-auto">
+                        <input type="text" id="searchBoxDetail" placeholder="Taip nama sekolah atau kod..." 
+                               class="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all font-bold text-lg shadow-sm"
+                               oninput="handleSearch(this.value)">
+                        <i class="fas fa-search absolute left-5 top-5 text-slate-400 text-lg"></i>
+                    </div>
+
+                    <div id="searchResults" class="mt-2 hidden bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-slate-100 absolute w-full left-0 right-0 mx-auto max-w-xl z-50 text-left"></div>
+                </div>
+
+                <!-- School Detail Card -->
+                <div id="schoolDetailCard" class="hidden glass-card overflow-hidden border-t-4 border-indigo-500 fade-in">
+                    <div class="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-start">
+                        <div>
+                            <span id="detailKod" class="bg-slate-800 text-white text-[10px] px-2 py-1 rounded font-bold uppercase tracking-wider">KOD</span>
+                            <h2 id="detailNama" class="text-xl font-bold text-slate-900 mt-2 leading-tight">Nama Sekolah</h2>
+                            <p class="text-sm text-slate-500 mt-1 font-medium"><i class="fas fa-map-marker-alt me-1 text-red-500"></i> <span id="txtParlimen">Lokasi</span></p>
+                        </div>
+                        <button onclick="closeDetail()" class="text-slate-300 hover:text-red-500 transition p-2">
+                            <i class="fas fa-times-circle text-2xl"></i>
+                        </button>
+                    </div>
+
+                    <div class="p-6 grid grid-cols-2 gap-4 text-center border-b border-slate-100">
+                        <div class="p-4 bg-green-50 rounded-xl border border-green-100">
+                            <div class="text-[10px] font-bold text-green-600 uppercase mb-1 tracking-wider" id="detail-lbl-curr">Terkini</div>
+                            <div id="scoreCurr" class="text-4xl font-black text-green-700">0</div>
+                        </div>
+                        <div class="p-4 bg-slate-100 rounded-xl border border-slate-200">
+                            <div class="text-[10px] font-bold text-slate-500 uppercase mb-1 tracking-wider" id="detail-lbl-prev">Terdahulu</div>
+                            <div id="scorePrev" class="text-4xl font-black text-slate-600">0</div>
+                        </div>
+                    </div>
+
+                    <div class="p-6 bg-white">
+                        <h4 class="font-bold text-xs text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <i class="fas fa-history text-indigo-500"></i> Sejarah Penyertaan
+                        </h4>
+                        <div id="activityList" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-2"></div>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+    <!-- LOGIK SKRIP (Pautan Fail JS) -->
+    <script src="script.js"></script>
+</body>
+</html>
