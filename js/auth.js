@@ -1,6 +1,6 @@
 /**
  * SMPID AUTHENTICATION MODULE (js/auth.js)
- * Versi: 2.1 (Role-Based Access Update)
+ * Versi: 2.2 (Added User ID Storage for Password Reset)
  * Fungsi: Logik Log Masuk & Pengurusan Sesi Login dengan Sokongan PPD_UNIT
  * Halaman: index.html
  */
@@ -62,10 +62,10 @@ async function prosesLogin() {
     window.toggleLoading(true); // Dari utils.js
 
     try {
-        // Query Database
+        // Query Database (UPDATE: Tambah 'id' dalam select)
         const { data, error } = await window.supabaseClient
             .from('smpid_users')
-            .select('kod_sekolah, role, password')
+            .select('id, kod_sekolah, role, password')
             .eq('email', email)
             .single();
             
@@ -87,7 +87,10 @@ async function prosesLogin() {
         
         // LOGIN BERJAYA: Simpan Sesi
         sessionStorage.setItem('smpid_user_kod', data.kod_sekolah);
-        sessionStorage.setItem('smpid_user_role', data.role); // SIMPAN ROLE (ADMIN / PPD_UNIT)
+        sessionStorage.setItem('smpid_user_role', data.role); 
+        
+        // UPDATE PENTING: Simpan User ID (UUID) untuk fungsi tukar password
+        sessionStorage.setItem('smpid_user_id', data.id);
         
         // Redirect Logic
         if (data.role === 'ADMIN' || data.role === 'PPD_UNIT') {

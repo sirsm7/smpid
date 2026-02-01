@@ -1,6 +1,6 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 8.0 (Fix: Role Redirect & User Management Table)
+ * Versi: 8.1 (Added PPD Unit Password Change)
  * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management, DCS & Pencapaian V2
  */
 
@@ -51,19 +51,23 @@ function initAdminPanel() {
         if(displayRole) displayRole.innerHTML = "UNIT PPD VIEW";
 
         // Sorokkan Tab Yang Tidak Berkaitan (Dashboard, Analisa, Email, Helpdesk, Admin Users)
-        // Kita sorokkan parent element (<li>) supaya tab tidak boleh diklik
         const tabsToHide = ['dashboard-tab', 'analisa-tab', 'email-tab', 'helpdesk-tab', 'admin-users-tab'];
         tabsToHide.forEach(id => {
             const el = document.getElementById(id);
             if(el && el.parentElement) el.parentElement.classList.add('hidden'); 
         });
 
-        // Sorokkan Butang Log Keluar Utama (Bawah) dan Tunjuk Butang Khas di Tab Pencapaian
+        // Sorokkan Butang Log Keluar Utama (Bawah)
         const btnMainLogout = document.getElementById('btnMainLogout');
         if(btnMainLogout) btnMainLogout.classList.add('hidden');
         
+        // Tunjuk Butang Khas di Header Pencapaian
         const btnUnitLogout = document.getElementById('btnLogoutUnitPPD');
         if(btnUnitLogout) btnUnitLogout.classList.remove('hidden');
+
+        // UPDATE: Tunjuk Butang Tukar Password Khas
+        const btnUbahPass = document.getElementById('btnUbahPassUnitPPD');
+        if(btnUbahPass) btnUbahPass.classList.remove('hidden');
 
         // AUTO-REDIRECT: Paksa Buka Tab Pencapaian
         const tabPencapaianEl = document.getElementById('pencapaian-tab');
@@ -72,8 +76,7 @@ function initAdminPanel() {
             tabPencapaian.show();
         }
 
-        // PENTING: Jangan fetchDashboardData() untuk Unit PPD demi keselamatan data guru
-        // Terus load filter tahun untuk modul pencapaian
+        // PENTING: Jangan fetchDashboardData() untuk Unit PPD
         populateTahunFilter();
 
     } else {
@@ -82,7 +85,7 @@ function initAdminPanel() {
         
         if(displayRole) displayRole.innerHTML = "MOD ADMIN";
 
-        // Setup Event Listeners untuk Tab Lain (Hanya perlu untuk Admin Penuh)
+        // Setup Event Listeners untuk Tab Lain
         setupAdminTabs();
         
         // Muat turun data dashboard sepenuhnya
@@ -111,7 +114,94 @@ function setupAdminTabs() {
 }
 
 // ==========================================
-// 2. DATA FETCHING & DASHBOARD (ADMIN ONLY)
+// 2. FUNGSI UBAH PASSWORD (DIRI SENDIRI)
+// ==========================================
+
+async function ubahKataLaluanSendiri() {
+    const userId = sessionStorage.getItem('smpid_user_id'); // Ambil ID unik dari sesi
+    
+    if (!userId) {
+        Swal.fire('Ralat Sesi', 'Sila log keluar dan log masuk semula.', 'error');
+        return;
+    }
+
+    const { value: formValues } = await Swal.fire({
+        title: 'Tukar Kata Laluan',
+        html:
+            '<label class="mb-1 text-start w-100 small fw-bold">Kata Laluan Lama</label>' +
+            '<input id="swal-pass-old" type="password" class="swal2-input mb-3" placeholder="Masukan password semasa">' +
+            '<label class="mb-1 text-start w-100 small fw-bold">Kata Laluan Baru</label>' +
+            '<input id="swal-pass-new" type="password" class="swal2-input" placeholder="Minima 6 aksara">',
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+            return [
+                document.getElementById('swal-pass-old').value,
+                document.getElementById('swal-pass-new').value
+            ]
+        }
+    });
+
+    if (formValues) {
+        const [oldPass, newPass] = formValues;
+
+        if (!oldPass || !newPass) { 
+            Swal.fire('Ralat', 'Sila isi kedua-dua ruang.', 'warning'); 
+            return; 
+        }
+        if (newPass.length < 6) { 
+            Swal.fire('Ralat', 'Kata laluan baru terlalu pendek (min 6).', 'warning'); 
+            return; 
+        }
+
+        window.toggleLoading(true);
+
+        try {
+            // 1. Semak Kata Laluan Lama
+            const { data: userData, error: fetchError } = await window.supabaseClient
+                .from('smpid_users')
+                .select('password')
+                .eq('id', userId)
+                .single();
+
+            if (fetchError || !userData) throw new Error("Gagal mengesahkan pengguna.");
+
+            if (userData.password !== oldPass) {
+                window.toggleLoading(false);
+                Swal.fire('Gagal', 'Kata laluan lama tidak sah.', 'error');
+                return;
+            }
+
+            // 2. Kemaskini Kata Laluan Baru
+            const { error: updateError } = await window.supabaseClient
+                .from('smpid_users')
+                .update({ password: newPass })
+                .eq('id', userId);
+
+            if (updateError) throw updateError;
+
+            window.toggleLoading(false);
+            Swal.fire({
+                icon: 'success',
+                title: 'Berjaya',
+                text: 'Kata laluan telah ditukar. Sila log masuk semula.',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                window.keluarSistem(); // Paksa logout untuk keselamatan
+            });
+
+        } catch (err) {
+            window.toggleLoading(false);
+            console.error(err);
+            Swal.fire('Ralat', 'Gagal menukar kata laluan.', 'error');
+        }
+    }
+}
+
+// ==========================================
+// 3. DATA FETCHING & DASHBOARD (ADMIN ONLY)
 // ==========================================
 
 async function fetchDashboardData() {
@@ -124,7 +214,6 @@ async function fetchDashboardData() {
             
         if (error) throw error;
         
-        // 1. Proses Data Mentah (Mapping)
         const processedData = data.map(i => {
             const requiredFields = [
                 i.nama_gpict, i.no_telefon_gpict, i.emel_delima_gpict, 
@@ -146,10 +235,7 @@ async function fetchDashboardData() {
             };
         });
 
-        // 2. Simpan Data Penuh untuk Email Blaster (Termasuk PPD jika perlu contact)
         emailRawData = data; 
-
-        // 3. TAPIS DASHBOARD: Buang PPD dari grid paparan utama & statistik
         dashboardData = processedData.filter(item => item.jenis !== 'PPD');
         
         renderFilters();
@@ -165,7 +251,7 @@ async function fetchDashboardData() {
 }
 
 // ==========================================
-// 3. FILTERING & RENDERING (DASHBOARD)
+// 4. FILTERING & RENDERING (DASHBOARD)
 // ==========================================
 
 function renderFilters() {
@@ -211,16 +297,13 @@ function runFilter() {
 function updateBadgeCounts() {
     document.querySelectorAll('.filter-badge').forEach(e => e.classList.remove('active'));
     
-    // Highlight Active Badge
     const map = {
         'ALL': 'badgeAll', 'LENGKAP': 'badgeLengkap', 'BELUM': 'badgeBelum', 
         'SAMA': 'badgeSama', 'BERBEZA': 'badgeBerbeza'
     };
     if (map[activeStatus]) document.getElementById(map[activeStatus])?.classList.add('active');
     
-    // Recalculate Numbers based on Active Type
     const context = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
-    
     const setTxt = (id, count) => { if(document.getElementById(id)) document.getElementById(id).innerText = count; };
     
     setTxt('cntAll', context.length);
@@ -312,7 +395,7 @@ function viewSchoolProfile(kod) {
 }
 
 // ==========================================
-// 4. RESET PASSWORD SEKOLAH
+// 5. PENGURUSAN ADMIN & ROLE MANAGEMENT
 // ==========================================
 
 async function resetPasswordSekolah(kod) {
@@ -345,10 +428,6 @@ async function resetPasswordSekolah(kod) {
     });
 }
 
-// ==========================================
-// 5. PENGURUSAN ADMIN & ROLE MANAGEMENT
-// ==========================================
-
 async function loadAdminList() {
     const wrapper = document.getElementById('adminListWrapper');
     if (!wrapper) return;
@@ -356,11 +435,9 @@ async function loadAdminList() {
     wrapper.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>`;
 
     try {
-        // UPDATE: Guna jadual 'smpid_users' bukan 'smpid_admin_users'
         const { data, error } = await window.supabaseClient
             .from('smpid_users')
             .select('*')
-            // Tarik ADMIN dan PPD_UNIT
             .in('role', ['ADMIN', 'PPD_UNIT']) 
             .order('email', { ascending: true });
 
@@ -432,7 +509,6 @@ async function tambahAdmin() {
 
     try {
         const newId = crypto.randomUUID();
-        // UPDATE: Guna 'smpid_users' untuk login web
         const { error } = await window.supabaseClient
             .from('smpid_users')
             .insert([{ 
@@ -440,7 +516,7 @@ async function tambahAdmin() {
                 kod_sekolah: 'M030', 
                 email: email, 
                 password: password, 
-                role: role // Simpan role yang dipilih (ADMIN / PPD_UNIT)
+                role: role 
             }]);
 
         if (error) throw error;
@@ -459,7 +535,6 @@ async function tambahAdmin() {
     }
 }
 
-// FUNGSI BARU: Edit Peranan Admin Sedia Ada
 async function updateAdminRole(id, currentRole) {
     const { value: newRole } = await Swal.fire({
         title: 'Kemaskini Peranan',
@@ -1507,9 +1582,10 @@ window.padamTiket = padamTiket;
 // Bind Fungsi Admin (Users)
 window.loadAdminList = loadAdminList;
 window.tambahAdmin = tambahAdmin;
-window.updateAdminRole = updateAdminRole; // FUNGSI BARU DI BIND
+window.updateAdminRole = updateAdminRole; 
 window.padamAdmin = padamAdmin;
 window.resetPasswordSekolah = resetPasswordSekolah;
+window.ubahKataLaluanSendiri = ubahKataLaluanSendiri; // BIND FUNGSI BARU
 
 // Bind Fungsi Analisa DCS
 window.loadDcsAdmin = loadDcsAdmin;
