@@ -1,6 +1,6 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 9.1 (Enhanced Table Comparison Layout)
+ * Versi: 9.0 (Added Year-on-Year Gap Analysis)
  * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management, DCS & Pencapaian V2
  */
 
@@ -959,14 +959,17 @@ function updateDashboardAnalisa() {
     const prevYear = currYear - 1; // Auto-calculate Previous Year
 
     const dcsFieldCurr = `dcs_${currYear}`;
-    const activeFieldCurr = `peratus_aktif_${currYear}`;
-
-    // Update Tajuk Lajur Table (DYNAMIC HEADER)
-    const lblYearDcsPrev = document.getElementById('lblYearDcsPrev');
-    const lblYearDcsCurr = document.getElementById('lblYearDcsCurr');
+    const dcsFieldPrev = `dcs_${prevYear}`;
     
-    if (lblYearDcsPrev) lblYearDcsPrev.innerText = `(${prevYear})`;
-    if (lblYearDcsCurr) lblYearDcsCurr.innerText = `(${currYear})`;
+    const activeFieldCurr = `peratus_aktif_${currYear}`;
+    const activeFieldPrev = `peratus_aktif_${prevYear}`;
+
+    // Update Tajuk Lajur Table
+    const lblYearDcs = document.getElementById('lblYearDcs');
+    const lblYearAktif = document.getElementById('lblYearAktif');
+    
+    if (lblYearDcs) lblYearDcs.innerHTML = `<small class="text-dark opacity-75">(${currYear} vs ${prevYear})</small>`;
+    if (lblYearAktif) lblYearAktif.innerHTML = `<small class="text-dark opacity-75">(${currYear} vs ${prevYear})</small>`;
 
     // Kemaskini Tajuk Modal Edit
     document.querySelectorAll('.year-label').forEach(el => el.innerText = currYear);
@@ -974,10 +977,10 @@ function updateDashboardAnalisa() {
         document.getElementById('modalDcsYearTitle').innerText = currYear;
     }
 
-    processDcsPanel(dcsFieldCurr); 
+    processDcsPanel(dcsFieldCurr); // Panel Kiri/Kanan masih fokus tahun semasa
     processActivePanel(activeFieldCurr);
     
-    // Render Table dengan Struktur Baru (7 Kolum)
+    // Render Table dengan Dual Data
     renderAnalisaTable(currYear, prevYear);
 }
 
@@ -1091,73 +1094,79 @@ function renderAnalisaTable(currYear, prevYear) {
     const keyword = document.getElementById('searchAnalisa').value.toUpperCase();
     const list = keyword ? dcsDataList.filter(d => d.nama_sekolah.includes(keyword) || d.kod_sekolah.includes(keyword)) : dcsDataList;
 
-    if(list.length === 0) return wrapper.innerHTML = `<tr><td colspan="7" class="text-center py-4">Tiada rekod.</td></tr>`;
+    if(list.length === 0) return wrapper.innerHTML = `<tr><td colspan="5" class="text-center py-4">Tiada rekod.</td></tr>`;
 
     // Field Names
     const dcsC = `dcs_${currYear}`;
     const dcsP = `dcs_${prevYear}`;
     const actC = `peratus_aktif_${currYear}`;
+    const actP = `peratus_aktif_${prevYear}`;
 
     const html = list.map(d => {
-        // --- 1. DATA PREPARATION ---
+        // --- 1. LOGIK DCS (GAP) ---
         const valDcsC = d[dcsC] !== null ? d[dcsC] : 0;
-        const valDcsP = d[dcsP] !== null ? d[dcsP] : null; 
+        const valDcsP = d[dcsP] !== null ? d[dcsP] : null; // Boleh jadi null jika tahun lepas tiada data
         
-        // --- 2. TREND CALCULATION ---
-        let trendBadge = `<span class="badge bg-light text-muted border">-</span>`;
-        
-        if (valDcsP !== null && valDcsC !== null) {
+        const cat = getKategoriDcs(valDcsC);
+        let subTextDcs = `<span class="text-muted small">Tiada Data ${prevYear}</span>`;
+
+        if (valDcsP !== null) {
             const diff = valDcsC - valDcsP;
-            const diffFixed = diff.toFixed(2);
-            
-            if (diff > 0.00) {
-                trendBadge = `<span class="badge bg-success bg-opacity-10 text-success border border-success fw-bold"><i class="fas fa-arrow-up me-1"></i>+${diffFixed}</span>`;
-            } else if (diff < 0.00) {
-                trendBadge = `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger fw-bold"><i class="fas fa-arrow-down me-1"></i>${diffFixed}</span>`;
+            if (diff > 0) {
+                subTextDcs = `<span class="text-success small fw-bold" title="Meningkat"><i class="fas fa-arrow-up me-1"></i>${valDcsP.toFixed(2)}</span>`;
+            } else if (diff < 0) {
+                subTextDcs = `<span class="text-danger small fw-bold" title="Menurun"><i class="fas fa-arrow-down me-1"></i>${valDcsP.toFixed(2)}</span>`;
             } else {
-                trendBadge = `<span class="badge bg-light text-dark border fw-bold">0.00</span>`;
+                subTextDcs = `<span class="text-secondary small fw-bold" title="Kekal"><i class="fas fa-minus me-1"></i>${valDcsP.toFixed(2)}</span>`;
             }
-        } else if (valDcsP === null) {
-             trendBadge = `<span class="badge bg-light text-muted border" title="Tiada data tahun lepas">Baru</span>`;
         }
 
-        // --- 3. DCS DISPLAY ---
-        const displayDcsC = valDcsC > 0 ? valDcsC.toFixed(2) : '-';
-        const displayDcsP = valDcsP !== null ? valDcsP.toFixed(2) : '-';
-
-        // --- 4. AKTIF DISPLAY ---
+        // --- 2. LOGIK AKTIF (GAP) ---
         const valActC = d[actC] !== null ? d[actC] : 0;
+        const valActP = d[actP] !== null ? d[actP] : null;
+
+        let subTextAct = `<span class="text-muted small">Tiada Data ${prevYear}</span>`;
+        if (valActP !== null) {
+            const diffAct = valActC - valActP;
+            if (diffAct > 0) {
+                subTextAct = `<span class="text-success small fw-bold"><i class="fas fa-arrow-up me-1"></i>${valActP}%</span>`;
+            } else if (diffAct < 0) {
+                subTextAct = `<span class="text-danger small fw-bold"><i class="fas fa-arrow-down me-1"></i>${valActP}%</span>`;
+            } else {
+                subTextAct = `<span class="text-secondary small fw-bold"><i class="fas fa-minus me-1"></i>${valActP}%</span>`;
+            }
+        }
+
+        // Visual Progress Bar
         const barColor = (valActC >= 80) ? 'bg-success' : (valActC >= 50 ? 'bg-warning' : 'bg-danger');
 
         return `
         <tr>
-            <td class="fw-bold text-secondary align-middle text-center">${d.kod_sekolah}</td>
+            <td class="fw-bold text-secondary align-middle">${d.kod_sekolah}</td>
             <td class="align-middle">
-                <div class="text-truncate fw-bold text-dark" style="max-width: 200px;" title="${d.nama_sekolah}">${d.nama_sekolah}</div>
+                <div class="text-truncate fw-bold text-dark" style="max-width: 250px;" title="${d.nama_sekolah}">${d.nama_sekolah}</div>
             </td>
             
-            <!-- KOLUM PREV YEAR -->
-            <td class="text-center align-middle bg-light bg-opacity-50">
-                <span class="text-muted fw-bold">${displayDcsP}</span>
+            <!-- KOLUM DCS (DUAL DATA) -->
+            <td class="text-center align-middle bg-light bg-opacity-25">
+                <div class="d-flex flex-column align-items-center">
+                    <span class="fw-black fs-6 text-dark">${valDcsC.toFixed(2)}</span>
+                    <span class="badge ${cat.class} mb-1" style="font-size: 0.6rem;">${cat.label}</span>
+                    <div class="border-top border-secondary w-50 my-1 opacity-25"></div>
+                    ${subTextDcs}
+                </div>
             </td>
 
-            <!-- KOLUM CURR YEAR -->
-            <td class="text-center align-middle bg-primary bg-opacity-10">
-                <span class="text-primary fw-bold fs-6">${displayDcsC}</span>
-            </td>
-
-            <!-- KOLUM TREND -->
+            <!-- KOLUM AKTIF (DUAL DATA) -->
             <td class="text-center align-middle">
-                ${trendBadge}
-            </td>
-
-            <!-- KOLUM AKTIF -->
-            <td class="text-center align-middle">
-                <div class="d-flex align-items-center gap-2 justify-content-center">
-                    <div class="progress flex-grow-1" style="height: 8px; max-width: 60px;">
-                        <div class="progress-bar ${barColor}" role="progressbar" style="width: ${valActC}%"></div>
+                <div class="d-flex flex-column align-items-center">
+                    <div class="d-flex align-items-center gap-2 mb-1 w-100 justify-content-center">
+                        <span class="fw-bold fs-6">${valActC}%</span>
+                        <div class="progress flex-grow-0" style="height: 6px; width: 50px;">
+                            <div class="progress-bar ${barColor}" role="progressbar" style="width: ${valActC}%"></div>
+                        </div>
                     </div>
-                    <span class="fw-bold small text-dark w-25 text-start">${valActC}%</span>
+                    ${subTextAct}
                 </div>
             </td>
 
