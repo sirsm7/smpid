@@ -257,7 +257,7 @@
 
                 </div> <!-- End Row Split -->
 
-                <!-- JADUAL INDUK (FULL LIST) - UI RESTORED -->
+                <!-- JADUAL INDUK (FULL LIST) - UPDATE STRUCTURE -->
                 <div class="mt-5">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h6 class="fw-bold m-0 text-dark"><i class="fas fa-list me-2"></i>Data Terperinci Sekolah</h6>
@@ -267,15 +267,20 @@
                         <table class="table table-hover table-striped mb-0 small align-middle">
                             <thead class="table-dark sticky-top">
                                 <tr>
-                                    <th style="width: 10%;">Kod</th>
-                                    <th style="width: 35%;">Nama Sekolah</th>
-                                    <th style="width: 25%;" class="text-center bg-primary bg-opacity-25">DCS <span id="lblYearDcs">-</span></th>
+                                    <th style="width: 8%;">Kod</th>
+                                    <th style="width: 30%;">Nama Sekolah</th>
+                                    <!-- Kolum Tahun Lepas -->
+                                    <th style="width: 10%;" class="text-center bg-secondary bg-opacity-25">DCS <span id="lblYearDcsPrev">Prev</span></th>
+                                    <!-- Kolum Tahun Semasa -->
+                                    <th style="width: 10%;" class="text-center bg-primary bg-opacity-25">DCS <span id="lblYearDcsCurr">Curr</span></th>
+                                    <!-- Kolum Trend (Jurang) -->
+                                    <th style="width: 12%;" class="text-center">Trend</th>
                                     <th style="width: 20%;" class="text-center bg-success bg-opacity-25">% Aktif <span id="lblYearAktif">-</span></th>
                                     <th style="width: 10%;" class="text-center">Tindakan</th>
                                 </tr>
                             </thead>
                             <tbody id="tableAnalisaBody">
-                                <tr><td colspan="5" class="text-center py-4">Memuatkan data...</td></tr>
+                                <tr><td colspan="7" class="text-center py-4">Memuatkan data...</td></tr>
                             </tbody>
                         </table>
                     </div>
