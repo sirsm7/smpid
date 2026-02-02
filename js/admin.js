@@ -1,6 +1,6 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 8.1 (Added PPD Unit Password Change)
+ * Versi: 9.0 (Added Year-on-Year Gap Analysis)
  * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management, DCS & Pencapaian V2
  */
 
@@ -887,7 +887,7 @@ async function padamTiket(id) {
 }
 
 // ==========================================
-// 10. MODUL ANALISA: DCS & DELIMA (AUTO DISCOVERY YEAR)
+// 10. MODUL ANALISA: DCS & DELIMA (AUTO DISCOVERY YEAR + GAP ANALYSIS)
 // ==========================================
 
 function getKategoriDcs(score) {
@@ -953,29 +953,35 @@ function populateDcsYears() {
 }
 
 function updateDashboardAnalisa() {
-    const year = document.getElementById('pilihTahunAnalisa').value; 
+    const currYear = parseInt(document.getElementById('pilihTahunAnalisa').value); 
+    if (!currYear) return;
+
+    const prevYear = currYear - 1; // Auto-calculate Previous Year
+
+    const dcsFieldCurr = `dcs_${currYear}`;
+    const dcsFieldPrev = `dcs_${prevYear}`;
     
-    // Safety check jika tahun belum diload
-    if (!year) return;
+    const activeFieldCurr = `peratus_aktif_${currYear}`;
+    const activeFieldPrev = `peratus_aktif_${prevYear}`;
 
-    const dcsField = `dcs_${year}`;
-    const aktifField = `peratus_aktif_${year}`;
-
-    // Kemaskini Label Tajuk Jadual
+    // Update Tajuk Lajur Table
     const lblYearDcs = document.getElementById('lblYearDcs');
     const lblYearAktif = document.getElementById('lblYearAktif');
-    if (lblYearDcs) lblYearDcs.innerText = year;
-    if (lblYearAktif) lblYearAktif.innerText = year;
+    
+    if (lblYearDcs) lblYearDcs.innerHTML = `<small class="text-dark opacity-75">(${currYear} vs ${prevYear})</small>`;
+    if (lblYearAktif) lblYearAktif.innerHTML = `<small class="text-dark opacity-75">(${currYear} vs ${prevYear})</small>`;
 
-    // Kemaskini Tajuk Modal Edit (Kelas helper)
-    document.querySelectorAll('.year-label').forEach(el => el.innerText = year);
+    // Kemaskini Tajuk Modal Edit
+    document.querySelectorAll('.year-label').forEach(el => el.innerText = currYear);
     if(document.getElementById('modalDcsYearTitle')) {
-        document.getElementById('modalDcsYearTitle').innerText = year;
+        document.getElementById('modalDcsYearTitle').innerText = currYear;
     }
 
-    processDcsPanel(dcsField);
-    processActivePanel(aktifField);
-    renderAnalisaTable(year);
+    processDcsPanel(dcsFieldCurr); // Panel Kiri/Kanan masih fokus tahun semasa
+    processActivePanel(activeFieldCurr);
+    
+    // Render Table dengan Dual Data
+    renderAnalisaTable(currYear, prevYear);
 }
 
 function processDcsPanel(field) {
@@ -1081,7 +1087,7 @@ function processActivePanel(field) {
     document.getElementById('tableTopActive').innerHTML = `<tbody>${top5HTML}</tbody>`;
 }
 
-function renderAnalisaTable(year) {
+function renderAnalisaTable(currYear, prevYear) {
     const wrapper = document.getElementById('tableAnalisaBody');
     if (!wrapper) return;
     
@@ -1090,34 +1096,82 @@ function renderAnalisaTable(year) {
 
     if(list.length === 0) return wrapper.innerHTML = `<tr><td colspan="5" class="text-center py-4">Tiada rekod.</td></tr>`;
 
-    const dcsField = `dcs_${year}`;
-    const activeField = `peratus_aktif_${year}`;
+    // Field Names
+    const dcsC = `dcs_${currYear}`;
+    const dcsP = `dcs_${prevYear}`;
+    const actC = `peratus_aktif_${currYear}`;
+    const actP = `peratus_aktif_${prevYear}`;
 
     const html = list.map(d => {
-        const dcsVal = d[dcsField];
-        const activeVal = d[activeField];
-        const cat = getKategoriDcs(dcsVal);
-        const barColor = (activeVal >= 80) ? 'bg-success' : (activeVal >= 50 ? 'bg-warning' : 'bg-danger');
-        const width = activeVal || 0;
+        // --- 1. LOGIK DCS (GAP) ---
+        const valDcsC = d[dcsC] !== null ? d[dcsC] : 0;
+        const valDcsP = d[dcsP] !== null ? d[dcsP] : null; // Boleh jadi null jika tahun lepas tiada data
+        
+        const cat = getKategoriDcs(valDcsC);
+        let subTextDcs = `<span class="text-muted small">Tiada Data ${prevYear}</span>`;
+
+        if (valDcsP !== null) {
+            const diff = valDcsC - valDcsP;
+            if (diff > 0) {
+                subTextDcs = `<span class="text-success small fw-bold" title="Meningkat"><i class="fas fa-arrow-up me-1"></i>${valDcsP.toFixed(2)}</span>`;
+            } else if (diff < 0) {
+                subTextDcs = `<span class="text-danger small fw-bold" title="Menurun"><i class="fas fa-arrow-down me-1"></i>${valDcsP.toFixed(2)}</span>`;
+            } else {
+                subTextDcs = `<span class="text-secondary small fw-bold" title="Kekal"><i class="fas fa-minus me-1"></i>${valDcsP.toFixed(2)}</span>`;
+            }
+        }
+
+        // --- 2. LOGIK AKTIF (GAP) ---
+        const valActC = d[actC] !== null ? d[actC] : 0;
+        const valActP = d[actP] !== null ? d[actP] : null;
+
+        let subTextAct = `<span class="text-muted small">Tiada Data ${prevYear}</span>`;
+        if (valActP !== null) {
+            const diffAct = valActC - valActP;
+            if (diffAct > 0) {
+                subTextAct = `<span class="text-success small fw-bold"><i class="fas fa-arrow-up me-1"></i>${valActP}%</span>`;
+            } else if (diffAct < 0) {
+                subTextAct = `<span class="text-danger small fw-bold"><i class="fas fa-arrow-down me-1"></i>${valActP}%</span>`;
+            } else {
+                subTextAct = `<span class="text-secondary small fw-bold"><i class="fas fa-minus me-1"></i>${valActP}%</span>`;
+            }
+        }
+
+        // Visual Progress Bar
+        const barColor = (valActC >= 80) ? 'bg-success' : (valActC >= 50 ? 'bg-warning' : 'bg-danger');
 
         return `
         <tr>
-            <td class="fw-bold text-secondary">${d.kod_sekolah}</td>
-            <td class="text-truncate" style="max-width: 250px;" title="${d.nama_sekolah}">${d.nama_sekolah}</td>
-            <td class="text-center">
-                <div class="fw-bold text-dark">${dcsVal?.toFixed(2) || '-'}</div>
-                <span class="badge ${cat.class} d-block mt-1" style="font-size:0.65rem">${cat.label}</span>
+            <td class="fw-bold text-secondary align-middle">${d.kod_sekolah}</td>
+            <td class="align-middle">
+                <div class="text-truncate fw-bold text-dark" style="max-width: 250px;" title="${d.nama_sekolah}">${d.nama_sekolah}</div>
             </td>
-            <td class="text-center align-middle">
-                <div class="d-flex align-items-center">
-                    <span class="fw-bold me-2" style="width: 30px;">${activeVal || 0}%</span>
-                    <div class="progress flex-grow-1" style="height: 6px;">
-                        <div class="progress-bar ${barColor}" role="progressbar" style="width: ${width}%"></div>
-                    </div>
+            
+            <!-- KOLUM DCS (DUAL DATA) -->
+            <td class="text-center align-middle bg-light bg-opacity-25">
+                <div class="d-flex flex-column align-items-center">
+                    <span class="fw-black fs-6 text-dark">${valDcsC.toFixed(2)}</span>
+                    <span class="badge ${cat.class} mb-1" style="font-size: 0.6rem;">${cat.label}</span>
+                    <div class="border-top border-secondary w-50 my-1 opacity-25"></div>
+                    ${subTextDcs}
                 </div>
             </td>
-            <td class="text-center">
-                <button onclick="openEditDcs('${d.kod_sekolah}')" class="btn btn-sm btn-light border text-primary shadow-sm">
+
+            <!-- KOLUM AKTIF (DUAL DATA) -->
+            <td class="text-center align-middle">
+                <div class="d-flex flex-column align-items-center">
+                    <div class="d-flex align-items-center gap-2 mb-1 w-100 justify-content-center">
+                        <span class="fw-bold fs-6">${valActC}%</span>
+                        <div class="progress flex-grow-0" style="height: 6px; width: 50px;">
+                            <div class="progress-bar ${barColor}" role="progressbar" style="width: ${valActC}%"></div>
+                        </div>
+                    </div>
+                    ${subTextAct}
+                </div>
+            </td>
+
+            <td class="text-center align-middle">
+                <button onclick="openEditDcs('${d.kod_sekolah}')" class="btn btn-sm btn-light border text-primary shadow-sm rounded-circle" style="width: 32px; height: 32px;">
                     <i class="fas fa-edit"></i>
                 </button>
             </td>
@@ -1128,7 +1182,9 @@ function renderAnalisaTable(year) {
 }
 
 function filterAnalisaTable() {
-    renderAnalisaTable(document.getElementById('pilihTahunAnalisa').value);
+    const currYear = parseInt(document.getElementById('pilihTahunAnalisa').value);
+    const prevYear = currYear - 1;
+    renderAnalisaTable(currYear, prevYear);
 }
 
 function openEditDcs(kod) {
