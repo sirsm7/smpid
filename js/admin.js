@@ -1,7 +1,7 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 9.0 (Added Year-on-Year Gap Analysis)
- * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management, DCS & Pencapaian V2
+ * Versi: 11.0 (Dynamic Stats Update & Filtered Dropdown)
+ * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management, DCS & Pencapaian V3
  */
 
 // NOTA: Variable global diambil dari window (utils.js)
@@ -17,8 +17,9 @@ let activeType = 'ALL';
 let dcsDataList = [];
 let charts = { donut: null, bar: null };
 
-// State Management (Pencapaian) - BARU
-let pencapaianList = [];
+// State Management (Pencapaian V3)
+let pencapaianList = []; // Raw Data dari DB
+let currentCardFilter = 'ALL'; // Filter Kad (Google/Apple/etc)
 
 // Queue State (Tindakan Pantas)
 let reminderQueue = [];
@@ -65,7 +66,7 @@ function initAdminPanel() {
         const btnUnitLogout = document.getElementById('btnLogoutUnitPPD');
         if(btnUnitLogout) btnUnitLogout.classList.remove('hidden');
 
-        // UPDATE: Tunjuk Butang Tukar Password Khas
+        // Tunjuk Butang Tukar Password Khas
         const btnUbahPass = document.getElementById('btnUbahPassUnitPPD');
         if(btnUbahPass) btnUbahPass.classList.remove('hidden');
 
@@ -904,25 +905,18 @@ async function loadDcsAdmin() {
         const { data, error } = await window.supabaseClient.from('smpid_dcs_analisa').select('*').order('nama_sekolah');
         if (error) throw error;
         dcsDataList = data;
-        
-        // AUTO-DISCOVERY YEAR: Panggil fungsi untuk kesan tahun
         populateDcsYears();
-
-        // Update Dashboard (Guna tahun pertama dalam dropdown)
         updateDashboardAnalisa();
     } catch (err) { console.error("DCS Err", err); }
 }
 
-// NEW FUNCTION: KESAN TAHUN DARI DATABASE
 function populateDcsYears() {
     const select = document.getElementById('pilihTahunAnalisa');
     if (!select || dcsDataList.length === 0) return;
 
-    // Ambil sampel data pertama
     const sample = dcsDataList[0];
     const years = [];
 
-    // Regex untuk cari 'dcs_2023', 'dcs_2024' dll.
     Object.keys(sample).forEach(key => {
         const match = key.match(/^dcs_(\d{4})$/);
         if (match) {
@@ -930,16 +924,13 @@ function populateDcsYears() {
         }
     });
 
-    // Susun Tahun (Descending: 2025, 2024...)
     years.sort((a, b) => b - a);
 
-    // Jika tiada tahun dijumpai
     if (years.length === 0) {
         select.innerHTML = '<option value="" disabled>Tiada Data Tahun</option>';
         return;
     }
 
-    // Bina HTML Options
     let html = '';
     years.forEach((y, index) => {
         const label = (index === 0) ? `DATA TAHUN ${y} (TERKINI)` : `DATA TAHUN ${y} (ARKIB)`;
@@ -947,8 +938,6 @@ function populateDcsYears() {
     });
 
     select.innerHTML = html;
-    
-    // Auto-select tahun terkini
     select.value = years[0];
 }
 
@@ -956,7 +945,7 @@ function updateDashboardAnalisa() {
     const currYear = parseInt(document.getElementById('pilihTahunAnalisa').value); 
     if (!currYear) return;
 
-    const prevYear = currYear - 1; // Auto-calculate Previous Year
+    const prevYear = currYear - 1; 
 
     const dcsFieldCurr = `dcs_${currYear}`;
     const dcsFieldPrev = `dcs_${prevYear}`;
@@ -964,23 +953,19 @@ function updateDashboardAnalisa() {
     const activeFieldCurr = `peratus_aktif_${currYear}`;
     const activeFieldPrev = `peratus_aktif_${prevYear}`;
 
-    // Update Tajuk Lajur Table
     const lblYearDcs = document.getElementById('lblYearDcs');
     const lblYearAktif = document.getElementById('lblYearAktif');
     
     if (lblYearDcs) lblYearDcs.innerHTML = `<small class="text-dark opacity-75">(${currYear} vs ${prevYear})</small>`;
     if (lblYearAktif) lblYearAktif.innerHTML = `<small class="text-dark opacity-75">(${currYear} vs ${prevYear})</small>`;
 
-    // Kemaskini Tajuk Modal Edit
     document.querySelectorAll('.year-label').forEach(el => el.innerText = currYear);
     if(document.getElementById('modalDcsYearTitle')) {
         document.getElementById('modalDcsYearTitle').innerText = currYear;
     }
 
-    processDcsPanel(dcsFieldCurr); // Panel Kiri/Kanan masih fokus tahun semasa
+    processDcsPanel(dcsFieldCurr); 
     processActivePanel(activeFieldCurr);
-    
-    // Render Table dengan Dual Data
     renderAnalisaTable(currYear, prevYear);
 }
 
@@ -1096,48 +1081,36 @@ function renderAnalisaTable(currYear, prevYear) {
 
     if(list.length === 0) return wrapper.innerHTML = `<tr><td colspan="5" class="text-center py-4">Tiada rekod.</td></tr>`;
 
-    // Field Names
     const dcsC = `dcs_${currYear}`;
     const dcsP = `dcs_${prevYear}`;
     const actC = `peratus_aktif_${currYear}`;
     const actP = `peratus_aktif_${prevYear}`;
 
     const html = list.map(d => {
-        // --- 1. LOGIK DCS (GAP) ---
         const valDcsC = d[dcsC] !== null ? d[dcsC] : 0;
-        const valDcsP = d[dcsP] !== null ? d[dcsP] : null; // Boleh jadi null jika tahun lepas tiada data
+        const valDcsP = d[dcsP] !== null ? d[dcsP] : null;
         
         const cat = getKategoriDcs(valDcsC);
         let subTextDcs = `<span class="text-muted small">Tiada Data ${prevYear}</span>`;
 
         if (valDcsP !== null) {
             const diff = valDcsC - valDcsP;
-            if (diff > 0) {
-                subTextDcs = `<span class="text-success small fw-bold" title="Meningkat"><i class="fas fa-arrow-up me-1"></i>${valDcsP.toFixed(2)}</span>`;
-            } else if (diff < 0) {
-                subTextDcs = `<span class="text-danger small fw-bold" title="Menurun"><i class="fas fa-arrow-down me-1"></i>${valDcsP.toFixed(2)}</span>`;
-            } else {
-                subTextDcs = `<span class="text-secondary small fw-bold" title="Kekal"><i class="fas fa-minus me-1"></i>${valDcsP.toFixed(2)}</span>`;
-            }
+            if (diff > 0) subTextDcs = `<span class="text-success small fw-bold" title="Meningkat"><i class="fas fa-arrow-up me-1"></i>${valDcsP.toFixed(2)}</span>`;
+            else if (diff < 0) subTextDcs = `<span class="text-danger small fw-bold" title="Menurun"><i class="fas fa-arrow-down me-1"></i>${valDcsP.toFixed(2)}</span>`;
+            else subTextDcs = `<span class="text-secondary small fw-bold" title="Kekal"><i class="fas fa-minus me-1"></i>${valDcsP.toFixed(2)}</span>`;
         }
 
-        // --- 2. LOGIK AKTIF (GAP) ---
         const valActC = d[actC] !== null ? d[actC] : 0;
         const valActP = d[actP] !== null ? d[actP] : null;
 
         let subTextAct = `<span class="text-muted small">Tiada Data ${prevYear}</span>`;
         if (valActP !== null) {
             const diffAct = valActC - valActP;
-            if (diffAct > 0) {
-                subTextAct = `<span class="text-success small fw-bold"><i class="fas fa-arrow-up me-1"></i>${valActP}%</span>`;
-            } else if (diffAct < 0) {
-                subTextAct = `<span class="text-danger small fw-bold"><i class="fas fa-arrow-down me-1"></i>${valActP}%</span>`;
-            } else {
-                subTextAct = `<span class="text-secondary small fw-bold"><i class="fas fa-minus me-1"></i>${valActP}%</span>`;
-            }
+            if (diffAct > 0) subTextAct = `<span class="text-success small fw-bold"><i class="fas fa-arrow-up me-1"></i>${valActP}%</span>`;
+            else if (diffAct < 0) subTextAct = `<span class="text-danger small fw-bold"><i class="fas fa-arrow-down me-1"></i>${valActP}%</span>`;
+            else subTextAct = `<span class="text-secondary small fw-bold"><i class="fas fa-minus me-1"></i>${valActP}%</span>`;
         }
 
-        // Visual Progress Bar
         const barColor = (valActC >= 80) ? 'bg-success' : (valActC >= 50 ? 'bg-warning' : 'bg-danger');
 
         return `
@@ -1146,8 +1119,6 @@ function renderAnalisaTable(currYear, prevYear) {
             <td class="align-middle">
                 <div class="text-truncate fw-bold text-dark" style="max-width: 250px;" title="${d.nama_sekolah}">${d.nama_sekolah}</div>
             </td>
-            
-            <!-- KOLUM DCS (DUAL DATA) -->
             <td class="text-center align-middle bg-light bg-opacity-25">
                 <div class="d-flex flex-column align-items-center">
                     <span class="fw-black fs-6 text-dark">${valDcsC.toFixed(2)}</span>
@@ -1156,8 +1127,6 @@ function renderAnalisaTable(currYear, prevYear) {
                     ${subTextDcs}
                 </div>
             </td>
-
-            <!-- KOLUM AKTIF (DUAL DATA) -->
             <td class="text-center align-middle">
                 <div class="d-flex flex-column align-items-center">
                     <div class="d-flex align-items-center gap-2 mb-1 w-100 justify-content-center">
@@ -1169,7 +1138,6 @@ function renderAnalisaTable(currYear, prevYear) {
                     ${subTextAct}
                 </div>
             </td>
-
             <td class="text-center align-middle">
                 <button onclick="openEditDcs('${d.kod_sekolah}')" class="btn btn-sm btn-light border text-primary shadow-sm rounded-circle" style="width: 32px; height: 32px;">
                     <i class="fas fa-edit"></i>
@@ -1191,7 +1159,6 @@ function openEditDcs(kod) {
     const item = dcsDataList.find(d => d.kod_sekolah === kod);
     if (!item) return;
 
-    // Get current selected year from dropdown
     const year = document.getElementById('pilihTahunAnalisa').value;
     const dcsField = `dcs_${year}`;
     const activeField = `peratus_aktif_${year}`;
@@ -1199,7 +1166,6 @@ function openEditDcs(kod) {
     document.getElementById('editKodSekolah').value = item.kod_sekolah;
     document.getElementById('displayEditNama').value = item.nama_sekolah;
     
-    // Load data based on selected year dynamically
     document.getElementById('editDcsVal').value = (item[dcsField] !== null) ? item[dcsField] : '';
     document.getElementById('editAktifVal').value = (item[activeField] !== null) ? item[activeField] : '';
 
@@ -1213,7 +1179,6 @@ async function simpanDcs() {
     const aktifVal = document.getElementById('editAktifVal').value;
     const btn = document.querySelector('#formEditDcs button[type="submit"]');
 
-    // Get current selected year
     const year = document.getElementById('pilihTahunAnalisa').value;
     if (!year) { Swal.fire('Ralat', 'Tahun tidak dipilih.', 'error'); return; }
 
@@ -1221,7 +1186,6 @@ async function simpanDcs() {
     window.toggleLoading(true);
 
     try {
-        // Construct payload with dynamic keys
         const payload = {};
         payload[`dcs_${year}`] = dcsVal ? parseFloat(dcsVal) : null;
         payload[`peratus_aktif_${year}`] = aktifVal ? parseFloat(aktifVal) : null;
@@ -1234,7 +1198,7 @@ async function simpanDcs() {
         if (btn) btn.disabled = false;
 
         Swal.fire({ icon: 'success', title: 'Disimpan', timer: 1000, showConfirmButton: false });
-        loadDcsAdmin(); // Reload data to reflect changes
+        loadDcsAdmin();
 
     } catch (err) {
         window.toggleLoading(false);
@@ -1244,53 +1208,37 @@ async function simpanDcs() {
 }
 
 // ==========================================
-// 11. MODUL PENCAPAIAN & KEMENJADIAN (V2.1 - DYNAMIC YEAR)
+// 11. MODUL PENCAPAIAN & KEMENJADIAN V3 (INTERACTIVE)
 // ==========================================
 
-// NEW: Fungsi untuk populate dropdown tahun secara automatik dari DB
 async function populateTahunFilter() {
     const select = document.getElementById('filterTahunPencapaian');
     if (!select) return;
 
-    // UI Loading state
     select.innerHTML = '<option value="" disabled selected>Memuatkan...</option>';
     select.disabled = true;
 
     try {
-        // Fetch all distinct years from DB
         const { data, error } = await window.supabaseClient
             .from('smpid_pencapaian')
             .select('tahun');
 
         if (error) throw error;
 
-        // Extract unique years using Set & Sort Descending (2026, 2025...)
         const years = [...new Set(data.map(item => item.tahun))].sort((a, b) => b - a);
-
-        select.innerHTML = ''; // Clear loading
+        select.innerHTML = ''; 
 
         if (years.length === 0) {
-            // Case: Empty DB
             select.innerHTML = '<option value="" disabled selected>TIADA REKOD</option>';
             select.disabled = true;
-            
-            // Clear table & stats manually since loadMasterPencapaian won't run
-            const tbody = document.getElementById('tbodyPencapaianMaster');
-            if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted fst-italic">Tiada rekod pencapaian dalam pangkalan data.</td></tr>`;
-            
-            // Reset Stats to 0
-            ['statKebangsaan', 'statAntarabangsa', 'statGoogle', 'statApple', 'statMicrosoft', 'statLain'].forEach(id => {
-                if(document.getElementById(id)) document.getElementById(id).innerText = '-';
-            });
-
+            // Clear stats
+            // resetPencapaianUI(); // No longer needed if handled by clear logic
         } else {
-            // Option 1: SEMUA TAHUN
             const optAll = document.createElement('option');
             optAll.value = "ALL";
             optAll.innerText = "SEMUA TAHUN";
             select.appendChild(optAll);
 
-            // Case: Years Found
             years.forEach(y => {
                 const opt = document.createElement('option');
                 opt.value = y;
@@ -1298,9 +1246,9 @@ async function populateTahunFilter() {
                 select.appendChild(opt);
             });
             select.disabled = false;
-            
-            // Select ALL as default
             select.value = "ALL";
+            
+            // PENTING: Mula muat data selepas tahun siap diisi
             loadMasterPencapaian();
         }
 
@@ -1314,137 +1262,355 @@ async function loadMasterPencapaian() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
     if (!tbody) return;
     
-    // Safety check: Jika dropdown tahun disabled (tiada rekod), jangan fetch
-    const tahunInput = document.getElementById('filterTahunPencapaian');
-    if(tahunInput.disabled || !tahunInput.value) return;
-
+    // UI Reset
     tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>`;
+    document.getElementById('tableTopContributors').innerHTML = `<tr><td class="text-center p-4">Mengira data...</td></tr>`;
 
-    // Ambil Filter
-    const tahun = tahunInput.value;
-    const kategoriFilter = document.getElementById('filterKategoriPencapaian').value;
-    const jenisFilter = document.getElementById('filterJenisPencapaian').value;
+    // Ambil Tahun Filter
+    const tahunInput = document.getElementById('filterTahunPencapaian');
+    const tahun = tahunInput.value || 'ALL';
 
     try {
-        let query = window.supabaseClient
-            .from('smpid_pencapaian')
-            .select('*');
-
-        // Apply Year Filter (If not ALL)
-        if (tahun !== 'ALL') {
-            query = query.eq('tahun', tahun);
-        }
-
-        // Apply Ordering
+        let query = window.supabaseClient.from('smpid_pencapaian').select('*');
+        if (tahun !== 'ALL') query = query.eq('tahun', tahun);
+        
         query = query.order('created_at', { ascending: false });
 
         const { data, error } = await query;
-
         if (error) throw error;
-        pencapaianList = data;
-
-        // --- 1. PENGIRAAN KPI STATISTIK UTAMA ---
-        const totalKeb = data.filter(i => i.peringkat === 'KEBANGSAAN').length;
-        const totalInt = data.filter(i => i.peringkat === 'ANTARABANGSA' || i.jenis_rekod === 'PENSIJILAN').length;
         
-        document.getElementById('statKebangsaan').innerText = totalKeb;
-        document.getElementById('statAntarabangsa').innerText = totalInt;
+        pencapaianList = data; // Simpan data mentah untuk Client-Side filtering
 
-        // --- 2. PENGIRAAN KPI PENSIJILAN (LAPISAN 2) ---
-        const countGoogle = data.filter(i => i.jenis_rekod === 'PENSIJILAN' && i.penyedia === 'GOOGLE').length;
-        const countApple = data.filter(i => i.jenis_rekod === 'PENSIJILAN' && i.penyedia === 'APPLE').length;
-        const countMicrosoft = data.filter(i => i.jenis_rekod === 'PENSIJILAN' && i.penyedia === 'MICROSOFT').length;
-        const countLain = data.filter(i => i.jenis_rekod === 'PENSIJILAN' && i.penyedia === 'LAIN-LAIN').length;
+        // Populate dropdown sekolah
+        populateSekolahFilter(pencapaianList);
 
-        document.getElementById('statGoogle').innerText = countGoogle;
-        document.getElementById('statApple').innerText = countApple;
-        document.getElementById('statMicrosoft').innerText = countMicrosoft;
-        document.getElementById('statLain').innerText = countLain;
-
-        // --- 3. TAPIS UNTUK TABLE DISPLAY (FILTER TEMPATAN) ---
-        let filteredData = data;
-        
-        if (kategoriFilter !== 'ALL') {
-            filteredData = filteredData.filter(i => i.kategori === kategoriFilter);
-        }
-        
-        if (jenisFilter !== 'ALL') {
-             filteredData = filteredData.filter(i => i.jenis_rekod === jenisFilter);
-        }
-
-        if (filteredData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted fst-italic">Tiada rekod untuk paparan ini.</td></tr>`;
-            return;
-        }
-
-        let html = '';
-        filteredData.forEach(item => {
-            // LOGIK KHAS M030:
-            let namaSekolah = "NAMA TIDAK DIJUMPAI";
-            
-            if (item.kod_sekolah === 'M030') {
-                namaSekolah = '<span class="fw-bold text-indigo">PEJABAT PENDIDIKAN DAERAH ALOR GAJAH</span>';
-            } else {
-                const sekolahInfo = dashboardData.find(s => s.kod_sekolah === item.kod_sekolah);
-                if (sekolahInfo) namaSekolah = sekolahInfo.nama_sekolah;
-            }
-
-            let badgeClass = 'bg-secondary';
-            if (item.kategori === 'MURID') badgeClass = 'bg-info text-dark';
-            else if (item.kategori === 'GURU') badgeClass = 'bg-warning text-dark';
-            else if (item.kategori === 'SEKOLAH') badgeClass = 'bg-purple';
-            else if (item.kategori === 'PEGAWAI') badgeClass = 'bg-dark text-white'; // Badge Pegawai
-            else if (item.kategori === 'PPD') badgeClass = 'bg-primary text-white'; // Badge Unit
-
-            let displayProgram = '';
-            // let displayPeringkat = ''; // REMOVED as per request
-            let displayPencapaian = '';
-
-            if (item.jenis_rekod === 'PENSIJILAN') {
-                let providerBadge = 'bg-secondary';
-                if(item.penyedia === 'GOOGLE') providerBadge = 'bg-google';
-                else if(item.penyedia === 'APPLE') providerBadge = 'bg-apple';
-                else if(item.penyedia === 'MICROSOFT') providerBadge = 'bg-microsoft';
-
-                displayProgram = `<span class="badge ${providerBadge} me-1 small"><i class="fas fa-certificate"></i></span> <span class="fw-bold small">${item.nama_pertandingan}</span>`;
-                // displayPeringkat = `<span class="badge bg-dark small">PRO</span>`; // REMOVED
-                displayPencapaian = `<span class="fw-bold text-dark small">${item.pencapaian}</span>`;
-
-            } else {
-                displayProgram = `<div class="small text-uppercase fw-bold text-primary">${item.nama_pertandingan}</div>`;
-                // let rankBadge = item.peringkat === 'KEBANGSAAN' ? 'bg-primary' : 'bg-orange';
-                // displayPeringkat = `<span class="badge ${rankBadge} small">${item.peringkat}</span>`; // REMOVED
-                displayPencapaian = `<span class="fw-bold text-success small">${item.pencapaian}</span>`;
-            }
-
-            html += `
-            <tr>
-                <td class="fw-bold small">${item.kod_sekolah}</td>
-                <td class="small text-truncate" style="max-width: 180px;" title="${namaSekolah.replace(/<[^>]*>?/gm, '')}">${namaSekolah}</td>
-                <td class="text-center"><span class="badge ${badgeClass} shadow-sm" style="font-size: 0.7em">${item.kategori}</span></td>
-                <td><div class="fw-bold text-dark small text-truncate" style="max-width: 150px;" title="${item.nama_peserta}">${item.nama_peserta}</div></td>
-                <td>${displayProgram}</td>
-                <!-- KOLUM TARAF DIBUANG DALAM HTML DAN JS -->
-                <td class="text-center">${displayPencapaian}</td>
-                <td class="text-center">
-                    <a href="${item.pautan_bukti}" target="_blank" class="btn btn-sm btn-light border text-primary" title="Lihat Bukti">
-                        <i class="fas fa-link"></i>
-                    </a>
-                </td>
-                <td class="text-center">
-                    <button onclick="hapusPencapaianAdmin(${item.id})" class="btn btn-sm btn-outline-danger" title="Padam Rekod">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>`;
-        });
-        tbody.innerHTML = html;
+        // Mula render (ini akan trigger updateStatCards juga)
+        renderPencapaianTable();
 
     } catch (err) {
         console.error(err);
         tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-danger">Gagal memuatkan data.</td></tr>`;
     }
 }
+
+// FUNGSI BARU: Kira Statistik Dinamik berdasarkan Data yang Ditapis
+function updateStatCards(dataToProcess) {
+    // 1. Kira Statistik Kad
+    const totalKeb = dataToProcess.filter(i => i.peringkat === 'KEBANGSAAN').length;
+    const totalInt = dataToProcess.filter(i => i.peringkat === 'ANTARABANGSA' || i.jenis_rekod === 'PENSIJILAN').length;
+    const countGoogle = dataToProcess.filter(i => i.jenis_rekod === 'PENSIJILAN' && i.penyedia === 'GOOGLE').length;
+    const countApple = dataToProcess.filter(i => i.jenis_rekod === 'PENSIJILAN' && i.penyedia === 'APPLE').length;
+    const countMicrosoft = dataToProcess.filter(i => i.jenis_rekod === 'PENSIJILAN' && i.penyedia === 'MICROSOFT').length;
+    const countLain = dataToProcess.filter(i => i.jenis_rekod === 'PENSIJILAN' && i.penyedia === 'LAIN-LAIN').length;
+
+    document.getElementById('statKebangsaan').innerText = totalKeb;
+    document.getElementById('statAntarabangsa').innerText = totalInt;
+    document.getElementById('statGoogle').innerText = countGoogle;
+    document.getElementById('statApple').innerText = countApple;
+    document.getElementById('statMicrosoft').innerText = countMicrosoft;
+    document.getElementById('statLain').innerText = countLain;
+
+    // 2. Kira Top 5 Contributors (Berdasarkan data yang ada)
+    const schoolCounts = {};
+    dataToProcess.forEach(item => {
+        if (item.kod_sekolah !== 'M030') { // Kecualikan PPD
+            schoolCounts[item.kod_sekolah] = (schoolCounts[item.kod_sekolah] || 0) + 1;
+        }
+    });
+
+    // Convert to Array & Sort
+    const sortedSchools = Object.entries(schoolCounts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5); // Ambil Top 5
+
+    // Render Table Top 5
+    const top5Table = document.getElementById('tableTopContributors');
+    document.getElementById('totalRecordsBadge').innerText = `${dataToProcess.length} Rekod`;
+
+    if (sortedSchools.length === 0) {
+        top5Table.innerHTML = `<tr><td class="text-center p-4 text-muted">Tiada data sekolah.</td></tr>`;
+    } else {
+        let html = '';
+        sortedSchools.forEach(([kod, count], index) => {
+            // Cari nama sekolah dari dashboardData (jika ada)
+            let namaSekolah = kod;
+            const ref = dashboardData.find(s => s.kod_sekolah === kod);
+            if (ref) namaSekolah = ref.nama_sekolah;
+
+            let medal = '';
+            if (index === 0) medal = '<span class="medal-icon medal-1">1</span>';
+            else if (index === 1) medal = '<span class="medal-icon medal-2">2</span>';
+            else if (index === 2) medal = '<span class="medal-icon medal-3">3</span>';
+            else medal = `<span class="fw-bold text-muted ps-2">${index + 1}</span>`;
+
+            html += `
+            <tr class="top-school-row" onclick="filterBySchoolFromTop5('${kod}')">
+                <td style="width: 40px;" class="text-center align-middle">${medal}</td>
+                <td class="align-middle">
+                    <div class="fw-bold text-dark small text-truncate" style="max-width: 180px;">${namaSekolah}</div>
+                    <div class="text-muted" style="font-size: 0.65rem;">${kod}</div>
+                </td>
+                <td class="text-end fw-bold text-primary align-middle pe-3">${count}</td>
+            </tr>`;
+        });
+        top5Table.innerHTML = html;
+    }
+}
+
+// LOGIC BARU: Auto-Populate Dropdown Sekolah dengan Kiraan
+function populateSekolahFilter(sourceData) {
+    const select = document.getElementById('filterSekolahPencapaian');
+    const existingVal = select.value; // Simpan value semasa jika ada
+    
+    // Kira kekerapan setiap sekolah
+    const schoolCounts = {};
+    sourceData.forEach(item => {
+        schoolCounts[item.kod_sekolah] = (schoolCounts[item.kod_sekolah] || 0) + 1;
+    });
+
+    // Dapatkan senarai unik kod sekolah
+    const uniqueSchools = Object.keys(schoolCounts).sort();
+    
+    select.innerHTML = '<option value="ALL">SEMUA SEKOLAH</option>';
+    
+    uniqueSchools.forEach(kod => {
+        let label = kod;
+        if (kod === 'M030') label = 'PPD ALOR GAJAH (M030)';
+        else {
+            const ref = dashboardData.find(s => s.kod_sekolah === kod);
+            if (ref) label = `${ref.nama_sekolah}`; // Nama pendek
+        }
+        
+        // Tambah jumlah rekod dalam label
+        const count = schoolCounts[kod];
+        label += ` (${count})`;
+
+        const opt = document.createElement('option');
+        opt.value = kod;
+        opt.innerText = label;
+        select.appendChild(opt);
+    });
+
+    // Restore selection if still valid
+    if (uniqueSchools.includes(existingVal)) select.value = existingVal;
+}
+
+// LOGIC BARU: Penapisan Kad (Client-Side)
+function filterByCard(type) {
+    // Toggle Logic
+    if (currentCardFilter === type) {
+        currentCardFilter = 'ALL'; // Reset
+    } else {
+        currentCardFilter = type; // Set Active
+    }
+    updateCardVisuals();
+    renderPencapaianTable();
+}
+
+function updateCardVisuals() {
+    // Reset semua kad
+    const cards = ['KEBANGSAAN', 'ANTARABANGSA', 'GOOGLE', 'APPLE', 'MICROSOFT', 'LAIN-LAIN'];
+    cards.forEach(c => {
+        const el = document.getElementById(`card-${c}`);
+        if(el) el.classList.remove('card-active-filter');
+    });
+
+    // Highlight kad aktif
+    if (currentCardFilter !== 'ALL') {
+        const activeEl = document.getElementById(`card-${currentCardFilter}`);
+        if(activeEl) activeEl.classList.add('card-active-filter');
+    }
+    
+    // Update Label Teks
+    const label = document.getElementById('labelCurrentFilter');
+    if (label) label.innerText = (currentCardFilter !== 'ALL') ? `(Tapisan: ${currentCardFilter})` : '';
+}
+
+function filterBySchoolFromTop5(kod) {
+    const select = document.getElementById('filterSekolahPencapaian');
+    if (select) {
+        select.value = kod;
+        renderPencapaianTable(); // Trigger render
+    }
+}
+
+// LOGIC UTAMA: Render Jadual (Filter Tempatan & Update Stats)
+function renderPencapaianTable() {
+    const tbody = document.getElementById('tbodyPencapaianMaster');
+    if (!tbody) return;
+
+    // Ambil nilai filter semasa
+    const katFilter = document.getElementById('filterKategoriPencapaian').value;
+    const sekFilter = document.getElementById('filterSekolahPencapaian').value;
+
+    // Filter Data (Fasa 1: Filter Struktur)
+    let filtered = pencapaianList.filter(item => {
+        // Filter 1: Kategori
+        if (katFilter !== 'ALL' && item.kategori !== katFilter) return false;
+        // Filter 2: Sekolah Spesifik
+        if (sekFilter !== 'ALL' && item.kod_sekolah !== sekFilter) return false;
+        return true;
+    });
+
+    // PENTING: Update Statistik Kad berdasarkan filter sekolah/kategori SEBELUM filter kad digunakan
+    // Ini membolehkan kita melihat statistik spesifik sekolah yang dipilih
+    updateStatCards(filtered);
+
+    // Filter Data (Fasa 2: Filter Kad)
+    // Kita filter lagi untuk paparan jadual jika kad ditekan
+    if (currentCardFilter !== 'ALL') {
+        filtered = filtered.filter(item => {
+            if (currentCardFilter === 'KEBANGSAAN') return item.peringkat === 'KEBANGSAAN';
+            if (currentCardFilter === 'ANTARABANGSA') return (item.peringkat === 'ANTARABANGSA' || item.jenis_rekod === 'PENSIJILAN');
+            if (['GOOGLE', 'APPLE', 'MICROSOFT', 'LAIN-LAIN'].includes(currentCardFilter)) {
+                return (item.jenis_rekod === 'PENSIJILAN' && item.penyedia === currentCardFilter);
+            }
+            return true;
+        });
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted fst-italic">Tiada rekod sepadan.</td></tr>`;
+        return;
+    }
+
+    let html = '';
+    filtered.forEach(item => {
+        let namaSekolah = (item.kod_sekolah === 'M030') ? 
+            '<span class="fw-bold text-indigo">PPD ALOR GAJAH</span>' : 
+            (dashboardData.find(s => s.kod_sekolah === item.kod_sekolah)?.nama_sekolah || item.kod_sekolah);
+
+        let badgeClass = 'bg-secondary';
+        if (item.kategori === 'MURID') badgeClass = 'bg-info text-dark';
+        else if (item.kategori === 'GURU') badgeClass = 'bg-warning text-dark';
+        else if (item.kategori === 'SEKOLAH') badgeClass = 'bg-purple';
+        else if (item.kategori === 'PEGAWAI') badgeClass = 'bg-dark text-white'; 
+        else if (item.kategori === 'PPD') badgeClass = 'bg-primary text-white';
+
+        let displayProgram = '';
+        let displayPencapaian = '';
+
+        if (item.jenis_rekod === 'PENSIJILAN') {
+            let providerBadge = 'bg-secondary';
+            if(item.penyedia === 'GOOGLE') providerBadge = 'bg-google';
+            else if(item.penyedia === 'APPLE') providerBadge = 'bg-apple';
+            else if(item.penyedia === 'MICROSOFT') providerBadge = 'bg-microsoft';
+
+            displayProgram = `<span class="badge ${providerBadge} me-1 small"><i class="fas fa-certificate"></i></span> <span class="fw-bold small">${item.nama_pertandingan}</span>`;
+            displayPencapaian = `<span class="fw-bold text-dark small">${item.pencapaian}</span>`;
+        } else {
+            displayProgram = `<div class="small text-uppercase fw-bold text-primary">${item.nama_pertandingan}</div>`;
+            displayPencapaian = `<span class="fw-bold text-success small">${item.pencapaian}</span>`;
+        }
+
+        html += `
+        <tr>
+            <td class="fw-bold small">${item.kod_sekolah}</td>
+            <td class="small text-truncate" style="max-width: 180px;" title="${namaSekolah.replace(/<[^>]*>?/gm, '')}">${namaSekolah}</td>
+            <td class="text-center"><span class="badge ${badgeClass} shadow-sm" style="font-size: 0.7em">${item.kategori}</span></td>
+            <td><div class="fw-bold text-dark small text-truncate" style="max-width: 150px;" title="${item.nama_peserta}">${item.nama_peserta}</div></td>
+            <td>${displayProgram}</td>
+            <td class="text-center">${displayPencapaian}</td>
+            <td class="text-center">
+                <a href="${item.pautan_bukti}" target="_blank" class="btn btn-sm btn-light border text-primary" title="Lihat Bukti"><i class="fas fa-link"></i></a>
+            </td>
+            <td class="text-center text-nowrap">
+                <button onclick="openEditPencapaian(${item.id})" class="btn btn-sm btn-outline-warning me-1" title="Edit"><i class="fas fa-edit"></i></button>
+                <button onclick="hapusPencapaianAdmin(${item.id})" class="btn btn-sm btn-outline-danger" title="Hapus"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    tbody.innerHTML = html;
+}
+
+// LOGIC BARU: EDIT DATA (CRUD Update)
+function openEditPencapaian(id) {
+    const item = pencapaianList.find(i => i.id === id);
+    if (!item) return;
+
+    document.getElementById('editIdPencapaian').value = item.id;
+    document.getElementById('editJenisRekod').value = item.jenis_rekod;
+    document.getElementById('editNamaSekolah').value = item.kod_sekolah; // Readonly
+    document.getElementById('editInputNama').value = item.nama_peserta;
+    document.getElementById('editInputProgram').value = item.nama_pertandingan;
+    document.getElementById('editInputPencapaian').value = item.pencapaian;
+    document.getElementById('editInputLink').value = item.pautan_bukti;
+    
+    // Handle UI Variation
+    const divPenyedia = document.getElementById('divEditPenyedia');
+    const rowPeringkat = document.getElementById('rowEditPeringkat');
+    
+    if (item.jenis_rekod === 'PENSIJILAN') {
+        divPenyedia.classList.remove('hidden');
+        rowPeringkat.classList.add('hidden');
+        
+        document.getElementById('editInputPenyedia').value = item.penyedia || 'LAIN-LAIN';
+        document.getElementById('lblEditProgram').innerText = "NAMA SIJIL";
+        document.getElementById('lblEditPencapaian').innerText = "TAHAP / SKOR";
+    } else {
+        divPenyedia.classList.add('hidden');
+        rowPeringkat.classList.remove('hidden');
+        
+        document.getElementById('editInputPeringkat').value = item.peringkat;
+        document.getElementById('editInputTahun').value = item.tahun;
+        
+        document.getElementById('lblEditProgram').innerText = "NAMA PERTANDINGAN";
+        document.getElementById('lblEditPencapaian').innerText = "PENCAPAIAN";
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('modalEditPencapaian'));
+    modal.show();
+}
+
+async function simpanEditPencapaian() {
+    const id = document.getElementById('editIdPencapaian').value;
+    const jenis = document.getElementById('editJenisRekod').value;
+    
+    const payload = {
+        nama_peserta: document.getElementById('editInputNama').value.toUpperCase(),
+        nama_pertandingan: document.getElementById('editInputProgram').value.toUpperCase(),
+        pencapaian: document.getElementById('editInputPencapaian').value.toUpperCase(),
+        pautan_bukti: document.getElementById('editInputLink').value
+    };
+
+    if (jenis === 'PENSIJILAN') {
+        payload.penyedia = document.getElementById('editInputPenyedia').value;
+    } else {
+        payload.peringkat = document.getElementById('editInputPeringkat').value;
+        payload.tahun = parseInt(document.getElementById('editInputTahun').value);
+    }
+
+    const btn = document.querySelector('#formEditPencapaian button[type="submit"]');
+    if(btn) btn.disabled = true;
+    window.toggleLoading(true);
+
+    try {
+        const { error } = await window.supabaseClient
+            .from('smpid_pencapaian')
+            .update(payload)
+            .eq('id', id);
+
+        if (error) throw error;
+
+        window.toggleLoading(false);
+        if(btn) btn.disabled = false;
+        
+        bootstrap.Modal.getInstance(document.getElementById('modalEditPencapaian')).hide();
+        Swal.fire({ icon: 'success', title: 'Data Dikemaskini', timer: 1000, showConfirmButton: false });
+        
+        // Refresh Data
+        loadMasterPencapaian();
+
+    } catch (err) {
+        window.toggleLoading(false);
+        if(btn) btn.disabled = false;
+        console.error(err);
+        Swal.fire('Ralat', 'Gagal mengemaskini data.', 'error');
+    }
+}
+
+// PPD & Lain-Lain Fungsi (Kekal Sama - Ringkasan)
+// ... (Kod fungsi resetPasswordSekolah, hapusPencapaianAdmin dll dikekalkan seperti asal)
 
 async function hapusPencapaianAdmin(id) {
     Swal.fire({
@@ -1471,10 +1637,7 @@ async function hapusPencapaianAdmin(id) {
     });
 }
 
-// ==========================================
-// 12. LOGIK REKOD PPD (NEW MODULE)
-// ==========================================
-
+// LOGIK REKOD PPD (NEW MODULE)
 function openModalPPD() {
     const modal = new bootstrap.Modal(document.getElementById('modalRekodPPD'));
     modal.show();
@@ -1641,7 +1804,7 @@ window.tambahAdmin = tambahAdmin;
 window.updateAdminRole = updateAdminRole; 
 window.padamAdmin = padamAdmin;
 window.resetPasswordSekolah = resetPasswordSekolah;
-window.ubahKataLaluanSendiri = ubahKataLaluanSendiri; // BIND FUNGSI BARU
+window.ubahKataLaluanSendiri = ubahKataLaluanSendiri; 
 
 // Bind Fungsi Analisa DCS
 window.loadDcsAdmin = loadDcsAdmin;
@@ -1651,10 +1814,15 @@ window.openEditDcs = openEditDcs;
 window.simpanDcs = simpanDcs;
 window.populateDcsYears = populateDcsYears;
 
-// Bind Fungsi Pencapaian (BARU)
+// Bind Fungsi Pencapaian V3 (Lengkap)
 window.loadMasterPencapaian = loadMasterPencapaian;
 window.hapusPencapaianAdmin = hapusPencapaianAdmin;
 window.populateTahunFilter = populateTahunFilter;
+window.filterByCard = filterByCard;
+window.renderPencapaianTable = renderPencapaianTable;
+window.openEditPencapaian = openEditPencapaian;
+window.simpanEditPencapaian = simpanEditPencapaian;
+window.filterBySchoolFromTop5 = filterBySchoolFromTop5;
 
 // Bind Fungsi PPD (NEW)
 window.openModalPPD = openModalPPD;

@@ -59,6 +59,55 @@ body { background-color: #f0f2f5; font-family: 'Inter', sans-serif; min-height: 
 .border-top-primary { border-top: 4px solid #0d6efd !important; }
 .border-top-warning { border-top: 4px solid #ffc107 !important; }
 
+/* --- ACTIVE CARD FILTER (NEW) --- */
+/* Efek bila kad statistik ditekan sebagai filter */
+.card-active-filter {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2) !important;
+    border: 2px solid #0d6efd !important;
+    position: relative;
+}
+.card-active-filter::after {
+    content: "\f00c"; /* FontAwesome Check */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: #0d6efd;
+    color: white;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    z-index: 10;
+}
+
+/* --- TOP CONTRIBUTORS TABLE (NEW) --- */
+.top-school-row {
+    transition: background-color 0.2s;
+    cursor: pointer;
+}
+.top-school-row:hover {
+    background-color: #f8f9fa;
+}
+.medal-icon {
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+.medal-1 { background-color: #FFD700; color: #5c4d00; }
+.medal-2 { background-color: #C0C0C0; color: #4a4a4a; }
+.medal-3 { background-color: #CD7F32; color: #5a3a18; }
+
 /* --- DASHBOARD SCHOOL CARDS --- */
 .school-card {
   transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; height: 100%;

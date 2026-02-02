@@ -284,7 +284,7 @@
             </div>
           </div>
 
-          <!-- TAB 3: PENCAPAIAN & KEMENJADIAN (MODUL V2) -->
+          <!-- TAB 3: PENCAPAIAN & KEMENJADIAN (MODUL V3 - MAJOR UPDATE) -->
           <div class="tab-pane fade" id="tab-pencapaian" role="tabpanel">
             <div class="card p-4 shadow-sm border-purple border-4 border-top">
                 
@@ -303,7 +303,7 @@
 
                          <div>
                             <h5 class="fw-bold mb-0 text-purple">Analisa Kemenjadian</h5>
-                            <small class="text-muted">Rekod pencapaian Kebangsaan & Pensijilan Antarabangsa</small>
+                            <small class="text-muted">Klik Kad Statistik untuk menapis data.</small>
                          </div>
                     </div>
                     
@@ -315,19 +315,19 @@
                         
                         <div class="vr mx-1"></div>
 
-                        <!-- Filter Jenis Rekod -->
-                        <select id="filterJenisPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="loadMasterPencapaian()">
-                            <option value="ALL" selected>SEMUA JENIS REKOD</option>
-                            <option value="PERTANDINGAN">PERTANDINGAN</option>
-                            <option value="PENSIJILAN">PENSIJILAN PROFESIONAL</option>
+                        <!-- NEW: Dropdown Filter Sekolah (Bahagian Update) -->
+                        <select id="filterSekolahPencapaian" class="form-select form-select-sm fw-bold shadow-sm text-primary border-primary" style="max-width: 200px;" onchange="renderPencapaianTable()">
+                            <option value="ALL" selected>SEMUA SEKOLAH</option>
+                            <!-- Pilihan sekolah akan diisi oleh JS -->
                         </select>
-                        
-                        <!-- NEW: Dynamic Year Filter -->
+
+                        <!-- Filter Tahun -->
                         <select id="filterTahunPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="loadMasterPencapaian()">
                             <option value="" disabled selected>Memuatkan...</option>
                         </select>
 
-                        <select id="filterKategoriPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="loadMasterPencapaian()">
+                        <!-- Filter Kategori -->
+                        <select id="filterKategoriPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="renderPencapaianTable()">
                             <option value="ALL" selected>SEMUA KATEGORI</option>
                             <option value="MURID">MURID</option>
                             <option value="GURU">GURU</option>
@@ -338,64 +338,89 @@
                     </div>
                 </div>
 
-                <!-- LAPISAN 1: KPI UTAMA -->
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <div class="card bg-purple text-white h-100 border-0 shadow-sm rounded-4">
-                            <div class="card-body text-center p-3">
-                                <h2 class="fw-bold mb-0 display-5" id="statKebangsaan">-</h2>
-                                <small class="text-white-50 text-uppercase fw-bold">Peringkat Kebangsaan</small>
+                <!-- SECTION: TOP CONTRIBUTORS & KEY STATS (BARU) -->
+                <div class="row g-4 mb-4">
+                    <!-- KIRI: KPI INTERAKTIF -->
+                    <div class="col-lg-8">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <div id="card-KEBANGSAAN" onclick="filterByCard('KEBANGSAAN')" class="card bg-purple text-white h-100 border-0 shadow-sm rounded-4 cursor-pointer hover-scale transition-all">
+                                    <div class="card-body text-center p-3">
+                                        <h2 class="fw-bold mb-0 display-5" id="statKebangsaan">-</h2>
+                                        <small class="text-white-50 text-uppercase fw-bold">Peringkat Kebangsaan</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                 <div id="card-ANTARABANGSA" onclick="filterByCard('ANTARABANGSA')" class="card bg-orange text-white h-100 border-0 shadow-sm rounded-4 cursor-pointer hover-scale transition-all">
+                                    <div class="card-body text-center p-3">
+                                        <h2 class="fw-bold mb-0 display-5" id="statAntarabangsa">-</h2>
+                                        <small class="text-white-50 text-uppercase fw-bold">Antarabangsa / Pensijilan</small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                         <div class="card bg-orange text-white h-100 border-0 shadow-sm rounded-4">
-                            <div class="card-body text-center p-3">
-                                <h2 class="fw-bold mb-0 display-5" id="statAntarabangsa">-</h2>
-                                <small class="text-white-50 text-uppercase fw-bold">Antarabangsa / Pensijilan</small>
+                        
+                        <div class="row g-2">
+                            <div class="col-6 col-md-3">
+                                <div id="card-GOOGLE" onclick="filterByCard('GOOGLE')" class="card border-0 shadow-sm h-100 bg-google-sub border-google border-start border-3 cursor-pointer hover-scale">
+                                    <div class="card-body p-2 text-center">
+                                        <h4 class="fw-bold mb-0 text-google" id="statGoogle">-</h4>
+                                        <small class="fw-bold text-muted" style="font-size: 0.65rem;">GOOGLE</small>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- LAPISAN 2: STATISTIK PENSIJILAN (BARU) -->
-                <div class="row g-2 mb-4">
-                    <div class="col-6 col-md-3">
-                        <div class="card border-0 shadow-sm h-100 bg-google-sub border-google border-start border-3">
-                            <div class="card-body p-2 text-center">
-                                <h4 class="fw-bold mb-0 text-google" id="statGoogle">-</h4>
-                                <small class="fw-bold text-muted" style="font-size: 0.65rem;">GOOGLE</small>
+                            <div class="col-6 col-md-3">
+                                <div id="card-APPLE" onclick="filterByCard('APPLE')" class="card border-0 shadow-sm h-100 bg-apple-sub border-apple border-start border-3 cursor-pointer hover-scale">
+                                    <div class="card-body p-2 text-center">
+                                        <h4 class="fw-bold mb-0 text-apple" id="statApple">-</h4>
+                                        <small class="fw-bold text-muted" style="font-size: 0.65rem;">APPLE</small>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="card border-0 shadow-sm h-100 bg-apple-sub border-apple border-start border-3">
-                            <div class="card-body p-2 text-center">
-                                <h4 class="fw-bold mb-0 text-apple" id="statApple">-</h4>
-                                <small class="fw-bold text-muted" style="font-size: 0.65rem;">APPLE</small>
+                            <div class="col-6 col-md-3">
+                                 <div id="card-MICROSOFT" onclick="filterByCard('MICROSOFT')" class="card border-0 shadow-sm h-100 bg-microsoft-sub border-microsoft border-start border-3 cursor-pointer hover-scale">
+                                    <div class="card-body p-2 text-center">
+                                        <h4 class="fw-bold mb-0 text-microsoft" id="statMicrosoft">-</h4>
+                                        <small class="fw-bold text-muted" style="font-size: 0.65rem;">MICROSOFT</small>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                         <div class="card border-0 shadow-sm h-100 bg-microsoft-sub border-microsoft border-start border-3">
-                            <div class="card-body p-2 text-center">
-                                <h4 class="fw-bold mb-0 text-microsoft" id="statMicrosoft">-</h4>
-                                <small class="fw-bold text-muted" style="font-size: 0.65rem;">MICROSOFT</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="card border-0 shadow-sm h-100 bg-light border-secondary border-start border-3">
-                           <div class="card-body p-2 text-center">
-                               <h4 class="fw-bold mb-0 text-dark" id="statLain">-</h4>
-                               <small class="fw-bold text-muted" style="font-size: 0.65rem;">LAIN-LAIN</small>
+                            <div class="col-6 col-md-3">
+                                <div id="card-LAIN-LAIN" onclick="filterByCard('LAIN-LAIN')" class="card border-0 shadow-sm h-100 bg-light border-secondary border-start border-3 cursor-pointer hover-scale">
+                                   <div class="card-body p-2 text-center">
+                                       <h4 class="fw-bold mb-0 text-dark" id="statLain">-</h4>
+                                       <small class="fw-bold text-muted" style="font-size: 0.65rem;">LAIN-LAIN</small>
+                                   </div>
+                               </div>
                            </div>
-                       </div>
-                   </div>
+                        </div>
+                    </div>
+
+                    <!-- KANAN: TOP CONTRIBUTORS TABLE (BARU) -->
+                    <div class="col-lg-4">
+                        <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
+                            <div class="card-header bg-dark text-white small fw-bold py-2 d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-medal me-2 text-warning"></i>5 Sekolah Paling Aktif</span>
+                                <span class="badge bg-white text-dark rounded-pill" id="totalRecordsBadge">0 Rekod</span>
+                            </div>
+                            <div class="table-responsive h-100 bg-white">
+                                <table class="table table-sm table-hover mb-0 small align-middle" id="tableTopContributors">
+                                    <tbody class="text-secondary">
+                                        <tr><td class="text-center p-4">Mengira data...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- MASTER TABLE -->
-                <h6 class="fw-bold text-secondary mb-3"><i class="fas fa-database me-2"></i>Senarai Penuh Pencapaian</h6>
+                <div class="d-flex justify-content-between align-items-end mb-2">
+                    <h6 class="fw-bold text-secondary mb-0"><i class="fas fa-database me-2"></i>Senarai Penuh Pencapaian <span id="labelCurrentFilter" class="text-primary small ms-2 fw-normal"></span></h6>
+                    <button class="btn btn-sm btn-link text-decoration-none text-muted" onclick="loadMasterPencapaian()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                </div>
+                
                 <div class="table-responsive border rounded-3" style="max-height: 600px; background: white;">
                     <table class="table table-hover table-striped table-bordered align-middle small mb-0">
                         <thead class="table-dark sticky-top">
@@ -408,7 +433,7 @@
                                 <!-- HEADER TARAF DIBUANG UNTUK SELARASKAN DENGAN JS -->
                                 <th style="width: 10%;" class="text-center">Pencapaian</th>
                                 <th style="width: 5%;" class="text-center">Bukti</th>
-                                <th style="width: 4%;" class="text-center">Hapus</th>
+                                <th style="width: 8%;" class="text-center">Tindakan</th> <!-- Lajur Lebar untuk Edit/Delete -->
                             </tr>
                         </thead>
                         <tbody id="tbodyPencapaianMaster">
@@ -697,6 +722,78 @@ PPD Alor Gajah.</textarea>
 
                     <button type="submit" class="btn btn-indigo w-100 fw-bold py-3 rounded-3 shadow-sm" style="background-color: #4b0082; color: white;">
                         <i class="fas fa-save me-2"></i>SIMPAN REKOD PPD
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+  </div>
+
+  <!-- MODAL EDIT PENCAPAIAN (BARU) -->
+  <div class="modal fade" id="modalEditPencapaian" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header bg-warning text-dark">
+                <h6 class="modal-title fw-bold"><i class="fas fa-edit me-2"></i>Kemaskini Rekod Pencapaian</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formEditPencapaian" onsubmit="event.preventDefault(); simpanEditPencapaian();">
+                    <input type="hidden" id="editIdPencapaian">
+                    <input type="hidden" id="editJenisRekod">
+                    
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">SEKOLAH / ORGANISASI</label>
+                        <input type="text" id="editNamaSekolah" class="form-control bg-light fw-bold text-dark" readonly disabled>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">NAMA PESERTA</label>
+                        <input type="text" id="editInputNama" class="form-control uppercase-input fw-bold">
+                    </div>
+
+                    <!-- Pilihan Edit Penyedia (Jika Pensijilan) -->
+                    <div id="divEditPenyedia" class="mb-3 hidden">
+                        <label class="form-label small fw-bold text-muted text-warning">PENYEDIA</label>
+                        <select id="editInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning">
+                            <option value="LAIN-LAIN">LAIN-LAIN</option>
+                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
+                            <option value="APPLE">APPLE EDUCATION</option>
+                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted" id="lblEditProgram">NAMA PERTANDINGAN</label>
+                        <input type="text" id="editInputProgram" class="form-control uppercase-input">
+                    </div>
+
+                    <div class="row g-2 mb-3" id="rowEditPeringkat">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-muted">PERINGKAT</label>
+                            <select id="editInputPeringkat" class="form-select bg-light">
+                                <option value="KEBANGSAAN">KEBANGSAAN</option>
+                                <option value="ANTARABANGSA">ANTARABANGSA</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                             <label class="form-label small fw-bold text-muted">TAHUN</label>
+                             <input type="number" id="editInputTahun" class="form-control bg-light fw-bold" min="2023">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted" id="lblEditPencapaian">PENCAPAIAN</label>
+                        <input type="text" id="editInputPencapaian" class="form-control uppercase-input">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold text-muted">PAUTAN BUKTI</label>
+                        <input type="url" id="editInputLink" class="form-control text-primary">
+                    </div>
+
+                    <button type="submit" class="btn btn-warning w-100 fw-bold py-3 rounded-3 shadow-sm">
+                        <i class="fas fa-save me-2"></i>SIMPAN PERUBAHAN
                     </button>
                 </form>
             </div>
