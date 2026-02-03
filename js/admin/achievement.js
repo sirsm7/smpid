@@ -1,6 +1,7 @@
 /**
  * MODUL PENCAPAIAN (js/admin/achievement.js)
- * Fungsi: Menguruskan Tab Pencapaian V3 (CRUD, Filter Kad, Statistik)
+ * Fungsi: Menguruskan Tab Pencapaian V3 (CRUD, Filter Kad, Statistik, Carian)
+ * Kemaskini: Text Wrapping Diaktifkan (Tiada Truncate)
  */
 
 let pencapaianList = [];
@@ -146,11 +147,12 @@ function updateStatCards(dataToProcess) {
             else if (index === 2) medal = '<span class="medal-icon medal-3">3</span>';
             else medal = `<span class="fw-bold text-muted ps-2">${index + 1}</span>`;
 
+            // Updated: Text Wrap Enabled
             html += `
             <tr class="top-school-row" onclick="filterBySchoolFromTop5('${kod}')">
                 <td style="width: 40px;" class="text-center align-middle">${medal}</td>
                 <td class="align-middle">
-                    <div class="fw-bold text-dark small text-truncate" style="max-width: 180px;">${namaSekolah}</div>
+                    <div class="fw-bold text-dark small text-wrap">${namaSekolah}</div>
                     <div class="text-muted" style="font-size: 0.65rem;">${kod}</div>
                 </td>
                 <td class="text-end fw-bold text-primary align-middle pe-3">${count}</td>
@@ -169,6 +171,7 @@ function populateSekolahFilter(sourceData) {
         schoolCounts[item.kod_sekolah] = (schoolCounts[item.kod_sekolah] || 0) + 1;
     });
 
+    // PENTING: Susunan KOD SEKOLAH (A-Z) secara eksplisit
     const uniqueSchools = Object.keys(schoolCounts).sort();
     
     select.innerHTML = '<option value="ALL">SEMUA SEKOLAH</option>';
@@ -178,10 +181,11 @@ function populateSekolahFilter(sourceData) {
         if (kod === 'M030') label = 'PPD ALOR GAJAH (M030)';
         else {
             const ref = window.globalDashboardData?.find(s => s.kod_sekolah === kod);
-            if (ref) label = `${ref.nama_sekolah}`;
+            if (ref) label = `${ref.nama_sekolah}`; // Format Paparan: NAMA SEKOLAH
         }
         
         const count = schoolCounts[kod];
+        // Tambah jumlah rekod untuk rujukan admin
         label += ` (${count})`;
 
         const opt = document.createElement('option');
@@ -193,7 +197,13 @@ function populateSekolahFilter(sourceData) {
     if (uniqueSchools.includes(existingVal)) select.value = existingVal;
 }
 
-// --- FUNGSI TAPISAN KATEGORI & RESET ---
+// --- FUNGSI TAPISAN, CARIAN & RESET ---
+
+// Fungsi Baru: Carian Masa Nyata
+function handlePencapaianSearch(val) {
+    renderPencapaianTable();
+}
+
 function filterByKategori(kategori) {
     const select = document.getElementById('filterKategoriPencapaian');
     if(select) {
@@ -208,12 +218,13 @@ function resetPencapaianFilters() {
     document.getElementById('filterSekolahPencapaian').value = 'ALL';
     document.getElementById('filterTahunPencapaian').value = 'ALL';
     document.getElementById('filterKategoriPencapaian').value = 'ALL';
+    document.getElementById('searchPencapaianInput').value = ''; // Reset carian
     
     // 2. Reset Filter Kad
     currentCardFilter = 'ALL';
     updateCardVisuals();
 
-    // 3. Muat Semula Data (Ini akan trigger renderPencapaianTable juga)
+    // 3. Muat Semula Data
     loadMasterPencapaian();
     
     // 4. UI Feedback
@@ -267,6 +278,7 @@ function renderPencapaianTable() {
 
     const katFilter = document.getElementById('filterKategoriPencapaian').value;
     const sekFilter = document.getElementById('filterSekolahPencapaian').value;
+    const searchInput = document.getElementById('searchPencapaianInput').value.toUpperCase().trim();
 
     // 1. Tapis Sekolah dahulu (untuk updateStatCards)
     let baseData = pencapaianList.filter(item => {
@@ -274,7 +286,7 @@ function renderPencapaianTable() {
         return true;
     });
 
-    // Update Kad Statistik (Supaya kad kategori tunjuk jumlah yang betul sebelum ditapis kategori)
+    // Update Kad Statistik (sebelum ditapis carian/kategori)
     updateStatCards(baseData);
 
     // 2. Tapis Kategori
@@ -292,6 +304,20 @@ function renderPencapaianTable() {
                 return (item.jenis_rekod === 'PENSIJILAN' && item.penyedia === currentCardFilter);
             }
             return true;
+        });
+    }
+
+    // 4. Tapis Carian (SEARCH BAR LOGIC)
+    if (searchInput) {
+        filtered = filtered.filter(item => {
+            // Dapatkan nama sekolah penuh untuk carian
+            let namaSekolah = (item.kod_sekolah === 'M030') ? 'PPD ALOR GAJAH' : 
+                (window.globalDashboardData?.find(s => s.kod_sekolah === item.kod_sekolah)?.nama_sekolah || '');
+            
+            // Gabungkan semua medan relevan untuk carian
+            const searchTarget = `${item.kod_sekolah} ${namaSekolah}`.toUpperCase();
+            
+            return searchTarget.includes(searchInput);
         });
     }
 
@@ -329,12 +355,13 @@ function renderPencapaianTable() {
             displayPencapaian = `<span class="fw-bold text-success small">${item.pencapaian}</span>`;
         }
 
+        // Updated: Removed Truncate
         html += `
         <tr>
             <td class="fw-bold small">${item.kod_sekolah}</td>
-            <td class="small text-truncate" style="max-width: 180px;" title="${namaSekolah.replace(/<[^>]*>?/gm, '')}">${namaSekolah}</td>
+            <td class="small text-wrap" title="${namaSekolah.replace(/<[^>]*>?/gm, '')}">${namaSekolah}</td>
             <td class="text-center"><span class="badge ${badgeClass} shadow-sm" style="font-size: 0.7em">${item.kategori}</span></td>
-            <td><div class="fw-bold text-dark small text-truncate" style="max-width: 150px;" title="${item.nama_peserta}">${item.nama_peserta}</div></td>
+            <td><div class="fw-bold text-dark small text-wrap">${item.nama_peserta}</div></td>
             <td>${displayProgram}</td>
             <td class="text-center">${displayPencapaian}</td>
             <td class="text-center">
@@ -599,7 +626,7 @@ window.loadMasterPencapaian = loadMasterPencapaian;
 window.populateTahunFilter = populateTahunFilter;
 window.filterByCard = filterByCard;
 window.filterByKategori = filterByKategori;
-window.resetPencapaianFilters = resetPencapaianFilters; // Export baru
+window.resetPencapaianFilters = resetPencapaianFilters; 
 window.filterBySchoolFromTop5 = filterBySchoolFromTop5;
 window.renderPencapaianTable = renderPencapaianTable;
 window.openEditPencapaian = openEditPencapaian;
@@ -609,3 +636,4 @@ window.openModalPPD = openModalPPD;
 window.toggleKategoriPPD = toggleKategoriPPD;
 window.toggleJenisPencapaianPPD = toggleJenisPencapaianPPD;
 window.simpanPencapaianPPD = simpanPencapaianPPD;
+window.handlePencapaianSearch = handlePencapaianSearch;

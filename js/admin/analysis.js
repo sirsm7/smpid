@@ -1,6 +1,7 @@
 /**
  * MODUL ANALISA (js/admin/analysis.js)
  * Fungsi: Menguruskan Tab Analisa DCS & DELIMa (Charts & Tables)
+ * Kemaskini: Text Wrapping Diaktifkan (Tiada Truncate)
  */
 
 let dcsDataList = [];
@@ -135,16 +136,16 @@ function processDcsPanel(field) {
         }
     });
 
-    // Top 5 Table
+    // Top 5 Table (UPDATED: Remove Truncate)
     const top5 = [...schoolOnlyList]
         .sort((a,b) => (b[field]||0) - (a[field]||0))
         .slice(0, 5);
         
     const top5HTML = top5.map((d,i) => `
         <tr>
-            <td class="fw-bold">${i+1}</td>
-            <td class="text-truncate" style="max-width:140px" title="${d.nama_sekolah}">${d.nama_sekolah}</td>
-            <td class="text-end fw-bold text-primary">${d[field]?.toFixed(2) || '-'}</td>
+            <td class="fw-bold align-middle">${i+1}</td>
+            <td class="text-wrap align-middle" title="${d.nama_sekolah}">${d.nama_sekolah}</td>
+            <td class="text-end fw-bold text-primary align-middle">${d[field]?.toFixed(2) || '-'}</td>
         </tr>`).join('');
     document.getElementById('tableTopDcs').innerHTML = `<tbody>${top5HTML}</tbody>`;
 }
@@ -187,20 +188,21 @@ function processActivePanel(field) {
         }
     });
 
+    // Top 5 Table (UPDATED: Remove Truncate)
     const top5 = [...schoolOnlyList]
         .sort((a,b) => (b[field]||0) - (a[field]||0))
         .slice(0, 5);
 
     const top5HTML = top5.map((d,i) => `
         <tr>
-            <td class="fw-bold">${i+1}</td>
-            <td class="text-truncate" style="max-width:140px" title="${d.nama_sekolah}">${d.nama_sekolah}</td>
-            <td class="text-end fw-bold text-success">${d[field] || '-'}%</td>
+            <td class="fw-bold align-middle">${i+1}</td>
+            <td class="text-wrap align-middle" title="${d.nama_sekolah}">${d.nama_sekolah}</td>
+            <td class="text-end fw-bold text-success align-middle">${d[field] || '-'}%</td>
         </tr>`).join('');
     document.getElementById('tableTopActive').innerHTML = `<tbody>${top5HTML}</tbody>`;
 }
 
-// --- FUNGSI TABLE UTAMA ---
+// --- FUNGSI TABLE UTAMA (UPDATED: Remove Truncate) ---
 function renderAnalisaTable(currYear, prevYear) {
     const wrapper = document.getElementById('tableAnalisaBody');
     if (!wrapper) return;
@@ -246,7 +248,8 @@ function renderAnalisaTable(currYear, prevYear) {
         <tr>
             <td class="fw-bold text-secondary align-middle">${d.kod_sekolah}</td>
             <td class="align-middle">
-                <div class="text-truncate fw-bold text-dark" style="max-width: 250px;" title="${d.nama_sekolah}">${d.nama_sekolah}</div>
+                <!-- Text Wrap Enabled -->
+                <div class="text-wrap fw-bold text-dark" title="${d.nama_sekolah}">${d.nama_sekolah}</div>
             </td>
             <td class="text-center align-middle bg-light bg-opacity-25">
                 <div class="d-flex flex-column align-items-center">

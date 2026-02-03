@@ -99,7 +99,6 @@
                   </div>
                 </div>
                 
-                <!-- NEW SEARCH BAR -->
                 <div class="mb-3 position-relative">
                     <input type="text" id="adminSearchInput" class="form-control form-control-lg admin-search-bar" placeholder="Cari Nama Sekolah atau Kod..." oninput="handleSearch(this.value)">
                     <i class="fas fa-search position-absolute top-50 end-0 translate-middle-y me-3 text-muted"></i>
@@ -150,7 +149,7 @@
             </div>
           </div>
 
-          <!-- TAB 3: PENCAPAIAN -->
+          <!-- TAB 3: PENCAPAIAN (UPDATED) -->
           <div class="tab-pane fade" id="tab-pencapaian" role="tabpanel">
             <div class="card p-4 shadow-sm border-purple border-4 border-top">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
@@ -164,59 +163,25 @@
                         <div class="vr mx-1"></div>
                         <button onclick="openModalPPD()" class="btn btn-indigo btn-sm fw-bold shadow-sm text-nowrap"><i class="fas fa-plus-circle me-1"></i> Rekod PPD (M030)</button>
                         <div class="vr mx-1"></div>
+                        
+                        <!-- NEW SEARCH BAR & FILTERS -->
+                        <div class="input-group input-group-sm shadow-sm" style="width: 250px;">
+                            <span class="input-group-text bg-white border-primary text-primary"><i class="fas fa-search"></i></span>
+                            <input type="text" id="searchPencapaianInput" class="form-control border-primary fw-bold text-primary" placeholder="Cari Sekolah / Kod..." onkeyup="handlePencapaianSearch(this.value)">
+                        </div>
+
                         <select id="filterSekolahPencapaian" class="form-select form-select-sm fw-bold shadow-sm text-primary border-primary" style="max-width: 200px;" onchange="renderPencapaianTable()"><option value="ALL" selected>SEMUA SEKOLAH</option></select>
                         <select id="filterTahunPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="loadMasterPencapaian()"><option value="" disabled selected>Memuatkan...</option></select>
                         <select id="filterKategoriPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="renderPencapaianTable()"><option value="ALL" selected>SEMUA KATEGORI</option><option value="MURID">MURID</option><option value="GURU">GURU</option><option value="SEKOLAH">SEKOLAH</option><option value="PEGAWAI">PEGAWAI PPD</option><option value="PPD">UNIT PPD</option></select>
                     </div>
                 </div>
 
-                <!-- ROW BARU: KATEGORI SUMMARY (5 KAD) -->
                 <div class="row g-3 mb-3 justify-content-center">
-                    <!-- Kad Murid -->
-                    <div class="col-6 col-md-4">
-                        <div onclick="filterByKategori('MURID')" class="card bg-info bg-opacity-10 border-info border-start border-4 shadow-sm h-100 cursor-pointer hover-scale">
-                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                                <div><h6 class="fw-bold text-info mb-1" style="font-size: 0.8rem;">MURID</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalMurid">0</h2></div>
-                                <i class="fas fa-user-graduate fa-2x text-info opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Kad Guru -->
-                    <div class="col-6 col-md-4">
-                        <div onclick="filterByKategori('GURU')" class="card bg-warning bg-opacity-10 border-warning border-start border-4 shadow-sm h-100 cursor-pointer hover-scale">
-                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                                <div><h6 class="fw-bold text-warning mb-1 text-dark" style="font-size: 0.8rem;">GURU</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalGuru">0</h2></div>
-                                <i class="fas fa-chalkboard-teacher fa-2x text-warning opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Kad Sekolah -->
-                    <div class="col-6 col-md-4">
-                        <div onclick="filterByKategori('SEKOLAH')" class="card bg-success bg-opacity-10 border-success border-start border-4 shadow-sm h-100 cursor-pointer hover-scale">
-                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                                <div><h6 class="fw-bold text-success mb-1" style="font-size: 0.8rem;">SEKOLAH</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalSekolah">0</h2></div>
-                                <i class="fas fa-school fa-2x text-success opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Kad Pegawai PPD -->
-                    <div class="col-6 col-md-6">
-                        <div onclick="filterByKategori('PEGAWAI')" class="card bg-dark bg-opacity-10 border-dark border-start border-4 shadow-sm h-100 cursor-pointer hover-scale">
-                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                                <div><h6 class="fw-bold text-dark mb-1" style="font-size: 0.8rem;">PEGAWAI PPD</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalPegawai">0</h2></div>
-                                <i class="fas fa-user-tie fa-2x text-dark opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Kad Unit PPD -->
-                    <div class="col-6 col-md-6">
-                        <div onclick="filterByKategori('PPD')" class="card bg-primary bg-opacity-10 border-primary border-start border-4 shadow-sm h-100 cursor-pointer hover-scale">
-                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
-                                <div><h6 class="fw-bold text-primary mb-1" style="font-size: 0.8rem;">UNIT PPD</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalUnit">0</h2></div>
-                                <i class="fas fa-building fa-2x text-primary opacity-50"></i>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="col-6 col-md-4"><div onclick="filterByKategori('MURID')" class="card bg-info bg-opacity-10 border-info border-start border-4 shadow-sm h-100 cursor-pointer hover-scale"><div class="card-body p-3 d-flex justify-content-between align-items-center"><div><h6 class="fw-bold text-info mb-1" style="font-size: 0.8rem;">MURID</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalMurid">0</h2></div><i class="fas fa-user-graduate fa-2x text-info opacity-50"></i></div></div></div>
+                    <div class="col-6 col-md-4"><div onclick="filterByKategori('GURU')" class="card bg-warning bg-opacity-10 border-warning border-start border-4 shadow-sm h-100 cursor-pointer hover-scale"><div class="card-body p-3 d-flex justify-content-between align-items-center"><div><h6 class="fw-bold text-warning mb-1 text-dark" style="font-size: 0.8rem;">GURU</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalGuru">0</h2></div><i class="fas fa-chalkboard-teacher fa-2x text-warning opacity-50"></i></div></div></div>
+                    <div class="col-6 col-md-4"><div onclick="filterByKategori('SEKOLAH')" class="card bg-success bg-opacity-10 border-success border-start border-4 shadow-sm h-100 cursor-pointer hover-scale"><div class="card-body p-3 d-flex justify-content-between align-items-center"><div><h6 class="fw-bold text-success mb-1" style="font-size: 0.8rem;">SEKOLAH</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalSekolah">0</h2></div><i class="fas fa-school fa-2x text-success opacity-50"></i></div></div></div>
+                    <div class="col-6 col-md-6"><div onclick="filterByKategori('PEGAWAI')" class="card bg-dark bg-opacity-10 border-dark border-start border-4 shadow-sm h-100 cursor-pointer hover-scale"><div class="card-body p-3 d-flex justify-content-between align-items-center"><div><h6 class="fw-bold text-dark mb-1" style="font-size: 0.8rem;">PEGAWAI PPD</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalPegawai">0</h2></div><i class="fas fa-user-tie fa-2x text-dark opacity-50"></i></div></div></div>
+                    <div class="col-6 col-md-6"><div onclick="filterByKategori('PPD')" class="card bg-primary bg-opacity-10 border-primary border-start border-4 shadow-sm h-100 cursor-pointer hover-scale"><div class="card-body p-3 d-flex justify-content-between align-items-center"><div><h6 class="fw-bold text-primary mb-1" style="font-size: 0.8rem;">UNIT PPD</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalUnit">0</h2></div><i class="fas fa-building fa-2x text-primary opacity-50"></i></div></div></div>
                 </div>
 
                 <div class="row g-4 mb-4">
