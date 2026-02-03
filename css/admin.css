@@ -1,38 +1,54 @@
-/* --- ADMIN SPECIFIC LAYOUT --- */
-/* Layout khusus untuk admin.html sahaja */
+/* --- ADMIN SPECIFIC MODULES --- */
+/* Hanya mengandungi gaya untuk Admin Dashboard dan Laporan */
 
-/* HEADER */
-.header-bg {
-    background: linear-gradient(135deg, #198754 0%, #0d6efd 100%);
-    color: white; 
-    padding: 2.5rem 0; 
-    margin-bottom: -3rem; 
-    padding-bottom: 5rem;
+/* 1. SCHOOL GRID CARD (Dashboard Tab) */
+/* Kad kecil yang memaparkan status sekolah dalam grid */
+.school-card {
+    border: 1px solid rgba(0,0,0,0.05); 
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
-.main-container { 
-    margin-top: -2rem; 
+.school-card:hover { 
+    transform: translateY(-5px); 
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15); 
+    border-color: var(--bs-primary); 
+}
+.school-name { 
+    font-size: 0.85rem; 
+    font-weight: 700; 
+    color: #212529; 
+    line-height: 1.4; 
+    margin-bottom: 0.5rem; 
+}
+.status-badge { 
+    font-size: 0.7rem; 
+    padding: 4px 6px; 
+    border-radius: 20px; 
+    font-weight: 700; 
 }
 
-/* WHATSAPP ROW (DASHBOARD) */
+/* Bar Status Bawah (WhatsApp/Telegram Indicator) */
 .tele-status-row { 
     background-color: #f8f9fa; 
     border-top: 1px solid #eee; 
     padding: 0; 
     border-radius: 0 0 12px 12px; 
     font-size: 0.75rem; 
+    margin-top: auto; /* Tolak ke bawah */
 }
 .row-item { 
     display: flex; justify-content: space-between; align-items: center; 
 }
 
-/* TOP CONTRIBUTORS TABLE */
+/* 2. ANALYTICS TABLE (Analisa Tab) */
+/* Gaya untuk jadual Top 5 Sekolah */
 .top-school-row {
     transition: background-color 0.2s;
     cursor: pointer;
 }
-.top-school-row:hover {
-    background-color: #f8f9fa;
-}
+.top-school-row:hover { background-color: #f8f9fa; }
+
 .medal-icon {
     width: 24px; height: 24px;
     display: inline-flex; align-items: center; justify-content: center;
@@ -43,11 +59,11 @@
 .medal-2 { background-color: #C0C0C0; color: #4a4a4a; }
 .medal-3 { background-color: #CD7F32; color: #5a3a18; }
 
-/* CATEGORY HEADER */
+/* 3. SECTION HEADERS */
 .category-header { 
     font-weight: 700; 
     color: #495057; 
-    border-left: 4px solid #0d6efd; 
+    border-left: 4px solid var(--bs-primary); 
     padding-left: 10px; 
     margin-bottom: 15px; 
     margin-top: 20px; 

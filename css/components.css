@@ -1,102 +1,106 @@
-/* --- UI COMPONENTS --- */
-/* Mengandungi butang, kad, modal, badges dan elemen interaktif */
+/* --- UI COMPONENTS (GLOBAL KIT) --- */
+/* Mengandungi: Cards, Buttons, Badges, Modals, Inputs */
 
-/* CARDS */
+/* 1. KAD (CARDS) */
 .card { 
     border: none; 
-    border-radius: 12px; 
+    border-radius: var(--bs-border-radius-lg, 12px); 
     box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
-    transition: box-shadow 0.3s ease;
-}
-.border-top-primary { border-top: 4px solid #0d6efd !important; }
-.border-top-warning { border-top: 4px solid #ffc107 !important; }
-
-/* KAD SEKOLAH (Dashboard Grid) */
-.school-card {
-    transition: transform 0.2s, box-shadow 0.2s; 
-    cursor: pointer; 
-    height: 100%;
-    border: 1px solid rgba(0,0,0,0.05); 
-    background: white;
-}
-.school-card:hover { 
-    transform: translateY(-5px); 
-    box-shadow: 0 10px 20px rgba(0,0,0,0.15); 
-    border-color: #0d6efd; 
-}
-.school-name { 
-    font-size: 0.85rem; 
-    font-weight: 700; 
-    color: #212529; 
-    line-height: 1.4; 
-    margin-bottom: 0.5rem; 
-}
-.status-badge { 
-    font-size: 0.7rem; 
-    padding: 4px 6px; 
-    border-radius: 20px; 
-    font-weight: 700; 
+    transition: box-shadow 0.3s ease, transform 0.2s ease;
+    background-color: white;
 }
 
-/* BUTANG KHAS */
-.btn-indigo { 
-    background-color: #4b0082 !important; 
-    color: white !important; 
-    border: none; 
-}
-.btn-indigo:hover { 
-    background-color: #3a006b !important; 
-}
+/* Variasi Border Atas (Untuk Dashboard/Stats) */
+.border-top-primary { border-top: 4px solid var(--bs-primary) !important; }
+.border-top-warning { border-top: 4px solid var(--bs-warning) !important; }
+.border-top-success { border-top: 4px solid var(--bs-success) !important; }
+.border-top-danger { border-top: 4px solid var(--bs-danger) !important; }
 
-.btn-teal { 
-    background-color: #008080 !important; 
-    color: white !important; 
-    border: none; 
-}
-.btn-teal:hover { 
-    background-color: #006666 !important; 
-}
-
-.btn-hijau-aksi {
-    background-color: #2ecc71 !important; 
-    color: #000 !important; 
-    border: none;
-}
-.btn-hijau-aksi:hover {
-    background-color: #27ae60 !important; 
-}
-
-/* BUTTON MENU (USER) */
-.btn-menu { 
-    border-radius: 50px; 
-    font-weight: 600; 
-    text-transform: uppercase; 
-    letter-spacing: 0.5px; 
-}
+/* Menu Card (Untuk User Portal) */
 .menu-card { 
-    transition: all 0.3s ease; 
     height: 100%; 
-    cursor: default; 
+    cursor: pointer; 
+    transition: all 0.3s ease;
 }
 .menu-card:hover { 
     transform: translateY(-5px); 
     box-shadow: 0 10px 20px rgba(0,0,0,0.1); 
 }
 
-/* LOADING OVERLAY */
-#loadingOverlay {
-    position: fixed; 
-    top: 0; left: 0; 
-    width: 100%; height: 100%;
-    background: rgba(255,255,255,0.85); 
-    z-index: 9999;
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
-    backdrop-filter: blur(2px);
+/* Icon Box (Dalam Menu Card) */
+.icon-box { 
+    width: 80px; height: 80px; 
+    border-radius: 50%; 
+    display: flex; align-items: center; justify-content: center; 
+    margin: 0 auto 1.5rem; 
+    font-size: 2rem; 
+}
+.icon-ai { background-color: rgba(13, 110, 253, 0.1); color: var(--bs-primary); }
+.icon-school { background-color: rgba(25, 135, 84, 0.1); color: var(--bs-success); }
+.icon-gemini { background-color: rgba(111, 66, 193, 0.1); color: var(--color-purple); }
+
+/* 2. BUTANG (BUTTONS) */
+.btn-indigo { 
+    background-color: var(--color-indigo) !important; 
+    color: white !important; 
+    border: none; 
+}
+.btn-indigo:hover { background-color: #3a006b !important; }
+
+.btn-teal { 
+    background-color: var(--color-teal) !important; 
+    color: white !important; 
+    border: none; 
+}
+.btn-teal:hover { background-color: #006666 !important; }
+
+.btn-hijau-aksi {
+    background-color: #2ecc71 !important; 
+    color: #000 !important; 
+    border: none;
+}
+.btn-hijau-aksi:hover { background-color: #27ae60 !important; }
+
+/* Butang Menu Besar */
+.btn-menu { 
+    border-radius: 50px; 
+    font-weight: 600; 
+    text-transform: uppercase; 
+    letter-spacing: 0.5px; 
 }
 
-/* QUEUE MODAL (Tindakan Pantas) */
+/* 3. INTERAKTIF & FILTER */
+.filter-badge { 
+    opacity: 0.6; 
+    transform: scale(0.98); 
+    cursor: pointer; 
+    transition: all 0.2s;
+}
+.filter-badge.active { 
+    opacity: 1; 
+    transform: scale(1); 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15); 
+}
+
+/* Efek 'Selected' pada Kad Statistik */
+.card-active-filter {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2) !important;
+    border: 2px solid var(--bs-primary) !important;
+    position: relative;
+}
+.card-active-filter::after {
+    content: "\f00c"; /* FontAwesome Check */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    position: absolute; top: -10px; right: -10px;
+    background: var(--bs-primary); color: white;
+    width: 25px; height: 25px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; z-index: 10;
+}
+
+/* 4. MODAL KHAS (Queue/Action) */
 .queue-overlay { 
     position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
     background: rgba(0,0,0,0.85); z-index: 10000; 
@@ -104,7 +108,8 @@
 }
 .queue-card { 
     background: white; width: 90%; max-width: 500px; 
-    border-radius: 15px; padding: 2rem; position: relative; text-align: center; 
+    border-radius: 15px; padding: 2rem; 
+    position: relative; text-align: center; 
 }
 .btn-wa-big { 
     background: #25D366; color: white; border: none; 
@@ -113,33 +118,9 @@
     display: flex; align-items: center; justify-content: center; gap: 10px; 
     text-decoration: none; transition: 0.3s; 
 }
-.btn-wa-big:hover { 
-    background: #1ebc57; transform: scale(1.02); 
-}
+.btn-wa-big:hover { background: #1ebc57; transform: scale(1.02); color: white; }
 .btn-close-queue { 
     position: absolute; top: 10px; right: 15px; 
     background: none; border: none; font-size: 2rem; 
-    line-height: 1; color: #aaa; 
-}
-
-/* FILTER BADGES */
-.filter-badge { opacity: 0.6; transform: scale(0.98); cursor: pointer; }
-.filter-badge.active { opacity: 1; transform: scale(1); box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
-
-/* STATISTIK CARDS (Interactive) */
-.card-active-filter {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.2) !important;
-    border: 2px solid #0d6efd !important;
-    position: relative;
-}
-.card-active-filter::after {
-    content: "\f00c"; /* FontAwesome Check */
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
-    position: absolute; top: -10px; right: -10px;
-    background: #0d6efd; color: white;
-    width: 25px; height: 25px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.8rem; z-index: 10;
+    line-height: 1; color: #aaa; cursor: pointer;
 }
