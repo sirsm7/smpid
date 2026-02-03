@@ -1,0 +1,54 @@
+/* --- ADMIN SPECIFIC LAYOUT --- */
+/* Layout khusus untuk admin.html sahaja */
+
+/* HEADER */
+.header-bg {
+    background: linear-gradient(135deg, #198754 0%, #0d6efd 100%);
+    color: white; 
+    padding: 2.5rem 0; 
+    margin-bottom: -3rem; 
+    padding-bottom: 5rem;
+}
+.main-container { 
+    margin-top: -2rem; 
+}
+
+/* WHATSAPP ROW (DASHBOARD) */
+.tele-status-row { 
+    background-color: #f8f9fa; 
+    border-top: 1px solid #eee; 
+    padding: 0; 
+    border-radius: 0 0 12px 12px; 
+    font-size: 0.75rem; 
+}
+.row-item { 
+    display: flex; justify-content: space-between; align-items: center; 
+}
+
+/* TOP CONTRIBUTORS TABLE */
+.top-school-row {
+    transition: background-color 0.2s;
+    cursor: pointer;
+}
+.top-school-row:hover {
+    background-color: #f8f9fa;
+}
+.medal-icon {
+    width: 24px; height: 24px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    font-size: 0.8rem; font-weight: bold;
+}
+.medal-1 { background-color: #FFD700; color: #5c4d00; }
+.medal-2 { background-color: #C0C0C0; color: #4a4a4a; }
+.medal-3 { background-color: #CD7F32; color: #5a3a18; }
+
+/* CATEGORY HEADER */
+.category-header { 
+    font-weight: 700; 
+    color: #495057; 
+    border-left: 4px solid #0d6efd; 
+    padding-left: 10px; 
+    margin-bottom: 15px; 
+    margin-top: 20px; 
+}

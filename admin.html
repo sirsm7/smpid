@@ -14,20 +14,17 @@
   <!-- CSS Bootstrap & FontAwesome -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  <link href="css/style.css" rel="stylesheet">
   
-  <!-- Library JS: Supabase, SweetAlert2 & Chart.js -->
+  <!-- MODULAR CSS (NEW) -->
+  <link href="css/core.css" rel="stylesheet">
+  <link href="css/components.css" rel="stylesheet">
+  <link href="css/admin.css" rel="stylesheet">
+  
+  <!-- Library JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-
-  <!-- Custom Style untuk Butang PPD -->
-  <style>
-      .btn-indigo { background-color: #4b0082; color: white; border: none; }
-      .btn-indigo:hover { background-color: #3a006b; color: white; }
-  </style>
 </head>
 <body id="page-admin">
 
@@ -39,34 +36,24 @@
     </div>
   </div>
 
-  <!-- QUEUE MODAL (Untuk Tindakan Pantas WhatsApp) -->
+  <!-- QUEUE MODAL -->
   <div id="queueModal" class="queue-overlay hidden">
       <div class="queue-card">
           <button class="btn-close-queue" onclick="document.getElementById('queueModal').classList.add('hidden')" title="Tutup">&times;</button>
-          
           <div class="queue-progress fw-bold text-muted mb-3" id="qProgress">Sasaran 1 / 10</div>
-          <span class="badge bg-warning text-dark mb-3" id="qRoleBadge" style="font-size: 0.9em;">GPICT</span>
-          
+          <span class="badge bg-warning text-dark mb-3" id="qRoleBadge">GPICT</span>
           <h3 class="queue-school fw-bold mb-1" id="qSchoolName">SK CONTOH</h3>
           <p class="text-muted small mb-1" id="qCode">MBA0000</p>
           <div class="queue-person text-success fw-bold mb-4 fs-5" id="qPersonName">Cikgu Ali</div>
-          
           <div class="alert alert-light border small text-start mb-3 bg-light">
-              <i class="fas fa-info-circle me-1 text-primary"></i> 
-              Tekan butang hijau untuk buka WhatsApp Web dan hantar arahan pendaftaran bot.
+              <i class="fas fa-info-circle me-1 text-primary"></i> Tekan butang hijau untuk buka WhatsApp Web.
           </div>
-
           <a href="#" id="qWaBtn" target="_blank" class="btn-wa-big" onclick="setTimeout(nextQueue, 1500)">
               <i class="fab fa-whatsapp fa-lg"></i> Hantar Mesej
           </a>
-          
           <div class="d-flex gap-2">
-            <button class="btn btn-light border w-50" onclick="prevQueue()" id="btnPrev">
-                <i class="fas fa-chevron-left me-1"></i> Sebelum
-            </button>
-            <button class="btn btn-light border w-50" onclick="nextQueue()">
-                Seterusnya <i class="fas fa-chevron-right ms-1"></i>
-            </button>
+            <button class="btn btn-light border w-50" onclick="prevQueue()" id="btnPrev"><i class="fas fa-chevron-left me-1"></i> Sebelum</button>
+            <button class="btn btn-light border w-50" onclick="nextQueue()">Seterusnya <i class="fas fa-chevron-right ms-1"></i></button>
           </div>
       </div>
   </div>
@@ -89,424 +76,195 @@
 
         <!-- NAV TABS -->
         <ul class="nav nav-pills nav-fill mb-4 bg-white p-2 rounded shadow-sm" id="adminTabs" role="tablist">
-          <li class="nav-item" role="presentation">
-            <button class="nav-link active fw-bold" id="dashboard-tab" data-bs-toggle="pill" data-bs-target="#tab-dashboard" type="button" role="tab">
-                <i class="fas fa-tachometer-alt me-2"></i>Status Pendaftaran
-            </button>
-          </li>
-          
-          <!-- TAB 2: DCS & DELIMA -->
-          <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold" id="analisa-tab" data-bs-toggle="pill" data-bs-target="#tab-analisa" type="button" role="tab">
-                <i class="fas fa-chart-pie me-2"></i>Pencapaian DCS & DELIMa
-            </button>
-          </li>
-
-          <!-- TAB 3: PENCAPAIAN & KEMENJADIAN -->
-          <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold" id="pencapaian-tab" data-bs-toggle="pill" data-bs-target="#tab-pencapaian" type="button" role="tab">
-                <i class="fas fa-trophy me-2"></i>Pencapaian & Kemenjadian
-            </button>
-          </li>
-
-          <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold" id="email-tab" data-bs-toggle="pill" data-bs-target="#tab-email" type="button" role="tab">
-                <i class="fas fa-paper-plane me-2"></i>Email Blaster
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold" id="helpdesk-tab" data-bs-toggle="pill" data-bs-target="#tab-helpdesk" type="button" role="tab">
-                <i class="fas fa-headset me-2"></i>Helpdesk / Aduan
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold" id="admin-users-tab" data-bs-toggle="pill" data-bs-target="#tab-admin-users" type="button" role="tab">
-                <i class="fas fa-users-cog me-2"></i>Pengurusan Admin
-            </button>
-          </li>
+          <li class="nav-item"><button class="nav-link active fw-bold" id="dashboard-tab" data-bs-toggle="pill" data-bs-target="#tab-dashboard"><i class="fas fa-tachometer-alt me-2"></i>Status Pendaftaran</button></li>
+          <li class="nav-item"><button class="nav-link fw-bold" id="analisa-tab" data-bs-toggle="pill" data-bs-target="#tab-analisa"><i class="fas fa-chart-pie me-2"></i>Pencapaian DCS & DELIMa</button></li>
+          <li class="nav-item"><button class="nav-link fw-bold" id="pencapaian-tab" data-bs-toggle="pill" data-bs-target="#tab-pencapaian"><i class="fas fa-trophy me-2"></i>Pencapaian & Kemenjadian</button></li>
+          <li class="nav-item"><button class="nav-link fw-bold" id="email-tab" data-bs-toggle="pill" data-bs-target="#tab-email"><i class="fas fa-paper-plane me-2"></i>Email Blaster</button></li>
+          <li class="nav-item"><button class="nav-link fw-bold" id="helpdesk-tab" data-bs-toggle="pill" data-bs-target="#tab-helpdesk"><i class="fas fa-headset me-2"></i>Helpdesk / Aduan</button></li>
+          <li class="nav-item"><button class="nav-link fw-bold" id="admin-users-tab" data-bs-toggle="pill" data-bs-target="#tab-admin-users"><i class="fas fa-users-cog me-2"></i>Pengurusan Admin</button></li>
         </ul>
 
-        <!-- TAB CONTENT -->
         <div class="tab-content" id="adminTabsContent">
-          
-          <!-- TAB 1: DASHBOARD UTAMA -->
+          <!-- TAB 1: DASHBOARD -->
           <div class="tab-pane fade show active" id="tab-dashboard" role="tabpanel">
             <div id="dashboardCard" class="card p-4 shadow-sm border-top-primary border-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
-                  <div>
-                       <h5 class="mb-0 fw-bold text-primary">Pantau Pendaftaran</h5>
-                       <small class="text-muted">Senarai sekolah dan status pengisian</small>
-                  </div>
+                  <div><h5 class="mb-0 fw-bold text-primary">Pantau Pendaftaran</h5><small class="text-muted">Senarai sekolah dan status pengisian</small></div>
                   <div class="d-flex gap-2 flex-wrap">
-                    <button onclick="mulaTindakanPantas()" class="btn btn-success btn-sm fw-bold shadow-sm">
-                      <i class="fab fa-whatsapp me-1"></i> Modul Tindakan Pantas
-                    </button>
-                    <button onclick="janaSenaraiTelegram()" class="btn btn-warning btn-sm text-dark fw-bold shadow-sm">
-                      <i class="fab fa-telegram-plane me-1"></i> Copy List
-                    </button>
-                    <button onclick="eksportDataTapis()" class="btn btn-secondary btn-sm fw-bold text-white shadow-sm">
-                      <i class="fas fa-file-export me-1"></i> Eksport Paparan
-                    </button>
-                    <button onclick="keluarSistem()" class="btn btn-outline-danger btn-sm fw-bold">
-                        <i class="fas fa-sign-out-alt me-1"></i> Log Keluar
-                    </button>
+                    <button onclick="mulaTindakanPantas()" class="btn btn-success btn-sm fw-bold shadow-sm"><i class="fab fa-whatsapp me-1"></i> Modul Tindakan Pantas</button>
+                    <button onclick="janaSenaraiTelegram()" class="btn btn-warning btn-sm text-dark fw-bold shadow-sm"><i class="fab fa-telegram-plane me-1"></i> Copy List</button>
+                    <button onclick="eksportDataTapis()" class="btn btn-secondary btn-sm fw-bold text-white shadow-sm"><i class="fas fa-file-export me-1"></i> Eksport Paparan</button>
+                    <button onclick="keluarSistem()" class="btn btn-outline-danger btn-sm fw-bold"><i class="fas fa-sign-out-alt me-1"></i> Log Keluar</button>
                   </div>
                 </div>
-      
-                <!-- Filter Grid & Paparan Sekolah -->
                 <div class="mb-4" id="filterContainer"></div>
                 <div id="schoolGridWrapper"></div>
             </div>
           </div>
 
-          <!-- TAB 2: ANALISA DCS & DELIMA -->
+          <!-- TAB 2: ANALISA -->
           <div class="tab-pane fade" id="tab-analisa" role="tabpanel">
             <div class="card p-4 shadow-sm border-top border-dark border-4 bg-white">
-                
-                <!-- Header & Filter Tahun -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h5 class="fw-bold mb-0 text-dark">Laporan Pencapaian Daerah</h5>
-                        <small class="text-muted">Paparan Dua Lensa: Kualiti (DCS) & Kuantiti (DELIMa)</small>
-                    </div>
-                    <div>
-                        <!-- UPDATE: Dropdown Dinamik -->
-                        <select id="pilihTahunAnalisa" class="form-select form-select-sm fw-bold shadow-sm bg-light" onchange="updateDashboardAnalisa()">
-                            <option value="" disabled selected>Mengesan Data Tahun...</option>
-                        </select>
-                    </div>
+                    <div><h5 class="fw-bold mb-0 text-dark">Laporan Pencapaian Daerah</h5></div>
+                    <div><select id="pilihTahunAnalisa" class="form-select form-select-sm fw-bold shadow-sm bg-light" onchange="updateDashboardAnalisa()"><option value="" disabled selected>Mengesan Data...</option></select></div>
                 </div>
-
                 <div class="row g-4">
-                    
-                    <!-- KOLUM KIRI: LENSA KUALITI (DCS) -->
                     <div class="col-lg-6 border-end-lg">
                         <div class="p-2">
-                            <h6 class="text-primary fw-bold text-uppercase border-bottom pb-2 mb-3">
-                                <i class="fas fa-award me-2"></i>Lensa Kualiti: Skor DCS
-                            </h6>
-
-                            <!-- KPI Card DCS -->
-                            <div class="card border-0 bg-primary bg-opacity-10 mb-3 rounded-4">
-                                <div class="card-body text-center p-3">
-                                    <small class="text-primary fw-bold text-uppercase">Purata Skor Daerah</small>
-                                    <h1 class="display-4 fw-bold text-primary mb-0" id="kpiDcsScore">-</h1>
-                                    <span class="badge bg-primary px-3 py-2 rounded-pill mt-2" id="kpiDcsLabel">Memuatkan...</span>
-                                </div>
-                            </div>
-
-                            <!-- Carta DCS -->
-                            <div class="card border-0 shadow-sm rounded-4 mb-3 p-3">
-                                <h6 class="small fw-bold text-center text-muted mb-3">Pecahan Kategori Kompetensi</h6>
-                                <div style="height: 250px; position: relative;">
-                                    <canvas id="chartDcsDonut"></canvas>
-                                </div>
-                            </div>
-
-                            <!-- Top 5 DCS -->
-                            <div class="card border-0 shadow-sm rounded-4">
-                                <div class="card-header bg-primary text-white small fw-bold">
-                                    <i class="fas fa-star me-2"></i>5 Sekolah Terbaik (DCS)
-                                </div>
-                                <div class="table-responsive">
-                                    <table class="table table-sm table-hover mb-0 small" id="tableTopDcs">
-                                        <tbody><tr><td class="p-3 text-center">Memuatkan...</td></tr></tbody>
-                                    </table>
-                                </div>
-                            </div>
+                            <h6 class="text-primary fw-bold border-bottom pb-2 mb-3">Lensa Kualiti: Skor DCS</h6>
+                            <div class="card border-0 bg-primary bg-opacity-10 mb-3 rounded-4"><div class="card-body text-center p-3"><small class="text-primary fw-bold">PURATA SKOR DAERAH</small><h1 class="display-4 fw-bold text-primary mb-0" id="kpiDcsScore">-</h1><span class="badge bg-primary mt-2" id="kpiDcsLabel">Memuatkan...</span></div></div>
+                            <div class="card border-0 shadow-sm rounded-4 mb-3 p-3"><div style="height: 250px;"><canvas id="chartDcsDonut"></canvas></div></div>
+                            <div class="card border-0 shadow-sm rounded-4"><div class="card-header bg-primary text-white small fw-bold">5 Sekolah Terbaik (DCS)</div><div class="table-responsive"><table class="table table-sm table-hover mb-0 small" id="tableTopDcs"><tbody><tr><td class="p-3 text-center">Memuatkan...</td></tr></tbody></table></div></div>
                         </div>
                     </div>
-
-                    <!-- KOLUM KANAN: LENSA KUANTITI (DELIMa) -->
                     <div class="col-lg-6">
                         <div class="p-2">
-                            <h6 class="text-success fw-bold text-uppercase border-bottom pb-2 mb-3">
-                                <i class="fas fa-chart-line me-2"></i>Lensa Kuantiti: % Aktif
-                            </h6>
-
-                            <!-- KPI Card DELIMa -->
-                            <div class="card border-0 bg-success bg-opacity-10 mb-3 rounded-4">
-                                <div class="card-body text-center p-3">
-                                    <small class="text-success fw-bold text-uppercase">Purata % Aktif Daerah</small>
-                                    <h1 class="display-4 fw-bold text-success mb-0"><span id="kpiActiveScore">-</span>%</h1>
-                                    <span class="badge bg-success px-3 py-2 rounded-pill mt-2">Pencapaian Semasa</span>
-                                </div>
-                            </div>
-
-                            <!-- Carta DELIMa -->
-                            <div class="card border-0 shadow-sm rounded-4 mb-3 p-3">
-                                <h6 class="small fw-bold text-center text-muted mb-3">Taburan Tahap Penggunaan</h6>
-                                <div style="height: 250px; position: relative;">
-                                    <canvas id="chartActiveBar"></canvas>
-                                </div>
-                            </div>
-
-                            <!-- Top 5 Active -->
-                            <div class="card border-0 shadow-sm rounded-4">
-                                <div class="card-header bg-success text-white small fw-bold">
-                                    <i class="fas fa-fire me-2"></i>5 Sekolah Paling Aktif
-                                </div>
-                                <div class="table-responsive">
-                                    <table class="table table-sm table-hover mb-0 small" id="tableTopActive">
-                                        <tbody><tr><td class="p-3 text-center">Memuatkan...</td></tr></tbody>
-                                    </table>
-                                </div>
-                            </div>
+                            <h6 class="text-success fw-bold border-bottom pb-2 mb-3">Lensa Kuantiti: % Aktif</h6>
+                            <div class="card border-0 bg-success bg-opacity-10 mb-3 rounded-4"><div class="card-body text-center p-3"><small class="text-success fw-bold">PURATA % AKTIF DAERAH</small><h1 class="display-4 fw-bold text-success mb-0"><span id="kpiActiveScore">-</span>%</h1><span class="badge bg-success mt-2">Pencapaian Semasa</span></div></div>
+                            <div class="card border-0 shadow-sm rounded-4 mb-3 p-3"><div style="height: 250px;"><canvas id="chartActiveBar"></canvas></div></div>
+                            <div class="card border-0 shadow-sm rounded-4"><div class="card-header bg-success text-white small fw-bold">5 Sekolah Paling Aktif</div><div class="table-responsive"><table class="table table-sm table-hover mb-0 small" id="tableTopActive"><tbody><tr><td class="p-3 text-center">Memuatkan...</td></tr></tbody></table></div></div>
                         </div>
                     </div>
-
-                </div> <!-- End Row Split -->
-
-                <!-- JADUAL INDUK (FULL LIST) - UI RESTORED -->
+                </div>
                 <div class="mt-5">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold m-0 text-dark"><i class="fas fa-list me-2"></i>Data Terperinci Sekolah</h6>
+                        <h6 class="fw-bold m-0 text-dark">Data Terperinci Sekolah</h6>
                         <input type="text" id="searchAnalisa" class="form-control form-control-sm w-25" placeholder="Cari Sekolah..." onkeyup="filterAnalisaTable()">
                     </div>
                     <div class="table-responsive border rounded-3" style="max-height: 500px;">
                         <table class="table table-hover table-striped mb-0 small align-middle">
-                            <thead class="table-dark sticky-top">
-                                <tr>
-                                    <th style="width: 10%;">Kod</th>
-                                    <th style="width: 35%;">Nama Sekolah</th>
-                                    <th style="width: 25%;" class="text-center bg-primary bg-opacity-25">DCS <span id="lblYearDcs">-</span></th>
-                                    <th style="width: 20%;" class="text-center bg-success bg-opacity-25">% Aktif <span id="lblYearAktif">-</span></th>
-                                    <th style="width: 10%;" class="text-center">Tindakan</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableAnalisaBody">
-                                <tr><td colspan="5" class="text-center py-4">Memuatkan data...</td></tr>
-                            </tbody>
+                            <thead class="table-dark sticky-top"><tr><th style="width: 10%;">Kod</th><th style="width: 35%;">Nama Sekolah</th><th style="width: 25%;" class="text-center bg-primary bg-opacity-25">DCS <span id="lblYearDcs">-</span></th><th style="width: 20%;" class="text-center bg-success bg-opacity-25">% Aktif <span id="lblYearAktif">-</span></th><th style="width: 10%;" class="text-center">Tindakan</th></tr></thead>
+                            <tbody id="tableAnalisaBody"><tr><td colspan="5" class="text-center py-4">Memuatkan data...</td></tr></tbody>
                         </table>
                     </div>
                 </div>
-
             </div>
           </div>
 
-          <!-- TAB 3: PENCAPAIAN & KEMENJADIAN (MODUL V3 - MAJOR UPDATE) -->
+          <!-- TAB 3: PENCAPAIAN -->
           <div class="tab-pane fade" id="tab-pencapaian" role="tabpanel">
             <div class="card p-4 shadow-sm border-purple border-4 border-top">
-                
-                <!-- HEADER & FILTER -->
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
                     <div class="d-flex align-items-center">
-                         <!-- Butang Log Keluar Khas untuk PPD_UNIT -->
-                         <button id="btnLogoutUnitPPD" onclick="keluarSistem()" class="btn btn-outline-danger btn-sm fw-bold me-3 hidden">
-                            <i class="fas fa-sign-out-alt me-1"></i> Log Keluar
-                         </button>
-                         
-                         <!-- UPDATE: Butang Tukar Password Khas (PPD_UNIT) -->
-                         <button id="btnUbahPassUnitPPD" onclick="ubahKataLaluanSendiri()" class="btn btn-outline-warning text-dark btn-sm fw-bold me-3 hidden">
-                            <i class="fas fa-key me-1"></i> Tukar Password
-                         </button>
-
-                         <div>
-                            <h5 class="fw-bold mb-0 text-purple">Analisa Kemenjadian</h5>
-                            <small class="text-muted">Klik Kad Statistik untuk menapis data.</small>
-                         </div>
+                         <button id="btnLogoutUnitPPD" onclick="keluarSistem()" class="btn btn-outline-danger btn-sm fw-bold me-3 hidden"><i class="fas fa-sign-out-alt me-1"></i> Log Keluar</button>
+                         <button id="btnUbahPassUnitPPD" onclick="ubahKataLaluanSendiri()" class="btn btn-outline-warning text-dark btn-sm fw-bold me-3 hidden"><i class="fas fa-key me-1"></i> Tukar Password</button>
+                         <div><h5 class="fw-bold mb-0 text-purple">Analisa Kemenjadian</h5><small class="text-muted">Klik Kad Statistik untuk menapis data.</small></div>
                     </div>
-                    
                     <div class="d-flex gap-2 align-items-center flex-wrap">
-                        <!-- BUTTON REKOD PPD -->
-                        <button onclick="openModalPPD()" class="btn btn-indigo btn-sm fw-bold shadow-sm text-nowrap">
-                            <i class="fas fa-plus-circle me-1"></i> Rekod PPD (M030)
-                        </button>
-                        
+                        <button onclick="resetPencapaianFilters()" class="btn btn-light border shadow-sm fw-bold btn-sm text-secondary" title="Reset Semua Filter"><i class="fas fa-undo me-1"></i> Reset</button>
                         <div class="vr mx-1"></div>
-
-                        <!-- NEW: Dropdown Filter Sekolah (Bahagian Update) -->
-                        <select id="filterSekolahPencapaian" class="form-select form-select-sm fw-bold shadow-sm text-primary border-primary" style="max-width: 200px;" onchange="renderPencapaianTable()">
-                            <option value="ALL" selected>SEMUA SEKOLAH</option>
-                            <!-- Pilihan sekolah akan diisi oleh JS -->
-                        </select>
-
-                        <!-- Filter Tahun -->
-                        <select id="filterTahunPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="loadMasterPencapaian()">
-                            <option value="" disabled selected>Memuatkan...</option>
-                        </select>
-
-                        <!-- Filter Kategori -->
-                        <select id="filterKategoriPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="renderPencapaianTable()">
-                            <option value="ALL" selected>SEMUA KATEGORI</option>
-                            <option value="MURID">MURID</option>
-                            <option value="GURU">GURU</option>
-                            <option value="SEKOLAH">SEKOLAH</option>
-                            <option value="PEGAWAI">PEGAWAI PPD</option>
-                            <option value="PPD">UNIT PPD</option>
-                        </select>
+                        <button onclick="openModalPPD()" class="btn btn-indigo btn-sm fw-bold shadow-sm text-nowrap"><i class="fas fa-plus-circle me-1"></i> Rekod PPD (M030)</button>
+                        <div class="vr mx-1"></div>
+                        <select id="filterSekolahPencapaian" class="form-select form-select-sm fw-bold shadow-sm text-primary border-primary" style="max-width: 200px;" onchange="renderPencapaianTable()"><option value="ALL" selected>SEMUA SEKOLAH</option></select>
+                        <select id="filterTahunPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="loadMasterPencapaian()"><option value="" disabled selected>Memuatkan...</option></select>
+                        <select id="filterKategoriPencapaian" class="form-select form-select-sm fw-bold shadow-sm" onchange="renderPencapaianTable()"><option value="ALL" selected>SEMUA KATEGORI</option><option value="MURID">MURID</option><option value="GURU">GURU</option><option value="SEKOLAH">SEKOLAH</option><option value="PEGAWAI">PEGAWAI PPD</option><option value="PPD">UNIT PPD</option></select>
                     </div>
                 </div>
 
-                <!-- SECTION: TOP CONTRIBUTORS & KEY STATS (BARU) -->
+                <!-- ROW BARU: KATEGORI SUMMARY (5 KAD) -->
+                <div class="row g-3 mb-3 justify-content-center">
+                    <!-- Kad Murid -->
+                    <div class="col-6 col-md-4">
+                        <div onclick="filterByKategori('MURID')" class="card bg-info bg-opacity-10 border-info border-start border-4 shadow-sm h-100 cursor-pointer hover-scale">
+                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                                <div><h6 class="fw-bold text-info mb-1" style="font-size: 0.8rem;">MURID</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalMurid">0</h2></div>
+                                <i class="fas fa-user-graduate fa-2x text-info opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Kad Guru -->
+                    <div class="col-6 col-md-4">
+                        <div onclick="filterByKategori('GURU')" class="card bg-warning bg-opacity-10 border-warning border-start border-4 shadow-sm h-100 cursor-pointer hover-scale">
+                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                                <div><h6 class="fw-bold text-warning mb-1 text-dark" style="font-size: 0.8rem;">GURU</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalGuru">0</h2></div>
+                                <i class="fas fa-chalkboard-teacher fa-2x text-warning opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Kad Sekolah -->
+                    <div class="col-6 col-md-4">
+                        <div onclick="filterByKategori('SEKOLAH')" class="card bg-success bg-opacity-10 border-success border-start border-4 shadow-sm h-100 cursor-pointer hover-scale">
+                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                                <div><h6 class="fw-bold text-success mb-1" style="font-size: 0.8rem;">SEKOLAH</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalSekolah">0</h2></div>
+                                <i class="fas fa-school fa-2x text-success opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Kad Pegawai PPD -->
+                    <div class="col-6 col-md-6">
+                        <div onclick="filterByKategori('PEGAWAI')" class="card bg-dark bg-opacity-10 border-dark border-start border-4 shadow-sm h-100 cursor-pointer hover-scale">
+                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                                <div><h6 class="fw-bold text-dark mb-1" style="font-size: 0.8rem;">PEGAWAI PPD</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalPegawai">0</h2></div>
+                                <i class="fas fa-user-tie fa-2x text-dark opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Kad Unit PPD -->
+                    <div class="col-6 col-md-6">
+                        <div onclick="filterByKategori('PPD')" class="card bg-primary bg-opacity-10 border-primary border-start border-4 shadow-sm h-100 cursor-pointer hover-scale">
+                            <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                                <div><h6 class="fw-bold text-primary mb-1" style="font-size: 0.8rem;">UNIT PPD</h6><h2 class="fw-bold mb-0 text-dark" id="statTotalUnit">0</h2></div>
+                                <i class="fas fa-building fa-2x text-primary opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row g-4 mb-4">
-                    <!-- KIRI: KPI INTERAKTIF -->
                     <div class="col-lg-8">
                         <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <div id="card-KEBANGSAAN" onclick="filterByCard('KEBANGSAAN')" class="card bg-purple text-white h-100 border-0 shadow-sm rounded-4 cursor-pointer hover-scale transition-all">
-                                    <div class="card-body text-center p-3">
-                                        <h2 class="fw-bold mb-0 display-5" id="statKebangsaan">-</h2>
-                                        <small class="text-white-50 text-uppercase fw-bold">Peringkat Kebangsaan</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                 <div id="card-ANTARABANGSA" onclick="filterByCard('ANTARABANGSA')" class="card bg-orange text-white h-100 border-0 shadow-sm rounded-4 cursor-pointer hover-scale transition-all">
-                                    <div class="card-body text-center p-3">
-                                        <h2 class="fw-bold mb-0 display-5" id="statAntarabangsa">-</h2>
-                                        <small class="text-white-50 text-uppercase fw-bold">Antarabangsa / Pensijilan</small>
-                                    </div>
-                                </div>
-                            </div>
+                            <div class="col-md-6"><div id="card-KEBANGSAAN" onclick="filterByCard('KEBANGSAAN')" class="card bg-purple text-white h-100 border-0 shadow-sm rounded-4 cursor-pointer hover-scale"><div class="card-body text-center p-3"><h2 class="fw-bold mb-0 display-5" id="statKebangsaan">-</h2><small class="text-white-50 text-uppercase fw-bold">Peringkat Kebangsaan</small></div></div></div>
+                            <div class="col-md-6"><div id="card-ANTARABANGSA" onclick="filterByCard('ANTARABANGSA')" class="card bg-orange text-white h-100 border-0 shadow-sm rounded-4 cursor-pointer hover-scale"><div class="card-body text-center p-3"><h2 class="fw-bold mb-0 display-5" id="statAntarabangsa">-</h2><small class="text-white-50 text-uppercase fw-bold">Antarabangsa / Pensijilan</small></div></div></div>
                         </div>
-                        
                         <div class="row g-2">
-                            <div class="col-6 col-md-3">
-                                <div id="card-GOOGLE" onclick="filterByCard('GOOGLE')" class="card border-0 shadow-sm h-100 bg-google-sub border-google border-start border-3 cursor-pointer hover-scale">
-                                    <div class="card-body p-2 text-center">
-                                        <h4 class="fw-bold mb-0 text-google" id="statGoogle">-</h4>
-                                        <small class="fw-bold text-muted" style="font-size: 0.65rem;">GOOGLE</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <div id="card-APPLE" onclick="filterByCard('APPLE')" class="card border-0 shadow-sm h-100 bg-apple-sub border-apple border-start border-3 cursor-pointer hover-scale">
-                                    <div class="card-body p-2 text-center">
-                                        <h4 class="fw-bold mb-0 text-apple" id="statApple">-</h4>
-                                        <small class="fw-bold text-muted" style="font-size: 0.65rem;">APPLE</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-3">
-                                 <div id="card-MICROSOFT" onclick="filterByCard('MICROSOFT')" class="card border-0 shadow-sm h-100 bg-microsoft-sub border-microsoft border-start border-3 cursor-pointer hover-scale">
-                                    <div class="card-body p-2 text-center">
-                                        <h4 class="fw-bold mb-0 text-microsoft" id="statMicrosoft">-</h4>
-                                        <small class="fw-bold text-muted" style="font-size: 0.65rem;">MICROSOFT</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-3">
-                                <div id="card-LAIN-LAIN" onclick="filterByCard('LAIN-LAIN')" class="card border-0 shadow-sm h-100 bg-light border-secondary border-start border-3 cursor-pointer hover-scale">
-                                   <div class="card-body p-2 text-center">
-                                       <h4 class="fw-bold mb-0 text-dark" id="statLain">-</h4>
-                                       <small class="fw-bold text-muted" style="font-size: 0.65rem;">LAIN-LAIN</small>
-                                   </div>
-                               </div>
-                           </div>
+                            <div class="col-6 col-md-3"><div id="card-GOOGLE" onclick="filterByCard('GOOGLE')" class="card border-0 shadow-sm h-100 bg-google-sub border-google border-start border-3 cursor-pointer hover-scale"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-google" id="statGoogle">-</h4><small class="fw-bold text-muted">GOOGLE</small></div></div></div>
+                            <div class="col-6 col-md-3"><div id="card-APPLE" onclick="filterByCard('APPLE')" class="card border-0 shadow-sm h-100 bg-apple-sub border-apple border-start border-3 cursor-pointer hover-scale"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-apple" id="statApple">-</h4><small class="fw-bold text-muted">APPLE</small></div></div></div>
+                            <div class="col-6 col-md-3"><div id="card-MICROSOFT" onclick="filterByCard('MICROSOFT')" class="card border-0 shadow-sm h-100 bg-microsoft-sub border-microsoft border-start border-3 cursor-pointer hover-scale"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-microsoft" id="statMicrosoft">-</h4><small class="fw-bold text-muted">MICROSOFT</small></div></div></div>
+                            <div class="col-6 col-md-3"><div id="card-LAIN-LAIN" onclick="filterByCard('LAIN-LAIN')" class="card border-0 shadow-sm h-100 bg-light border-secondary border-start border-3 cursor-pointer hover-scale"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-dark" id="statLain">-</h4><small class="fw-bold text-muted">LAIN-LAIN</small></div></div></div>
                         </div>
                     </div>
-
-                    <!-- KANAN: TOP CONTRIBUTORS TABLE (BARU) -->
                     <div class="col-lg-4">
                         <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
-                            <div class="card-header bg-dark text-white small fw-bold py-2 d-flex justify-content-between align-items-center">
-                                <span><i class="fas fa-medal me-2 text-warning"></i>5 Sekolah Paling Aktif</span>
-                                <span class="badge bg-white text-dark rounded-pill" id="totalRecordsBadge">0 Rekod</span>
-                            </div>
-                            <div class="table-responsive h-100 bg-white">
-                                <table class="table table-sm table-hover mb-0 small align-middle" id="tableTopContributors">
-                                    <tbody class="text-secondary">
-                                        <tr><td class="text-center p-4">Mengira data...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                            <div class="card-header bg-dark text-white small fw-bold py-2 d-flex justify-content-between align-items-center"><span><i class="fas fa-medal me-2 text-warning"></i>5 Sekolah Paling Aktif</span><span class="badge bg-white text-dark rounded-pill" id="totalRecordsBadge">0 Rekod</span></div>
+                            <div class="table-responsive h-100 bg-white"><table class="table table-sm table-hover mb-0 small align-middle" id="tableTopContributors"><tbody class="text-secondary"><tr><td class="text-center p-4">Mengira data...</td></tr></tbody></table></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- MASTER TABLE -->
                 <div class="d-flex justify-content-between align-items-end mb-2">
                     <h6 class="fw-bold text-secondary mb-0"><i class="fas fa-database me-2"></i>Senarai Penuh Pencapaian <span id="labelCurrentFilter" class="text-primary small ms-2 fw-normal"></span></h6>
                     <button class="btn btn-sm btn-link text-decoration-none text-muted" onclick="loadMasterPencapaian()"><i class="fas fa-sync-alt"></i> Refresh</button>
                 </div>
-                
                 <div class="table-responsive border rounded-3" style="max-height: 600px; background: white;">
                     <table class="table table-hover table-striped table-bordered align-middle small mb-0">
-                        <thead class="table-dark sticky-top">
-                            <tr>
-                                <th style="width: 8%;">Kod</th>
-                                <th style="width: 20%;">Nama Sekolah / PPD</th>
-                                <th style="width: 8%;" class="text-center">Kategori</th>
-                                <th style="width: 20%;">Nama Peserta</th>
-                                <th style="width: 15%;">Pertandingan / Sijil</th>
-                                <!-- HEADER TARAF DIBUANG UNTUK SELARASKAN DENGAN JS -->
-                                <th style="width: 10%;" class="text-center">Pencapaian</th>
-                                <th style="width: 5%;" class="text-center">Bukti</th>
-                                <th style="width: 8%;" class="text-center">Tindakan</th> <!-- Lajur Lebar untuk Edit/Delete -->
-                            </tr>
-                        </thead>
-                        <tbody id="tbodyPencapaianMaster">
-                            <tr><td colspan="8" class="text-center py-5 text-muted">Sila pilih filter untuk memuatkan data...</td></tr>
-                        </tbody>
+                        <thead class="table-dark sticky-top"><tr><th style="width: 8%;">Kod</th><th style="width: 20%;">Nama Sekolah / PPD</th><th style="width: 8%;" class="text-center">Kategori</th><th style="width: 20%;">Nama Peserta</th><th style="width: 15%;">Pertandingan / Sijil</th><th style="width: 10%;" class="text-center">Pencapaian</th><th style="width: 5%;" class="text-center">Bukti</th><th style="width: 8%;" class="text-center">Tindakan</th></tr></thead>
+                        <tbody id="tbodyPencapaianMaster"><tr><td colspan="8" class="text-center py-5 text-muted">Sila pilih filter untuk memuatkan data...</td></tr></tbody>
                     </table>
                 </div>
-
             </div>
           </div>
 
           <!-- TAB 4: EMAIL BLASTER -->
           <div class="tab-pane fade" id="tab-email" role="tabpanel">
             <div class="card p-4 shadow-sm border-top-warning border-4">
-                <div class="card-body p-0">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-3">
-                        <div>
-                            <h5 class="fw-bold text-dark mb-1"><i class="fas fa-filter me-2"></i>Kriteria Penerima</h5>
-                        </div>
-                        <div class="d-flex gap-3 align-items-center flex-wrap">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="checkGpict" checked onchange="generateList()">
-                                <label class="form-check-label fw-bold" for="checkGpict">GPICT</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="checkAdmin" checked onchange="generateList()">
-                                <label class="form-check-label fw-bold" for="checkAdmin">Admin DELIMa</label>
-                            </div>
-                            <select id="statusFilter" class="form-select form-select-sm" style="width: auto;" onchange="generateList()">
-                                <option value="all">Semua Status</option>
-                                <option value="unregistered" selected>Belum Daftar Bot (Target)</option>
-                                <option value="registered">Sudah Daftar Bot</option>
-                            </select>
-                        </div>
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-3">
+                    <div><h5 class="fw-bold text-dark mb-1"><i class="fas fa-filter me-2"></i>Kriteria Penerima</h5></div>
+                    <div class="d-flex gap-3 align-items-center flex-wrap">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="checkGpict" checked onchange="generateList()"><label class="form-check-label fw-bold" for="checkGpict">GPICT</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="checkAdmin" checked onchange="generateList()"><label class="form-check-label fw-bold" for="checkAdmin">Admin DELIMa</label></div>
+                        <select id="statusFilter" class="form-select form-select-sm" style="width: auto;" onchange="generateList()"><option value="all">Semua Status</option><option value="unregistered" selected>Belum Daftar Bot (Target)</option><option value="registered">Sudah Daftar Bot</option></select>
                     </div>
-
-                    <div class="mb-4">
-                        <div class="d-flex justify-content-between mb-2">
-                            <label class="fw-bold small text-muted">HASIL (<span id="countEmail">0</span> Penerima)</label>
-                            <button class="btn btn-sm btn-outline-secondary py-0" onclick="copyEmails()">
-                                <i class="fas fa-copy me-1"></i> Salin
-                            </button>
-                        </div>
-                        <textarea id="emailOutput" class="form-control email-box mb-2" rows="3" readonly placeholder="Senarai emel..."></textarea>
-                    </div>
-
-                    <div class="bg-light p-3 rounded border">
-                        <h6 class="fw-bold text-success mb-3"><i class="fas fa-pen-fancy me-2"></i>Draf Mesej</h6>
-                        <div class="mb-2">
-                            <input type="text" class="form-control fw-bold form-control-sm" id="msgSubject" value="[TINDAKAN] Pengesahan Pendaftaran Sistem SMPID">
-                        </div>
-                        <div class="mb-3">
-                            <textarea class="form-control form-control-sm" id="msgBody" rows="6">Salam Sejahtera Tuan/Puan,
-
-Mohon kerjasama Tuan/Puan selaku GPICT/Admin DELIMa sekolah untuk mengesahkan peranan anda dalam sistem SMPID melalui Bot Telegram rasmi kami.
-
-Sila ikuti langkah berikut:
-1. Klik pautan bot: https://t.me/smpid_bot
-2. Tekan butang 'Start' atau hantar /start
-3. Masukkan KOD SEKOLAH anda.
-4. Pilih butang peranan yang betul.
-
-Kerjasama Tuan/Puan amat dihargai.
-Sekian, terima kasih.
-
-Unit Sumber Teknologi Pendidikan,
-PPD Alor Gajah.</textarea>
-                        </div>
-                        <div class="d-flex justify-content-end gap-2">
-                            <button class="btn btn-sm btn-outline-primary" onclick="copyTemplate()">Salin Isi</button>
-                            <a id="mailtoLink" href="#" class="btn btn-sm btn-primary fw-bold"><i class="fas fa-paper-plane me-1"></i> Buka Emel</a>
-                        </div>
-                    </div>
+                </div>
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-2"><label class="fw-bold small text-muted">HASIL (<span id="countEmail">0</span> Penerima)</label><button class="btn btn-sm btn-outline-secondary py-0" onclick="copyEmails()"><i class="fas fa-copy me-1"></i> Salin</button></div>
+                    <textarea id="emailOutput" class="form-control mb-2" rows="3" readonly placeholder="Senarai emel..."></textarea>
+                </div>
+                <div class="bg-light p-3 rounded border">
+                    <h6 class="fw-bold text-success mb-3"><i class="fas fa-pen-fancy me-2"></i>Draf Mesej</h6>
+                    <div class="mb-2"><input type="text" class="form-control fw-bold form-control-sm" id="msgSubject" value="[TINDAKAN] Pengesahan Pendaftaran Sistem SMPID"></div>
+                    <div class="mb-3"><textarea class="form-control form-control-sm" id="msgBody" rows="6">Salam Sejahtera Tuan/Puan,\n\nMohon kerjasama Tuan/Puan selaku GPICT/Admin DELIMa sekolah untuk mengesahkan peranan anda dalam sistem SMPID melalui Bot Telegram rasmi kami.\n\nSila ikuti langkah berikut:\n1. Klik pautan bot: https://t.me/smpid_bot\n2. Tekan butang 'Start' atau hantar /start\n3. Masukkan KOD SEKOLAH anda.\n4. Pilih butang peranan yang betul.\n\nKerjasama Tuan/Puan amat dihargai.\nSekian, terima kasih.\n\nUnit Sumber Teknologi Pendidikan,\nPPD Alor Gajah.</textarea></div>
+                    <div class="d-flex justify-content-end gap-2"><button class="btn btn-sm btn-outline-primary" onclick="copyTemplate()">Salin Isi</button><a id="mailtoLink" href="#" class="btn btn-sm btn-primary fw-bold"><i class="fas fa-paper-plane me-1"></i> Buka Emel</a></div>
                 </div>
             </div>
           </div>
@@ -515,76 +273,35 @@ PPD Alor Gajah.</textarea>
           <div class="tab-pane fade" id="tab-helpdesk" role="tabpanel">
             <div class="card p-4 shadow-sm border-top border-danger border-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
-                    <div>
-                         <h5 class="mb-0 fw-bold text-danger">Helpdesk & Aduan</h5>
-                         <small class="text-muted">Senarai tiket masuk daripada sekolah</small>
-                    </div>
-                    <div>
-                        <select id="filterTiketAdmin" class="form-select form-select-sm" onchange="loadTiketAdmin()">
-                            <option value="ALL">Semua Tiket</option>
-                            <option value="DALAM PROSES" selected>Dalam Proses (Belum Selesai)</option>
-                            <option value="SELESAI">Selesai</option>
-                        </select>
-                    </div>
+                    <div><h5 class="mb-0 fw-bold text-danger">Helpdesk & Aduan</h5><small class="text-muted">Senarai tiket masuk</small></div>
+                    <div><select id="filterTiketAdmin" class="form-select form-select-sm" onchange="loadTiketAdmin()"><option value="ALL">Semua Tiket</option><option value="DALAM PROSES" selected>Dalam Proses</option><option value="SELESAI">Selesai</option></select></div>
                 </div>
-                
-                <div id="adminTiketWrapper">
-                    <div class="text-center text-muted">Memuatkan...</div>
-                </div>
+                <div id="adminTiketWrapper"><div class="text-center text-muted">Memuatkan...</div></div>
             </div>
           </div>
 
-          <!-- TAB 6: PENGURUSAN ADMIN -->
+          <!-- TAB 6: ADMIN USERS -->
           <div class="tab-pane fade" id="tab-admin-users" role="tabpanel">
             <div class="card p-4 shadow-sm border-top border-dark border-4">
-                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
-                    <div>
-                         <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-users-cog me-2"></i>Pengurusan Akses Admin</h5>
-                         <small class="text-muted">Tambah atau buang akses pentadbir sistem (Kod: M030)</small>
-                    </div>
-                </div>
-                
-                <!-- Borang Tambah Admin (UPDATED) -->
+                <h5 class="mb-3 fw-bold text-dark"><i class="fas fa-users-cog me-2"></i>Pengurusan Akses Admin</h5>
                 <div class="bg-light p-3 rounded mb-4 border">
-                    <h6 class="fw-bold mb-3">Tambah Admin / Pegawai Baru</h6>
+                    <h6 class="fw-bold mb-3">Tambah Admin Baru</h6>
                     <div class="row g-2 align-items-end">
-                        <div class="col-md-4">
-                            <label class="small fw-bold text-muted">Emel Pengguna</label>
-                            <input type="email" id="inputNewAdminEmail" class="form-control" placeholder="nama@moe.gov.my">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="small fw-bold text-muted">Peranan</label>
-                            <select id="inputNewAdminRole" class="form-select">
-                                <option value="ADMIN">ADMIN (Akses Penuh)</option>
-                                <option value="PPD_UNIT">UNIT PPD (Pencapaian Sahaja)</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="small fw-bold text-muted">Kata Laluan</label>
-                            <input type="text" id="inputNewAdminPass" class="form-control" placeholder="Kata laluan">
-                        </div>
-                        <div class="col-md-2">
-                            <button onclick="tambahAdmin()" class="btn btn-dark w-100 fw-bold">
-                                <i class="fas fa-plus me-1"></i> Tambah
-                            </button>
-                        </div>
+                        <div class="col-md-4"><label class="small fw-bold text-muted">Emel Pengguna</label><input type="email" id="inputNewAdminEmail" class="form-control" placeholder="nama@moe.gov.my"></div>
+                        <div class="col-md-3"><label class="small fw-bold text-muted">Peranan</label><select id="inputNewAdminRole" class="form-select"><option value="ADMIN">ADMIN (Akses Penuh)</option><option value="PPD_UNIT">UNIT PPD (Pencapaian Sahaja)</option></select></div>
+                        <div class="col-md-3"><label class="small fw-bold text-muted">Kata Laluan</label><input type="text" id="inputNewAdminPass" class="form-control" placeholder="Kata laluan"></div>
+                        <div class="col-md-2"><button onclick="tambahAdmin()" class="btn btn-dark w-100 fw-bold"><i class="fas fa-plus me-1"></i> Tambah</button></div>
                     </div>
                 </div>
-
-                <!-- Senarai Admin -->
                 <h6 class="fw-bold mt-4 mb-3">Senarai Admin Semasa</h6>
-                <div id="adminListWrapper" class="table-responsive">
-                    <div class="text-center text-muted">Memuatkan...</div>
-                </div>
+                <div id="adminListWrapper" class="table-responsive"><div class="text-center text-muted">Memuatkan...</div></div>
             </div>
           </div>
 
         </div> <!-- End Tab Content -->
 
         <div class="text-center mt-5">
-            <button id="btnMainLogout" onclick="keluarSistem()" class="btn btn-outline-danger btn-sm">
-                <i class="fas fa-sign-out-alt me-2"></i>Log Keluar Admin
-            </button>
+            <button id="btnMainLogout" onclick="keluarSistem()" class="btn btn-outline-danger btn-sm"><i class="fas fa-sign-out-alt me-2"></i>Log Keluar Admin</button>
         </div>
 
       </div>
@@ -595,206 +312,62 @@ PPD Alor Gajah.</textarea>
   <div class="modal fade" id="modalEditDcs" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-header bg-primary text-white">
-                <h6 class="modal-title fw-bold">Kemaskini Data <span id="modalDcsYearTitle"></span></h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
+            <div class="modal-header bg-primary text-white"><h6 class="modal-title fw-bold">Kemaskini Data <span id="modalDcsYearTitle"></span></h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
             <div class="modal-body p-4">
                 <form id="formEditDcs" onsubmit="event.preventDefault(); simpanDcs();">
                     <input type="hidden" id="editKodSekolah">
-                    
-                    <div class="mb-3">
-                        <label class="form-label small text-muted fw-bold">NAMA SEKOLAH</label>
-                        <input type="text" id="displayEditNama" class="form-control bg-light fw-bold text-dark" readonly>
-                    </div>
-
+                    <div class="mb-3"><label class="form-label small text-muted fw-bold">NAMA SEKOLAH</label><input type="text" id="displayEditNama" class="form-control bg-light fw-bold text-dark" readonly></div>
                     <div class="row g-3">
-                        <div class="col-6">
-                            <label class="form-label small text-primary fw-bold">SKOR DCS <span class="year-label"></span></label>
-                            <input type="number" step="0.01" min="0" max="5" id="editDcsVal" class="form-control fw-bold border-primary" placeholder="0.00 - 5.00">
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label small text-success fw-bold">% AKTIF <span class="year-label"></span></label>
-                            <input type="number" step="1" min="0" max="100" id="editAktifVal" class="form-control fw-bold border-success" placeholder="0 - 100">
-                        </div>
+                        <div class="col-6"><label class="form-label small text-primary fw-bold">SKOR DCS <span class="year-label"></span></label><input type="number" step="0.01" min="0" max="5" id="editDcsVal" class="form-control fw-bold border-primary"></div>
+                        <div class="col-6"><label class="form-label small text-success fw-bold">% AKTIF <span class="year-label"></span></label><input type="number" step="1" min="0" max="100" id="editAktifVal" class="form-control fw-bold border-success"></div>
                     </div>
-
-                    <div class="mt-4 d-grid">
-                        <button type="submit" class="btn btn-primary fw-bold">
-                            <i class="fas fa-save me-2"></i> SIMPAN PERUBAHAN
-                        </button>
-                    </div>
+                    <div class="mt-4 d-grid"><button type="submit" class="btn btn-primary fw-bold">SIMPAN PERUBAHAN</button></div>
                 </form>
             </div>
         </div>
     </div>
   </div>
 
-  <!-- MODAL REKOD PPD (NEW: FIXED NO REQUIRED) -->
+  <!-- MODAL REKOD PPD -->
   <div class="modal fade" id="modalRekodPPD" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-header bg-indigo text-white" style="background-color: #4b0082;">
-                <h6 class="modal-title fw-bold"><i class="fas fa-plus-circle me-2"></i>Rekod Pencapaian PPD</h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
+            <div class="modal-header bg-indigo text-white" style="background-color: #4b0082;"><h6 class="modal-title fw-bold">Rekod Pencapaian PPD</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
             <div class="modal-body p-4">
                 <form id="formPencapaianPPD" onsubmit="event.preventDefault(); simpanPencapaianPPD();">
                     <input type="hidden" id="ppdInputJenisRekod" value="PERTANDINGAN">
-                    
-                    <!-- Pilihan Kategori PPD -->
-                    <div class="mb-3 text-center">
-                        <div class="btn-group w-100 shadow-sm" role="group">
-                            <input type="radio" class="btn-check" name="radKatPPD" id="radPegawai" value="PEGAWAI" checked onchange="toggleKategoriPPD()">
-                            <label class="btn btn-outline-dark fw-bold" for="radPegawai">PEGAWAI</label>
-
-                            <input type="radio" class="btn-check" name="radKatPPD" id="radUnit" value="PPD" onchange="toggleKategoriPPD()">
-                            <label class="btn btn-outline-dark fw-bold" for="radUnit">UNIT / SEKTOR</label>
-                        </div>
-                    </div>
-
-                    <!-- Pilihan Jenis Rekod -->
-                    <div class="mb-3 text-center">
-                        <div class="btn-group w-100 shadow-sm" role="group">
-                            <input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPertandingan" checked onchange="toggleJenisPencapaianPPD()">
-                            <label class="btn btn-outline-primary fw-bold" for="radPpdPertandingan">PERTANDINGAN</label>
-
-                            <input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPensijilan" onchange="toggleJenisPencapaianPPD()">
-                            <label class="btn btn-outline-warning fw-bold text-dark" for="radPpdPensijilan">PENSIJILAN</label>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted">ORGANISASI</label>
-                        <input type="text" class="form-control bg-light fw-bold text-dark" value="PEJABAT PENDIDIKAN DAERAH ALOR GAJAH" readonly disabled>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted" id="lblPpdNamaPeserta">NAMA PEGAWAI</label>
-                        <input type="text" id="ppdInputNama" class="form-control uppercase-input fw-bold" placeholder="Taip nama penuh..." oninput="this.value = this.value.toUpperCase()">
-                    </div>
-
-                    <!-- Input Penyedia (Hidden by Default) -->
-                    <div id="divPpdPenyedia" class="mb-3 hidden">
-                        <label class="form-label small fw-bold text-muted text-warning">PENYEDIA / JENAMA</label>
-                        <select id="ppdInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning">
-                            <option value="LAIN-LAIN" selected>LAIN-LAIN</option>
-                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
-                            <option value="APPLE">APPLE EDUCATION</option>
-                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted" id="lblPpdProgram">NAMA PERTANDINGAN</label>
-                        <input type="text" id="ppdInputProgram" class="form-control uppercase-input" placeholder="Contoh: DIGITAL COMPETENCY 2025" oninput="this.value = this.value.toUpperCase()">
-                    </div>
-
-                    <div class="row g-2 mb-3" id="rowPpdPeringkat">
-                        <div class="col-6">
-                            <label class="form-label small fw-bold text-muted">PERINGKAT</label>
-                            <select id="ppdInputPeringkat" class="form-select bg-light">
-                                <option value="KEBANGSAAN">KEBANGSAAN</option>
-                                <option value="ANTARABANGSA">ANTARABANGSA</option>
-                            </select>
-                        </div>
-                        <div class="col-6">
-                             <label class="form-label small fw-bold text-muted">TAHUN</label>
-                             <input type="number" id="ppdInputTahun" class="form-control bg-light fw-bold" placeholder="2026" min="2023">
-                        </div>
-                    </div>
-                    
-                    <!-- Input Tahun Sahaja (Bila Peringkat Hidden) -->
-                    <div id="divPpdTahunOnly" class="mb-3 hidden">
-                         <label class="form-label small fw-bold text-muted">TAHUN PEROLEHAN</label>
-                         <input type="number" id="ppdInputTahun2" class="form-control bg-light fw-bold" placeholder="2026" min="2023">
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted" id="lblPpdPencapaian">PENCAPAIAN</label>
-                        <input type="text" id="ppdInputPencapaian" class="form-control uppercase-input" placeholder="Contoh: JOHAN / EMAS / PENYERTAAN" oninput="this.value = this.value.toUpperCase()">
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label small fw-bold text-muted">PAUTAN BUKTI</label>
-                        <input type="url" id="ppdInputLink" class="form-control text-primary" placeholder="https://drive.google.com/...">
-                    </div>
-
-                    <button type="submit" class="btn btn-indigo w-100 fw-bold py-3 rounded-3 shadow-sm" style="background-color: #4b0082; color: white;">
-                        <i class="fas fa-save me-2"></i>SIMPAN REKOD PPD
-                    </button>
+                    <div class="mb-3 text-center"><div class="btn-group w-100 shadow-sm" role="group"><input type="radio" class="btn-check" name="radKatPPD" id="radPegawai" value="PEGAWAI" checked onchange="toggleKategoriPPD()"><label class="btn btn-outline-dark fw-bold" for="radPegawai">PEGAWAI</label><input type="radio" class="btn-check" name="radKatPPD" id="radUnit" value="PPD" onchange="toggleKategoriPPD()"><label class="btn btn-outline-dark fw-bold" for="radUnit">UNIT / SEKTOR</label></div></div>
+                    <div class="mb-3 text-center"><div class="btn-group w-100 shadow-sm" role="group"><input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPertandingan" checked onchange="toggleJenisPencapaianPPD()"><label class="btn btn-outline-primary fw-bold" for="radPpdPertandingan">PERTANDINGAN</label><input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPensijilan" onchange="toggleJenisPencapaianPPD()"><label class="btn btn-outline-warning fw-bold text-dark" for="radPpdPensijilan">PENSIJILAN</label></div></div>
+                    <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblPpdNamaPeserta">NAMA PEGAWAI</label><input type="text" id="ppdInputNama" class="form-control uppercase-input fw-bold" oninput="this.value = this.value.toUpperCase()"></div>
+                    <div id="divPpdPenyedia" class="mb-3 hidden"><label class="form-label small fw-bold text-muted text-warning">PENYEDIA</label><select id="ppdInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning"><option value="LAIN-LAIN">LAIN-LAIN</option><option value="GOOGLE">GOOGLE</option><option value="APPLE">APPLE</option><option value="MICROSOFT">MICROSOFT</option></select></div>
+                    <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblPpdProgram">NAMA PERTANDINGAN</label><input type="text" id="ppdInputProgram" class="form-control uppercase-input" oninput="this.value = this.value.toUpperCase()"></div>
+                    <div class="row g-2 mb-3" id="rowPpdPeringkat"><div class="col-6"><label class="form-label small fw-bold text-muted">PERINGKAT</label><select id="ppdInputPeringkat" class="form-select bg-light"><option value="KEBANGSAAN">KEBANGSAAN</option><option value="ANTARABANGSA">ANTARABANGSA</option></select></div><div class="col-6"><label class="form-label small fw-bold text-muted">TAHUN</label><input type="number" id="ppdInputTahun" class="form-control bg-light fw-bold" min="2023"></div></div>
+                    <div id="divPpdTahunOnly" class="mb-3 hidden"><label class="form-label small fw-bold text-muted">TAHUN PEROLEHAN</label><input type="number" id="ppdInputTahun2" class="form-control bg-light fw-bold" min="2023"></div>
+                    <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblPpdPencapaian">PENCAPAIAN</label><input type="text" id="ppdInputPencapaian" class="form-control uppercase-input" oninput="this.value = this.value.toUpperCase()"></div>
+                    <div class="mb-4"><label class="form-label small fw-bold text-muted">PAUTAN BUKTI</label><input type="url" id="ppdInputLink" class="form-control text-primary"></div>
+                    <button type="submit" class="btn btn-indigo w-100 fw-bold py-3 rounded-3 shadow-sm" style="background-color: #4b0082; color: white;">SIMPAN REKOD PPD</button>
                 </form>
             </div>
         </div>
     </div>
   </div>
 
-  <!-- MODAL EDIT PENCAPAIAN (BARU) -->
+  <!-- MODAL EDIT PENCAPAIAN -->
   <div class="modal fade" id="modalEditPencapaian" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-header bg-warning text-dark">
-                <h6 class="modal-title fw-bold"><i class="fas fa-edit me-2"></i>Kemaskini Rekod Pencapaian</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
+            <div class="modal-header bg-warning text-dark"><h6 class="modal-title fw-bold">Kemaskini Rekod</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body p-4">
                 <form id="formEditPencapaian" onsubmit="event.preventDefault(); simpanEditPencapaian();">
-                    <input type="hidden" id="editIdPencapaian">
-                    <input type="hidden" id="editJenisRekod">
-                    
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted">SEKOLAH / ORGANISASI</label>
-                        <input type="text" id="editNamaSekolah" class="form-control bg-light fw-bold text-dark" readonly disabled>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted">NAMA PESERTA</label>
-                        <input type="text" id="editInputNama" class="form-control uppercase-input fw-bold">
-                    </div>
-
-                    <!-- Pilihan Edit Penyedia (Jika Pensijilan) -->
-                    <div id="divEditPenyedia" class="mb-3 hidden">
-                        <label class="form-label small fw-bold text-muted text-warning">PENYEDIA</label>
-                        <select id="editInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning">
-                            <option value="LAIN-LAIN">LAIN-LAIN</option>
-                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
-                            <option value="APPLE">APPLE EDUCATION</option>
-                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted" id="lblEditProgram">NAMA PERTANDINGAN</label>
-                        <input type="text" id="editInputProgram" class="form-control uppercase-input">
-                    </div>
-
-                    <div class="row g-2 mb-3" id="rowEditPeringkat">
-                        <div class="col-6">
-                            <label class="form-label small fw-bold text-muted">PERINGKAT</label>
-                            <select id="editInputPeringkat" class="form-select bg-light">
-                                <option value="KEBANGSAAN">KEBANGSAAN</option>
-                                <option value="ANTARABANGSA">ANTARABANGSA</option>
-                            </select>
-                        </div>
-                        <div class="col-6">
-                             <label class="form-label small fw-bold text-muted">TAHUN</label>
-                             <input type="number" id="editInputTahun" class="form-control bg-light fw-bold" min="2023">
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted" id="lblEditPencapaian">PENCAPAIAN</label>
-                        <input type="text" id="editInputPencapaian" class="form-control uppercase-input">
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label small fw-bold text-muted">PAUTAN BUKTI</label>
-                        <input type="url" id="editInputLink" class="form-control text-primary">
-                    </div>
-
-                    <button type="submit" class="btn btn-warning w-100 fw-bold py-3 rounded-3 shadow-sm">
-                        <i class="fas fa-save me-2"></i>SIMPAN PERUBAHAN
-                    </button>
+                    <input type="hidden" id="editIdPencapaian"><input type="hidden" id="editJenisRekod">
+                    <div class="mb-3"><label class="form-label small fw-bold text-muted">SEKOLAH</label><input type="text" id="editNamaSekolah" class="form-control bg-light fw-bold text-dark" readonly disabled></div>
+                    <div class="mb-3"><label class="form-label small fw-bold text-muted">NAMA PESERTA</label><input type="text" id="editInputNama" class="form-control uppercase-input fw-bold"></div>
+                    <div id="divEditPenyedia" class="mb-3 hidden"><label class="form-label small fw-bold text-muted text-warning">PENYEDIA</label><select id="editInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning"><option value="LAIN-LAIN">LAIN-LAIN</option><option value="GOOGLE">GOOGLE</option><option value="APPLE">APPLE</option><option value="MICROSOFT">MICROSOFT</option></select></div>
+                    <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblEditProgram">NAMA PERTANDINGAN</label><input type="text" id="editInputProgram" class="form-control uppercase-input"></div>
+                    <div class="row g-2 mb-3" id="rowEditPeringkat"><div class="col-6"><label class="form-label small fw-bold text-muted">PERINGKAT</label><select id="editInputPeringkat" class="form-select bg-light"><option value="KEBANGSAAN">KEBANGSAAN</option><option value="ANTARABANGSA">ANTARABANGSA</option></select></div><div class="col-6"><label class="form-label small fw-bold text-muted">TAHUN</label><input type="number" id="editInputTahun" class="form-control bg-light fw-bold" min="2023"></div></div>
+                    <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblEditPencapaian">PENCAPAIAN</label><input type="text" id="editInputPencapaian" class="form-control uppercase-input"></div>
+                    <div class="mb-4"><label class="form-label small fw-bold text-muted">PAUTAN BUKTI</label><input type="url" id="editInputLink" class="form-control text-primary"></div>
+                    <button type="submit" class="btn btn-warning w-100 fw-bold py-3 rounded-3 shadow-sm">SIMPAN PERUBAHAN</button>
                 </form>
             </div>
         </div>
@@ -803,33 +376,30 @@ PPD Alor Gajah.</textarea>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   
-  <!-- MODULAR JS: LOAD UTILS DAHULU, KEMUDIAN ADMIN.JS -->
-  <script src="js/utils.js"></script>
-  <script src="js/admin.js"></script>
+  <!-- MODULAR JS: URUTAN PEMUATAN PENTING -->
+  <script src="js/utils.js"></script> <!-- Utiliti Teras & Supabase -->
+  <script src="js/admin/dashboard.js"></script>
+  <script src="js/admin/analysis.js"></script>
+  <script src="js/admin/achievement.js"></script>
+  <script src="js/admin/communication.js"></script>
+  <script src="js/admin/settings.js"></script>
+  <script src="js/admin/main.js"></script> <!-- Main Controller -->
 
-  <!-- PWA AUTO-UPDATE SCRIPT -->
+  <!-- SW (PWA) -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').then(reg => {
-        if (reg.waiting) {
-            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-        }
+        if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         reg.addEventListener('updatefound', () => {
           const newWorker = reg.installing;
           newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-               window.location.reload();
-            }
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) window.location.reload();
           });
         });
       }).catch(err => console.log('SW Fail', err));
-
       let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
-          window.location.reload();
-          refreshing = true;
-        }
+        if (!refreshing) { window.location.reload(); refreshing = true; }
       });
     }
   </script>

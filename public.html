@@ -44,6 +44,10 @@
       .card-form {
           border-top: 5px solid #6f42c1 !important;
       }
+      /* PPD Form Theme */
+      .card-form-ppd {
+          border-top: 5px solid #4b0082 !important; /* Indigo */
+      }
   </style>
 </head>
 <body class="bg-light">
@@ -65,8 +69,8 @@
     <div class="row justify-content-center">
       <div class="col-md-10 col-lg-8">
 
-        <!-- KAD 1: IDENTITI SEKOLAH -->
-        <div class="card border-0 shadow-sm rounded-4 p-4 mb-3 bg-white">
+        <!-- KAD 1: IDENTITI SEKOLAH (DISOROK JIKA PPD) -->
+        <div id="cardIdentitiSekolah" class="card border-0 shadow-sm rounded-4 p-4 mb-3 bg-white">
             <h6 class="fw-bold text-primary mb-3"><i class="fas fa-school me-2"></i>Maklumat Sekolah</h6>
             
             <div class="alert alert-primary border-0 d-flex align-items-center small py-2 px-3 mb-3 fw-bold">
@@ -83,7 +87,20 @@
             <div id="schoolStatusMsg" class="mt-2 small fw-bold text-danger hidden"></div>
         </div>
 
-        <!-- KAD 2: BORANG INPUT -->
+        <!-- KAD 1B: HEADER PPD (KHAS UNTUK M030) -->
+        <div id="cardIdentitiPPD" class="card border-0 shadow-sm rounded-4 p-4 mb-3 bg-white hidden border-start border-5 border-indigo" style="border-left-color: #4b0082 !important;">
+            <div class="d-flex align-items-center">
+                <div class="bg-indigo text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px; background-color: #4b0082;">
+                    <i class="fas fa-building fa-lg"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold text-dark mb-0">PEJABAT PENDIDIKAN DAERAH</h5>
+                    <p class="text-muted small mb-0 fw-bold">Unit Sumber Teknologi Pendidikan (M030)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- KAD 2: BORANG INPUT AWAM (STANDARD) -->
         <div id="formSection" class="card border-0 shadow-sm rounded-4 p-4 card-form disabled-form bg-white">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h6 class="fw-bold text-purple mb-0"><i class="fas fa-pen-alt me-2"></i>Butiran Pencapaian</h6>
@@ -146,7 +163,7 @@
                     </select>
                 </div>
 
-                <!-- ROW 2: TAHUN & PENCAPAIAN (DIASINGKAN SUPAYA SENTIASA ADA) -->
+                <!-- ROW 2: TAHUN & PENCAPAIAN -->
                 <div class="row g-3 mb-3">
                     <div class="col-4">
                          <label class="form-label fw-bold">TAHUN</label>
@@ -169,6 +186,97 @@
 
                 <button type="submit" class="btn btn-success w-100 fw-bold py-3 rounded-3 shadow hover-scale transition-all">
                     <i class="fas fa-paper-plane me-2"></i>HANTAR MAKLUMAT
+                </button>
+            </form>
+        </div>
+
+        <!-- KAD 3: BORANG INPUT PPD (KHAS M030) -->
+        <div id="formSectionPPD" class="card border-0 shadow-sm rounded-4 p-4 card-form-ppd hidden bg-white">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h6 class="fw-bold mb-0" style="color: #4b0082;"><i class="fas fa-user-tie me-2"></i>Rekod Pegawai & Unit</h6>
+                <button type="button" class="btn btn-sm btn-outline-secondary fw-bold shadow-sm" onclick="resetBorangPPD()">
+                    <i class="fas fa-undo me-1"></i> Reset
+                </button>
+            </div>
+
+            <form id="formPPD" onsubmit="event.preventDefault(); hantarBorangPPD();">
+                <input type="hidden" id="ppdKategori" value="PEGAWAI">
+                <input type="hidden" id="ppdJenisRekod" value="PERTANDINGAN">
+
+                <!-- 1. KATEGORI: PEGAWAI vs UNIT -->
+                <div class="mb-4 text-center">
+                    <div class="btn-group w-100 shadow-sm" role="group">
+                        <input type="radio" class="btn-check" name="radPpdKat" id="radPpdPegawai" value="PEGAWAI" checked onchange="toggleKategoriPPD()">
+                        <label class="btn btn-outline-dark fw-bold" for="radPpdPegawai">PEGAWAI</label>
+
+                        <input type="radio" class="btn-check" name="radPpdKat" id="radPpdUnit" value="PPD" onchange="toggleKategoriPPD()">
+                        <label class="btn btn-outline-dark fw-bold" for="radPpdUnit">UNIT / SEKTOR</label>
+                    </div>
+                </div>
+
+                <!-- 2. JENIS: PERTANDINGAN vs PENSIJILAN -->
+                <div class="mb-4 text-center">
+                    <div class="btn-group w-100 shadow-sm" role="group">
+                        <input type="radio" class="btn-check" name="radPpdJenis" id="radPpdPertandingan" checked onchange="toggleJenisPencapaianPPD()">
+                        <label class="btn btn-outline-primary fw-bold" for="radPpdPertandingan">PERTANDINGAN</label>
+
+                        <input type="radio" class="btn-check" name="radPpdJenis" id="radPpdSijil" onchange="toggleJenisPencapaianPPD()">
+                        <label class="btn btn-outline-warning fw-bold text-dark" for="radPpdSijil">PENSIJILAN</label>
+                    </div>
+                </div>
+
+                <!-- 3. NAMA (DINAMIK) -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold" id="lblPpdNama">NAMA PEGAWAI</label>
+                    <input type="text" id="ppdNama" class="form-control uppercase-input border-dark" placeholder="Taip nama penuh..." oninput="this.value = this.value.toUpperCase()" required>
+                </div>
+
+                <!-- 4. PENYEDIA (SIJIL ONLY) -->
+                <div id="divPpdPenyedia" class="mb-3 hidden">
+                    <label class="form-label fw-bold text-warning">PENYEDIA</label>
+                    <select id="ppdPenyedia" class="form-select bg-light border-warning">
+                        <option value="LAIN-LAIN">LAIN-LAIN</option>
+                        <option value="GOOGLE">GOOGLE</option>
+                        <option value="APPLE">APPLE</option>
+                        <option value="MICROSOFT">MICROSOFT</option>
+                    </select>
+                </div>
+
+                <!-- 5. PROGRAM -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold" id="lblPpdProgram">NAMA PERTANDINGAN</label>
+                    <input type="text" id="ppdProgram" class="form-control uppercase-input" placeholder="Contoh: DIGITAL LEADERSHIP 2026" oninput="this.value = this.value.toUpperCase()" required>
+                </div>
+
+                <!-- 6. PERINGKAT (PERTANDINGAN ONLY) -->
+                <div class="mb-3" id="divPpdPeringkat">
+                    <label class="form-label fw-bold">PERINGKAT</label>
+                    <select id="ppdPeringkat" class="form-select bg-light">
+                        <option value="KEBANGSAAN">KEBANGSAAN</option>
+                        <option value="ANTARABANGSA">ANTARABANGSA</option>
+                    </select>
+                </div>
+
+                <!-- 7. TAHUN & PENCAPAIAN -->
+                <div class="row g-3 mb-3">
+                    <div class="col-4">
+                         <label class="form-label fw-bold">TAHUN</label>
+                         <input type="number" id="ppdTahun" class="form-control bg-light" placeholder="2026" min="2023" required>
+                    </div>
+                    <div class="col-8">
+                        <label class="form-label fw-bold" id="lblPpdPencapaian">PENCAPAIAN</label>
+                        <input type="text" id="ppdPencapaian" class="form-control uppercase-input" placeholder="Contoh: ANUGERAH EMAS" oninput="this.value = this.value.toUpperCase()" required>
+                    </div>
+                </div>
+
+                <!-- 8. BUKTI -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">PAUTAN BUKTI</label>
+                    <input type="url" id="ppdLink" class="form-control text-primary" placeholder="https://..." required>
+                </div>
+
+                <button type="submit" class="btn w-100 fw-bold py-3 rounded-3 shadow text-white" style="background-color: #4b0082;">
+                    <i class="fas fa-save me-2"></i>SIMPAN REKOD PPD
                 </button>
             </form>
         </div>

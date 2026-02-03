@@ -1,0 +1,61 @@
+/* --- CORE STYLES (ASAS) --- */
+/* Mengandungi reset, tipografi, warna tema, dan utiliti global */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+:root {
+    --bs-primary: #0d6efd;
+    --bs-success: #198754;
+    --bs-warning: #ffc107;
+    --bs-danger: #dc3545;
+    --color-purple: #6f42c1;
+    --color-indigo: #4b0082;
+    --color-orange: #fd7e14;
+    --color-teal: #008080;
+}
+
+body { 
+    background-color: #f0f2f5; 
+    font-family: 'Inter', sans-serif; 
+    min-height: 100vh; 
+}
+
+/* UTILITIES */
+.hidden { display: none !important; }
+.cursor-pointer { cursor: pointer; }
+.uppercase-input { text-transform: uppercase; }
+.fw-black { font-weight: 900; }
+
+/* WARNA TEMA KHAS */
+.bg-purple { background-color: var(--color-purple) !important; color: white; }
+.text-purple { color: var(--color-purple) !important; }
+.border-purple { border-color: var(--color-purple) !important; }
+
+.bg-orange { background-color: var(--color-orange) !important; color: white; }
+.text-orange { color: var(--color-orange) !important; }
+
+/* BRANDING TEKNOLOGI (Untuk Modul Pencapaian) */
+/* Google Red */
+.bg-google { background-color: #DB4437 !important; color: white; }
+.text-google { color: #DB4437 !important; }
+.border-google { border-color: #DB4437 !important; }
+.bg-google-sub { background-color: rgba(219, 68, 55, 0.1) !important; color: #DB4437 !important; }
+
+/* Apple Dark Grey */
+.bg-apple { background-color: #2c2c2c !important; color: white; }
+.text-apple { color: #2c2c2c !important; }
+.border-apple { border-color: #2c2c2c !important; }
+.bg-apple-sub { background-color: rgba(44, 44, 44, 0.1) !important; color: #2c2c2c !important; }
+
+/* Microsoft Blue */
+.bg-microsoft { background-color: #00a4ef !important; color: white; }
+.text-microsoft { color: #00a4ef !important; }
+.border-microsoft { border-color: #00a4ef !important; }
+.bg-microsoft-sub { background-color: rgba(0, 164, 239, 0.1) !important; color: #00a4ef !important; }
+
+/* ANIMASI */
+.fade-up { animation: fadeInUp 0.5s ease-out forwards; opacity: 0; transform: translateY(20px); }
+@keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+
+.hover-scale { transition: transform 0.2s; }
+.hover-scale:hover { transform: scale(1.02); }
