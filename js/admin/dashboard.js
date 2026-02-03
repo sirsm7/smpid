@@ -8,6 +8,7 @@ let dashboardData = [];
 let currentFilteredList = [];
 let activeStatus = 'ALL';
 let activeType = 'ALL';
+let searchTerm = ''; // Variable carian
 let reminderQueue = [];
 let qIndex = 0;
 
@@ -18,7 +19,8 @@ async function fetchDashboardData() {
         const { data, error } = await window.supabaseClient
             .from('smpid_sekolah_data')
             .select('*')
-            .order('nama_sekolah', { ascending: true });
+            // UBAH: Sorting Kod Sekolah (A-Z)
+            .order('kod_sekolah', { ascending: true }); 
             
         if (error) throw error;
         
@@ -86,15 +88,30 @@ function renderFilters() {
 function setFilter(s) { activeStatus = s; runFilter(); }
 function setType(t) { activeType = t; runFilter(); }
 
+// FUNGSI BARU: SEARCH HANDLER
+function handleSearch(val) {
+    searchTerm = val.toUpperCase().trim();
+    runFilter();
+}
+
 function runFilter() {
     const filtered = dashboardData.filter(i => {
+        // Filter 1: Status Badge
         const statMatch = (activeStatus === 'ALL') || 
                           (activeStatus === 'LENGKAP' && i.is_lengkap) || 
                           (activeStatus === 'BELUM' && !i.is_lengkap) ||
                           (activeStatus === 'SAMA' && i.is_sama) ||
                           (activeStatus === 'BERBEZA' && i.is_berbeza); 
+        
+        // Filter 2: Jenis Sekolah
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
-        return statMatch && typeMatch;
+        
+        // Filter 3: Carian Teks (Kod atau Nama)
+        const searchMatch = !searchTerm || 
+                            i.kod_sekolah.includes(searchTerm) || 
+                            i.nama_sekolah.includes(searchTerm);
+
+        return statMatch && typeMatch && searchMatch;
     });
 
     currentFilteredList = filtered;
@@ -111,7 +128,13 @@ function updateBadgeCounts() {
     };
     if (map[activeStatus]) document.getElementById(map[activeStatus])?.classList.add('active');
     
-    const context = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
+    // Kiraan berdasarkan konteks semasa (Type & Search), abaikan status buat sementara
+    const context = dashboardData.filter(i => {
+        const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
+        const searchMatch = !searchTerm || i.kod_sekolah.includes(searchTerm) || i.nama_sekolah.includes(searchTerm);
+        return typeMatch && searchMatch;
+    });
+    
     const setTxt = (id, count) => { if(document.getElementById(id)) document.getElementById(id).innerText = count; };
     
     setTxt('cntAll', context.length);
@@ -287,6 +310,7 @@ function prevQueue() { if(qIndex > 0) qIndex--; renderQueue(); }
 window.fetchDashboardData = fetchDashboardData;
 window.setFilter = setFilter;
 window.setType = setType;
+window.handleSearch = handleSearch; // Export baru
 window.viewSchoolProfile = viewSchoolProfile;
 window.eksportDataTapis = eksportDataTapis;
 window.janaSenaraiTelegram = janaSenaraiTelegram;

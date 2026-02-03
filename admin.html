@@ -98,6 +98,13 @@
                     <button onclick="keluarSistem()" class="btn btn-outline-danger btn-sm fw-bold"><i class="fas fa-sign-out-alt me-1"></i> Log Keluar</button>
                   </div>
                 </div>
+                
+                <!-- NEW SEARCH BAR -->
+                <div class="mb-3 position-relative">
+                    <input type="text" id="adminSearchInput" class="form-control form-control-lg admin-search-bar" placeholder="Cari Nama Sekolah atau Kod..." oninput="handleSearch(this.value)">
+                    <i class="fas fa-search position-absolute top-50 end-0 translate-middle-y me-3 text-muted"></i>
+                </div>
+
                 <div class="mb-4" id="filterContainer"></div>
                 <div id="schoolGridWrapper"></div>
             </div>
