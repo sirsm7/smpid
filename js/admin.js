@@ -1,6 +1,6 @@
 /**
  * SMPID ADMIN PANEL MODULE (js/admin.js)
- * Versi: 11.0 (Dynamic Stats Update & Filtered Dropdown)
+ * Versi: 11.1 (FIX: PPD Unit School Name Display)
  * Fungsi: Dashboard, Email Blaster, Helpdesk, User Management, DCS & Pencapaian V3
  */
 
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initAdminPanel();
 });
 
-function initAdminPanel() {
+async function initAdminPanel() {
     // 1. Semakan Keselamatan Asas
     if (sessionStorage.getItem('smpid_auth') !== 'true') {
         window.location.replace('index.html');
@@ -77,7 +77,11 @@ function initAdminPanel() {
             tabPencapaian.show();
         }
 
-        // PENTING: Jangan fetchDashboardData() untuk Unit PPD
+        // UPDATE (FIXED): Muat turun data sekolah dahulu untuk mapping Nama Sekolah
+        // Walaupun UI Dashboard disorok, array 'dashboardData' diperlukan untuk rujukan nama sekolah.
+        await fetchDashboardData(); 
+
+        // Selepas data sekolah sedia, baru muat data pencapaian
         populateTahunFilter();
 
     } else {
