@@ -1,6 +1,7 @@
 /**
  * MODUL DASHBOARD (js/admin/dashboard.js)
  * Fungsi: Menguruskan paparan grid sekolah, filter status, dan tindakan pantas.
+ * Kemaskini: Tambah Sorting Kod, Search Bar & Butang Reset Password
  */
 
 // State Tempatan
@@ -19,7 +20,7 @@ async function fetchDashboardData() {
         const { data, error } = await window.supabaseClient
             .from('smpid_sekolah_data')
             .select('*')
-            // UBAH: Sorting Kod Sekolah (A-Z)
+            // SORTING: Kod Sekolah (A-Z)
             .order('kod_sekolah', { ascending: true }); 
             
         if (error) throw error;
@@ -88,7 +89,7 @@ function renderFilters() {
 function setFilter(s) { activeStatus = s; runFilter(); }
 function setType(t) { activeType = t; runFilter(); }
 
-// FUNGSI BARU: SEARCH HANDLER
+// FUNGSI CARIAN
 function handleSearch(val) {
     searchTerm = val.toUpperCase().trim();
     runFilter();
@@ -128,7 +129,6 @@ function updateBadgeCounts() {
     };
     if (map[activeStatus]) document.getElementById(map[activeStatus])?.classList.add('active');
     
-    // Kiraan berdasarkan konteks semasa (Type & Search), abaikan status buat sementara
     const context = dashboardData.filter(i => {
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
         const searchMatch = !searchTerm || i.kod_sekolah.includes(searchTerm) || i.nama_sekolah.includes(searchTerm);
@@ -183,10 +183,21 @@ function renderGrid(data) {
             <div class="col-6 col-md-4 col-lg-3">
               <div class="card school-card h-100 position-relative" onclick="viewSchoolProfile('${s.kod_sekolah}')">
                 <div class="card-body p-3 d-flex flex-column">
-                  <div class="d-flex justify-content-between align-items-center mb-2 pe-4">
-                    <h6 class="fw-bold text-primary mb-0 text-truncate" style="max-width: 80%;">${s.kod_sekolah}</h6>
+                  
+                  <!-- HEADER KAD (Kod & Reset Button) -->
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <h6 class="fw-bold text-primary mb-0 text-truncate" style="max-width: 100%;">${s.kod_sekolah}</h6>
+                        <!-- BUTANG RESET: stopPropagation() penting supaya tak buka profil -->
+                        <button onclick="event.stopPropagation(); window.resetPasswordSekolah('${s.kod_sekolah}')" 
+                                class="btn btn-sm btn-link text-warning p-0 text-decoration-none small fw-bold mt-1" 
+                                title="Reset Kata Laluan Kepada Default">
+                            <i class="fas fa-key me-1"></i>Reset
+                        </button>
+                    </div>
                     ${statusBadge}
                   </div>
+
                   <p class="school-name mb-auto" title="${s.nama_sekolah}">${s.nama_sekolah}</p>
                 </div>
                 <div class="tele-status-row bg-light border-top">
@@ -310,7 +321,7 @@ function prevQueue() { if(qIndex > 0) qIndex--; renderQueue(); }
 window.fetchDashboardData = fetchDashboardData;
 window.setFilter = setFilter;
 window.setType = setType;
-window.handleSearch = handleSearch; // Export baru
+window.handleSearch = handleSearch;
 window.viewSchoolProfile = viewSchoolProfile;
 window.eksportDataTapis = eksportDataTapis;
 window.janaSenaraiTelegram = janaSenaraiTelegram;
