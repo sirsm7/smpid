@@ -1,11 +1,12 @@
 /**
  * MODUL PENCAPAIAN (js/admin/achievement.js)
- * Fungsi: Menguruskan Tab Pencapaian V3 (CRUD, Filter Kad, Statistik, Carian)
- * Kemaskini: Text Wrapping Diaktifkan (Tiada Truncate)
+ * Fungsi: Menguruskan Tab Pencapaian V3 (CRUD, Filter Kad, Statistik, Carian & Sorting)
+ * Kemaskini: Tambah fungsi sorting pada header jadual
  */
 
 let pencapaianList = [];
 let currentCardFilter = 'ALL';
+let sortState = { column: 'created_at', direction: 'desc' }; // Default: Terkini di atas
 
 // --- INIT & LOAD DATA ---
 async function populateTahunFilter() {
@@ -66,6 +67,7 @@ async function loadMasterPencapaian() {
         let query = window.supabaseClient.from('smpid_pencapaian').select('*');
         if (tahun !== 'ALL') query = query.eq('tahun', tahun);
         
+        // Default sorting from DB (created_at desc)
         query = query.order('created_at', { ascending: false });
 
         const { data, error } = await query;
@@ -73,6 +75,8 @@ async function loadMasterPencapaian() {
         
         pencapaianList = data;
         populateSekolahFilter(pencapaianList);
+        
+        // Render dengan sort state semasa (jika user dah tukar sort sebelum refresh data)
         renderPencapaianTable();
 
     } catch (err) {
@@ -81,9 +85,57 @@ async function loadMasterPencapaian() {
     }
 }
 
+// --- LOGIK SORTING (NEW) ---
+function handleSort(column) {
+    if (sortState.column === column) {
+        // Toggle direction
+        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        // New column, default asc
+        sortState.column = column;
+        sortState.direction = 'asc';
+    }
+    renderPencapaianTable();
+}
+
+function getSortValue(item, column) {
+    // 1. Special Handling untuk Nama Sekolah (sebab data asal cuma ada kod)
+    if (column === 'nama_sekolah') {
+        if (item.kod_sekolah === 'M030') return 'PPD ALOR GAJAH';
+        
+        // Cari nama sekolah dari cache global (dashboard data)
+        const ref = window.globalDashboardData?.find(s => s.kod_sekolah === item.kod_sekolah);
+        return ref ? ref.nama_sekolah.toLowerCase() : item.kod_sekolah.toLowerCase();
+    }
+    
+    // 2. Default Handling
+    const val = item[column];
+    
+    // Pastikan string jadi lowercase untuk comparison yang adil (A == a)
+    if (typeof val === 'string') return val.toLowerCase();
+    
+    // Pastikan null/undefined tidak merosakkan sort
+    return val || '';
+}
+
+function updateSortIcons() {
+    // 1. Reset semua ikon kepada default (kelabu)
+    const headers = ['kod_sekolah', 'nama_sekolah', 'kategori', 'nama_peserta', 'nama_pertandingan', 'pencapaian'];
+    headers.forEach(h => {
+        const el = document.getElementById(`icon-${h}`);
+        if(el) el.className = 'fas fa-sort ms-1 text-muted opacity-25';
+    });
+
+    // 2. Set ikon aktif (putih terang) dengan arah yang betul
+    const activeIcon = document.getElementById(`icon-${sortState.column}`);
+    if(activeIcon) {
+        activeIcon.className = `fas fa-sort-${sortState.direction === 'asc' ? 'up' : 'down'} ms-1 text-white opacity-100`;
+    }
+}
+
 // --- LOGIK FILTER & STATISTIK ---
 function updateStatCards(dataToProcess) {
-    // 1. STATISTIK KATEGORI UTAMA (NEW)
+    // 1. STATISTIK KATEGORI UTAMA
     const totalMurid = dataToProcess.filter(i => i.kategori === 'MURID').length;
     const totalGuru = dataToProcess.filter(i => i.kategori === 'GURU').length;
     const totalSekolah = dataToProcess.filter(i => i.kategori === 'SEKOLAH').length;
@@ -147,7 +199,6 @@ function updateStatCards(dataToProcess) {
             else if (index === 2) medal = '<span class="medal-icon medal-3">3</span>';
             else medal = `<span class="fw-bold text-muted ps-2">${index + 1}</span>`;
 
-            // Updated: Text Wrap Enabled
             html += `
             <tr class="top-school-row" onclick="filterBySchoolFromTop5('${kod}')">
                 <td style="width: 40px;" class="text-center align-middle">${medal}</td>
@@ -171,7 +222,6 @@ function populateSekolahFilter(sourceData) {
         schoolCounts[item.kod_sekolah] = (schoolCounts[item.kod_sekolah] || 0) + 1;
     });
 
-    // PENTING: Susunan KOD SEKOLAH (A-Z) secara eksplisit
     const uniqueSchools = Object.keys(schoolCounts).sort();
     
     select.innerHTML = '<option value="ALL">SEMUA SEKOLAH</option>';
@@ -181,11 +231,10 @@ function populateSekolahFilter(sourceData) {
         if (kod === 'M030') label = 'PPD ALOR GAJAH (M030)';
         else {
             const ref = window.globalDashboardData?.find(s => s.kod_sekolah === kod);
-            if (ref) label = `${ref.nama_sekolah}`; // Format Paparan: NAMA SEKOLAH
+            if (ref) label = `${ref.nama_sekolah}`;
         }
         
         const count = schoolCounts[kod];
-        // Tambah jumlah rekod untuk rujukan admin
         label += ` (${count})`;
 
         const opt = document.createElement('option');
@@ -197,9 +246,7 @@ function populateSekolahFilter(sourceData) {
     if (uniqueSchools.includes(existingVal)) select.value = existingVal;
 }
 
-// --- FUNGSI TAPISAN, CARIAN & RESET ---
-
-// Fungsi Baru: Carian Masa Nyata
+// --- FUNGSI TAPISAN & CARIAN ---
 function handlePencapaianSearch(val) {
     renderPencapaianTable();
 }
@@ -214,20 +261,18 @@ function filterByKategori(kategori) {
 }
 
 function resetPencapaianFilters() {
-    // 1. Reset Nilai Dropdown
     document.getElementById('filterSekolahPencapaian').value = 'ALL';
     document.getElementById('filterTahunPencapaian').value = 'ALL';
     document.getElementById('filterKategoriPencapaian').value = 'ALL';
-    document.getElementById('searchPencapaianInput').value = ''; // Reset carian
+    document.getElementById('searchPencapaianInput').value = '';
     
-    // 2. Reset Filter Kad
     currentCardFilter = 'ALL';
+    // Reset Sort juga
+    sortState = { column: 'created_at', direction: 'desc' };
+    
     updateCardVisuals();
-
-    // 3. Muat Semula Data
     loadMasterPencapaian();
     
-    // 4. UI Feedback
     Swal.fire({
         icon: 'success',
         title: 'Filter Direset',
@@ -272,6 +317,7 @@ function filterBySchoolFromTop5(kod) {
     }
 }
 
+// --- FUNGSI UTAMA RENDER (UPDATED WITH SORTING) ---
 function renderPencapaianTable() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
     if (!tbody) return;
@@ -310,16 +356,25 @@ function renderPencapaianTable() {
     // 4. Tapis Carian (SEARCH BAR LOGIC)
     if (searchInput) {
         filtered = filtered.filter(item => {
-            // Dapatkan nama sekolah penuh untuk carian
             let namaSekolah = (item.kod_sekolah === 'M030') ? 'PPD ALOR GAJAH' : 
                 (window.globalDashboardData?.find(s => s.kod_sekolah === item.kod_sekolah)?.nama_sekolah || '');
-            
-            // Gabungkan semua medan relevan untuk carian
-            const searchTarget = `${item.kod_sekolah} ${namaSekolah}`.toUpperCase();
-            
+            const searchTarget = `${item.kod_sekolah} ${namaSekolah} ${item.nama_peserta}`.toUpperCase();
             return searchTarget.includes(searchInput);
         });
     }
+
+    // 5. [BARU] SUSUN DATA (SORTING)
+    filtered.sort((a, b) => {
+        let valA = getSortValue(a, sortState.column);
+        let valB = getSortValue(b, sortState.column);
+
+        if (valA < valB) return sortState.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortState.direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    // 6. [BARU] UPDATE IKON HEADER
+    updateSortIcons();
 
     if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted fst-italic">Tiada rekod sepadan.</td></tr>`;
@@ -355,7 +410,6 @@ function renderPencapaianTable() {
             displayPencapaian = `<span class="fw-bold text-success small">${item.pencapaian}</span>`;
         }
 
-        // Updated: Removed Truncate
         html += `
         <tr>
             <td class="fw-bold small">${item.kod_sekolah}</td>
@@ -637,3 +691,4 @@ window.toggleKategoriPPD = toggleKategoriPPD;
 window.toggleJenisPencapaianPPD = toggleJenisPencapaianPPD;
 window.simpanPencapaianPPD = simpanPencapaianPPD;
 window.handlePencapaianSearch = handlePencapaianSearch;
+window.handleSort = handleSort;
