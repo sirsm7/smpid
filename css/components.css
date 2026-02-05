@@ -11,10 +11,11 @@
 }
 
 /* Variasi Border Atas (Untuk Dashboard/Stats) */
-.border-top-primary { border-top: 4px solid var(--bs-primary) !important; }
-.border-top-warning { border-top: 4px solid var(--bs-warning) !important; }
+.border-top-primary { border-top: 4px solid var(--bs-primary) !important; } /* Biru (Murid) */
+.border-top-warning { border-top: 4px solid var(--bs-warning) !important; } /* Kuning (Guru) */
 .border-top-success { border-top: 4px solid var(--bs-success) !important; }
 .border-top-danger { border-top: 4px solid var(--bs-danger) !important; }
+.border-top-indigo { border-top: 4px solid var(--color-indigo) !important; } /* Ungu (Sekolah) */
 
 /* Menu Card (Untuk User Portal) */
 .menu-card { 

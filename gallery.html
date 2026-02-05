@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SMPID - Galeri Pencapaian</title>
+  <title>SMPID - Galeri Kemenjadian</title>
   
   <link rel="icon" href="icoppdag.png">
   
@@ -28,12 +28,13 @@
       .gallery-header {
           background: white;
           border-bottom: 1px solid #e9ecef;
-          padding: 1.5rem 0;
-          margin-bottom: 1.5rem;
+          padding: 1.5rem 0 1rem;
+          margin-bottom: 1rem;
       }
       .card-gallery {
           border: 1px solid #e9ecef;
-          border-radius: 8px; /* Sudut lebih tajam sikit untuk kad kecil */
+          /* Border top akan dikawal oleh JS (primary/warning/indigo) */
+          border-radius: 8px; 
           overflow: hidden;
           transition: transform 0.2s, box-shadow 0.2s;
           background: white;
@@ -41,11 +42,11 @@
           display: flex;
           flex-direction: column;
           cursor: pointer;
+          position: relative;
       }
       .card-gallery:hover {
           transform: translateY(-3px);
-          box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-          border-color: var(--bs-primary);
+          box-shadow: 0 8px 20px rgba(0,0,0,0.1);
       }
       .gallery-thumb-container {
           position: relative;
@@ -62,14 +63,28 @@
       }
       .icon-overlay {
           position: absolute;
-          top: 5px; right: 5px;
+          top: 8px; right: 8px;
           background: rgba(255,255,255,0.95);
           border-radius: 50%;
-          width: 24px; height: 24px; /* Ikon lebih kecil */
+          width: 28px; height: 28px;
           display: flex; align-items: center; justify-content: center;
-          font-size: 0.7rem;
+          font-size: 0.8rem;
           color: #495057;
           box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          z-index: 10;
+      }
+      .category-icon {
+          position: absolute;
+          top: 8px; left: 8px;
+          background: rgba(255,255,255,0.9);
+          padding: 3px 8px;
+          border-radius: 4px;
+          font-size: 0.65rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          z-index: 10;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          display: flex; align-items: center; gap: 5px;
       }
       .folder-icon {
           position: absolute;
@@ -80,22 +95,45 @@
           text-shadow: 0 2px 5px rgba(0,0,0,0.1);
       }
       .card-body {
-          padding: 0.75rem; /* Padding lebih kecil (Compact) */
+          padding: 1rem;
           flex-grow: 1;
       }
-      .badge-category {
-          font-size: 0.6rem;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin-bottom: 0.25rem;
+      
+      /* STATS BAR STYLES */
+      .stats-card {
+          background: #f8f9fa;
+          border-radius: 10px;
+          padding: 10px 15px;
+          border: 1px solid #e9ecef;
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          margin-top: 15px;
       }
-      .text-private {
-          color: #dc3545;
-          font-weight: bold;
-          font-size: 0.7rem;
-          display: flex; align-items: center; justify-content: center;
-          height: 100%;
-          background: #ffebeb;
+      .stat-item {
+          display: flex;
+          flex-direction: column;
+          line-height: 1.2;
+      }
+      .stat-value { font-weight: 800; font-size: 1.1rem; color: #212529; }
+      .stat-label { font-size: 0.65rem; color: #6c757d; text-transform: uppercase; font-weight: 600; }
+      
+      /* FILTER BUTTONS */
+      .btn-filter {
+          border-radius: 50px;
+          font-weight: 700;
+          font-size: 0.8rem;
+          padding: 6px 16px;
+          border: 1px solid transparent;
+          color: #6c757d;
+          background: white;
+          transition: all 0.2s;
+      }
+      .btn-filter:hover { background: #f8f9fa; color: #212529; }
+      .btn-filter.active {
+          background: #212529;
+          color: white;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
       }
   </style>
 </head>
@@ -105,31 +143,71 @@
   <div id="loadingOverlay" class="hidden">
     <div class="text-center">
       <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
-      <p class="mt-2 fw-bold small">Memuatkan...</p>
+      <p class="mt-2 fw-bold small">Mengambil Data...</p>
     </div>
   </div>
 
-  <!-- HEADER -->
-  <div class="gallery-header">
+  <!-- HEADER & STATS -->
+  <div class="gallery-header shadow-sm">
       <div class="container">
-          <div class="d-flex align-items-center justify-content-between">
+          <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
               <div>
-                  <small class="text-muted fw-bold text-uppercase ls-1" style="font-size: 0.7rem;">GALERI PENCAPAIAN SEKOLAH</small>
+                  <small class="text-primary fw-bold text-uppercase ls-1" style="font-size: 0.7rem;"><i class="fas fa-chart-line me-1"></i> DASHBOARD KEMENJADIAN</small>
                   <h4 class="fw-bold text-dark mt-1 mb-0" id="headerSchoolName">MEMUATKAN...</h4>
                   <p class="text-muted mb-0 small" id="headerSchoolCode">-</p>
               </div>
-              <!-- NAVIGATION BUTTON: Point to Index/Landing Page -->
-              <!-- Changed ID to btnBackHome so gallery.js doesn't overwrite onclick -->
-              <button id="btnBackHome" class="btn btn-outline-secondary rounded-pill btn-sm fw-bold px-3" onclick="window.location.href='index.html'">
+              <button id="btnBackHome" class="btn btn-outline-secondary rounded-pill btn-sm fw-bold px-3 mt-2 mt-md-0" onclick="window.location.href='index.html'">
                   <i class="fas fa-home me-1"></i> Portal Utama
               </button>
+          </div>
+
+          <!-- BAR STATISTIK -->
+          <div class="row g-3 align-items-center">
+              <div class="col-lg-7">
+                  <div class="stats-card">
+                      <div class="d-flex align-items-center border-end pe-3 me-2">
+                          <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width:40px; height:40px;">
+                              <i class="fas fa-trophy"></i>
+                          </div>
+                          <div class="stat-item">
+                              <span class="stat-value" id="countTotal">0</span>
+                              <span class="stat-label">REKOD</span>
+                          </div>
+                      </div>
+                      
+                      <!-- Pecahan -->
+                      <div class="d-flex gap-3 text-start">
+                          <div class="stat-item">
+                              <span class="stat-value text-primary" id="countMurid">0</span>
+                              <span class="stat-label text-primary"><i class="fas fa-user-graduate me-1"></i>MURID</span>
+                          </div>
+                          <div class="stat-item">
+                              <span class="stat-value text-warning" id="countGuru">0</span>
+                              <span class="stat-label text-warning"><i class="fas fa-chalkboard-user me-1"></i>GURU</span>
+                          </div>
+                          <div class="stat-item">
+                              <span class="stat-value text-indigo" id="countSekolah">0</span>
+                              <span class="stat-label text-indigo"><i class="fas fa-school me-1"></i>SEKOLAH</span>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+              
+              <div class="col-lg-5">
+                  <div class="d-flex gap-2 justify-content-lg-end overflow-auto py-2">
+                      <button class="btn-filter active" onclick="filterGallery('SEMUA', this)">SEMUA</button>
+                      <button class="btn-filter" onclick="filterGallery('MURID', this)">MURID</button>
+                      <button class="btn-filter" onclick="filterGallery('GURU', this)">GURU</button>
+                      <button class="btn-filter" onclick="filterGallery('SEKOLAH', this)">SEKOLAH</button>
+                  </div>
+              </div>
           </div>
       </div>
   </div>
 
-  <!-- CONTENT -->
+  <!-- CONTENT GRID -->
   <div class="container pb-5">
-      <div id="galleryGrid" class="row g-3"> <!-- Gap lebih kecil (g-3) -->
+      <div id="galleryGrid" class="row g-3">
           <!-- KAD AKAN DIJANA DI SINI -->
           <div class="col-12 text-center py-5 text-muted">
               <i class="fas fa-circle-notch fa-spin fa-2x mb-3"></i>
