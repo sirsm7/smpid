@@ -1,7 +1,7 @@
 /**
  * SMPID LANDING PAGE LOGIC
  * Menguruskan carian sekolah dan paparan kad akses pantas.
- * Versi: 2.0 (Added Session Persistence)
+ * Versi: 2.1 (Added M030 Filter & Session Persistence)
  */
 
 let allSchools = [];
@@ -22,8 +22,11 @@ async function loadSchools() {
 
         if (error) throw error;
         
-        allSchools = data;
-        populateDatalist(data);
+        // FILTER: Buang PPD (M030) daripada senarai awam
+        const filteredData = data.filter(s => s.kod_sekolah !== 'M030');
+        
+        allSchools = filteredData;
+        populateDatalist(filteredData);
         
         // CIRI BARU: Semak jika ada sesi tersimpan (Auto-Restore)
         checkSession();

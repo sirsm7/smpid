@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SMPID - Log Masuk Admin</title>
   
-  <!-- PWA Meta Tags -->
-  <link rel="manifest" href="manifest.json">
+  <!-- PWA Features Removed -->
+  <!-- <link rel="manifest" href="manifest.json"> -->
   <meta name="theme-color" content="#198754">
-  <link rel="apple-touch-icon" href="icoppdag.png">
+  <!-- <link rel="apple-touch-icon" href="icoppdag.png"> -->
   <link rel="icon" href="icoppdag.png">
   
   <!-- CSS Bootstrap & FontAwesome -->
@@ -111,6 +111,18 @@
               document.getElementById('loginTitle').innerHTML = `LOG MASUK <span class="text-primary">${kod.toUpperCase()}</span>`;
           }
       });
+  </script>
+
+  <!-- SW (PWA) REMOVED -->
+  <script>
+      // Service Worker registration script has been removed for standard web deployment.
+      if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              for(let registration of registrations) {
+                  registration.unregister();
+              }
+          });
+      }
   </script>
 
 </body>
