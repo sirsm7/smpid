@@ -1,13 +1,14 @@
 /**
  * SMPID USER PORTAL MODULE (js/user.js)
- * Versi: 5.1 (UI Update: Butang Hijau & Label Dinamik Guru)
+ * Versi: 6.0 (Added Edit/Update Functionality)
  * Fungsi: Logik Dashboard Sekolah, Profil, Aduan, Analisa & Pencapaian
  */
 
 // NOTA: Variable global (DENO_API_URL, SUPABASE_URL) diambil dari window (utils.js)
 
-// Global Chart Instance (untuk elak overlap bila render semula)
+// Global Variables
 let analisaChart = null;
+let userPencapaianList = []; // Simpan data tempatan untuk rujukan Edit
 
 // ==========================================
 // 1. INITIALIZATION
@@ -178,7 +179,6 @@ async function simpanProfil() {
             
         if (error) throw error;
 
-        // Notifikasi Telegram (Fire & Forget)
         if (window.DENO_API_URL) {
             fetch(`${window.DENO_API_URL}/notify`, {
                 method: 'POST',
@@ -213,7 +213,6 @@ async function loadAnalisaSekolah() {
     const kod = sessionStorage.getItem('smpid_user_kod');
     const tableBody = document.getElementById('tableAnalisaBody');
 
-    // Reset Paparan
     document.getElementById('valDcs').innerText = '-';
     document.getElementById('valAktif').innerText = '-';
     if(tableBody) tableBody.innerHTML = `<tr><td colspan="3" class="text-muted py-3">Memuatkan data...</td></tr>`;
@@ -230,17 +229,14 @@ async function loadAnalisaSekolah() {
             return;
         }
 
-        // Logic Data Terkini (Prioriti 2025 > 2024)
         let dcsLatest = (data.dcs_2025 !== null) ? data.dcs_2025 : data.dcs_2024;
         let aktifLatest = (data.peratus_aktif_2025 !== null) ? data.peratus_aktif_2025 : data.peratus_aktif_2024;
         let dcsPrev = data.dcs_2023; 
         if (data.dcs_2025 !== null) dcsPrev = data.dcs_2024;
 
-        // Render UI
         document.getElementById('valDcs').innerText = dcsLatest ? dcsLatest.toFixed(2) : "0.00";
         document.getElementById('valAktif').innerText = aktifLatest ? aktifLatest : "0";
 
-        // Logic Trend
         const trendEl = document.getElementById('trendDcs');
         if (dcsLatest > dcsPrev) {
             trendEl.innerHTML = `<i class="fas fa-arrow-up me-1"></i>Meningkat`;
@@ -253,7 +249,6 @@ async function loadAnalisaSekolah() {
             trendEl.className = "badge bg-white text-secondary mt-2 rounded-pill px-2 border";
         }
 
-        // Render Jadual
         let rows = '';
         const createRow = (year, dcs, aktif) => {
             if (dcs === null && aktif === null) return ''; 
@@ -292,29 +287,12 @@ function renderDcsChart(data) {
         data: {
             labels: labels,
             datasets: [
-                {
-                    label: 'Skor DCS (0-5)',
-                    data: dataDcs,
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                    yAxisID: 'y',
-                    tension: 0.3,
-                    fill: true
-                },
-                {
-                    label: '% Aktif DELIMa',
-                    data: dataAktif,
-                    borderColor: '#198754',
-                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
-                    yAxisID: 'y1',
-                    tension: 0.3,
-                    borderDash: [5, 5]
-                }
+                { label: 'Skor DCS (0-5)', data: dataDcs, borderColor: '#0d6efd', backgroundColor: 'rgba(13, 110, 253, 0.1)', yAxisID: 'y', tension: 0.3, fill: true },
+                { label: '% Aktif DELIMa', data: dataAktif, borderColor: '#198754', backgroundColor: 'rgba(25, 135, 84, 0.1)', yAxisID: 'y1', tension: 0.3, borderDash: [5, 5] }
             ]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
+            responsive: true, maintainAspectRatio: false,
             scales: {
                 y: { min: 0, max: 5, position: 'left' },
                 y1: { min: 0, max: 100, position: 'right', grid: { drawOnChartArea: false } }
@@ -345,16 +323,10 @@ async function hantarTiket() {
     try {
         const { error } = await window.supabaseClient
             .from('smpid_aduan')
-            .insert([{ 
-                kod_sekolah: kod, 
-                peranan_pengirim: peranan, 
-                tajuk: tajuk, 
-                butiran_masalah: mesej 
-            }]);
+            .insert([{ kod_sekolah: kod, peranan_pengirim: peranan, tajuk: tajuk, butiran_masalah: mesej }]);
         
         if (error) throw error;
 
-        // Notifikasi Telegram ke Admin PPD
         if (window.DENO_API_URL) {
             fetch(`${window.DENO_API_URL}/notify-ticket`, {
                 method: 'POST',
@@ -445,37 +417,25 @@ async function loadTiketUser() {
 }
 
 // ==========================================
-// 6. MODUL PENCAPAIAN & KEMENJADIAN (V2)
+// 6. MODUL PENCAPAIAN & KEMENJADIAN (CRUD)
 // ==========================================
 
-// Fungsi Tab & UI Control
 function setPencapaianType(type) {
-    // 1. Update Hidden Input
     document.getElementById('pencapaianKategori').value = type;
-    
     const wrapperJenis = document.getElementById('wrapperJenisRekod');
     const lbl = document.getElementById('labelNamaPeserta');
     const inpName = document.getElementById('pInputNama');
 
     if (type === 'GURU') {
-        // Tunjuk pilihan Pertandingan/Sijil
         wrapperJenis.classList.remove('hidden');
-        
-        // PENTING: Panggil fungsi toggle untuk set label yang betul
-        // berdasarkan radio button mana yang tengah active (default: Pertandingan)
         toggleJenisPencapaian();
-        
         inpName.value = "";
         inpName.readOnly = false;
         inpName.placeholder = "Taip nama penuh guru...";
-    
     } else {
-        // Jika MURID atau SEKOLAH
         wrapperJenis.classList.add('hidden');
-        
-        // Reset radio ke default (Pertandingan) supaya bila masuk balik GURU, dia reset
         document.getElementById('radioPertandingan').checked = true;
-        toggleJenisPencapaian(); // Reset UI field lain
+        toggleJenisPencapaian(); 
 
         if (type === 'MURID') {
             lbl.innerText = "NAMA MURID";
@@ -484,20 +444,16 @@ function setPencapaianType(type) {
             inpName.placeholder = "Taip nama penuh murid...";
         } else if (type === 'SEKOLAH') {
             lbl.innerText = "NAMA SEKOLAH";
-            // Auto-fill nama sekolah dari sesi paparan
             inpName.value = document.getElementById('dispNamaSekolah').innerText;
-            inpName.readOnly = true; // Kunci supaya tak boleh ubah
+            inpName.readOnly = true; 
         }
     }
 }
 
-// Fungsi Toggle Antara Pertandingan vs Pensijilan
 function toggleJenisPencapaian() {
     const isPensijilan = document.getElementById('radioPensijilan').checked;
     
-    // Elements
     const divPenyedia = document.getElementById('divInputPenyedia');
-    const rowPeringkat = document.getElementById('rowPeringkat'); // Mengandungi Peringkat & Tahun
     const selectPeringkat = document.getElementById('pInputPeringkat');
     
     const lblProgram = document.getElementById('lblProgram');
@@ -506,25 +462,20 @@ function toggleJenisPencapaian() {
     const lblPencapaian = document.getElementById('lblPencapaian');
     const inpPencapaian = document.getElementById('pInputPencapaian');
     
-    // Update Hidden Input untuk Logic Simpan
     document.getElementById('pInputJenisRekod').value = isPensijilan ? 'PENSIJILAN' : 'PERTANDINGAN';
 
-    // LOGIK UI MEDAN
     if (isPensijilan) {
-        // UI MODE: PENSIJILAN
         divPenyedia.classList.remove('hidden');
-        selectPeringkat.parentElement.classList.add('hidden'); // Sembunyi dropdown peringkat
+        selectPeringkat.parentElement.classList.add('hidden');
         
         lblProgram.innerText = "NAMA SIJIL / PROGRAM";
         inpProgram.placeholder = "Contoh: GOOGLE CERTIFIED EDUCATOR L1";
         
         lblPencapaian.innerText = "TAHAP / SKOR / BAND";
         inpPencapaian.placeholder = "Contoh: LULUS / BAND C2 / LEVEL 1";
-
     } else {
-        // UI MODE: PERTANDINGAN (Default)
         divPenyedia.classList.add('hidden');
-        selectPeringkat.parentElement.classList.remove('hidden'); // Tunjuk balik dropdown peringkat
+        selectPeringkat.parentElement.classList.remove('hidden');
         
         lblProgram.innerText = "NAMA PERTANDINGAN";
         inpProgram.placeholder = "Contoh: DIGITAL COMPETENCY 2025";
@@ -533,43 +484,34 @@ function toggleJenisPencapaian() {
         inpPencapaian.placeholder = "Contoh: JOHAN / EMAS / PENYERTAAN";
     }
 
-    // UPDATE: LOGIK LABEL NAMA GURU (DYNAMIC)
     const kategori = document.getElementById('pencapaianKategori').value;
     const lblNama = document.getElementById('labelNamaPeserta');
     
     if (kategori === 'GURU') {
-        if (isPensijilan) {
-            lblNama.innerText = "NAMA GURU";
-        } else {
-            lblNama.innerText = "NAMA GURU / KUMPULAN";
-        }
+        lblNama.innerText = isPensijilan ? "NAMA GURU" : "NAMA GURU / KUMPULAN";
     }
 }
 
-// Fungsi Simpan Rekod
 async function simpanPencapaian() {
-    const kod = sessionStorage.getItem('smpid_user_kod'); // SECURITY: Ambil dari session
+    const kod = sessionStorage.getItem('smpid_user_kod'); 
     const btn = document.querySelector('#formPencapaian button[type="submit"]');
 
-    // Ambil Data Asas
     const kategori = document.getElementById('pencapaianKategori').value;
     const jenisRekod = document.getElementById('pInputJenisRekod').value;
     const nama = document.getElementById('pInputNama').value.trim().toUpperCase();
     
-    // Logic Data Dinamik
     let penyedia = 'LAIN-LAIN';
     let peringkat = 'KEBANGSAAN';
     
     if (jenisRekod === 'PENSIJILAN') {
         penyedia = document.getElementById('pInputPenyedia').value;
-        peringkat = 'ANTARABANGSA'; // Default untuk sijil profesional
+        peringkat = 'ANTARABANGSA'; 
     } else {
-        penyedia = 'LAIN-LAIN'; // Default pertandingan biasa
+        penyedia = 'LAIN-LAIN'; 
         peringkat = document.getElementById('pInputPeringkat').value;
     }
 
     const program = document.getElementById('pInputProgram').value.trim().toUpperCase();
-    // UPDATE: Ambil data dari input manual
     const tahunInput = document.getElementById('pInputTahun').value;
     const pencapaian = document.getElementById('pInputPencapaian').value.trim().toUpperCase();
     const link = document.getElementById('pInputLink').value.trim();
@@ -579,7 +521,6 @@ async function simpanPencapaian() {
         return;
     }
 
-    // UPDATE: Validasi Tahun Manual
     const tahun = parseInt(tahunInput);
     if (tahun < 2023) {
         Swal.fire('Tahun Tidak Sah', 'Rekod mestilah dari tahun 2023 dan ke atas.', 'warning');
@@ -599,28 +540,21 @@ async function simpanPencapaian() {
             tahun: tahun,
             pencapaian: pencapaian,
             pautan_bukti: link,
-            // NEW FIELDS
             jenis_rekod: jenisRekod,
             penyedia: penyedia
         };
 
-        const { error } = await window.supabaseClient
-            .from('smpid_pencapaian')
-            .insert([payload]);
-
+        const { error } = await window.supabaseClient.from('smpid_pencapaian').insert([payload]);
         if (error) throw error;
 
         window.toggleLoading(false);
         if(btn) btn.disabled = false;
 
         Swal.fire('Berjaya', 'Rekod pencapaian telah disimpan.', 'success').then(() => {
-            // Reset Borang (Kecuali jika kategori Sekolah, nama kekal)
             document.getElementById('pInputProgram').value = "";
             document.getElementById('pInputPencapaian').value = "";
             document.getElementById('pInputLink').value = "";
             if(kategori !== 'SEKOLAH') document.getElementById('pInputNama').value = "";
-            
-            // Refresh Senarai
             loadPencapaianSekolah();
         });
 
@@ -632,7 +566,6 @@ async function simpanPencapaian() {
     }
 }
 
-// Fungsi Muat Turun Senarai (Read)
 async function loadPencapaianSekolah() {
     const kod = sessionStorage.getItem('smpid_user_kod');
     const tbody = document.getElementById('tbodyRekodPencapaian');
@@ -649,6 +582,9 @@ async function loadPencapaianSekolah() {
 
         if (error) throw error;
 
+        // Simpan data untuk kegunaan Edit
+        userPencapaianList = data;
+
         if (data.length === 0) {
             tbody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-muted fst-italic">Tiada rekod dijumpai.</td></tr>`;
             return;
@@ -656,13 +592,11 @@ async function loadPencapaianSekolah() {
 
         let html = '';
         data.forEach(item => {
-            // Badge Warna Kategori
             let badgeClass = 'bg-secondary';
             if (item.kategori === 'MURID') badgeClass = 'bg-info text-dark';
             else if (item.kategori === 'GURU') badgeClass = 'bg-warning text-dark';
             else if (item.kategori === 'SEKOLAH') badgeClass = 'bg-purple';
 
-            // Logic Paparan Nama Program (Ada Badge jika Pensijilan)
             let displayProgram = item.nama_pertandingan;
             let displayPeringkat = item.peringkat;
 
@@ -673,7 +607,7 @@ async function loadPencapaianSekolah() {
                 else if (item.penyedia === 'MICROSOFT') badgeProvider = 'bg-microsoft';
                 
                 displayProgram = `<span class="badge ${badgeProvider} me-1"><i class="fas fa-certificate"></i> ${item.penyedia}</span> <span class="fw-bold text-dark">${item.nama_pertandingan}</span>`;
-                displayPeringkat = `<span class="badge bg-dark">PRO</span>`; // Tukar badge peringkat jadi PRO
+                displayPeringkat = `<span class="badge bg-dark">PRO</span>`; 
             } else {
                  displayProgram = `<div class="text-primary small fw-bold text-uppercase mb-1">${item.nama_pertandingan}</div>`;
                  displayPeringkat = `<span class="badge bg-light text-dark border">${item.peringkat}</span>`;
@@ -697,6 +631,9 @@ async function loadPencapaianSekolah() {
                     </a>
                 </td>
                 <td class="text-center align-middle">
+                    <button onclick="openEditPencapaianUser(${item.id})" class="btn btn-sm btn-outline-warning shadow-sm me-1" title="Edit Rekod">
+                        <i class="fas fa-edit"></i>
+                    </button>
                     <button onclick="padamPencapaian(${item.id})" class="btn btn-sm btn-outline-danger shadow-sm" title="Padam Rekod">
                         <i class="fas fa-trash-alt"></i>
                     </button>
@@ -711,7 +648,114 @@ async function loadPencapaianSekolah() {
     }
 }
 
-// Fungsi Padam (Delete)
+// --- FUNGSI EDIT PENCAPAIAN (BARU) ---
+function openEditPencapaianUser(id) {
+    const item = userPencapaianList.find(i => i.id === id);
+    if (!item) return;
+
+    // Isi Nilai Asas
+    document.getElementById('editUserId').value = item.id;
+    document.getElementById('editUserJenis').value = item.jenis_rekod;
+    document.getElementById('editUserNama').value = item.nama_peserta;
+    document.getElementById('editUserProgram').value = item.nama_pertandingan;
+    document.getElementById('editUserPencapaian').value = item.pencapaian;
+    document.getElementById('editUserLink').value = item.pautan_bukti;
+    document.getElementById('editUserTahun').value = item.tahun;
+
+    // Logik UI Mengikut Jenis Rekod
+    const divPenyedia = document.getElementById('editUserDivPenyedia');
+    const rowPeringkat = document.getElementById('editUserRowPeringkat');
+    const lblProgram = document.getElementById('lblEditUserProgram');
+    const lblPencapaian = document.getElementById('lblEditUserPencapaian');
+
+    if (item.jenis_rekod === 'PENSIJILAN') {
+        divPenyedia.classList.remove('hidden');
+        rowPeringkat.classList.add('hidden'); // Sembunyi dropdown peringkat
+        document.getElementById('editUserPenyedia').value = item.penyedia || 'LAIN-LAIN';
+        
+        lblProgram.innerText = "NAMA SIJIL";
+        lblPencapaian.innerText = "TAHAP / SKOR";
+    } else {
+        divPenyedia.classList.add('hidden');
+        rowPeringkat.classList.remove('hidden'); // Tunjuk balik dropdown peringkat
+        document.getElementById('editUserPeringkat').value = item.peringkat || 'KEBANGSAAN';
+        
+        lblProgram.innerText = "NAMA PERTANDINGAN";
+        lblPencapaian.innerText = "PENCAPAIAN";
+    }
+
+    // Tunjuk Modal
+    const modalEl = document.getElementById('modalEditPencapaianUser');
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+}
+
+async function updatePencapaianUser() {
+    const id = document.getElementById('editUserId').value;
+    const jenis = document.getElementById('editUserJenis').value;
+    const btn = document.querySelector('#formEditPencapaianUser button[type="submit"]');
+
+    // Ambil Data
+    const nama = document.getElementById('editUserNama').value.trim().toUpperCase();
+    const program = document.getElementById('editUserProgram').value.trim().toUpperCase();
+    const pencapaian = document.getElementById('editUserPencapaian').value.trim().toUpperCase();
+    const link = document.getElementById('editUserLink').value.trim();
+    const tahun = parseInt(document.getElementById('editUserTahun').value);
+
+    // Validasi
+    if (!nama || !program || !pencapaian || !link || !tahun) {
+        Swal.fire('Data Tidak Lengkap', 'Sila isi semua maklumat.', 'warning');
+        return;
+    }
+
+    // Payload
+    const payload = {
+        nama_peserta: nama,
+        nama_pertandingan: program,
+        pencapaian: pencapaian,
+        pautan_bukti: link,
+        tahun: tahun
+    };
+
+    if (jenis === 'PENSIJILAN') {
+        payload.penyedia = document.getElementById('editUserPenyedia').value;
+        payload.peringkat = 'ANTARABANGSA'; // Auto fix for cert
+    } else {
+        payload.peringkat = document.getElementById('editUserPeringkat').value;
+        payload.penyedia = 'LAIN-LAIN';
+    }
+
+    if(btn) btn.disabled = true;
+    window.toggleLoading(true);
+
+    try {
+        const { error } = await window.supabaseClient
+            .from('smpid_pencapaian')
+            .update(payload)
+            .eq('id', id);
+
+        if (error) throw error;
+
+        window.toggleLoading(false);
+        if(btn) btn.disabled = false;
+
+        // Tutup Modal
+        const modalEl = document.getElementById('modalEditPencapaianUser');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if(modal) modal.hide();
+
+        Swal.fire('Berjaya', 'Rekod telah dikemaskini.', 'success').then(() => {
+            loadPencapaianSekolah(); // Refresh Table
+        });
+
+    } catch (err) {
+        window.toggleLoading(false);
+        if(btn) btn.disabled = false;
+        console.error(err);
+        Swal.fire('Ralat', 'Gagal mengemaskini rekod.', 'error');
+    }
+}
+
 async function padamPencapaian(id) {
     Swal.fire({
         title: 'Padam Rekod?',
@@ -725,13 +769,8 @@ async function padamPencapaian(id) {
         if (result.isConfirmed) {
             window.toggleLoading(true);
             try {
-                const { error } = await window.supabaseClient
-                    .from('smpid_pencapaian')
-                    .delete()
-                    .eq('id', id); // Row ID
-
+                const { error } = await window.supabaseClient.from('smpid_pencapaian').delete().eq('id', id); 
                 if (error) throw error;
-
                 window.toggleLoading(false);
                 Swal.fire('Dipadam', 'Rekod berjaya dipadam.', 'success').then(() => loadPencapaianSekolah());
             } catch (err) {
@@ -865,5 +904,8 @@ window.setPencapaianType = setPencapaianType;
 window.simpanPencapaian = simpanPencapaian;
 window.loadPencapaianSekolah = loadPencapaianSekolah;
 window.padamPencapaian = padamPencapaian;
+// BIND FUNGSI EDIT PENCAPAIAN USER (BARU)
+window.openEditPencapaianUser = openEditPencapaianUser;
+window.updatePencapaianUser = updatePencapaianUser;
 // BIND FUNGSI TOGGLE JENIS (PENTING)
 window.toggleJenisPencapaian = toggleJenisPencapaian;

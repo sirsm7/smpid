@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SMPID - Log Masuk Admin</title>
+  
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#198754">
+  <link rel="apple-touch-icon" href="icoppdag.png">
+  <link rel="icon" href="icoppdag.png">
+  
+  <!-- CSS Bootstrap & FontAwesome -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
+  <!-- MODULAR CSS -->
+  <link href="css/core.css" rel="stylesheet">
+  <link href="css/layout.css" rel="stylesheet">
+  <link href="css/components.css" rel="stylesheet">
+  
+  <!-- Library JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body id="page-login">
+
+  <!-- LOADING OVERLAY -->
+  <div id="loadingOverlay" class="hidden">
+    <div class="text-center">
+      <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+      <p class="mt-2 fw-bold text-dark">Mengesahkan Akaun...</p>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="header-login text-center">
+    <img src="icoppdag.png" alt="Logo PPD" class="mb-4" style="width: 200px; height: auto;">
+    <h2 class="fw-bold px-3"><i class="fas fa-school me-2"></i>Laman Log Masuk Admin</h2>
+    <p class="opacity-75">Khas Untuk Admin Sekolah & PPD Sahaja</p>
+  </div>
+
+  <div class="container pb-5" style="margin-top: -2rem;">
+    <div class="row justify-content-center">
+      <div class="col-md-12">
+
+        <!-- LOGIN CARD -->
+        <div id="loginCard" class="card p-4 mx-auto shadow-sm" style="max-width: 500px;">
+          <div class="card-body">
+            <!-- Tajuk Dinamik -->
+            <h5 class="card-title text-center mb-4 fw-bold" id="loginTitle">AKSES SISTEM</h5>
+            
+            <!-- Butang Balik Ke Portal Utama (Baru) -->
+            <div class="text-center mb-4">
+                <a href="index.html" class="text-decoration-none small fw-bold text-primary">
+                    <i class="fas fa-arrow-left me-1"></i> Kembali ke Portal Utama
+                </a>
+            </div>
+
+            <!-- Input Emel -->
+            <div class="mb-3">
+              <label class="form-label text-muted" style="font-weight: 600; font-size: 0.9rem;">EMEL PENGGUNA</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="fas fa-envelope text-muted"></i></span>
+                <input type="email" id="inputEmail" class="form-control form-control-lg border-start-0" 
+                       placeholder="nama@moe.gov.my">
+              </div>
+            </div>
+
+            <!-- Input Password -->
+            <div class="mb-4">
+              <label class="form-label text-muted" style="font-weight: 600; font-size: 0.9rem;">KATA LALUAN</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="fas fa-lock text-muted"></i></span>
+                <input type="password" id="inputPassword" class="form-control form-control-lg border-start-0" 
+                       placeholder="••••••••">
+                <button class="btn btn-outline-secondary border-start-0 bg-white" type="button" onclick="togglePass()">
+                    <i class="fas fa-eye text-muted" id="iconEye"></i>
+                </button>
+              </div>
+              <div class="text-end mt-1">
+                  <small class="text-muted" style="font-size: 0.75rem;">Default: ppdag@12345</small>
+              </div>
+            </div>
+
+            <button onclick="prosesLogin()" class="btn btn-primary w-100 btn-lg fw-bold shadow-sm">
+              <i class="fas fa-sign-in-alt me-2"></i>LOG MASUK
+            </button>
+            
+            <div class="text-center mt-3">
+                <small class="text-muted fst-italic">HAKCIPTA TERPELIHARA USTP PPD AG 2026</small>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODULAR SCRIPTS -->
+  <script src="js/utils.js"></script>
+  <script src="js/auth.js"></script>
+
+  <!-- Auto-Detect Kod Sekolah di URL -->
+  <script>
+      document.addEventListener('DOMContentLoaded', () => {
+          const params = new URLSearchParams(window.location.search);
+          const kod = params.get('kod');
+          if(kod) {
+              document.getElementById('loginTitle').innerHTML = `LOG MASUK <span class="text-primary">${kod.toUpperCase()}</span>`;
+          }
+      });
+  </script>
+
+</body>
+</html>

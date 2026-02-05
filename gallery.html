@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SMPID - Galeri Pencapaian</title>
+  
+  <link rel="icon" href="icoppdag.png">
+  
+  <!-- CSS Bootstrap & FontAwesome -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <link href="css/core.css" rel="stylesheet">
+  <link href="css/components.css" rel="stylesheet">
+
+  <!-- Library JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+      /* GAYA GALERI MASONRY */
+      body {
+          background-color: #f8f9fa;
+          font-family: 'Inter', sans-serif;
+      }
+      .gallery-header {
+          background: white;
+          border-bottom: 1px solid #e9ecef;
+          padding: 1.5rem 0;
+          margin-bottom: 1.5rem;
+      }
+      .card-gallery {
+          border: 1px solid #e9ecef;
+          border-radius: 8px; /* Sudut lebih tajam sikit untuk kad kecil */
+          overflow: hidden;
+          transition: transform 0.2s, box-shadow 0.2s;
+          background: white;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          cursor: pointer;
+      }
+      .card-gallery:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+          border-color: var(--bs-primary);
+      }
+      .gallery-thumb-container {
+          position: relative;
+          width: 100%;
+          padding-top: 56.25%; /* 16:9 Aspect Ratio */
+          background-color: #f1f3f5;
+          overflow: hidden;
+      }
+      .gallery-thumb {
+          position: absolute;
+          top: 0; left: 0;
+          width: 100%; height: 100%;
+          object-fit: cover;
+      }
+      .icon-overlay {
+          position: absolute;
+          top: 5px; right: 5px;
+          background: rgba(255,255,255,0.95);
+          border-radius: 50%;
+          width: 24px; height: 24px; /* Ikon lebih kecil */
+          display: flex; align-items: center; justify-content: center;
+          font-size: 0.7rem;
+          color: #495057;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .folder-icon {
+          position: absolute;
+          top: 50%; left: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 3rem;
+          color: #ffc107;
+          text-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      }
+      .card-body {
+          padding: 0.75rem; /* Padding lebih kecil (Compact) */
+          flex-grow: 1;
+      }
+      .badge-category {
+          font-size: 0.6rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 0.25rem;
+      }
+      .text-private {
+          color: #dc3545;
+          font-weight: bold;
+          font-size: 0.7rem;
+          display: flex; align-items: center; justify-content: center;
+          height: 100%;
+          background: #ffebeb;
+      }
+  </style>
+</head>
+<body>
+
+  <!-- LOADING -->
+  <div id="loadingOverlay" class="hidden">
+    <div class="text-center">
+      <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+      <p class="mt-2 fw-bold small">Memuatkan...</p>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="gallery-header">
+      <div class="container">
+          <div class="d-flex align-items-center justify-content-between">
+              <div>
+                  <small class="text-muted fw-bold text-uppercase ls-1" style="font-size: 0.7rem;">GALERI PENCAPAIAN SEKOLAH</small>
+                  <h4 class="fw-bold text-dark mt-1 mb-0" id="headerSchoolName">MEMUATKAN...</h4>
+                  <p class="text-muted mb-0 small" id="headerSchoolCode">-</p>
+              </div>
+              <!-- NAVIGATION BUTTON: Point to Index/Landing Page -->
+              <!-- Changed ID to btnBackHome so gallery.js doesn't overwrite onclick -->
+              <button id="btnBackHome" class="btn btn-outline-secondary rounded-pill btn-sm fw-bold px-3" onclick="window.location.href='index.html'">
+                  <i class="fas fa-home me-1"></i> Portal Utama
+              </button>
+          </div>
+      </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="container pb-5">
+      <div id="galleryGrid" class="row g-3"> <!-- Gap lebih kecil (g-3) -->
+          <!-- KAD AKAN DIJANA DI SINI -->
+          <div class="col-12 text-center py-5 text-muted">
+              <i class="fas fa-circle-notch fa-spin fa-2x mb-3"></i>
+              <p>Sedang mendapatkan data...</p>
+          </div>
+      </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/gallery.js"></script>
+
+</body>
+</html>

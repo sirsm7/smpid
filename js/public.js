@@ -1,6 +1,6 @@
 /**
  * SMPID PUBLIC FORM MODULE (js/public.js)
- * Versi: 4.0 (PPD M030 Integration)
+ * Versi: 4.1 (Tambah Pautan Galeri)
  */
 
 // State Global
@@ -216,6 +216,7 @@ function validateAndLockSchool(kod) {
     const input = document.getElementById('inputCariSekolah');
     const statusMsg = document.getElementById('schoolStatusMsg');
     const finalInput = document.getElementById('finalKodSekolah');
+    const btnGallery = document.getElementById('btnViewGallery');
     
     if (school) {
         input.value = `${school.kod_sekolah} - ${school.nama_sekolah}`;
@@ -227,11 +228,21 @@ function validateAndLockSchool(kod) {
         statusMsg.classList.add('text-success');
         statusMsg.innerHTML = `<i class="fas fa-check-circle me-1"></i> Sekolah disahkan.`;
         enableForm(); 
+
+        // AKTIFKAN BUTANG GALERI
+        if (btnGallery) {
+            btnGallery.classList.remove('hidden');
+            btnGallery.href = `gallery.html?kod=${school.kod_sekolah}`;
+        }
+
     } else {
         input.value = kod;
         statusMsg.classList.remove('hidden', 'text-success');
         statusMsg.classList.add('text-danger');
         statusMsg.innerHTML = `<i class="fas fa-times-circle me-1"></i> Kod tidak sah.`;
+        
+        // SOROK BUTANG GALERI
+        if (btnGallery) btnGallery.classList.add('hidden');
         setupManualSearch();
     }
 }
@@ -239,6 +250,8 @@ function validateAndLockSchool(kod) {
 function setupManualSearch() {
     const input = document.getElementById('inputCariSekolah');
     const finalInput = document.getElementById('finalKodSekolah');
+    const btnGallery = document.getElementById('btnViewGallery');
+
     if(input) input.disabled = false;
     
     if(input) {
@@ -251,13 +264,20 @@ function setupManualSearch() {
                 if (school) {
                     finalInput.value = school.kod_sekolah;
                     enableForm();
+                    // Update Gallery Link
+                    if (btnGallery) {
+                        btnGallery.classList.remove('hidden');
+                        btnGallery.href = `gallery.html?kod=${school.kod_sekolah}`;
+                    }
                 } else {
                     finalInput.value = "";
                     disableForm();
+                    if(btnGallery) btnGallery.classList.add('hidden');
                 }
             } else {
                 finalInput.value = "";
                 disableForm();
+                if(btnGallery) btnGallery.classList.add('hidden');
             }
         });
     }
