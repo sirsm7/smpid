@@ -1,7 +1,7 @@
 /**
  * SMPID GALLERY MODULE (js/gallery.js)
- * Versi: 5.0 (Dashboard Kemenjadian - Penaziran Ready)
- * Fungsi: Memaparkan grid pencapaian dengan statistik dan kod warna kategori.
+ * Versi: 5.1 (Visual Grouping by Year)
+ * Fungsi: Memaparkan grid pencapaian dikelompokkan mengikut tahun.
  */
 
 let allGalleryData = []; // Simpan data tempatan untuk filtering pantas
@@ -29,12 +29,10 @@ async function initGallery() {
         return;
     }
 
-    // 2. PAUTAN KEMBALI
+    // 2. PAUTAN KEMBALI (Jika perlu)
     const btnBack = document.getElementById('btnBackHome');
     if (btnBack) {
-        // Jika user datang dari public.html, back akan bawa ke sana semula dengan kod
-        // Jika dari dashboard user, mungkin lain. Kita kekalkan ke index buat masa ini.
-        // btnBack.setAttribute('onclick', `window.location.href='index.html'`);
+        // btnBack logic jika perlu ubah destinasi
     }
 
     // 3. DAPATKAN NAMA SEKOLAH
@@ -85,7 +83,6 @@ async function loadGalleryItems(kod) {
 
         // PENAPIS DATA UTAMA
         // Hanya ambil rekod yang mempunyai kategori sah (MURID, GURU, SEKOLAH)
-        // Rekod tanpa kategori atau 'LAIN-LAIN' akan diabaikan untuk kekemasan dashboard.
         allGalleryData = data.filter(item => 
             item.kategori && ['MURID', 'GURU', 'SEKOLAH'].includes(item.kategori)
         );
@@ -122,15 +119,17 @@ function filterGallery(type, btn) {
     renderGallery(type);
 }
 
+// --- LOGIK RENDER DIKEMASKINI (PENGELOMPOKAN TAHUN) ---
 function renderGallery(filterType) {
     const grid = document.getElementById('galleryGrid');
     grid.innerHTML = "";
 
-    // Tapis data berdasarkan butang
+    // 1. Tapis data berdasarkan butang kategori
     const filteredData = (filterType === 'SEMUA') 
         ? allGalleryData 
         : allGalleryData.filter(item => item.kategori === filterType);
 
+    // 2. Kendalikan jika tiada data
     if (filteredData.length === 0) {
         grid.innerHTML = `
         <div class="col-12 text-center py-5">
@@ -142,9 +141,32 @@ function renderGallery(filterType) {
         return;
     }
 
-    filteredData.forEach(item => {
-        const card = createCard(item);
-        grid.innerHTML += card;
+    // 3. Dapatkan senarai Tahun Unik & Susun (Terkini -> Lama)
+    const uniqueYears = [...new Set(filteredData.map(item => item.tahun))].sort((a, b) => b - a);
+
+    // 4. Gelung untuk setiap tahun (Grouping Logic)
+    uniqueYears.forEach(year => {
+        // A. Cipta Header Tahun
+        // Guna col-12 supaya ia mengambil satu baris penuh, menolak kad ke bawah
+        const headerHTML = `
+            <div class="col-12 mt-4 mb-2 fade-up">
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-light text-dark border me-2" style="font-size: 0.9rem;">
+                        <i class="fas fa-calendar-alt me-1 text-secondary"></i> ${year}
+                    </span>
+                    <div class="flex-grow-1 border-bottom opacity-25"></div>
+                </div>
+            </div>`;
+        grid.innerHTML += headerHTML;
+
+        // B. Dapatkan item untuk tahun tersebut sahaja
+        const itemsInYear = filteredData.filter(item => item.tahun === year);
+
+        // C. Cipta Kad untuk setiap item dalam tahun tersebut
+        itemsInYear.forEach(item => {
+            const card = createCard(item);
+            grid.innerHTML += card;
+        });
     });
 }
 
@@ -255,6 +277,7 @@ function createCard(item) {
                     <span class="${textClass} fw-bold" style="font-size: 0.75rem;">
                         ${item.pencapaian}
                     </span>
+                    <!-- Tahun dipaparkan di header kumpulan, tapi boleh kekal di sini sebagai rujukan tambahan -->
                     <small class="text-muted" style="font-size: 0.65rem;">${item.tahun}</small>
                 </div>
             </div>
