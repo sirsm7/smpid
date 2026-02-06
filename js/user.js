@@ -1,6 +1,6 @@
 /**
  * SMPID USER PORTAL MODULE (js/user.js)
- * Versi: 6.0 (Added Edit/Update Functionality)
+ * Versi: 7.0 (Added Teacher Position/Jawatan Field)
  * Fungsi: Logik Dashboard Sekolah, Profil, Aduan, Analisa & Pencapaian
  */
 
@@ -425,15 +425,20 @@ function setPencapaianType(type) {
     const wrapperJenis = document.getElementById('wrapperJenisRekod');
     const lbl = document.getElementById('labelNamaPeserta');
     const inpName = document.getElementById('pInputNama');
+    
+    // UPDATED: Toggle Jawatan Field
+    const divJawatan = document.getElementById('divInputJawatan');
 
     if (type === 'GURU') {
         wrapperJenis.classList.remove('hidden');
+        divJawatan.classList.remove('hidden'); // Show Jawatan
         toggleJenisPencapaian();
         inpName.value = "";
         inpName.readOnly = false;
         inpName.placeholder = "Taip nama penuh guru...";
     } else {
         wrapperJenis.classList.add('hidden');
+        divJawatan.classList.add('hidden'); // Hide Jawatan
         document.getElementById('radioPertandingan').checked = true;
         toggleJenisPencapaian(); 
 
@@ -502,6 +507,16 @@ async function simpanPencapaian() {
     
     let penyedia = 'LAIN-LAIN';
     let peringkat = 'KEBANGSAAN';
+    let jawatan = null; // Default null
+    
+    // UPDATED: Logic for Jawatan
+    if (kategori === 'GURU') {
+        jawatan = document.getElementById('pInputJawatan').value;
+        if (!jawatan) {
+            Swal.fire('Jawatan Wajib', 'Sila pilih jawatan guru.', 'warning');
+            return;
+        }
+    }
     
     if (jenisRekod === 'PENSIJILAN') {
         penyedia = document.getElementById('pInputPenyedia').value;
@@ -541,7 +556,8 @@ async function simpanPencapaian() {
             pencapaian: pencapaian,
             pautan_bukti: link,
             jenis_rekod: jenisRekod,
-            penyedia: penyedia
+            penyedia: penyedia,
+            jawatan: jawatan // Include jawatan
         };
 
         const { error } = await window.supabaseClient.from('smpid_pencapaian').insert([payload]);
@@ -600,6 +616,12 @@ async function loadPencapaianSekolah() {
             let displayProgram = item.nama_pertandingan;
             let displayPeringkat = item.peringkat;
 
+            // UPDATED: Tunjuk Jawatan jika ada
+            let namaPaparan = `<div class="fw-bold text-dark small text-truncate" style="max-width: 200px;">${item.nama_peserta}</div>`;
+            if (item.kategori === 'GURU' && item.jawatan) {
+                namaPaparan += `<span class="badge bg-light text-secondary border mt-1" style="font-size:0.65rem;">${item.jawatan}</span>`;
+            }
+
             if (item.jenis_rekod === 'PENSIJILAN') {
                 let badgeProvider = 'bg-secondary';
                 if (item.penyedia === 'GOOGLE') badgeProvider = 'bg-google';
@@ -620,8 +642,8 @@ async function loadPencapaianSekolah() {
                     <div class="small text-muted mt-1 fw-bold">${item.tahun}</div>
                 </td>
                 <td class="align-middle">
-                    <div class="fw-bold text-dark small text-truncate" style="max-width: 200px;">${item.nama_peserta}</div>
-                    ${displayProgram}
+                    ${namaPaparan}
+                    <div class="mt-2">${displayProgram}</div>
                     <div class="d-flex gap-2 mt-1">
                         ${displayPeringkat}
                         <span class="badge bg-success bg-opacity-10 text-success border border-success">${item.pencapaian}</span>
@@ -667,6 +689,15 @@ function openEditPencapaianUser(id) {
     const rowPeringkat = document.getElementById('editUserRowPeringkat');
     const lblProgram = document.getElementById('lblEditUserProgram');
     const lblPencapaian = document.getElementById('lblEditUserPencapaian');
+    
+    // UPDATED: Logic UI Jawatan
+    const divJawatan = document.getElementById('editUserDivJawatan');
+    if (item.kategori === 'GURU') {
+        divJawatan.classList.remove('hidden');
+        document.getElementById('editUserJawatan').value = item.jawatan || 'GURU AKADEMIK BIASA';
+    } else {
+        divJawatan.classList.add('hidden');
+    }
 
     if (item.jenis_rekod === 'PENSIJILAN') {
         divPenyedia.classList.remove('hidden');
@@ -716,6 +747,12 @@ async function updatePencapaianUser() {
         pautan_bukti: link,
         tahun: tahun
     };
+    
+    // UPDATED: Check Jawatan Visibility
+    const divJawatan = document.getElementById('editUserDivJawatan');
+    if (!divJawatan.classList.contains('hidden')) {
+        payload.jawatan = document.getElementById('editUserJawatan').value;
+    }
 
     if (jenis === 'PENSIJILAN') {
         payload.penyedia = document.getElementById('editUserPenyedia').value;

@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SMPID - Borang Serahan Data</title>
   
-  <!-- PWA Features Removed -->
-  <!-- <link rel="manifest" href="manifest.json"> -->
   <meta name="theme-color" content="#198754">
-  <!-- <link rel="apple-touch-icon" href="icoppdag.png"> -->
   <link rel="icon" href="icoppdag.png">
   
   <!-- CSS Bootstrap & FontAwesome -->
@@ -16,7 +13,7 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   
-  <!-- MODULAR CSS (UPDATED) -->
+  <!-- MODULAR CSS -->
   <link href="css/core.css" rel="stylesheet">
   <link href="css/layout.css" rel="stylesheet">
   <link href="css/components.css" rel="stylesheet">
@@ -26,11 +23,9 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <style>
-      /* Page Specific Styles */
       .disabled-form { opacity: 0.6; pointer-events: none; filter: grayscale(100%); transition: all 0.3s ease; }
       .enabled-form { opacity: 1; pointer-events: auto; filter: grayscale(0%); }
       
-      /* Visual Input Lebih Jelas */
       .form-control, .form-select {
           border: 2px solid #dee2e6;
           padding: 0.75rem 1rem;
@@ -47,13 +42,8 @@
           letter-spacing: 0.5px;
           color: #6c757d;
       }
-      .card-form {
-          border-top: 5px solid #6f42c1 !important;
-      }
-      /* PPD Form Theme */
-      .card-form-ppd {
-          border-top: 5px solid #4b0082 !important; /* Indigo */
-      }
+      .card-form { border-top: 5px solid #6f42c1 !important; }
+      .card-form-ppd { border-top: 5px solid #4b0082 !important; }
   </style>
 </head>
 <body class="bg-light">
@@ -66,7 +56,6 @@
   </div>
 
   <div class="header-bg text-center pb-5 pt-4 mb-4 position-relative">
-    <!-- BUTANG BALIK (NAVIGASI BARU) -->
     <a href="index.html" class="btn btn-sm btn-outline-light fw-bold position-absolute top-0 start-0 m-3 rounded-pill">
         <i class="fas fa-arrow-left me-1"></i> Portal Utama
     </a>
@@ -80,11 +69,10 @@
     <div class="row justify-content-center">
       <div class="col-md-10 col-lg-8">
 
-        <!-- KAD 1: IDENTITI SEKOLAH (DISOROK JIKA PPD) -->
+        <!-- KAD 1: IDENTITI SEKOLAH -->
         <div id="cardIdentitiSekolah" class="card border-0 shadow-sm rounded-4 p-4 mb-3 bg-white">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="fw-bold text-primary m-0"><i class="fas fa-school me-2"></i>Maklumat Sekolah</h6>
-                <!-- BUTANG GALERI -->
                 <a id="btnViewGallery" href="#" class="btn btn-sm btn-outline-primary fw-bold rounded-pill hidden">
                     <i class="fas fa-images me-1"></i> Galeri Sekolah
                 </a>
@@ -104,7 +92,7 @@
             <div id="schoolStatusMsg" class="mt-2 small fw-bold text-danger hidden"></div>
         </div>
 
-        <!-- KAD 1B: HEADER PPD (KHAS UNTUK M030) -->
+        <!-- KAD 1B: HEADER PPD (M030) -->
         <div id="cardIdentitiPPD" class="card border-0 shadow-sm rounded-4 p-4 mb-3 bg-white hidden border-start border-5 border-indigo" style="border-left-color: #4b0082 !important;">
             <div class="d-flex align-items-center">
                 <div class="bg-indigo text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px; background-color: #4b0082;">
@@ -146,6 +134,25 @@
                         <input type="radio" class="btn-check" name="radPubJenis" id="radPubSijil" onchange="togglePubJenis()">
                         <label class="btn btn-outline-warning fw-bold text-dark" for="radPubSijil">PENSIJILAN</label>
                     </div>
+                </div>
+
+                <!-- NEW: JAWATAN DROPDOWN (GURU SAHAJA) -->
+                <div id="divPubJawatan" class="mb-3 hidden">
+                    <label class="form-label fw-bold text-warning">JAWATAN (WAJIB)</label>
+                    <select id="pubJawatan" class="form-select bg-light border-warning fw-bold text-dark">
+                        <option value="GURU AKADEMIK BIASA" selected>GURU AKADEMIK BIASA</option>
+                        <option value="PENGETUA / GURU BESAR">PENGARAH KV / PENGETUA / GURU BESAR</option>
+                        <option value="GPK PENTADBIRAN">GPK PENTADBIRAN</option>
+                        <option value="GPK HAL EHWAL MURID">GPK HAL EHWAL MURID</option>
+                        <option value="GPK KO-KURIKULUM">GPK KO-KURIKULUM</option>
+                        <option value="GPK PENDIDIKAN KHAS">GPK PENDIDIKAN KHAS</option>
+                        <option value="GURU KANAN MATA PELAJARAN">GURU KANAN MATA PELAJARAN</option>
+                        <option value="GURU DATA">GURU DATA</option>
+                        <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>
+                        <option value="GURU ADMIN DELIMA">GURU ADMIN DELIMA</option>
+						<option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
+                        <option value="GURU PERPUSTAKAAN & MEDIA">GURU PERPUSTAKAAN & MEDIA</option>
+                    </select>
                 </div>
 
                 <!-- NAMA PESERTA -->
@@ -298,7 +305,6 @@
             </form>
         </div>
 
-        <!-- LINK LOGIN ADMIN (UPDATED: Point to login.html) -->
         <div class="text-center mt-4 pb-5">
             <a href="login.html" class="text-decoration-none text-secondary fw-bold small opacity-75 hover-opacity-100">
                 <i class="fas fa-user-lock me-1"></i> Log Masuk Admin Sekolah
@@ -309,13 +315,10 @@
     </div>
   </div>
 
-  <!-- LOAD SCRIPTS -->
   <script src="js/utils.js"></script>
   <script src="js/public.js"></script>
 
-  <!-- SW (PWA) REMOVED -->
   <script>
-      // Service Worker registration script has been removed for standard web deployment.
       if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function(registrations) {
               for(let registration of registrations) {

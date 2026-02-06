@@ -1,7 +1,7 @@
 /**
  * MODUL PENCAPAIAN (js/admin/achievement.js)
  * Fungsi: Menguruskan Tab Pencapaian V3 (CRUD, Filter Kad, Statistik, Carian & Sorting)
- * Kemaskini: Tambah fungsi sorting pada header jadual
+ * Kemaskini: Tambah fungsi sorting pada header jadual & INTEGRASI JAWATAN GURU
  */
 
 let pencapaianList = [];
@@ -317,7 +317,7 @@ function filterBySchoolFromTop5(kod) {
     }
 }
 
-// --- FUNGSI UTAMA RENDER (UPDATED WITH SORTING) ---
+// --- FUNGSI UTAMA RENDER (UPDATED WITH SORTING & JAWATAN DISPLAY) ---
 function renderPencapaianTable() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
     if (!tbody) return;
@@ -394,6 +394,12 @@ function renderPencapaianTable() {
         else if (item.kategori === 'PEGAWAI') badgeClass = 'bg-dark text-white'; 
         else if (item.kategori === 'PPD') badgeClass = 'bg-primary text-white';
 
+        // NEW: Jawatan Sub-badge
+        let categoryDisplay = `<span class="badge ${badgeClass} shadow-sm" style="font-size: 0.7em">${item.kategori}</span>`;
+        if (item.kategori === 'GURU' && item.jawatan) {
+            categoryDisplay += `<div class="mt-1"><span class="badge bg-light text-secondary border" style="font-size: 0.6rem;">${item.jawatan}</span></div>`;
+        }
+
         let displayProgram = '';
         let displayPencapaian = '';
 
@@ -414,7 +420,7 @@ function renderPencapaianTable() {
         <tr>
             <td class="fw-bold small">${item.kod_sekolah}</td>
             <td class="small text-wrap" title="${namaSekolah.replace(/<[^>]*>?/gm, '')}">${namaSekolah}</td>
-            <td class="text-center"><span class="badge ${badgeClass} shadow-sm" style="font-size: 0.7em">${item.kategori}</span></td>
+            <td class="text-center">${categoryDisplay}</td>
             <td><div class="fw-bold text-dark small text-wrap">${item.nama_peserta}</div></td>
             <td>${displayProgram}</td>
             <td class="text-center">${displayPencapaian}</td>
@@ -446,6 +452,15 @@ function openEditPencapaian(id) {
     const divPenyedia = document.getElementById('divEditPenyedia');
     const rowPeringkat = document.getElementById('rowEditPeringkat');
     
+    // NEW: Handle Jawatan Field Visibility
+    const divJawatan = document.getElementById('divEditJawatan');
+    if (item.kategori === 'GURU') {
+        divJawatan.classList.remove('hidden');
+        document.getElementById('editInputJawatan').value = item.jawatan || 'GURU AKADEMIK BIASA';
+    } else {
+        divJawatan.classList.add('hidden');
+    }
+
     if (item.jenis_rekod === 'PENSIJILAN') {
         divPenyedia.classList.remove('hidden');
         rowPeringkat.classList.add('hidden');
@@ -478,6 +493,12 @@ async function simpanEditPencapaian() {
         pencapaian: document.getElementById('editInputPencapaian').value.toUpperCase(),
         pautan_bukti: document.getElementById('editInputLink').value
     };
+
+    // NEW: Add Jawatan if visible
+    const divJawatan = document.getElementById('divEditJawatan');
+    if (!divJawatan.classList.contains('hidden')) {
+        payload.jawatan = document.getElementById('editInputJawatan').value;
+    }
 
     if (jenis === 'PENSIJILAN') {
         payload.penyedia = document.getElementById('editInputPenyedia').value;

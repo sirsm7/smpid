@@ -1,6 +1,6 @@
 /**
  * SMPID PUBLIC FORM MODULE (js/public.js)
- * Versi: 4.1 (Tambah Pautan Galeri)
+ * Versi: 5.0 (Added Jawatan Support for Guru)
  */
 
 // State Global
@@ -317,9 +317,13 @@ function setPublicType(type) {
     const lblNama = document.getElementById('lblPubNama');
     const inpNama = document.getElementById('pubNama');
     const wrapperJenis = document.getElementById('wrapperPubJenis');
+    
+    // UPDATED: Div Jawatan
+    const divJawatan = document.getElementById('divPubJawatan');
 
     if (type === 'GURU') {
-        wrapperJenis.classList.remove('hidden'); 
+        wrapperJenis.classList.remove('hidden');
+        divJawatan.classList.remove('hidden'); // Show Jawatan 
         lblNama.innerText = "NAMA GURU";
         inpNama.placeholder = "Taip nama penuh guru...";
         inpNama.readOnly = false;
@@ -330,6 +334,7 @@ function setPublicType(type) {
     } 
     else if (type === 'MURID') {
         wrapperJenis.classList.add('hidden');
+        divJawatan.classList.add('hidden'); // Hide Jawatan
         lblNama.innerText = "NAMA MURID / KUMPULAN";
         inpNama.placeholder = "Taip nama penuh murid...";
         inpNama.readOnly = false;
@@ -340,6 +345,7 @@ function setPublicType(type) {
     }
     else if (type === 'SEKOLAH') {
         wrapperJenis.classList.add('hidden');
+        divJawatan.classList.add('hidden'); // Hide Jawatan
         lblNama.innerText = "NAMA SEKOLAH";
         
         const schoolName = document.getElementById('inputCariSekolah').value.split(' - ')[1] || "";
@@ -403,6 +409,13 @@ async function hantarBorangAwam() {
 
     let peringkat = 'KEBANGSAAN';
     let penyedia = 'LAIN-LAIN';
+    let jawatan = null;
+
+    // UPDATED: Logic Jawatan
+    if (kategori === 'GURU') {
+        jawatan = document.getElementById('pubJawatan').value;
+        if (!jawatan) return Swal.fire('Jawatan Wajib', 'Sila pilih jawatan guru.', 'warning');
+    }
 
     if (jenisRekod === 'PENSIJILAN') {
         peringkat = 'ANTARABANGSA'; 
@@ -428,7 +441,8 @@ async function hantarBorangAwam() {
             pencapaian: pencapaian,
             pautan_bukti: link,
             jenis_rekod: jenisRekod,
-            penyedia: penyedia
+            penyedia: penyedia,
+            jawatan: jawatan // Include jawatan
         };
 
         const { error } = await db.from('smpid_pencapaian').insert([payload]);

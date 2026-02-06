@@ -464,7 +464,28 @@
                 <form id="formEditPencapaian" onsubmit="event.preventDefault(); simpanEditPencapaian();">
                     <input type="hidden" id="editIdPencapaian"><input type="hidden" id="editJenisRekod">
                     <div class="mb-3"><label class="form-label small fw-bold text-muted">SEKOLAH</label><input type="text" id="editNamaSekolah" class="form-control bg-light fw-bold text-dark" readonly disabled></div>
+                    
                     <div class="mb-3"><label class="form-label small fw-bold text-muted">NAMA PESERTA</label><input type="text" id="editInputNama" class="form-control uppercase-input fw-bold"></div>
+                    
+                    <!-- NEW: JAWATAN FIELD -->
+                    <div id="divEditJawatan" class="mb-3 hidden">
+                        <label class="form-label small fw-bold text-muted text-warning">JAWATAN</label>
+                        <select id="editInputJawatan" class="form-select fw-bold text-dark bg-light border-warning">
+                            <option value="GURU AKADEMIK BIASA">GURU AKADEMIK BIASA</option>
+                            <option value="PENGETUA / GURU BESAR">PENGARAH KV / PENGETUA / GURU BESAR</option>
+                            <option value="GPK PENTADBIRAN">GPK PENTADBIRAN</option>
+                            <option value="GPK HAL EHWAL MURID">GPK HAL EHWAL MURID</option>
+                            <option value="GPK KO-KURIKULUM">GPK KO-KURIKULUM</option>
+                            <option value="GPK PENDIDIKAN KHAS">GPK PENDIDIKAN KHAS</option>
+                            <option value="GURU KANAN MATA PELAJARAN">GURU KANAN MATA PELAJARAN</option>
+                            <option value="GURU DATA">GURU DATA</option>
+                            <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>
+                            <option value="GURU ADMIN DELIMA">GURU ADMIN DELIMA</option>
+							<option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
+                            <option value="GURU PERPUSTAKAAN & MEDIA">GURU PERPUSTAKAAN & MEDIA</option>
+                        </select>
+                    </div>
+
                     <div id="divEditPenyedia" class="mb-3 hidden"><label class="form-label small fw-bold text-muted text-warning">PENYEDIA</label><select id="editInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning"><option value="LAIN-LAIN">LAIN-LAIN</option><option value="GOOGLE">GOOGLE</option><option value="APPLE">APPLE</option><option value="MICROSOFT">MICROSOFT</option></select></div>
                     <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblEditProgram">NAMA PERTANDINGAN</label><input type="text" id="editInputProgram" class="form-control uppercase-input"></div>
                     <div class="row g-2 mb-3" id="rowEditPeringkat"><div class="col-6"><label class="form-label small fw-bold text-muted">PERINGKAT</label><select id="editInputPeringkat" class="form-select bg-light"><option value="KEBANGSAAN">KEBANGSAAN</option><option value="ANTARABANGSA">ANTARABANGSA</option></select></div><div class="col-6"><label class="form-label small fw-bold text-muted">TAHUN</label><input type="number" id="editInputTahun" class="form-control bg-light fw-bold" min="2023"></div></div>
