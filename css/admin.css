@@ -2,7 +2,6 @@
 /* Hanya mengandungi gaya untuk Admin Dashboard dan Laporan */
 
 /* 1. SCHOOL GRID CARD (Dashboard Tab) */
-/* Kad kecil yang memaparkan status sekolah dalam grid */
 .school-card {
     border: 1px solid rgba(0,0,0,0.05); 
     height: 100%;
@@ -35,14 +34,13 @@
     padding: 0; 
     border-radius: 0 0 12px 12px; 
     font-size: 0.75rem; 
-    margin-top: auto; /* Tolak ke bawah */
+    margin-top: auto; 
 }
 .row-item { 
     display: flex; justify-content: space-between; align-items: center; 
 }
 
 /* 2. ANALYTICS TABLE (Analisa Tab) */
-/* Gaya untuk jadual Top 5 Sekolah */
 .top-school-row {
     transition: background-color 0.2s;
     cursor: pointer;
@@ -69,7 +67,7 @@
     margin-top: 20px; 
 }
 
-/* 4. ADMIN SEARCH BAR (NEW) */
+/* 4. ADMIN SEARCH BAR */
 .admin-search-bar {
     border-radius: 50px;
     border: 2px solid #e9ecef;
@@ -87,3 +85,63 @@
     color: #adb5bd;
     font-weight: 500;
 }
+
+/* 5. JAWATAN WORD CLOUD (NEW) */
+.cloud-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.cloud-tag {
+    cursor: pointer;
+    background-color: white;
+    border: 1px solid #dee2e6;
+    color: #495057;
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-weight: 600;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+}
+
+.cloud-tag:hover {
+    background-color: #f8f9fa;
+    border-color: #adb5bd;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.cloud-tag.active {
+    background-color: #4b0082; /* Indigo */
+    color: white;
+    border-color: #4b0082;
+    box-shadow: 0 4px 10px rgba(75, 0, 130, 0.3);
+    transform: scale(1.05);
+}
+
+.cloud-tag .count-badge {
+    background-color: rgba(0,0,0,0.1);
+    color: inherit;
+    font-size: 0.7em;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 6px;
+    font-weight: 700;
+}
+
+.cloud-tag.active .count-badge {
+    background-color: rgba(255,255,255,0.2);
+}
+
+/* Dynamic Sizes based on Frequency */
+.tag-size-1 { font-size: 0.7rem; opacity: 0.8; }
+.tag-size-2 { font-size: 0.75rem; }
+.tag-size-3 { font-size: 0.8rem; }
+.tag-size-4 { font-size: 0.85rem; border-width: 2px; }
+.tag-size-5 { font-size: 0.95rem; font-weight: 800; border-width: 2px; border-color: #6f42c1; color: #4b0082; }
