@@ -1,6 +1,6 @@
 /**
- * MODUL PENCAPAIAN (js/admin/achievement.js) - REFACTORED v8.0 (Cross-Filtering)
- * Fungsi: Menguruskan Tab Pencapaian V3 dengan Logik Statistik Reaktif
+ * MODUL PENCAPAIAN (js/admin/achievement.js) - v8.1 (Auto-Sync Jawatan Guru)
+ * Fungsi: Menguruskan Tab Pencapaian V3 dengan Logik Statistik Reaktif & Penyelarasan Data
  */
 
 let pencapaianList = [];
@@ -88,10 +88,6 @@ async function loadMasterPencapaian() {
 
 // --- CORE LOGIC: DATA PROCESSING & CROSS-FILTERING ---
 
-/**
- * FUNGSI ORKESTRA UTAMA
- * Dipanggil setiap kali sebarang filter berubah (Search, Dropdown, Card, Jawatan)
- */
 function renderPencapaianTable() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
     if (!tbody) return;
@@ -102,8 +98,6 @@ function renderPencapaianTable() {
     const searchInput = document.getElementById('searchPencapaianInput').value.toUpperCase().trim();
 
     // 2. HASILKAN 'BASE DATA' (Data Asas)
-    // Ini adalah data yang ditapis oleh SEKOLAH dan CARIAN sahaja.
-    // Ini penting supaya Search Bar memberi kesan kepada SEMUA statistik.
     let baseData = pencapaianList.filter(item => {
         // Filter Sekolah
         if (sekFilter !== 'ALL' && item.kod_sekolah !== sekFilter) return false;
@@ -118,13 +112,11 @@ function renderPencapaianTable() {
         return true;
     });
 
-    // 3. KIRA STATISTIK: KATEGORI (Baris Atas: Murid, Guru, dll)
-    // Logic: BaseData + Filter Kad (Supaya jika pilih 'GOOGLE', kad Murid tunjuk murid Google shj)
+    // 3. KIRA STATISTIK: KATEGORI
     let dataForCategoryStats = filterByCardType(baseData, currentCardFilter);
     updateCategoryStats(dataForCategoryStats);
 
-    // 4. KIRA STATISTIK: KAD KPI (Baris Bawah: Kebangsaan, Google, dll)
-    // Logic: BaseData + Filter Kategori + Jawatan (Supaya jika pilih 'GURU', kad Google tunjuk guru Google shj)
+    // 4. KIRA STATISTIK: KAD KPI
     let dataForKPIBadges = baseData.filter(item => {
         if (katFilter !== 'ALL' && item.kategori !== katFilter) return false;
         if (currentJawatanFilter !== 'ALL' && item.jawatan !== currentJawatanFilter) return false;
@@ -133,17 +125,14 @@ function renderPencapaianTable() {
     updateKPIBadges(dataForKPIBadges);
 
     // 5. UPDATE JAWATAN CLOUD
-    // Logic: Tunjuk jawatan yang wujud dalam subset Guru semasa
     if (katFilter === 'GURU' || katFilter === 'ALL') {
-        generateJawatanCloud(dataForKPIBadges); // Gunakan data yang dah filter kategori
+        generateJawatanCloud(dataForKPIBadges);
     } else {
         document.getElementById('jawatanCloudWrapper').classList.add('hidden');
     }
 
-    // 6. HASILKAN DATA AKHIR UNTUK JADUAL (Final Dataset)
-    // Logic: Gabungan SEMUA filter
+    // 6. HASILKAN DATA AKHIR UNTUK JADUAL
     let finalData = dataForKPIBadges.filter(item => {
-        // Tapis mengikut Kad yang dipilih (jika ada)
         if (currentCardFilter === 'ALL') return true;
         
         if (currentCardFilter === 'KEBANGSAAN') return item.peringkat === 'KEBANGSAAN';
@@ -156,7 +145,6 @@ function renderPencapaianTable() {
     });
 
     // 7. RENDER JADUAL TOP 5 SEKOLAH
-    // Logic: Berdasarkan Final Data (Siapa paling aktif dalam konteks paparan sekarang)
     renderTopSchools(finalData);
 
     // 8. RENDER JADUAL UTAMA
@@ -164,9 +152,6 @@ function renderPencapaianTable() {
     updateCardVisuals();
 }
 
-/**
- * Helper: Tapis data mengikut jenis Kad (untuk kegunaan pengiraan silang)
- */
 function filterByCardType(data, cardType) {
     if (cardType === 'ALL') return data;
     return data.filter(item => {
@@ -382,7 +367,7 @@ function filterByKategori(kategori) {
     const select = document.getElementById('filterKategoriPencapaian');
     if(select) {
         select.value = kategori;
-        currentJawatanFilter = 'ALL'; // Reset jawatan bila tukar kategori
+        currentJawatanFilter = 'ALL'; 
         
         const btnReset = document.getElementById('btnResetJawatan');
         if(btnReset) btnReset.classList.add('hidden');
@@ -432,7 +417,6 @@ function filterBySchoolFromTop5(kod) {
 function filterByJawatan(jawatan) {
     currentJawatanFilter = (currentJawatanFilter === jawatan) ? 'ALL' : jawatan;
     
-    // UI Button Reset
     const btnReset = document.getElementById('btnResetJawatan');
     if(btnReset) {
         if(currentJawatanFilter !== 'ALL') btnReset.classList.remove('hidden');
@@ -462,14 +446,12 @@ function updateCardVisuals() {
     if (label) label.innerText = labelText ? `(Tapisan: ${labelText})` : '';
 }
 
-// --- JAWATAN CLOUD GENERATOR ---
 function generateJawatanCloud(dataSet) {
     const cloudContainer = document.getElementById('jawatanCloudContainer');
     const cloudWrapper = document.getElementById('jawatanCloudWrapper');
     
     if (!cloudContainer) return;
 
-    // Kumpul Data Jawatan dari subset data semasa (Guru sahaja)
     const jawatanCounts = {};
     let maxCount = 0;
 
@@ -494,7 +476,6 @@ function generateJawatanCloud(dataSet) {
     entries.sort((a, b) => b[1] - a[1]);
 
     entries.forEach(([jawatan, count]) => {
-        // Size normalization logic
         let sizeClass = `tag-size-${Math.ceil((count / maxCount) * 5)}`;
         if (count === 1) sizeClass = 'tag-size-1';
 
@@ -509,7 +490,6 @@ function generateJawatanCloud(dataSet) {
     });
 }
 
-// --- SORTING HELPERS (UNCHANGED) ---
 function handleSort(column) {
     if (sortState.column === column) {
         sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
@@ -543,10 +523,7 @@ function updateSortIcons() {
     }
 }
 
-// --- CRUD OPERATIONS (UNCHANGED EXPORTS - KEEPING THEM FOR COMPATIBILITY) ---
-// (Fungsi seperti openEditPencapaian, simpanEditPencapaian, hapusPencapaianAdmin, dll 
-// dikekalkan sama seperti fail asal tetapi disingkatkan di sini untuk fokus pada refactoring)
-// Pastikan fungsi-fungsi CRUD asal disalin semula di sini jika fail ini menggantikan fail lama sepenuhnya.
+// --- CRUD OPERATIONS ---
 
 function openEditPencapaian(id) {
     const item = pencapaianList.find(i => i.id === id);
@@ -590,9 +567,14 @@ function openEditPencapaian(id) {
     modal.show();
 }
 
+/**
+ * FUNGSI SIMPAN EDIT (DIKEMASKINI: AUTO-SYNC JAWATAN)
+ * Kemaskini ini membolehkan semua rekod guru yang sama dikemaskini jawatannya serentak.
+ */
 async function simpanEditPencapaian() {
     const id = document.getElementById('editIdPencapaian').value;
     const jenis = document.getElementById('editJenisRekod').value;
+    const btn = document.querySelector('#formEditPencapaian button[type="submit"]');
     
     const payload = {
         nama_peserta: document.getElementById('editInputNama').value.toUpperCase(),
@@ -601,9 +583,13 @@ async function simpanEditPencapaian() {
         pautan_bukti: document.getElementById('editInputLink').value
     };
 
+    // SEMAK JAWATAN
     const divJawatan = document.getElementById('divEditJawatan');
+    let isGuruUpdate = false;
+
     if (!divJawatan.classList.contains('hidden')) {
         payload.jawatan = document.getElementById('editInputJawatan').value;
+        isGuruUpdate = true; // Tandakan bahawa ini rekod guru
     }
 
     if (jenis === 'PENSIJILAN') {
@@ -613,11 +599,11 @@ async function simpanEditPencapaian() {
         payload.tahun = parseInt(document.getElementById('editInputTahun').value);
     }
 
-    const btn = document.querySelector('#formEditPencapaian button[type="submit"]');
     if(btn) btn.disabled = true;
     window.toggleLoading(true);
 
     try {
+        // 1. UPDATE REKOD SEMASA (STANDARD)
         const { error } = await window.supabaseClient
             .from('smpid_pencapaian')
             .update(payload)
@@ -625,11 +611,47 @@ async function simpanEditPencapaian() {
 
         if (error) throw error;
 
+        // 2. AUTO-SYNC: KEMASKINI JAWATAN SEMUA REKOD LAIN (BULK UPDATE)
+        // Jika kategori GURU dan ada jawatan baru, cari semua rekod lain dengan nama yang sama.
+        let syncCount = 0;
+        if (isGuruUpdate && payload.jawatan && payload.nama_peserta) {
+            const { data: updatedRows, error: bulkError } = await window.supabaseClient
+                .from('smpid_pencapaian')
+                .update({ jawatan: payload.jawatan }) // Hanya update kolom jawatan
+                .eq('nama_peserta', payload.nama_peserta) // Padankan nama
+                .eq('kategori', 'GURU')                   // Pastikan kategori GURU
+                .neq('id', id)                            // Kecualikan rekod semasa (dah update di atas)
+                .select();                                // Return data untuk tahu berapa row
+
+            if (bulkError) {
+                console.warn("Auto-sync jawatan gagal:", bulkError);
+            } else if (updatedRows) {
+                syncCount = updatedRows.length;
+                console.log(`Auto-sync berjaya: ${syncCount} rekod lain dikemaskini.`);
+            }
+        }
+
         window.toggleLoading(false);
         if(btn) btn.disabled = false;
         
         bootstrap.Modal.getInstance(document.getElementById('modalEditPencapaian')).hide();
-        Swal.fire({ icon: 'success', title: 'Data Dikemaskini', timer: 1000, showConfirmButton: false });
+        
+        // Mesej Kejayaan (Dinamik)
+        let successTitle = 'Data Dikemaskini';
+        let successText = '';
+        
+        if (syncCount > 0) {
+            successText = `Jawatan '${payload.jawatan}' telah diselaraskan untuk ${syncCount} rekod lain atas nama guru ini.`;
+        }
+
+        Swal.fire({ 
+            icon: 'success', 
+            title: successTitle, 
+            text: successText,
+            timer: successText ? 3000 : 1500, 
+            showConfirmButton: !!successText 
+        });
+        
         loadMasterPencapaian();
 
     } catch (err) {
