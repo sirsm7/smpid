@@ -16,6 +16,7 @@
 .border-top-success { border-top: 4px solid var(--bs-success) !important; }
 .border-top-danger { border-top: 4px solid var(--bs-danger) !important; }
 .border-top-indigo { border-top: 4px solid var(--color-indigo) !important; } /* Ungu (Sekolah) */
+.border-top-dark { border-top: 4px solid #212529 !important; }
 
 /* Menu Card (Untuk User Portal) */
 .menu-card { 
@@ -190,3 +191,60 @@
     color: #ffc107;
     text-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
+
+/* 6. JAWATAN WORD CLOUD (PUBLIC & SHARED) */
+/* Diadaptasi untuk paparan awam yang lebih bersih */
+.cloud-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.cloud-tag {
+    cursor: pointer;
+    background-color: white; 
+    border: 1px solid #dee2e6;
+    color: #495057;
+    padding: 5px 14px;
+    border-radius: 50px;
+    font-weight: 600;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.75rem;
+}
+
+.cloud-tag:hover {
+    background-color: #f8f9fa;
+    border-color: #adb5bd;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.cloud-tag.active {
+    background-color: #ffc107; /* Kuning (Warna tema Guru) */
+    color: #212529;
+    border-color: #ffc107;
+    box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3);
+    transform: scale(1.05);
+}
+
+.cloud-tag .count-badge {
+    background-color: rgba(0,0,0,0.1);
+    color: inherit;
+    font-size: 0.8em;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 6px;
+    font-weight: 800;
+}
+
+/* Saiz Dinamik Tag */
+.tag-size-1 { font-size: 0.7rem; opacity: 0.9; }
+.tag-size-2 { font-size: 0.75rem; }
+.tag-size-3 { font-size: 0.8rem; font-weight: 700; }
+.tag-size-4 { font-size: 0.85rem; font-weight: 800; border: 2px solid #dee2e6; }
