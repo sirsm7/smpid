@@ -5,17 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SMPID - Admin Dashboard</title>
   
-  <!-- PWA Features Removed -->
-  <!-- <link rel="manifest" href="manifest.json"> -->
   <meta name="theme-color" content="#198754">
-  <!-- <link rel="apple-touch-icon" href="icoppdag.png"> -->
   <link rel="icon" href="icoppdag.png">
   
   <!-- CSS Bootstrap & FontAwesome -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   
-  <!-- MODULAR CSS (UPDATED) -->
+  <!-- MODULAR CSS -->
   <link href="css/core.css" rel="stylesheet">
   <link href="css/layout.css" rel="stylesheet">
   <link href="css/components.css" rel="stylesheet">
@@ -28,14 +25,53 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
   <style>
-      /* Style Khas untuk Header Table Sortable */
       .sortable-header {
           cursor: pointer;
           transition: background-color 0.2s;
           user-select: none;
       }
       .sortable-header:hover {
-          background-color: #343a40 !important; /* Darker hover */
+          background-color: #343a40 !important;
+      }
+      
+      /* --- NAVIGASI TAB COMPACT --- */
+      .nav-compact {
+          display: flex;
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: 8px;
+          background: #f8f9fa;
+          padding: 8px;
+          border-radius: 50px;
+          border: 1px solid #dee2e6;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      }
+      
+      .nav-compact .nav-link {
+          color: #6c757d;
+          border-radius: 30px;
+          padding: 8px 16px;
+          font-size: 0.85rem;
+          font-weight: 700;
+          border: none;
+          transition: all 0.2s ease;
+          background: transparent;
+      }
+      
+      .nav-compact .nav-link:hover {
+          color: #0d6efd;
+          background-color: rgba(13, 110, 253, 0.1);
+      }
+      
+      .nav-compact .nav-link.active {
+          background-color: #0d6efd;
+          color: white;
+          box-shadow: 0 4px 10px rgba(13, 110, 253, 0.3);
+          transform: translateY(-1px);
+      }
+      
+      .nav-compact .nav-link i {
+          margin-right: 6px;
       }
   </style>
 </head>
@@ -87,15 +123,18 @@
     <div class="row justify-content-center">
       <div class="col-lg-12 col-xl-11">
 
-        <!-- NAV TABS -->
-        <ul class="nav nav-pills nav-fill mb-4 bg-white p-2 rounded shadow-sm" id="adminTabs" role="tablist">
-          <li class="nav-item"><button class="nav-link active fw-bold" id="dashboard-tab" data-bs-toggle="pill" data-bs-target="#tab-dashboard"><i class="fas fa-tachometer-alt me-2"></i>Status Pendaftaran</button></li>
-          <li class="nav-item"><button class="nav-link fw-bold" id="analisa-tab" data-bs-toggle="pill" data-bs-target="#tab-analisa"><i class="fas fa-chart-pie me-2"></i>Pencapaian DCS & DELIMa</button></li>
-          <li class="nav-item"><button class="nav-link fw-bold" id="pencapaian-tab" data-bs-toggle="pill" data-bs-target="#tab-pencapaian"><i class="fas fa-trophy me-2"></i>Pencapaian & Kemenjadian</button></li>
-          <li class="nav-item"><button class="nav-link fw-bold" id="email-tab" data-bs-toggle="pill" data-bs-target="#tab-email"><i class="fas fa-paper-plane me-2"></i>Email Blaster</button></li>
-          <li class="nav-item"><button class="nav-link fw-bold" id="helpdesk-tab" data-bs-toggle="pill" data-bs-target="#tab-helpdesk"><i class="fas fa-headset me-2"></i>Helpdesk / Aduan</button></li>
-          <li class="nav-item"><button class="nav-link fw-bold" id="admin-users-tab" data-bs-toggle="pill" data-bs-target="#tab-admin-users"><i class="fas fa-users-cog me-2"></i>Pengurusan Admin</button></li>
-        </ul>
+        <!-- NAV TABS (COMPACT VERSION) -->
+        <div class="d-flex justify-content-center mb-4">
+            <ul class="nav nav-pills nav-compact" id="adminTabs" role="tablist">
+              <li class="nav-item"><button class="nav-link active" id="dashboard-tab" data-bs-toggle="pill" data-bs-target="#tab-dashboard"><i class="fas fa-tachometer-alt"></i>Dashboard</button></li>
+              <li class="nav-item"><button class="nav-link" id="analisa-tab" data-bs-toggle="pill" data-bs-target="#tab-analisa"><i class="fas fa-chart-pie"></i>DCS & DELIMa</button></li>
+              <li class="nav-item"><button class="nav-link" id="pencapaian-tab" data-bs-toggle="pill" data-bs-target="#tab-pencapaian"><i class="fas fa-trophy"></i>Kemenjadian</button></li>
+              <li class="nav-item"><button class="nav-link" id="gallery-tab" data-bs-toggle="pill" data-bs-target="#tab-gallery"><i class="fas fa-images"></i>Galeri</button></li>
+              <li class="nav-item"><button class="nav-link" id="email-tab" data-bs-toggle="pill" data-bs-target="#tab-email"><i class="fas fa-paper-plane"></i>Blaster</button></li>
+              <li class="nav-item"><button class="nav-link" id="helpdesk-tab" data-bs-toggle="pill" data-bs-target="#tab-helpdesk"><i class="fas fa-headset"></i>Aduan</button></li>
+              <li class="nav-item"><button class="nav-link" id="admin-users-tab" data-bs-toggle="pill" data-bs-target="#tab-admin-users"><i class="fas fa-users-cog"></i>Akses</button></li>
+            </ul>
+        </div>
 
         <div class="tab-content" id="adminTabsContent">
           <!-- TAB 1: DASHBOARD -->
@@ -161,7 +200,7 @@
             </div>
           </div>
 
-          <!-- TAB 3: PENCAPAIAN (UPDATED WITH SORTING HEADERS) -->
+          <!-- TAB 3: PENCAPAIAN -->
           <div class="tab-pane fade" id="tab-pencapaian" role="tabpanel">
             <div class="card p-4 shadow-sm border-purple border-4 border-top">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
@@ -240,7 +279,76 @@
             </div>
           </div>
 
-          <!-- TAB 4: EMAIL BLASTER -->
+          <!-- TAB 4: GALERI & BUKTI (RESTRUCTURED - COMPACT HEADER) -->
+          <div class="tab-pane fade" id="tab-gallery" role="tabpanel">
+            <div class="card p-4 shadow-sm border-top-indigo border-4">
+                
+                <!-- HEADER BARU (GRID 2 COLUMN - COMPACT) -->
+                <div class="row align-items-end mb-4 border-bottom pb-3 g-3">
+                    
+                    <!-- KIRI: Identiti Sekolah (Satu Blok Padat) -->
+                    <div class="col-lg-7 col-md-6">
+                        <div class="d-flex flex-column justify-content-center">
+                            <!-- Tajuk Nama Sekolah (Saiz Sederhana h5) -->
+                            <h5 class="fw-bold text-indigo mb-1 text-truncate" id="galleryHeaderTitle" style="line-height: 1.2;">
+                                PPD ALOR GAJAH
+                            </h5>
+                            <!-- Sub-info: Kod & Label (Sebaris) -->
+                            <div id="galleryHeaderSubtitle" class="d-flex align-items-center mt-1">
+                                <span class="badge bg-indigo me-2 rounded-1">M030</span> 
+                                <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                                    Unit Sumber Teknologi Pendidikan
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KANAN: Kawalan Carian (Satu Input Group Panjang) -->
+                    <div class="col-lg-5 col-md-6">
+                        <div class="input-group shadow-sm">
+                            <span class="input-group-text bg-white border-end-0 text-muted ps-3"><i class="fas fa-search"></i></span>
+                            
+                            <!-- Input Carian -->
+                            <input type="text" id="gallerySearchInput" class="form-control border-start-0 border-end-0" 
+                                   placeholder="Cari Sekolah..." oninput="handleGallerySchoolSearch(this.value)">
+                            
+                            <!-- Dropdown Sekolah (Lebar Tetap) -->
+                            <select id="gallerySchoolSelector" class="form-select border-start-0 border-end-0 fw-bold bg-light text-secondary" 
+                                    style="max-width: 140px; font-size: 0.85rem;" onchange="loadAdminGalleryGrid(this.value)">
+                                <option value="M030">M030</option>
+                            </select>
+                            
+                            <!-- Butang Reset -->
+                            <button class="btn btn-light border border-start-0" onclick="resetGallery()" type="button" title="Reset Paparan">
+                                <i class="fas fa-sync-alt text-secondary"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FILTER DINAMIK & COUNTER -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div id="galleryFilterContainer" class="btn-group shadow-sm bg-white p-1 rounded-pill border">
+                        <span class="p-2 text-muted small fst-italic">Sila pilih sekolah...</span>
+                    </div>
+                    
+                    <span class="badge bg-white text-indigo border border-indigo px-3 py-2 rounded-pill shadow-sm" style="color: #4b0082; border-color: #4b0082;">
+                        <i class="fas fa-images me-2"></i>Total: <span id="galleryTotalCount" class="fw-bold">0</span> Rekod
+                    </span>
+                </div>
+
+                <!-- GRID KAD -->
+                <div id="adminGalleryGrid" class="row g-3">
+                    <div class="col-12 text-center py-5 text-muted">
+                        <i class="fas fa-images fa-3x mb-3 opacity-25"></i>
+                        <p>Sila pilih sekolah daripada senarai di atas.</p>
+                    </div>
+                </div>
+
+            </div>
+          </div>
+
+          <!-- TAB 5: EMAIL BLASTER -->
           <div class="tab-pane fade" id="tab-email" role="tabpanel">
             <div class="card p-4 shadow-sm border-top-warning border-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-3">
@@ -264,7 +372,7 @@
             </div>
           </div>
 
-          <!-- TAB 5: HELPDESK -->
+          <!-- TAB 6: HELPDESK -->
           <div class="tab-pane fade" id="tab-helpdesk" role="tabpanel">
             <div class="card p-4 shadow-sm border-top border-danger border-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
@@ -275,7 +383,7 @@
             </div>
           </div>
 
-          <!-- TAB 6: ADMIN USERS -->
+          <!-- TAB 7: ADMIN USERS -->
           <div class="tab-pane fade" id="tab-admin-users" role="tabpanel">
             <div class="card p-4 shadow-sm border-top border-dark border-4">
                 <h5 class="mb-3 fw-bold text-dark"><i class="fas fa-users-cog me-2"></i>Pengurusan Akses Admin</h5>
@@ -377,12 +485,12 @@
   <script src="js/admin/analysis.js"></script>
   <script src="js/admin/achievement.js"></script>
   <script src="js/admin/communication.js"></script>
+  <script src="js/admin/gallery_manager.js"></script>
   <script src="js/admin/settings.js"></script>
   <script src="js/admin/main.js"></script>
 
   <!-- SW (PWA) REMOVED -->
   <script>
-      // Service Worker registration script has been removed for standard web deployment.
       if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function(registrations) {
               for(let registration of registrations) {

@@ -33,7 +33,7 @@ async function initAdminPanel() {
 function setupUnitView(displayRole) {
     if(displayRole) displayRole.innerHTML = "UNIT PPD VIEW";
 
-    // Sorokkan Tab Yang Tidak Berkaitan
+    // Sorokkan Tab Yang Tidak Berkaitan (Kecuali Pencapaian & Galeri)
     const tabsToHide = ['dashboard-tab', 'analisa-tab', 'email-tab', 'helpdesk-tab', 'admin-users-tab'];
     tabsToHide.forEach(id => {
         const el = document.getElementById(id);
@@ -100,6 +100,14 @@ function setupTabListeners() {
     if (pencapaianTabBtn) {
         pencapaianTabBtn.addEventListener('shown.bs.tab', function () { 
             if(window.populateTahunFilter) window.populateTahunFilter(); 
+        });
+    }
+
+    // Tab Galeri (NEW)
+    const galleryTabBtn = document.getElementById('gallery-tab');
+    if (galleryTabBtn) {
+        galleryTabBtn.addEventListener('shown.bs.tab', function () { 
+            if(window.initAdminGallery) window.initAdminGallery(); 
         });
     }
 }
