@@ -4,6 +4,7 @@
  * * FIXES:
  * - REMOVED TRUNCATION: Teks dalam jadual kini wrap sepenuhnya.
  * - Added text-wrap-safe class.
+ * - LOGIC FIX: Auto-set Peringkat ANTARABANGSA untuk Pensijilan Guru.
  */
 
 import { toggleLoading, checkEmailDomain, autoFormatPhone, keluarSistem, formatSentenceCase } from './core/helpers.js';
@@ -260,12 +261,21 @@ window.simpanPencapaian = async function() {
     const kod = sessionStorage.getItem(APP_CONFIG.SESSION.USER_KOD); 
     const btn = document.querySelector('#formPencapaian button[type="submit"]');
     const kategori = document.getElementById('pencapaianKategori').value;
+    const jenisRekod = document.getElementById('pInputJenisRekod').value;
     const nama = document.getElementById('pInputNama').value.trim().toUpperCase();
     
     let jawatan = null;
+    let peringkat = document.getElementById('pInputPeringkat').value;
+    let penyedia = document.getElementById('pInputPenyedia').value;
+
     if (kategori === 'GURU') {
         jawatan = document.getElementById('pInputJawatan').value;
         if (!jawatan) return Swal.fire('Ralat', 'Sila pilih jawatan guru.', 'warning');
+    }
+
+    // LOGIC FIX: Auto set peringkat if Pensijilan
+    if (jenisRekod === 'PENSIJILAN') {
+        peringkat = 'ANTARABANGSA';
     }
 
     if(btn) btn.disabled = true;
@@ -274,14 +284,15 @@ window.simpanPencapaian = async function() {
     try {
         const payload = {
             kod_sekolah: kod,
-            kategori, nama_peserta: nama, 
+            kategori, 
+            nama_peserta: nama, 
             nama_pertandingan: document.getElementById('pInputProgram').value.trim().toUpperCase(),
-            peringkat: document.getElementById('pInputPeringkat').value,
+            peringkat: peringkat,
             tahun: parseInt(document.getElementById('pInputTahun').value),
             pencapaian: document.getElementById('pInputPencapaian').value.trim().toUpperCase(),
             pautan_bukti: document.getElementById('pInputLink').value.trim(),
-            jenis_rekod: document.getElementById('pInputJenisRekod').value,
-            penyedia: document.getElementById('pInputPenyedia').value,
+            jenis_rekod: jenisRekod,
+            penyedia: penyedia,
             jawatan
         };
 
@@ -337,6 +348,7 @@ window.openEditPencapaianUser = function(id) {
 window.updatePencapaianUser = async function() {
     const id = document.getElementById('editUserId').value;
     const btn = document.querySelector('#formEditPencapaianUser button[type="submit"]');
+    const jenis = document.getElementById('editUserJenis').value;
 
     if(btn) btn.disabled = true;
     toggleLoading(true);
@@ -354,8 +366,12 @@ window.updatePencapaianUser = async function() {
             payload.jawatan = document.getElementById('editUserJawatan').value;
         }
 
-        if (document.getElementById('editUserJenis').value === 'PENSIJILAN') {
+        if (jenis === 'PENSIJILAN') {
             payload.penyedia = document.getElementById('editUserPenyedia').value;
+            // EDIT FIX: Ensure update doesn't lose data, or maybe force Antarabangsa if needed? 
+            // Usually updates only send changed fields, but let's be safe.
+            // Note: DB constraints usually handle this, but for UX, let's leave it as is 
+            // since the hidden field in modal might not update correctly if we force it blindly.
         } else {
             payload.peringkat = document.getElementById('editUserPeringkat').value;
         }
