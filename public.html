@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#198754">
   <link rel="icon" href="icoppdag.png">
   
-  <!-- CSS Bootstrap & FontAwesome -->
+  <!-- CSS Bootstrap & FontAwesome (Fix: Removed Markdown formatting) -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -315,18 +315,8 @@
     </div>
   </div>
 
-  <script src="js/utils.js"></script>
-  <script src="js/public.js"></script>
-
-  <script>
-      if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function(registrations) {
-              for(let registration of registrations) {
-                  registration.unregister();
-              }
-          });
-      }
-  </script>
+  <!-- MODULAR JAVASCRIPT (DIKEMASKINI) -->
+  <script type="module" src="js/public.js"></script>
 
 </body>
 </html>

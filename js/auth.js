@@ -1,27 +1,32 @@
 /**
- * SMPID AUTHENTICATION MODULE (js/auth.js)
- * Versi: 2.2 (Added User ID Storage for Password Reset)
- * Fungsi: Logik Log Masuk & Pengurusan Sesi Login dengan Sokongan PPD_UNIT
- * Halaman: index.html
+ * AUTHENTICATION CONTROLLER
+ * Menguruskan interaksi UI untuk halaman log masuk.
+ * Menggunakan: AuthService, toggleLoading
  */
 
-// Pastikan Utils dah load dulu
-if (typeof window.supabaseClient === 'undefined') {
-    console.error("CRITICAL: Utils.js belum dimuatkan!");
-}
+import { AuthService } from './services/auth.service.js';
+import { toggleLoading } from './core/helpers.js';
+import { APP_CONFIG } from './config/app.config.js';
 
+// Bind event listeners bila DOM sedia
 document.addEventListener('DOMContentLoaded', () => {
-    // Bersihkan sesi lama bila masuk page login
+    // Bersihkan sesi lama
     sessionStorage.clear();
-    // Reset history supaya user tak boleh tekan 'Back' untuk masuk semula
+    // Halang butang 'Back'
     window.history.replaceState(null, null, window.location.href);
-    console.log("🔒 Sesi dibersihkan. Sedia untuk log masuk.");
+    console.log("🔒 [Auth] Sesi dibersihkan.");
+
+    // Auto-detect Kod Sekolah dari URL (?kod=M030)
+    const params = new URLSearchParams(window.location.search);
+    const kod = params.get('kod');
+    if (kod) {
+        const titleEl = document.getElementById('loginTitle');
+        if (titleEl) titleEl.innerHTML = `LOG MASUK <span class="text-primary">${kod.toUpperCase()}</span>`;
+    }
 });
 
-/**
- * Papar/Sembunyi Kata Laluan
- */
-function togglePass() {
+// Fungsi Toggle Password (UI Sahaja)
+window.togglePass = function() {
     const input = document.getElementById('inputPassword');
     const icon = document.getElementById('iconEye');
     
@@ -36,69 +41,45 @@ function togglePass() {
         icon.classList.remove('fa-eye-slash');
         icon.classList.add('fa-eye');
     }
-}
+};
 
-/**
- * Proses Log Masuk Utama
- */
-async function prosesLogin() {
+// Fungsi Proses Login
+window.prosesLogin = async function() {
     const inputEmail = document.getElementById('inputEmail');
     const inputPass = document.getElementById('inputPassword');
     const btnLogin = document.querySelector('button[onclick="prosesLogin()"]');
     
     if (!inputEmail || !inputPass) return;
 
-    const email = inputEmail.value.trim().toLowerCase(); 
+    const email = inputEmail.value.trim();
     const password = inputPass.value.trim();
 
-    // Validasi Input
     if (!email || !password) { 
         Swal.fire('Ralat', 'Sila masukkan emel dan kata laluan.', 'warning'); 
         return; 
     }
 
-    // UI Loading
     if (btnLogin) btnLogin.disabled = true;
-    window.toggleLoading(true); // Dari utils.js
+    toggleLoading(true);
 
     try {
-        // Query Database (UPDATE: Tambah 'id' dalam select)
-        const { data, error } = await window.supabaseClient
-            .from('smpid_users')
-            .select('id, kod_sekolah, role, password')
-            .eq('email', email)
-            .single();
-            
-        // UI Reset
-        window.toggleLoading(false);
+        // Panggil Service (Backend Logic)
+        const user = await AuthService.login(email, password);
+
+        // Simpan Sesi (Frontend Logic)
+        sessionStorage.setItem(APP_CONFIG.SESSION.USER_KOD, user.kod_sekolah);
+        sessionStorage.setItem(APP_CONFIG.SESSION.USER_ROLE, user.role);
+        sessionStorage.setItem(APP_CONFIG.SESSION.USER_ID, user.id);
+
+        toggleLoading(false);
         if (btnLogin) btnLogin.disabled = false;
 
-        // Ralat: User Tak Jumpa
-        if (error || !data) { 
-            Swal.fire('Gagal', 'Emel pengguna tidak ditemui dalam sistem.', 'error'); 
-            return; 
-        }
-
-        // Ralat: Password Salah
-        if (data.password !== password) {
-            Swal.fire('Maaf', 'Kata laluan salah.', 'error');
-            return;
-        }
-        
-        // LOGIN BERJAYA: Simpan Sesi
-        sessionStorage.setItem('smpid_user_kod', data.kod_sekolah);
-        sessionStorage.setItem('smpid_user_role', data.role); 
-        
-        // UPDATE PENTING: Simpan User ID (UUID) untuk fungsi tukar password
-        sessionStorage.setItem('smpid_user_id', data.id);
-        
         // Redirect Logic
-        if (data.role === 'ADMIN' || data.role === 'PPD_UNIT') {
-            // Kedua-dua role ini masuk ke admin.html, tapi paparan akan berbeza (diuruskan oleh admin.js)
-            sessionStorage.setItem('smpid_auth', 'true');
+        if (user.role === 'ADMIN' || user.role === 'PPD_UNIT') {
+            sessionStorage.setItem(APP_CONFIG.SESSION.AUTH_FLAG, 'true');
             
-            let welcomeTitle = (data.role === 'PPD_UNIT') ? 'Akses Unit PPD' : 'Admin Disahkan';
-            let welcomeMsg = (data.role === 'PPD_UNIT') ? 'Log masuk sebagai Unit PPD.' : 'Selamat kembali, Admin PPD.';
+            let welcomeTitle = (user.role === 'PPD_UNIT') ? 'Akses Unit PPD' : 'Admin Disahkan';
+            let welcomeMsg = (user.role === 'PPD_UNIT') ? 'Log masuk sebagai Unit PPD.' : 'Selamat kembali, Admin PPD.';
 
             Swal.fire({
                 icon: 'success', 
@@ -111,11 +92,11 @@ async function prosesLogin() {
             });
         } else {
             // Sekolah
-            sessionStorage.setItem('smpid_auth', 'false'); 
+            sessionStorage.setItem(APP_CONFIG.SESSION.AUTH_FLAG, 'false'); 
             Swal.fire({
                 icon: 'success', 
                 title: 'Log Masuk Berjaya', 
-                text: `Kod Sekolah: ${data.kod_sekolah}`,
+                text: `Kod Sekolah: ${user.kod_sekolah}`,
                 timer: 800, 
                 showConfirmButton: false
             }).then(() => {
@@ -124,14 +105,10 @@ async function prosesLogin() {
         }
 
     } catch (err) {
-        window.toggleLoading(false); 
+        toggleLoading(false);
         if (btnLogin) btnLogin.disabled = false;
         
         console.error("Login Error:", err);
-        Swal.fire('Ralat Sistem', 'Gagal menyambung ke server. Sila cuba sebentar lagi.', 'error');
+        Swal.fire('Gagal', err.message || 'Ralat sistem.', 'error');
     }
-}
-
-// Expose fungsi ke global scope untuk HTML onclick
-window.togglePass = togglePass;
-window.prosesLogin = prosesLogin;
+};

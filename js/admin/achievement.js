@@ -1,535 +1,280 @@
 /**
- * MODUL PENCAPAIAN (js/admin/achievement.js) - v8.1 (Auto-Sync Jawatan Guru)
- * Fungsi: Menguruskan Tab Pencapaian V3 dengan Logik Statistik Reaktif & Penyelarasan Data
+ * ADMIN MODULE: ACHIEVEMENT (DEV) - VISUAL FIX (FULL WRAP)
+ * Menguruskan rekod pencapaian murid, guru, dan sekolah.
+ * * CHANGE LOG:
+ * - Dibuang: Logic truncate pada nama sekolah, peserta, dan program.
+ * - Ditambah: class="text-wrap" untuk paparan penuh multi-line.
+ * - NEW: Added CSV Export functionality based on filtered list.
  */
 
+import { AchievementService } from '../services/achievement.service.js';
+import { toggleLoading } from '../core/helpers.js';
+
 let pencapaianList = [];
+let currentPencapaianFiltered = []; // Store filtered list for export
 let currentCardFilter = 'ALL';
 let currentJawatanFilter = 'ALL';
 let sortState = { column: 'created_at', direction: 'desc' };
 
-// --- INIT & LOAD DATA ---
-async function populateTahunFilter() {
+window.populateTahunFilter = async function() {
     const select = document.getElementById('filterTahunPencapaian');
     if (!select) return;
-
-    select.innerHTML = '<option value="" disabled selected>Memuatkan...</option>';
-    select.disabled = true;
-
     try {
-        const { data, error } = await window.supabaseClient
-            .from('smpid_pencapaian')
-            .select('tahun');
+        const years = await AchievementService.getAvailableYears();
+        select.innerHTML = '<option value="ALL">SEMUA TAHUN</option>';
+        years.forEach(y => select.innerHTML += `<option value="${y}">TAHUN ${y}</option>`);
+        window.loadMasterPencapaian();
+    } catch (e) { console.error(e); }
+};
 
-        if (error) throw error;
-
-        const years = [...new Set(data.map(item => item.tahun))].sort((a, b) => b - a);
-        select.innerHTML = ''; 
-
-        if (years.length === 0) {
-            select.innerHTML = '<option value="" disabled selected>TIADA REKOD</option>';
-            select.disabled = true;
-        } else {
-            const optAll = document.createElement('option');
-            optAll.value = "ALL";
-            optAll.innerText = "SEMUA TAHUN";
-            select.appendChild(optAll);
-
-            years.forEach(y => {
-                const opt = document.createElement('option');
-                opt.value = y;
-                opt.innerText = `TAHUN ${y}`;
-                select.appendChild(opt);
-            });
-            select.disabled = false;
-            select.value = "ALL";
-            
-            loadMasterPencapaian();
-        }
-
-    } catch (err) {
-        console.error("Year Filter Error:", err);
-        select.innerHTML = '<option value="" disabled selected>Ralat</option>';
-    }
-}
-
-async function loadMasterPencapaian() {
+window.loadMasterPencapaian = async function() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
-    if (!tbody) return;
-    
+    if(!tbody) return;
     tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>`;
-    document.getElementById('tableTopContributors').innerHTML = `<tr><td class="text-center p-4">Mengira data...</td></tr>`;
-
-    const tahunInput = document.getElementById('filterTahunPencapaian');
-    const tahun = tahunInput.value || 'ALL';
-
+    
+    const tahun = document.getElementById('filterTahunPencapaian').value;
+    
     try {
-        let query = window.supabaseClient.from('smpid_pencapaian').select('*');
-        if (tahun !== 'ALL') query = query.eq('tahun', tahun);
-        
-        query = query.order('created_at', { ascending: false });
-
-        const { data, error } = await query;
-        if (error) throw error;
-        
-        pencapaianList = data;
-        
-        // Populate Filter Sekolah
+        pencapaianList = await AchievementService.getAll(tahun);
         populateSekolahFilter(pencapaianList);
-        
-        // Render Utama
-        renderPencapaianTable();
-
-    } catch (err) {
-        console.error(err);
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-danger">Gagal memuatkan data.</td></tr>`;
+        window.renderPencapaianTable();
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Gagal memuatkan data.</td></tr>`;
     }
-}
+};
 
-// --- CORE LOGIC: DATA PROCESSING & CROSS-FILTERING ---
-
-function renderPencapaianTable() {
-    const tbody = document.getElementById('tbodyPencapaianMaster');
-    if (!tbody) return;
-
-    // 1. Dapatkan Nilai Filter Semasa
-    const katFilter = document.getElementById('filterKategoriPencapaian').value; // MURID, GURU...
-    const sekFilter = document.getElementById('filterSekolahPencapaian').value; // M030, MBA...
-    const searchInput = document.getElementById('searchPencapaianInput').value.toUpperCase().trim();
-
-    // 2. HASILKAN 'BASE DATA' (Data Asas)
-    let baseData = pencapaianList.filter(item => {
-        // Filter Sekolah
-        if (sekFilter !== 'ALL' && item.kod_sekolah !== sekFilter) return false;
-        
-        // Filter Carian Teks (Global Search)
-        if (searchInput) {
-            let namaSekolah = (item.kod_sekolah === 'M030') ? 'PPD ALOR GAJAH' : 
-                (window.globalDashboardData?.find(s => s.kod_sekolah === item.kod_sekolah)?.nama_sekolah || '');
-            const searchTarget = `${item.kod_sekolah} ${namaSekolah} ${item.nama_peserta} ${item.nama_pertandingan}`.toUpperCase();
-            if (!searchTarget.includes(searchInput)) return false;
-        }
-        return true;
-    });
-
-    // 3. KIRA STATISTIK: KATEGORI
-    let dataForCategoryStats = filterByCardType(baseData, currentCardFilter);
-    updateCategoryStats(dataForCategoryStats);
-
-    // 4. KIRA STATISTIK: KAD KPI
-    let dataForKPIBadges = baseData.filter(item => {
-        if (katFilter !== 'ALL' && item.kategori !== katFilter) return false;
-        if (currentJawatanFilter !== 'ALL' && item.jawatan !== currentJawatanFilter) return false;
-        return true;
-    });
-    updateKPIBadges(dataForKPIBadges);
-
-    // 5. UPDATE JAWATAN CLOUD
-    if (katFilter === 'GURU' || katFilter === 'ALL') {
-        generateJawatanCloud(dataForKPIBadges);
-    } else {
-        document.getElementById('jawatanCloudWrapper').classList.add('hidden');
-    }
-
-    // 6. HASILKAN DATA AKHIR UNTUK JADUAL
-    let finalData = dataForKPIBadges.filter(item => {
-        if (currentCardFilter === 'ALL') return true;
-        
-        if (currentCardFilter === 'KEBANGSAAN') return item.peringkat === 'KEBANGSAAN';
-        if (currentCardFilter === 'ANTARABANGSA') return (item.peringkat === 'ANTARABANGSA' || item.jenis_rekod === 'PENSIJILAN');
-        
-        if (['GOOGLE', 'APPLE', 'MICROSOFT', 'LAIN-LAIN'].includes(currentCardFilter)) {
-            return (item.jenis_rekod === 'PENSIJILAN' && item.penyedia === currentCardFilter);
-        }
-        return true;
-    });
-
-    // 7. RENDER JADUAL TOP 5 SEKOLAH
-    renderTopSchools(finalData);
-
-    // 8. RENDER JADUAL UTAMA
-    renderMainTableRows(finalData, tbody);
-    updateCardVisuals();
-}
-
-function filterByCardType(data, cardType) {
-    if (cardType === 'ALL') return data;
-    return data.filter(item => {
-        if (cardType === 'KEBANGSAAN') return item.peringkat === 'KEBANGSAAN';
-        if (cardType === 'ANTARABANGSA') return (item.peringkat === 'ANTARABANGSA' || item.jenis_rekod === 'PENSIJILAN');
-        if (['GOOGLE', 'APPLE', 'MICROSOFT', 'LAIN-LAIN'].includes(cardType)) {
-            return (item.jenis_rekod === 'PENSIJILAN' && item.penyedia === cardType);
-        }
-        return true;
-    });
-}
-
-// --- SUB-RENDERING FUNCTIONS ---
-
-function updateCategoryStats(dataSet) {
-    const counts = {
-        'MURID': 0, 'GURU': 0, 'SEKOLAH': 0, 'PEGAWAI': 0, 'PPD': 0
-    };
-
-    dataSet.forEach(item => {
-        if (counts[item.kategori] !== undefined) counts[item.kategori]++;
-    });
-
-    const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
-    
-    setTxt('statTotalMurid', counts['MURID']);
-    setTxt('statTotalGuru', counts['GURU']);
-    setTxt('statTotalSekolah', counts['SEKOLAH']);
-    setTxt('statTotalPegawai', counts['PEGAWAI']);
-    setTxt('statTotalUnit', counts['PPD']);
-}
-
-function updateKPIBadges(dataSet) {
-    let stats = {
-        'KEBANGSAAN': 0, 'ANTARABANGSA': 0,
-        'GOOGLE': 0, 'APPLE': 0, 'MICROSOFT': 0, 'LAIN': 0
-    };
-
-    dataSet.forEach(item => {
-        if (item.peringkat === 'KEBANGSAAN') stats['KEBANGSAAN']++;
-        if (item.peringkat === 'ANTARABANGSA' || item.jenis_rekod === 'PENSIJILAN') stats['ANTARABANGSA']++;
-        
-        if (item.jenis_rekod === 'PENSIJILAN') {
-            if (item.penyedia === 'GOOGLE') stats['GOOGLE']++;
-            else if (item.penyedia === 'APPLE') stats['APPLE']++;
-            else if (item.penyedia === 'MICROSOFT') stats['MICROSOFT']++;
-            else if (item.penyedia === 'LAIN-LAIN') stats['LAIN']++;
-        }
-    });
-
-    document.getElementById('statKebangsaan').innerText = stats['KEBANGSAAN'];
-    document.getElementById('statAntarabangsa').innerText = stats['ANTARABANGSA'];
-    document.getElementById('statGoogle').innerText = stats['GOOGLE'];
-    document.getElementById('statApple').innerText = stats['APPLE'];
-    document.getElementById('statMicrosoft').innerText = stats['MICROSOFT'];
-    document.getElementById('statLain').innerText = stats['LAIN'];
-}
-
-function renderTopSchools(dataSet) {
-    const top5Table = document.getElementById('tableTopContributors');
-    document.getElementById('totalRecordsBadge').innerText = `${dataSet.length} Rekod`;
-
-    const schoolCounts = {};
-    dataSet.forEach(item => {
-        if (item.kod_sekolah !== 'M030') {
-            schoolCounts[item.kod_sekolah] = (schoolCounts[item.kod_sekolah] || 0) + 1;
-        }
-    });
-
-    const sortedSchools = Object.entries(schoolCounts)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 5);
-
-    if (sortedSchools.length === 0) {
-        top5Table.innerHTML = `<tr><td class="text-center p-4 text-muted">Tiada data sekolah.</td></tr>`;
-    } else {
-        let html = '';
-        sortedSchools.forEach(([kod, count], index) => {
-            let namaSekolah = kod;
-            const ref = window.globalDashboardData?.find(s => s.kod_sekolah === kod);
-            if (ref) namaSekolah = ref.nama_sekolah;
-
-            let medal = '';
-            if (index === 0) medal = '<span class="medal-icon medal-1">1</span>';
-            else if (index === 1) medal = '<span class="medal-icon medal-2">2</span>';
-            else if (index === 2) medal = '<span class="medal-icon medal-3">3</span>';
-            else medal = `<span class="fw-bold text-muted ps-2">${index + 1}</span>`;
-
-            html += `
-            <tr class="top-school-row" onclick="filterBySchoolFromTop5('${kod}')">
-                <td style="width: 40px;" class="text-center align-middle">${medal}</td>
-                <td class="align-middle">
-                    <div class="fw-bold text-dark small text-wrap">${namaSekolah}</div>
-                    <div class="text-muted" style="font-size: 0.65rem;">${kod}</div>
-                </td>
-                <td class="text-end fw-bold text-primary align-middle pe-3">${count}</td>
-            </tr>`;
-        });
-        top5Table.innerHTML = html;
-    }
-}
-
-function renderMainTableRows(dataList, tbody) {
-    // Sorting logic
-    dataList.sort((a, b) => {
-        let valA = getSortValue(a, sortState.column);
-        let valB = getSortValue(b, sortState.column);
-        if (valA < valB) return sortState.direction === 'asc' ? -1 : 1;
-        if (valA > valB) return sortState.direction === 'asc' ? 1 : -1;
-        return 0;
-    });
-    updateSortIcons();
-
-    if (dataList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted fst-italic">Tiada rekod sepadan.</td></tr>`;
-        return;
-    }
-
-    let html = '';
-    dataList.forEach(item => {
-        let namaSekolah = (item.kod_sekolah === 'M030') ? 
-            '<span class="fw-bold text-indigo">PPD ALOR GAJAH</span>' : 
-            (window.globalDashboardData?.find(s => s.kod_sekolah === item.kod_sekolah)?.nama_sekolah || item.kod_sekolah);
-
-        let badgeClass = 'bg-secondary';
-        if (item.kategori === 'MURID') badgeClass = 'bg-info text-dark';
-        else if (item.kategori === 'GURU') badgeClass = 'bg-warning text-dark';
-        else if (item.kategori === 'SEKOLAH') badgeClass = 'bg-success text-white'; 
-        else if (item.kategori === 'PEGAWAI') badgeClass = 'bg-dark text-white'; 
-        else if (item.kategori === 'PPD') badgeClass = 'bg-primary text-white';
-
-        let categoryDisplay = `<span class="badge ${badgeClass} shadow-sm" style="font-size: 0.7em">${item.kategori}</span>`;
-        if (item.kategori === 'GURU' && item.jawatan) {
-            categoryDisplay += `<div class="mt-1"><span class="badge bg-light text-secondary border" style="font-size: 0.6rem;">${item.jawatan}</span></div>`;
-        }
-
-        let displayProgram = '';
-        let displayPencapaian = '';
-
-        if (item.jenis_rekod === 'PENSIJILAN') {
-            let providerBadge = 'bg-secondary';
-            if(item.penyedia === 'GOOGLE') providerBadge = 'bg-google';
-            else if(item.penyedia === 'APPLE') providerBadge = 'bg-apple';
-            else if(item.penyedia === 'MICROSOFT') providerBadge = 'bg-microsoft';
-
-            displayProgram = `<span class="badge ${providerBadge} me-1 small"><i class="fas fa-certificate"></i></span> <span class="fw-bold small">${item.nama_pertandingan}</span>`;
-            displayPencapaian = `<span class="fw-bold text-dark small">${item.pencapaian}</span>`;
-        } else {
-            displayProgram = `<div class="small text-uppercase fw-bold text-primary">${item.nama_pertandingan}</div>`;
-            displayPencapaian = `<span class="fw-bold text-success small">${item.pencapaian}</span>`;
-        }
-
-        html += `
-        <tr>
-            <td class="fw-bold small">${item.kod_sekolah}</td>
-            <td class="small text-wrap" title="${namaSekolah.replace(/<[^>]*>?/gm, '')}">${namaSekolah}</td>
-            <td class="text-center">${categoryDisplay}</td>
-            <td><div class="fw-bold text-dark small text-wrap">${item.nama_peserta}</div></td>
-            <td>${displayProgram}</td>
-            <td class="text-center">${displayPencapaian}</td>
-            <td class="text-center">
-                <a href="${item.pautan_bukti}" target="_blank" class="btn btn-sm btn-light border text-primary" title="Lihat Bukti"><i class="fas fa-link"></i></a>
-            </td>
-            <td class="text-center text-nowrap">
-                <button onclick="openEditPencapaian(${item.id})" class="btn btn-sm btn-outline-warning me-1" title="Edit"><i class="fas fa-edit"></i></button>
-                <button onclick="hapusPencapaianAdmin(${item.id})" class="btn btn-sm btn-outline-danger" title="Hapus"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>`;
-    });
-    tbody.innerHTML = html;
-}
-
-// --- UTILS & EVENT HANDLERS ---
-
-function populateSekolahFilter(sourceData) {
+function populateSekolahFilter(data) {
     const select = document.getElementById('filterSekolahPencapaian');
-    const existingVal = select.value;
-    
-    const schoolCounts = {};
-    sourceData.forEach(item => {
-        schoolCounts[item.kod_sekolah] = (schoolCounts[item.kod_sekolah] || 0) + 1;
-    });
-
-    const uniqueSchools = Object.keys(schoolCounts).sort();
+    const seen = new Set();
+    const oldVal = select.value; 
     
     select.innerHTML = '<option value="ALL">SEMUA SEKOLAH</option>';
     
-    uniqueSchools.forEach(kod => {
-        let label = kod;
-        if (kod === 'M030') label = 'PPD ALOR GAJAH (M030)';
-        else {
-            const ref = window.globalDashboardData?.find(s => s.kod_sekolah === kod);
-            if (ref) label = `${ref.nama_sekolah}`;
-        }
-        
-        const count = schoolCounts[kod];
-        label += ` (${count})`;
+    // Sort sekolah ikut abjad
+    const sortedData = [...data].sort((a, b) => a.kod_sekolah.localeCompare(b.kod_sekolah));
 
-        const opt = document.createElement('option');
-        opt.value = kod;
-        opt.innerText = label;
-        select.appendChild(opt);
-    });
-
-    if (uniqueSchools.includes(existingVal)) select.value = existingVal;
-}
-
-function handlePencapaianSearch(val) {
-    renderPencapaianTable();
-}
-
-function filterByKategori(kategori) {
-    const select = document.getElementById('filterKategoriPencapaian');
-    if(select) {
-        select.value = kategori;
-        currentJawatanFilter = 'ALL'; 
-        
-        const btnReset = document.getElementById('btnResetJawatan');
-        if(btnReset) btnReset.classList.add('hidden');
-        
-        renderPencapaianTable();
-        document.getElementById('tbodyPencapaianMaster')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-}
-
-function resetPencapaianFilters() {
-    document.getElementById('filterSekolahPencapaian').value = 'ALL';
-    document.getElementById('filterTahunPencapaian').value = 'ALL';
-    document.getElementById('filterKategoriPencapaian').value = 'ALL';
-    document.getElementById('searchPencapaianInput').value = '';
-    
-    currentCardFilter = 'ALL';
-    currentJawatanFilter = 'ALL';
-    sortState = { column: 'created_at', direction: 'desc' };
-    
-    document.getElementById('btnResetJawatan')?.classList.add('hidden');
-
-    loadMasterPencapaian(); // Reload penuh
-    
-    Swal.fire({
-        icon: 'success',
-        title: 'Filter Direset',
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 1000
-    });
-}
-
-function filterByCard(type) {
-    currentCardFilter = (currentCardFilter === type) ? 'ALL' : type;
-    renderPencapaianTable();
-}
-
-function filterBySchoolFromTop5(kod) {
-    const select = document.getElementById('filterSekolahPencapaian');
-    if (select) {
-        select.value = kod;
-        renderPencapaianTable();
-    }
-}
-
-function filterByJawatan(jawatan) {
-    currentJawatanFilter = (currentJawatanFilter === jawatan) ? 'ALL' : jawatan;
-    
-    const btnReset = document.getElementById('btnResetJawatan');
-    if(btnReset) {
-        if(currentJawatanFilter !== 'ALL') btnReset.classList.remove('hidden');
-        else btnReset.classList.add('hidden');
-    }
-    renderPencapaianTable();
-}
-
-function updateCardVisuals() {
-    const cards = ['KEBANGSAAN', 'ANTARABANGSA', 'GOOGLE', 'APPLE', 'MICROSOFT', 'LAIN-LAIN'];
-    cards.forEach(c => {
-        const el = document.getElementById(`card-${c}`);
-        if(el) el.classList.remove('card-active-filter');
-    });
-
-    if (currentCardFilter !== 'ALL') {
-        const activeEl = document.getElementById(`card-${currentCardFilter}`);
-        if(activeEl) activeEl.classList.add('card-active-filter');
-    }
-    
-    const label = document.getElementById('labelCurrentFilter');
-    let labelText = "";
-    
-    if (currentCardFilter !== 'ALL') labelText += `[${currentCardFilter}] `;
-    if (currentJawatanFilter !== 'ALL') labelText += `[Jawatan: ${currentJawatanFilter}]`;
-    
-    if (label) label.innerText = labelText ? `(Tapisan: ${labelText})` : '';
-}
-
-function generateJawatanCloud(dataSet) {
-    const cloudContainer = document.getElementById('jawatanCloudContainer');
-    const cloudWrapper = document.getElementById('jawatanCloudWrapper');
-    
-    if (!cloudContainer) return;
-
-    const jawatanCounts = {};
-    let maxCount = 0;
-
-    dataSet.forEach(item => {
-        if (item.kategori === 'GURU' && item.jawatan && item.jawatan.trim() !== "") {
-            const j = item.jawatan.trim();
-            jawatanCounts[j] = (jawatanCounts[j] || 0) + 1;
-            if (jawatanCounts[j] > maxCount) maxCount = jawatanCounts[j];
+    sortedData.forEach(i => {
+        if(!seen.has(i.kod_sekolah)) {
+            let label = i.kod_sekolah;
+            if (i.kod_sekolah === 'M030') label = "PPD ALOR GAJAH (M030)";
+            else if(window.globalDashboardData) {
+                const s = window.globalDashboardData.find(x => x.kod_sekolah === i.kod_sekolah);
+                if(s) label = `${s.nama_sekolah} (${i.kod_sekolah})`;
+            }
+            // Count rekod untuk sekolah ni
+            const count = data.filter(d => d.kod_sekolah === i.kod_sekolah).length;
+            select.innerHTML += `<option value="${i.kod_sekolah}">${label} (${count})</option>`;
+            seen.add(i.kod_sekolah);
         }
     });
+    if(seen.has(oldVal)) select.value = oldVal;
+}
 
-    const entries = Object.entries(jawatanCounts);
-    
-    if (entries.length === 0) {
-        cloudWrapper.classList.add('hidden');
+window.renderPencapaianTable = function() {
+    const tbody = document.getElementById('tbodyPencapaianMaster');
+    const katFilter = document.getElementById('filterKategoriPencapaian').value;
+    const sekFilter = document.getElementById('filterSekolahPencapaian').value;
+    const search = document.getElementById('searchPencapaianInput').value.toUpperCase();
+
+    let data = pencapaianList.filter(i => {
+        if(sekFilter !== 'ALL' && i.kod_sekolah !== sekFilter) return false;
+        if(katFilter !== 'ALL' && i.kategori !== katFilter) return false;
+        
+        // Search Logic
+        if(search) {
+            let namaSekolah = (i.kod_sekolah === 'M030') ? 'PPD ALOR GAJAH' : 
+                (window.globalDashboardData?.find(s => s.kod_sekolah === i.kod_sekolah)?.nama_sekolah || '');
+            const searchTarget = `${i.kod_sekolah} ${namaSekolah} ${i.nama_peserta} ${i.nama_pertandingan}`.toUpperCase();
+            if (!searchTarget.includes(search)) return false;
+        }
+        
+        // Filter Card
+        if(currentCardFilter === 'KEBANGSAAN' && i.peringkat !== 'KEBANGSAAN') return false;
+        if(currentCardFilter === 'ANTARABANGSA' && !['ANTARABANGSA'].includes(i.peringkat) && i.jenis_rekod !== 'PENSIJILAN') return false;
+        if(['GOOGLE','APPLE','MICROSOFT'].includes(currentCardFilter) && i.penyedia !== currentCardFilter) return false;
+        if(currentCardFilter === 'LAIN-LAIN' && (i.jenis_rekod !== 'PENSIJILAN' || i.penyedia !== 'LAIN-LAIN')) return false;
+        
+        // Filter Jawatan
+        if(currentJawatanFilter !== 'ALL' && i.jawatan !== currentJawatanFilter) return false;
+
+        return true;
+    });
+
+    updateStats(data);
+    updateCloud(data); // Jawatan Cloud
+
+    // Sort Logic
+    data.sort((a,b) => {
+        let valA = a[sortState.column] || '';
+        let valB = b[sortState.column] || '';
+        if (sortState.column === 'nama_sekolah') valA = a.kod_sekolah; 
+        if (sortState.direction === 'asc') return valA > valB ? 1 : -1;
+        return valA < valB ? 1 : -1;
+    });
+
+    // Save filtered and sorted data for export
+    currentPencapaianFiltered = data;
+
+    // Render Top 5 Schools Table
+    renderTopSchools(data);
+
+    if(data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-muted">Tiada rekod sepadan.</td></tr>`;
         return;
     }
 
-    cloudWrapper.classList.remove('hidden');
-    cloudContainer.innerHTML = '';
+    tbody.innerHTML = data.map(i => {
+        let namaSekolah = i.kod_sekolah;
+        if(i.kod_sekolah === 'M030') namaSekolah = `<span class="text-indigo fw-bold">PPD ALOR GAJAH</span>`;
+        else if(window.globalDashboardData) {
+            const s = window.globalDashboardData.find(x => x.kod_sekolah === i.kod_sekolah);
+            if(s) namaSekolah = s.nama_sekolah;
+        }
 
-    entries.sort((a, b) => b[1] - a[1]);
+        let badgeClass = 'bg-secondary';
+        if (i.kategori === 'MURID') badgeClass = 'bg-info text-dark';
+        else if (i.kategori === 'GURU') badgeClass = 'bg-warning text-dark';
+        else if (i.kategori === 'SEKOLAH') badgeClass = 'bg-success';
+        else if (i.kategori === 'PEGAWAI') badgeClass = 'bg-dark';
+        else if (i.kategori === 'PPD') badgeClass = 'bg-primary';
 
-    entries.forEach(([jawatan, count]) => {
-        let sizeClass = `tag-size-${Math.ceil((count / maxCount) * 5)}`;
-        if (count === 1) sizeClass = 'tag-size-1';
+        return `<tr>
+            <td class="fw-bold small align-middle">${i.kod_sekolah}</td>
+            <td class="small text-wrap align-middle">${namaSekolah}</td>
+            <td class="text-center align-middle"><span class="badge ${badgeClass} shadow-sm">${i.kategori}</span></td>
+            <td class="align-middle">
+                <div class="fw-bold text-dark small text-wrap">${i.nama_peserta}</div>
+                ${i.jawatan ? `<span class="badge bg-light text-secondary border mt-1" style="font-size:0.6rem;">${i.jawatan}</span>` : ''}
+            </td>
+            <td class="align-middle"><div class="text-primary small fw-bold text-wrap">${i.nama_pertandingan}</div></td>
+            <td class="text-center fw-bold small align-middle">${i.pencapaian}</td>
+            <td class="text-center align-middle"><a href="${i.pautan_bukti}" target="_blank" class="btn btn-sm btn-light border text-primary"><i class="fas fa-link"></i></a></td>
+            <td class="text-center text-nowrap align-middle">
+                <button onclick="openEditPencapaian(${i.id})" class="btn btn-sm btn-outline-warning me-1"><i class="fas fa-edit"></i></button>
+                <button onclick="hapusPencapaianAdmin(${i.id})" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
+};
 
-        const isActive = (jawatan === currentJawatanFilter) ? 'active' : '';
-        
-        const btn = document.createElement('div');
-        btn.className = `cloud-tag ${sizeClass} ${isActive}`;
-        btn.innerHTML = `${jawatan} <span class="count-badge">${count}</span>`;
-        btn.onclick = () => filterByJawatan(jawatan);
-        
-        cloudContainer.appendChild(btn);
+function updateStats(data) {
+    const ids = ['statTotalMurid', 'statTotalGuru', 'statTotalSekolah', 'statTotalPegawai', 'statTotalUnit'];
+    const cats = ['MURID', 'GURU', 'SEKOLAH', 'PEGAWAI', 'PPD'];
+    
+    ids.forEach((id, idx) => {
+        document.getElementById(id).innerText = data.filter(i => i.kategori === cats[idx]).length;
     });
+    
+    document.getElementById('statKebangsaan').innerText = data.filter(i => i.peringkat === 'KEBANGSAAN').length;
+    document.getElementById('statAntarabangsa').innerText = data.filter(i => i.peringkat === 'ANTARABANGSA' || i.jenis_rekod === 'PENSIJILAN').length;
+    
+    const pensijilan = data.filter(i => i.jenis_rekod === 'PENSIJILAN');
+    document.getElementById('statGoogle').innerText = pensijilan.filter(i => i.penyedia === 'GOOGLE').length;
+    document.getElementById('statApple').innerText = pensijilan.filter(i => i.penyedia === 'APPLE').length;
+    document.getElementById('statMicrosoft').innerText = pensijilan.filter(i => i.penyedia === 'MICROSOFT').length;
+    document.getElementById('statLain').innerText = pensijilan.filter(i => i.penyedia === 'LAIN-LAIN').length;
+    
+    const cards = ['KEBANGSAAN', 'ANTARABANGSA', 'GOOGLE', 'APPLE', 'MICROSOFT', 'LAIN-LAIN'];
+    cards.forEach(c => document.getElementById(`card-${c}`)?.classList.remove('card-active-filter'));
+    if(currentCardFilter !== 'ALL') document.getElementById(`card-${currentCardFilter}`)?.classList.add('card-active-filter');
 }
 
-function handleSort(column) {
-    if (sortState.column === column) {
-        sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
-    } else {
-        sortState.column = column;
-        sortState.direction = 'asc';
+function updateCloud(data) {
+    const container = document.getElementById('jawatanCloudContainer');
+    const guruData = data.filter(i => i.kategori === 'GURU' && i.jawatan);
+    
+    if(guruData.length === 0) {
+        document.getElementById('jawatanCloudWrapper').classList.add('hidden');
+        return;
     }
-    renderPencapaianTable();
-}
-
-function getSortValue(item, column) {
-    if (column === 'nama_sekolah') {
-        if (item.kod_sekolah === 'M030') return 'PPD ALOR GAJAH';
-        const ref = window.globalDashboardData?.find(s => s.kod_sekolah === item.kod_sekolah);
-        return ref ? ref.nama_sekolah.toLowerCase() : item.kod_sekolah.toLowerCase();
-    }
-    const val = item[column];
-    if (typeof val === 'string') return val.toLowerCase();
-    return val || '';
-}
-
-function updateSortIcons() {
-    const headers = ['kod_sekolah', 'nama_sekolah', 'kategori', 'nama_peserta', 'nama_pertandingan', 'pencapaian'];
-    headers.forEach(h => {
-        const el = document.getElementById(`icon-${h}`);
-        if(el) el.className = 'fas fa-sort ms-1 text-muted opacity-25';
+    
+    document.getElementById('jawatanCloudWrapper').classList.remove('hidden');
+    const counts = {};
+    let maxCount = 0;
+    
+    guruData.forEach(i => {
+        counts[i.jawatan] = (counts[i.jawatan] || 0) + 1;
+        if(counts[i.jawatan] > maxCount) maxCount = counts[i.jawatan];
     });
-    const activeIcon = document.getElementById(`icon-${sortState.column}`);
+    
+    container.innerHTML = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([j, c]) => {
+            let sizeClass = `tag-size-${Math.ceil((c / maxCount) * 5)}`;
+            if(c === 1) sizeClass = 'tag-size-1';
+            const isActive = currentJawatanFilter === j ? 'active' : '';
+            return `<div class="cloud-tag ${sizeClass} ${isActive}" onclick="filterByJawatan('${j}')">${j} <span class="count-badge">${c}</span></div>`;
+        }).join('');
+}
+
+function renderTopSchools(data) {
+    const table = document.getElementById('tableTopContributors');
+    document.getElementById('totalRecordsBadge').innerText = `${data.length} Rekod`;
+    
+    const schoolCounts = {};
+    data.forEach(i => {
+        if(i.kod_sekolah !== 'M030') schoolCounts[i.kod_sekolah] = (schoolCounts[i.kod_sekolah] || 0) + 1;
+    });
+    
+    const sorted = Object.entries(schoolCounts).sort(([,a], [,b]) => b - a).slice(0, 5);
+    
+    if(sorted.length === 0) {
+        table.innerHTML = `<tr><td class="text-center p-4 text-muted">Tiada data sekolah.</td></tr>`;
+        return;
+    }
+    
+    table.innerHTML = sorted.map(([kod, count], idx) => {
+        let nama = kod;
+        const s = window.globalDashboardData?.find(x => x.kod_sekolah === kod);
+        if(s) nama = s.nama_sekolah;
+        
+        let medal = idx < 3 ? `<span class="medal-icon medal-${idx+1}">${idx+1}</span>` : `<span class="fw-bold ps-2">${idx+1}</span>`;
+        return `<tr class="top-school-row" onclick="filterBySchoolFromTop5('${kod}')">
+            <td style="width: 40px;" class="text-center align-middle">${medal}</td>
+            <td class="align-middle"><div class="fw-bold small text-dark text-wrap">${nama}</div><div class="text-muted" style="font-size:0.65rem;">${kod}</div></td>
+            <td class="text-end fw-bold text-primary align-middle pe-3">${count}</td>
+        </tr>`;
+    }).join('');
+}
+
+// --- GLOBAL EXPORTS ---
+window.filterByKategori = function(k) { document.getElementById('filterKategoriPencapaian').value = k; currentJawatanFilter = 'ALL'; window.renderPencapaianTable(); };
+window.filterByCard = function(c) { currentCardFilter = (currentCardFilter === c) ? 'ALL' : c; window.renderPencapaianTable(); };
+window.filterByJawatan = function(j) { currentJawatanFilter = (currentJawatanFilter === j) ? 'ALL' : j; window.renderPencapaianTable(); };
+window.filterBySchoolFromTop5 = function(kod) { document.getElementById('filterSekolahPencapaian').value = kod; window.renderPencapaianTable(); };
+
+window.resetPencapaianFilters = function() { 
+    currentCardFilter='ALL'; currentJawatanFilter='ALL'; 
+    document.getElementById('searchPencapaianInput').value = '';
+    document.getElementById('filterKategoriPencapaian').value = 'ALL';
+    document.getElementById('filterSekolahPencapaian').value = 'ALL';
+    document.getElementById('filterTahunPencapaian').value = 'ALL';
+    window.loadMasterPencapaian();
+    Swal.fire({ icon: 'success', title: 'Filter Direset', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 });
+};
+
+window.handleSort = function(col) {
+    if(sortState.column === col) sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+    else { sortState.column = col; sortState.direction = 'asc'; }
+    window.renderPencapaianTable();
+    
+    const icons = ['kod_sekolah','nama_sekolah','kategori','nama_peserta','nama_pertandingan','pencapaian'];
+    icons.forEach(i => document.getElementById(`icon-${i}`)?.classList.replace('text-white','text-muted'));
+    const activeIcon = document.getElementById(`icon-${col}`);
     if(activeIcon) {
-        activeIcon.className = `fas fa-sort-${sortState.direction === 'asc' ? 'up' : 'down'} ms-1 text-white opacity-100`;
+        activeIcon.classList.replace('text-muted','text-white');
+        activeIcon.classList.remove('opacity-25');
+        activeIcon.className = `fas fa-sort-${sortState.direction === 'asc' ? 'up' : 'down'} ms-1 text-white`;
     }
-}
+};
+window.handlePencapaianSearch = function() { window.renderPencapaianTable(); };
 
-// --- CRUD OPERATIONS ---
-
-function openEditPencapaian(id) {
+// CRUD Operations
+window.openEditPencapaian = function(id) {
     const item = pencapaianList.find(i => i.id === id);
-    if (!item) return;
-
-    document.getElementById('editIdPencapaian').value = item.id;
+    if(!item) return;
+    
+    document.getElementById('editIdPencapaian').value = id;
     document.getElementById('editJenisRekod').value = item.jenis_rekod;
     document.getElementById('editNamaSekolah').value = item.kod_sekolah;
     document.getElementById('editInputNama').value = item.nama_peserta;
@@ -537,17 +282,17 @@ function openEditPencapaian(id) {
     document.getElementById('editInputPencapaian').value = item.pencapaian;
     document.getElementById('editInputLink').value = item.pautan_bukti;
     
+    const divJawatan = document.getElementById('divEditJawatan');
     const divPenyedia = document.getElementById('divEditPenyedia');
     const rowPeringkat = document.getElementById('rowEditPeringkat');
-    
-    const divJawatan = document.getElementById('divEditJawatan');
-    if (item.kategori === 'GURU') {
+
+    if(item.kategori === 'GURU') {
         divJawatan.classList.remove('hidden');
         document.getElementById('editInputJawatan').value = item.jawatan || 'GURU AKADEMIK BIASA';
     } else {
         divJawatan.classList.add('hidden');
     }
-
+    
     if (item.jenis_rekod === 'PENSIJILAN') {
         divPenyedia.classList.remove('hidden');
         rowPeringkat.classList.add('hidden');
@@ -562,19 +307,13 @@ function openEditPencapaian(id) {
         document.getElementById('lblEditProgram').innerText = "NAMA PERTANDINGAN";
         document.getElementById('lblEditPencapaian').innerText = "PENCAPAIAN";
     }
+    
+    new bootstrap.Modal(document.getElementById('modalEditPencapaian')).show();
+};
 
-    const modal = new bootstrap.Modal(document.getElementById('modalEditPencapaian'));
-    modal.show();
-}
-
-/**
- * FUNGSI SIMPAN EDIT (DIKEMASKINI: AUTO-SYNC JAWATAN)
- * Kemaskini ini membolehkan semua rekod guru yang sama dikemaskini jawatannya serentak.
- */
-async function simpanEditPencapaian() {
+window.simpanEditPencapaian = async function() {
     const id = document.getElementById('editIdPencapaian').value;
     const jenis = document.getElementById('editJenisRekod').value;
-    const btn = document.querySelector('#formEditPencapaian button[type="submit"]');
     
     const payload = {
         nama_peserta: document.getElementById('editInputNama').value.toUpperCase(),
@@ -582,14 +321,9 @@ async function simpanEditPencapaian() {
         pencapaian: document.getElementById('editInputPencapaian').value.toUpperCase(),
         pautan_bukti: document.getElementById('editInputLink').value
     };
-
-    // SEMAK JAWATAN
-    const divJawatan = document.getElementById('divEditJawatan');
-    let isGuruUpdate = false;
-
-    if (!divJawatan.classList.contains('hidden')) {
+    
+    if(!document.getElementById('divEditJawatan').classList.contains('hidden')) {
         payload.jawatan = document.getElementById('editInputJawatan').value;
-        isGuruUpdate = true; // Tandakan bahawa ini rekod guru
     }
 
     if (jenis === 'PENSIJILAN') {
@@ -599,100 +333,38 @@ async function simpanEditPencapaian() {
         payload.tahun = parseInt(document.getElementById('editInputTahun').value);
     }
 
-    if(btn) btn.disabled = true;
-    window.toggleLoading(true);
-
+    toggleLoading(true);
     try {
-        // 1. UPDATE REKOD SEMASA (STANDARD)
-        const { error } = await window.supabaseClient
-            .from('smpid_pencapaian')
-            .update(payload)
-            .eq('id', id);
-
-        if (error) throw error;
-
-        // 2. AUTO-SYNC: KEMASKINI JAWATAN SEMUA REKOD LAIN (BULK UPDATE)
-        // Jika kategori GURU dan ada jawatan baru, cari semua rekod lain dengan nama yang sama.
-        let syncCount = 0;
-        if (isGuruUpdate && payload.jawatan && payload.nama_peserta) {
-            const { data: updatedRows, error: bulkError } = await window.supabaseClient
-                .from('smpid_pencapaian')
-                .update({ jawatan: payload.jawatan }) // Hanya update kolom jawatan
-                .eq('nama_peserta', payload.nama_peserta) // Padankan nama
-                .eq('kategori', 'GURU')                   // Pastikan kategori GURU
-                .neq('id', id)                            // Kecualikan rekod semasa (dah update di atas)
-                .select();                                // Return data untuk tahu berapa row
-
-            if (bulkError) {
-                console.warn("Auto-sync jawatan gagal:", bulkError);
-            } else if (updatedRows) {
-                syncCount = updatedRows.length;
-                console.log(`Auto-sync berjaya: ${syncCount} rekod lain dikemaskini.`);
-            }
-        }
-
-        window.toggleLoading(false);
-        if(btn) btn.disabled = false;
-        
+        await AchievementService.update(id, payload);
+        toggleLoading(false);
         bootstrap.Modal.getInstance(document.getElementById('modalEditPencapaian')).hide();
-        
-        // Mesej Kejayaan (Dinamik)
-        let successTitle = 'Data Dikemaskini';
-        let successText = '';
-        
-        if (syncCount > 0) {
-            successText = `Jawatan '${payload.jawatan}' telah diselaraskan untuk ${syncCount} rekod lain atas nama guru ini.`;
-        }
-
-        Swal.fire({ 
-            icon: 'success', 
-            title: successTitle, 
-            text: successText,
-            timer: successText ? 3000 : 1500, 
-            showConfirmButton: !!successText 
-        });
-        
-        loadMasterPencapaian();
-
-    } catch (err) {
-        window.toggleLoading(false);
-        if(btn) btn.disabled = false;
-        console.error(err);
-        Swal.fire('Ralat', 'Gagal mengemaskini data.', 'error');
+        Swal.fire('Berjaya', 'Data dikemaskini.', 'success').then(() => window.loadMasterPencapaian());
+    } catch (e) {
+        toggleLoading(false);
+        Swal.fire('Ralat', 'Gagal mengemaskini.', 'error');
     }
-}
+};
 
-async function hapusPencapaianAdmin(id) {
-    Swal.fire({
-        title: 'Padam Rekod?',
-        text: "Tindakan ini kekal.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Ya, Padam',
-        cancelButtonText: 'Batal'
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            window.toggleLoading(true);
+window.hapusPencapaianAdmin = async function(id) {
+    Swal.fire({ title: 'Padam?', text: "Tindakan ini kekal.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' }).then(async (r) => {
+        if(r.isConfirmed) {
+            toggleLoading(true);
             try {
-                const { error } = await window.supabaseClient.from('smpid_pencapaian').delete().eq('id', id);
-                if (error) throw error;
-                window.toggleLoading(false);
-                Swal.fire('Dipadam', 'Rekod berjaya dipadam.', 'success').then(() => loadMasterPencapaian());
-            } catch (err) {
-                window.toggleLoading(false);
+                await AchievementService.delete(id);
+                toggleLoading(false);
+                Swal.fire('Dipadam', '', 'success').then(() => window.loadMasterPencapaian());
+            } catch (e) {
+                toggleLoading(false);
                 Swal.fire('Ralat', 'Gagal memadam.', 'error');
             }
         }
     });
-}
+};
 
-function openModalPPD() {
-    const modal = new bootstrap.Modal(document.getElementById('modalRekodPPD'));
-    modal.show();
-}
+// PPD (M030) Functions
+window.openModalPPD = function() { new bootstrap.Modal(document.getElementById('modalRekodPPD')).show(); };
 
-function toggleKategoriPPD() {
+window.toggleKategoriPPD = function() {
     const isUnit = document.getElementById('radUnit').checked;
     const lbl = document.getElementById('lblPpdNamaPeserta');
     const inp = document.getElementById('ppdInputNama');
@@ -703,55 +375,49 @@ function toggleKategoriPPD() {
         lbl.innerText = "NAMA PEGAWAI";
         inp.placeholder = "Taip nama penuh...";
     }
-}
+};
 
-function toggleJenisPencapaianPPD() {
+window.toggleJenisPencapaianPPD = function() {
     const isPensijilan = document.getElementById('radPpdPensijilan').checked;
-    const divPenyedia = document.getElementById('divPpdPenyedia');
-    const rowPeringkat = document.getElementById('rowPpdPeringkat');
-    const divTahunOnly = document.getElementById('divPpdTahunOnly');
-    const lblProgram = document.getElementById('lblPpdProgram');
-    const inpProgram = document.getElementById('ppdInputProgram');
-    const lblPencapaian = document.getElementById('lblPpdPencapaian');
-    const inpPencapaian = document.getElementById('ppdInputPencapaian');
-
     document.getElementById('ppdInputJenisRekod').value = isPensijilan ? 'PENSIJILAN' : 'PERTANDINGAN';
-
+    
+    document.getElementById('divPpdPenyedia').classList.toggle('hidden', !isPensijilan);
+    document.getElementById('rowPpdPeringkat').classList.toggle('hidden', isPensijilan);
+    document.getElementById('divPpdTahunOnly').classList.toggle('hidden', !isPensijilan);
+    
+    const lblProg = document.getElementById('lblPpdProgram');
+    const inpProg = document.getElementById('ppdInputProgram');
+    const lblPenc = document.getElementById('lblPpdPencapaian');
+    const inpPenc = document.getElementById('ppdInputPencapaian');
+    
     if (isPensijilan) {
-        divPenyedia.classList.remove('hidden');
-        rowPeringkat.classList.add('hidden');
-        divTahunOnly.classList.remove('hidden');
-        lblProgram.innerText = "NAMA SIJIL / PROGRAM";
-        inpProgram.placeholder = "Contoh: GOOGLE CERTIFIED EDUCATOR L1";
-        lblPencapaian.innerText = "TAHAP / SKOR / BAND";
-        inpPencapaian.placeholder = "Contoh: LULUS / BAND C2";
+        lblProg.innerText = "NAMA SIJIL / PROGRAM";
+        inpProg.placeholder = "Contoh: GOOGLE CERTIFIED EDUCATOR L1";
+        lblPenc.innerText = "TAHAP / SKOR / BAND";
+        inpPenc.placeholder = "Contoh: LULUS / BAND C2";
     } else {
-        divPenyedia.classList.add('hidden');
-        rowPeringkat.classList.remove('hidden');
-        divTahunOnly.classList.add('hidden');
-        lblProgram.innerText = "NAMA PERTANDINGAN";
-        inpProgram.placeholder = "Contoh: DIGITAL COMPETENCY 2025";
-        lblPencapaian.innerText = "PENCAPAIAN";
-        inpPencapaian.placeholder = "Contoh: JOHAN / EMAS";
+        lblProg.innerText = "NAMA PERTANDINGAN";
+        inpProg.placeholder = "Contoh: DIGITAL COMPETENCY 2025";
+        lblPenc.innerText = "PENCAPAIAN";
+        inpPenc.placeholder = "Contoh: JOHAN / EMAS";
     }
-}
+};
 
-async function simpanPencapaianPPD() {
+window.simpanPencapaianPPD = async function() {
     const btn = document.querySelector('#formPencapaianPPD button[type="submit"]');
     const radKategori = document.querySelector('input[name="radKatPPD"]:checked').value;
     const jenisRekod = document.getElementById('ppdInputJenisRekod').value;
     const nama = document.getElementById('ppdInputNama').value.trim().toUpperCase();
     
-    let penyedia = 'LAIN-LAIN';
-    let peringkat = 'KEBANGSAAN';
     let tahun = 2024;
+    let peringkat = 'KEBANGSAAN';
+    let penyedia = 'LAIN-LAIN';
     
     if (jenisRekod === 'PENSIJILAN') {
         penyedia = document.getElementById('ppdInputPenyedia').value;
         peringkat = 'ANTARABANGSA';
         tahun = document.getElementById('ppdInputTahun2').value;
     } else {
-        penyedia = 'LAIN-LAIN';
         peringkat = document.getElementById('ppdInputPeringkat').value;
         tahun = document.getElementById('ppdInputTahun').value;
     }
@@ -766,7 +432,7 @@ async function simpanPencapaianPPD() {
     }
 
     if(btn) btn.disabled = true;
-    window.toggleLoading(true);
+    toggleLoading(true);
 
     try {
         const payload = {
@@ -782,42 +448,59 @@ async function simpanPencapaianPPD() {
             penyedia: penyedia
         };
 
-        const { error } = await window.supabaseClient.from('smpid_pencapaian').insert([payload]);
-        if (error) throw error;
-
-        window.toggleLoading(false);
+        await AchievementService.create(payload);
+        
+        toggleLoading(false);
         if(btn) btn.disabled = false;
-
+        
         bootstrap.Modal.getInstance(document.getElementById('modalRekodPPD')).hide();
         document.getElementById('formPencapaianPPD').reset();
-
-        Swal.fire('Berjaya', 'Rekod PPD telah disimpan.', 'success').then(() => {
-            loadMasterPencapaian();
-        });
-
-    } catch (err) {
-        window.toggleLoading(false);
+        
+        Swal.fire('Berjaya', 'Rekod PPD Disimpan.', 'success').then(() => window.loadMasterPencapaian());
+    } catch(e) {
+        toggleLoading(false);
         if(btn) btn.disabled = false;
-        console.error(err);
-        Swal.fire('Ralat', 'Gagal menyimpan rekod PPD.', 'error');
+        Swal.fire('Ralat', 'Gagal simpan rekod.', 'error');
     }
-}
+};
 
-// EXPORTS
-window.loadMasterPencapaian = loadMasterPencapaian;
-window.populateTahunFilter = populateTahunFilter;
-window.filterByCard = filterByCard;
-window.filterByKategori = filterByKategori;
-window.resetPencapaianFilters = resetPencapaianFilters; 
-window.filterBySchoolFromTop5 = filterBySchoolFromTop5;
-window.renderPencapaianTable = renderPencapaianTable;
-window.openEditPencapaian = openEditPencapaian;
-window.simpanEditPencapaian = simpanEditPencapaian;
-window.hapusPencapaianAdmin = hapusPencapaianAdmin;
-window.openModalPPD = openModalPPD;
-window.toggleKategoriPPD = toggleKategoriPPD;
-window.toggleJenisPencapaianPPD = toggleJenisPencapaianPPD;
-window.simpanPencapaianPPD = simpanPencapaianPPD;
-window.handlePencapaianSearch = handlePencapaianSearch;
-window.handleSort = handleSort;
-window.filterByJawatan = filterByJawatan;
+// --- NEW EXPORT FUNCTION ---
+window.eksportPencapaian = function() {
+    if (!currentPencapaianFiltered || currentPencapaianFiltered.length === 0) {
+        Swal.fire('Tiada Data', 'Tiada data untuk dieksport pada paparan semasa.', 'info');
+        return;
+    }
+
+    let csvContent = "BIL,KOD,NAMA SEKOLAH,KATEGORI,PESERTA,JAWATAN,PROGRAM,PERINGKAT,PENCAPAIAN,TAHUN,PAUTAN BUKTI\n";
+
+    currentPencapaianFiltered.forEach((i, index) => {
+        const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
+        
+        let namaSekolah = i.kod_sekolah;
+        if(i.kod_sekolah === 'M030') namaSekolah = "PPD ALOR GAJAH";
+        else if(window.globalDashboardData) {
+            const s = window.globalDashboardData.find(x => x.kod_sekolah === i.kod_sekolah);
+            if(s) namaSekolah = s.nama_sekolah;
+        }
+
+        let row = [
+            index + 1,
+            clean(i.kod_sekolah),
+            clean(namaSekolah),
+            clean(i.kategori),
+            clean(i.nama_peserta),
+            clean(i.jawatan || '-'),
+            clean(i.nama_pertandingan),
+            clean(i.peringkat || '-'),
+            clean(i.pencapaian),
+            i.tahun,
+            clean(i.pautan_bukti)
+        ];
+        csvContent += row.join(",") + "\n";
+    });
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }));
+    link.download = `Laporan_Pencapaian_SMPID_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+};

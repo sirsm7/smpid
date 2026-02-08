@@ -1,70 +1,45 @@
 /**
- * MODUL DASHBOARD (js/admin/dashboard.js)
- * Fungsi: Menguruskan paparan grid sekolah, filter status, dan tindakan pantas.
- * Kemaskini: Tambah Sorting Kod, Search Bar & Butang Reset Password
+ * ADMIN MODULE: DASHBOARD (DEV)
+ * Menguruskan senarai sekolah, filter, dan status data.
+ * * FIXES:
+ * - Menambah fungsi 'eksportDataTapis' dan 'janaSenaraiTelegram'.
+ * - Memastikan fungsi 'resetPasswordSekolah' boleh dipanggil.
+ * - REMOVED TRUNCATION: Nama sekolah dan kod kini wrap text sepenuhnya.
  */
 
-// State Tempatan
+import { SchoolService } from '../services/school.service.js';
+import { toggleLoading, generateWhatsAppLink } from '../core/helpers.js';
+
 let dashboardData = [];
 let currentFilteredList = [];
 let activeStatus = 'ALL';
 let activeType = 'ALL';
-let searchTerm = ''; // Variable carian
+let searchTerm = ''; 
 let reminderQueue = [];
 let qIndex = 0;
 
-// --- FUNGSI UTAMA: LOAD DATA ---
-async function fetchDashboardData() {
-    window.toggleLoading(true);
+// --- INITIALIZATION ---
+window.fetchDashboardData = async function() {
+    toggleLoading(true);
     try {
-        const { data, error } = await window.supabaseClient
-            .from('smpid_sekolah_data')
-            .select('*')
-            // SORTING: Kod Sekolah (A-Z)
-            .order('kod_sekolah', { ascending: true }); 
-            
-        if (error) throw error;
+        const data = await SchoolService.getAll();
+        window.globalDashboardData = data; 
         
-        // Proses Data: Tambah flag status (Lengkap/Sama/Berbeza)
-        const processedData = data.map(i => {
-            const requiredFields = [
-                i.nama_gpict, i.no_telefon_gpict, i.emel_delima_gpict, 
-                i.nama_admin_delima, i.no_telefon_admin_delima, i.emel_delima_admin_delima
-            ];
-            const isDataComplete = requiredFields.every(field => field && field.trim() !== "");
-            
-            const telG = window.cleanPhone(i.no_telefon_gpict);
-            const telA = window.cleanPhone(i.no_telefon_admin_delima);
-            const isSama = (telG && telA) && (telG === telA);
-            const isBerbeza = (telG && telA) && (telG !== telA);
-
-            return { 
-                ...i, 
-                jenis: i.jenis_sekolah || 'LAIN-LAIN', 
-                is_lengkap: isDataComplete, 
-                is_sama: isSama, 
-                is_berbeza: isBerbeza 
-            };
-        });
-
-        // Simpan ke variable global (jika perlu diakses modul lain)
-        window.globalDashboardData = processedData; 
-        
-        // Filter out PPD untuk paparan dashboard
-        dashboardData = processedData.filter(item => item.jenis !== 'PPD');
+        // Filter out PPD (M030) untuk visual dashboard
+        dashboardData = data.filter(item => item.kod_sekolah !== 'M030');
         
         renderFilters();
-        runFilter();
+        window.runFilter();
 
-        window.toggleLoading(false);
     } catch (err) { 
         console.error("Dashboard Error:", err);
-        window.toggleLoading(false); 
         Swal.fire('Ralat', 'Gagal memuatkan data dashboard.', 'error'); 
+    } finally {
+        toggleLoading(false); 
     }
-}
+};
 
-// --- FUNGSI FILTER & RENDER ---
+// --- FILTER LOGIC ---
 function renderFilters() {
     const types = [...new Set(dashboardData.map(i => i.jenis))].sort();
     let opts = `<option value="ALL">SEMUA JENIS SEKOLAH</option>`;
@@ -86,49 +61,33 @@ function renderFilters() {
     }
 }
 
-function setFilter(s) { activeStatus = s; runFilter(); }
-function setType(t) { activeType = t; runFilter(); }
+window.setFilter = function(s) { activeStatus = s; window.runFilter(); }
+window.setType = function(t) { activeType = t; window.runFilter(); }
+window.handleSearch = function(val) { searchTerm = val.toUpperCase().trim(); window.runFilter(); }
 
-// FUNGSI CARIAN
-function handleSearch(val) {
-    searchTerm = val.toUpperCase().trim();
-    runFilter();
-}
-
-function runFilter() {
+window.runFilter = function() {
     const filtered = dashboardData.filter(i => {
-        // Filter 1: Status Badge
         const statMatch = (activeStatus === 'ALL') || 
                           (activeStatus === 'LENGKAP' && i.is_lengkap) || 
                           (activeStatus === 'BELUM' && !i.is_lengkap) ||
                           (activeStatus === 'SAMA' && i.is_sama) ||
                           (activeStatus === 'BERBEZA' && i.is_berbeza); 
-        
-        // Filter 2: Jenis Sekolah
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
-        
-        // Filter 3: Carian Teks (Kod atau Nama)
-        const searchMatch = !searchTerm || 
-                            i.kod_sekolah.includes(searchTerm) || 
-                            i.nama_sekolah.includes(searchTerm);
-
+        const searchMatch = !searchTerm || i.kod_sekolah.includes(searchTerm) || i.nama_sekolah.includes(searchTerm);
         return statMatch && typeMatch && searchMatch;
     });
 
     currentFilteredList = filtered;
     updateBadgeCounts();
     renderGrid(filtered);
-}
+};
 
 function updateBadgeCounts() {
     document.querySelectorAll('.filter-badge').forEach(e => e.classList.remove('active'));
-    
-    const map = {
-        'ALL': 'badgeAll', 'LENGKAP': 'badgeLengkap', 'BELUM': 'badgeBelum', 
-        'SAMA': 'badgeSama', 'BERBEZA': 'badgeBerbeza'
-    };
+    const map = { 'ALL': 'badgeAll', 'LENGKAP': 'badgeLengkap', 'BELUM': 'badgeBelum', 'SAMA': 'badgeSama', 'BERBEZA': 'badgeBerbeza' };
     if (map[activeStatus]) document.getElementById(map[activeStatus])?.classList.add('active');
     
+    // Kiraan dinamik context
     const context = dashboardData.filter(i => {
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
         const searchMatch = !searchTerm || i.kod_sekolah.includes(searchTerm) || i.nama_sekolah.includes(searchTerm);
@@ -136,7 +95,6 @@ function updateBadgeCounts() {
     });
     
     const setTxt = (id, count) => { if(document.getElementById(id)) document.getElementById(id).innerText = count; };
-    
     setTxt('cntAll', context.length);
     setTxt('cntLengkap', context.filter(i => i.is_lengkap).length);
     setTxt('cntBelum', context.filter(i => !i.is_lengkap).length);
@@ -162,47 +120,39 @@ function renderGrid(data) {
         
         items.forEach(s => {
             const statusBadge = s.is_lengkap 
-                ? `<span class="badge bg-success status-badge p-2 shadow-sm" title="Data Lengkap"><i class="fas fa-check fa-lg"></i></span>` 
-                : `<span class="badge bg-danger status-badge p-2 shadow-sm" title="Belum Lengkap"><i class="fas fa-times fa-lg"></i></span>`;
+                ? `<span class="badge bg-success status-badge p-2 shadow-sm"><i class="fas fa-check fa-lg"></i></span>` 
+                : `<span class="badge bg-danger status-badge p-2 shadow-sm"><i class="fas fa-times fa-lg"></i></span>`;
             
-            const linkG_Raw = window.generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, true);
-            const linkA_Raw = window.generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, true);
-            const hasTeleG = s.telegram_id_gpict;
-            const hasTeleA = s.telegram_id_admin;
+            const linkG = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, true);
+            const linkA = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, true);
 
-            const renderActions = (hasTele, linkRaw) => {
-                let buttonsHtml = '<div class="d-flex align-items-center gap-1 justify-content-end">';
-                if (hasTele) buttonsHtml += `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary"><i class="fas fa-check-circle"></i> OK</span>`;
-                if (linkRaw) buttonsHtml += `<a href="${linkRaw}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm btn-light border text-secondary" title="Chat"><i class="fas fa-comment"></i></a>`;
-                else buttonsHtml += `<span class="text-muted small">-</span>`;
-                buttonsHtml += '</div>';
-                return buttonsHtml;
+            const renderActions = (linkRaw, hasTele) => {
+                let btns = '<div class="d-flex align-items-center gap-1 justify-content-end">';
+                if(hasTele) btns += `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary"><i class="fas fa-check-circle"></i> OK</span>`;
+                if(linkRaw) btns += `<a href="${linkRaw}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm btn-light border text-secondary"><i class="fas fa-comment"></i></a>`;
+                else btns += `<span class="text-muted small">-</span>`;
+                btns += '</div>';
+                return btns;
             };
 
+            // UPDATE: Removed text-truncate and style="max-width: 100%"
+            // Added card-body-flex for flex growth
             html += `
             <div class="col-6 col-md-4 col-lg-3">
               <div class="card school-card h-100 position-relative" onclick="viewSchoolProfile('${s.kod_sekolah}')">
-                <div class="card-body p-3 d-flex flex-column">
-                  
-                  <!-- HEADER KAD (Kod & Reset Button) -->
+                <div class="card-body p-3 card-body-flex">
                   <div class="d-flex justify-content-between align-items-start mb-2">
                     <div>
-                        <h6 class="fw-bold text-primary mb-0 text-truncate" style="max-width: 100%;">${s.kod_sekolah}</h6>
-                        <!-- BUTANG RESET: stopPropagation() penting supaya tak buka profil -->
-                        <button onclick="event.stopPropagation(); window.resetPasswordSekolah('${s.kod_sekolah}')" 
-                                class="btn btn-sm btn-link text-warning p-0 text-decoration-none small fw-bold mt-1" 
-                                title="Reset Kata Laluan Kepada Default">
-                            <i class="fas fa-key me-1"></i>Reset
-                        </button>
+                        <h6 class="fw-bold text-primary mb-0 text-wrap-safe">${s.kod_sekolah}</h6>
+                        <button onclick="event.stopPropagation(); window.resetPasswordSekolah('${s.kod_sekolah}')" class="btn btn-sm btn-link text-warning p-0 text-decoration-none small fw-bold mt-1" title="Reset Password Default"><i class="fas fa-key me-1"></i>Reset</button>
                     </div>
                     ${statusBadge}
                   </div>
-
-                  <p class="school-name mb-auto" title="${s.nama_sekolah}">${s.nama_sekolah}</p>
+                  <p class="school-name mb-auto text-wrap-safe" title="${s.nama_sekolah}">${s.nama_sekolah}</p>
                 </div>
                 <div class="tele-status-row bg-light border-top">
-                   <div class="row-item p-2"><span class="small fw-bold text-muted">GPICT</span> ${renderActions(hasTeleG, linkG_Raw)}</div>
-                   <div class="row-item p-2 border-top border-light"><span class="small fw-bold text-muted">Admin</span> ${renderActions(hasTeleA, linkA_Raw)}</div>
+                   <div class="row-item p-2"><span class="small fw-bold text-muted">GPICT</span> ${renderActions(linkG, s.telegram_id_gpict)}</div>
+                   <div class="row-item p-2 border-top border-light"><span class="small fw-bold text-muted">Admin</span> ${renderActions(linkA, s.telegram_id_admin)}</div>
                 </div>
               </div>
             </div>`;
@@ -212,59 +162,44 @@ function renderGrid(data) {
     });
 }
 
-function viewSchoolProfile(kod) {
+// --- UTILS & EXPORTS ---
+window.viewSchoolProfile = function(kod) {
     sessionStorage.setItem('smpid_user_kod', kod);
     window.location.href = 'user.html'; 
-}
+};
 
-// --- FUNGSI EKSPORT & COPY ---
-function eksportDataTapis() {
-    if (!currentFilteredList || currentFilteredList.length === 0) { 
-        Swal.fire('Tiada Data', 'Tiada data dalam paparan.', 'info'); 
-        return; 
-    }
-    let csvContent = "BIL,KOD SEKOLAH,NAMA SEKOLAH,JENIS,NAMA GPICT,NO TEL GPICT,NAMA ADMIN DELIMA,NO TEL ADMIN,STATUS DATA,CATATAN\n";
-
+window.eksportDataTapis = function() {
+    if (!currentFilteredList || currentFilteredList.length === 0) return Swal.fire('Tiada Data', '', 'info'); 
+    let csvContent = "BIL,KOD,NAMA,JENIS,GPICT,TEL GPICT,ADMIN,TEL ADMIN,STATUS\n";
     currentFilteredList.forEach((s, index) => {
         const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
-        let statusStr = s.is_lengkap ? 'LENGKAP' : 'BELUM LENGKAP';
-        let catatan = [];
-        if (s.is_sama) catatan.push("Jawatan Sama");
-        if (s.is_berbeza) catatan.push("Jawatan Berbeza");
-        
         let row = [
             index + 1, clean(s.kod_sekolah), clean(s.nama_sekolah), clean(s.jenis),
             clean(s.nama_gpict), clean(s.no_telefon_gpict), clean(s.nama_admin_delima), clean(s.no_telefon_admin_delima),
-            statusStr, clean(catatan.join(' & '))
+            s.is_lengkap ? 'LENGKAP' : 'BELUM'
         ];
         csvContent += row.join(",") + "\n";
     });
-
-    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = url;
-    link.download = `SMPID_Eksport_${activeStatus}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.href = URL.createObjectURL(new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }));
+    link.download = `SMPID_Eksport_${activeStatus}.csv`;
     link.click();
-}
+};
 
-function janaSenaraiTelegram() {
+window.janaSenaraiTelegram = function() {
     let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
     let txt = `**STATUS PENGISIAN SMPID (${activeType})**\n\n`;
     const pending = list.filter(i => !i.is_lengkap);
     
-    if(pending.length === 0) { 
-        Swal.fire('Hebat', 'Semua sekolah dah lengkap!', 'success'); 
-        return; 
-    }
+    if(pending.length === 0) return Swal.fire('Hebat', 'Semua lengkap!', 'success'); 
     
     pending.forEach(i => txt += `- ${i.kod_sekolah} ${i.nama_sekolah}\n`);
     txt += `\nMohon tindakan segera.`;
     navigator.clipboard.writeText(txt).then(() => Swal.fire('Disalin!', 'Senarai disalin.', 'success'));
-}
+};
 
-// --- FUNGSI QUEUE (TINDAKAN PANTAS) ---
-function mulaTindakanPantas() {
+// --- QUEUE SYSTEM ---
+window.mulaTindakanPantas = function() {
     let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
     reminderQueue = [];
     
@@ -277,15 +212,11 @@ function mulaTindakanPantas() {
         }
     });
     
-    if (reminderQueue.length === 0) { 
-        Swal.fire('Tiada Sasaran', 'Semua lengkap/tiada no telefon.', 'info'); 
-        return; 
-    }
-    
+    if (reminderQueue.length === 0) return Swal.fire('Tiada Sasaran', 'Tiada data untuk disusuli.', 'info'); 
     qIndex = 0; 
     document.getElementById('queueModal').classList.remove('hidden'); 
     renderQueue();
-}
+};
 
 function renderQueue() {
     if (qIndex >= reminderQueue.length) { 
@@ -293,38 +224,18 @@ function renderQueue() {
         Swal.fire('Selesai', 'Semakan tamat.', 'success'); 
         return; 
     }
-    
     const item = reminderQueue[qIndex];
     document.getElementById('qProgress').innerText = `${qIndex + 1} / ${reminderQueue.length}`;
     document.getElementById('qRoleBadge').innerText = item.role;
-    document.getElementById('qRoleBadge').className = item.role === 'GPICT' ? 'badge bg-info text-dark mb-3' : 'badge bg-warning text-dark mb-3';
     document.getElementById('qSchoolName').innerText = item.nama_sekolah;
     document.getElementById('qCode').innerText = item.kod_sekolah;
     document.getElementById('qPersonName').innerText = item.targetName || "-";
     
-    const link = window.generateWhatsAppLink(item.targetName, item.targetTel);
+    const link = generateWhatsAppLink(item.targetName, item.targetTel);
     const btn = document.getElementById('qWaBtn');
-    
-    if (link) { 
-        btn.href = link; 
-        btn.classList.remove('disabled'); 
-    } else { 
-        btn.removeAttribute('href'); 
-        btn.classList.add('disabled'); 
-    }
+    if (link) { btn.href = link; btn.classList.remove('disabled'); } 
+    else { btn.removeAttribute('href'); btn.classList.add('disabled'); }
 }
 
-function nextQueue() { qIndex++; renderQueue(); }
-function prevQueue() { if(qIndex > 0) qIndex--; renderQueue(); }
-
-// EXPORTS (Untuk HTML)
-window.fetchDashboardData = fetchDashboardData;
-window.setFilter = setFilter;
-window.setType = setType;
-window.handleSearch = handleSearch;
-window.viewSchoolProfile = viewSchoolProfile;
-window.eksportDataTapis = eksportDataTapis;
-window.janaSenaraiTelegram = janaSenaraiTelegram;
-window.mulaTindakanPantas = mulaTindakanPantas;
-window.nextQueue = nextQueue;
-window.prevQueue = prevQueue;
+window.nextQueue = function() { qIndex++; renderQueue(); }
+window.prevQueue = function() { if(qIndex > 0) qIndex--; renderQueue(); }

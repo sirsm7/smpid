@@ -1,10 +1,9 @@
 /* --- ADMIN SPECIFIC MODULES --- */
-/* Hanya mengandungi gaya untuk Admin Dashboard dan Laporan */
 
 /* 1. SCHOOL GRID CARD (Dashboard Tab) */
 .school-card {
     border: 1px solid rgba(0,0,0,0.05); 
-    height: 100%;
+    height: 100%; /* Pastikan semua kad dalam row sama tinggi */
     display: flex;
     flex-direction: column;
 }
@@ -18,13 +17,21 @@
     font-weight: 700; 
     color: #212529; 
     line-height: 1.4; 
-    margin-bottom: 0.5rem; 
+    margin-bottom: 0.5rem;
+    
+    /* UPDATE: TEXT WRAP ENABLED */
+    white-space: normal; 
+    overflow: visible;
+    text-overflow: clip;
+    display: block; /* Pastikan ia block element */
+    height: auto;
 }
 .status-badge { 
     font-size: 0.7rem; 
     padding: 4px 6px; 
     border-radius: 20px; 
     font-weight: 700; 
+    flex-shrink: 0; /* Jangan kecutkan badge */
 }
 
 /* Bar Status Bawah (WhatsApp/Telegram Indicator) */
@@ -34,7 +41,7 @@
     padding: 0; 
     border-radius: 0 0 12px 12px; 
     font-size: 0.75rem; 
-    margin-top: auto; 
+    margin-top: auto; /* Tolak ke bawah (Sticky Bottom dalam Flex) */
 }
 .row-item { 
     display: flex; justify-content: space-between; align-items: center; 
@@ -86,7 +93,7 @@
     font-weight: 500;
 }
 
-/* 5. JAWATAN WORD CLOUD (NEW) */
+/* 5. JAWATAN WORD CLOUD */
 .cloud-container {
     display: flex;
     flex-wrap: wrap;
@@ -118,7 +125,7 @@
 }
 
 .cloud-tag.active {
-    background-color: #4b0082; /* Indigo */
+    background-color: #4b0082;
     color: white;
     border-color: #4b0082;
     box-shadow: 0 4px 10px rgba(75, 0, 130, 0.3);
@@ -145,3 +152,19 @@
 .tag-size-3 { font-size: 0.8rem; }
 .tag-size-4 { font-size: 0.85rem; border-width: 2px; }
 .tag-size-5 { font-size: 0.95rem; font-weight: 800; border-width: 2px; border-color: #6f42c1; color: #4b0082; }
+
+/* 6. QUILL EDITOR OVERRIDES (NEW) */
+.ql-toolbar.ql-snow {
+    background-color: #f8f9fa;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-color: #dee2e6;
+}
+.ql-container.ql-snow {
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    border-color: #dee2e6;
+    background-color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+}

@@ -1,56 +1,42 @@
 /**
- * SMPID LANDING PAGE LOGIC
+ * LANDING PAGE CONTROLLER
  * Menguruskan carian sekolah dan paparan kad akses pantas.
- * Versi: 2.1 (Added M030 Filter & Session Persistence)
+ * Menggunakan: SchoolService, APP_CONFIG
  */
 
+import { SchoolService } from './services/school.service.js';
+import { APP_CONFIG } from './config/app.config.js';
+
 let allSchools = [];
-const SESSION_KEY = 'smpid_active_school_code'; // Kunci untuk memori sementara
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadSchools();
     setupSearchListener();
 });
 
-// 1. Muat Turun Senarai Sekolah (Sekali sahaja)
 async function loadSchools() {
     try {
-        const { data, error } = await window.supabaseClient
-            .from('smpid_sekolah_data')
-            .select('kod_sekolah, nama_sekolah')
-            .order('nama_sekolah', { ascending: true });
-
-        if (error) throw error;
+        const schools = await SchoolService.getAll();
         
-        // FILTER: Buang PPD (M030) daripada senarai awam
-        const filteredData = data.filter(s => s.kod_sekolah !== 'M030');
+        // Filter: Buang PPD (M030) dari senarai awam
+        allSchools = schools.filter(s => s.kod_sekolah !== 'M030');
         
-        allSchools = filteredData;
-        populateDatalist(filteredData);
-        
-        // CIRI BARU: Semak jika ada sesi tersimpan (Auto-Restore)
+        populateDatalist(allSchools);
         checkSession();
 
     } catch (err) {
         console.error("Gagal muat sekolah:", err);
-        // Senyap error UI supaya tak ganggu pengguna, cuma log di console
     }
 }
 
-// 1a. Fungsi Semak & Pulihkan Sesi
 function checkSession() {
-    const savedKod = sessionStorage.getItem(SESSION_KEY);
+    const savedKod = sessionStorage.getItem(APP_CONFIG.SESSION.ACTIVE_SCHOOL);
     
     if (savedKod && allSchools.length > 0) {
-        // Cari sekolah dalam senarai yang baru dimuat turun
         const school = allSchools.find(s => s.kod_sekolah === savedKod);
-        
         if (school) {
-            // Masukkan nilai ke dalam input search untuk visual
             const input = document.getElementById('mainSearch');
             if (input) input.value = `${school.kod_sekolah} - ${school.nama_sekolah}`;
-            
-            // Paparkan kad serta-merta
             renderSchoolCard(school);
         }
     }
@@ -68,7 +54,6 @@ function populateDatalist(data) {
     });
 }
 
-// 2. Dengar Input Carian
 function setupSearchListener() {
     const input = document.getElementById('mainSearch');
     if (!input) return;
@@ -77,26 +62,21 @@ function setupSearchListener() {
         const val = e.target.value;
         const parts = val.split(' - ');
         
-        // Jika format betul (Kod - Nama), bermaksud user dah pilih dari list
         if (parts.length >= 2) {
             const kod = parts[0].trim();
             const school = allSchools.find(s => s.kod_sekolah === kod);
-            
             if (school) {
                 renderSchoolCard(school);
-                input.blur(); // Hilangkan keyboard di mobile
+                input.blur(); 
             }
         } else if (val === '') {
-            // Jika kosong, reset sepenuhnya
             resetSearch();
         }
     });
 }
 
-// 3. Render Kad Sekolah (Dan Simpan Sesi)
 function renderSchoolCard(school) {
-    // LANGKAH PENTING: Simpan ke Session Storage
-    sessionStorage.setItem(SESSION_KEY, school.kod_sekolah);
+    sessionStorage.setItem(APP_CONFIG.SESSION.ACTIVE_SCHOOL, school.kod_sekolah);
 
     const container = document.getElementById('schoolCardContainer');
     const welcome = document.getElementById('welcomeMessage');
@@ -114,7 +94,6 @@ function renderSchoolCard(school) {
             </div>
             
             <div class="row g-3">
-                <!-- BUTANG 1: SERAHAN DATA (PUBLIC) -->
                 <div class="col-md-4">
                     <a href="public.html?kod=${school.kod_sekolah}" class="action-btn btn-data">
                         <i class="fas fa-paper-plane fa-3x mb-3"></i>
@@ -122,8 +101,6 @@ function renderSchoolCard(school) {
                         <small class="text-center opacity-75 lh-sm">Isi maklumat pencapaian murid/guru di sini.</small>
                     </a>
                 </div>
-
-                <!-- BUTANG 2: GALERI (GALLERY) -->
                 <div class="col-md-4">
                     <a href="gallery.html?kod=${school.kod_sekolah}" class="action-btn btn-gallery">
                         <i class="fas fa-images fa-3x mb-3"></i>
@@ -131,8 +108,6 @@ function renderSchoolCard(school) {
                         <small class="text-center opacity-75 lh-sm">Lihat papan pencapaian digital sekolah anda.</small>
                     </a>
                 </div>
-
-                <!-- BUTANG 3: ADMIN (LOGIN) -->
                 <div class="col-md-4">
                     <a href="login.html?kod=${school.kod_sekolah}" class="action-btn btn-admin">
                         <i class="fas fa-user-lock fa-3x mb-3"></i>
@@ -151,10 +126,9 @@ function renderSchoolCard(school) {
     `;
 }
 
-// Fungsi global untuk reset (Padam Sesi)
+// Global window function untuk HTML onclick
 window.resetSearch = function() {
-    // LANGKAH PENTING: Padam dari Session Storage
-    sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(APP_CONFIG.SESSION.ACTIVE_SCHOOL);
 
     const input = document.getElementById('mainSearch');
     if (input) {
@@ -164,4 +138,4 @@ window.resetSearch = function() {
     
     document.getElementById('schoolCardContainer').classList.add('hidden');
     document.getElementById('welcomeMessage').classList.remove('hidden');
-}
+};

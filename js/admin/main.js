@@ -1,55 +1,53 @@
 /**
- * MAIN ADMIN CONTROLLER (js/admin/main.js)
- * Fungsi: Menguruskan inisialisasi dan pemuatan modul apabila halaman sedia.
+ * ADMIN MODULE: MAIN CONTROLLER (DEV)
+ * Fungsi: Menguruskan logik permulaan admin, keselamatan, dan peranan.
  */
+
+import { AuthService } from '../services/auth.service.js';
+import { APP_CONFIG } from '../config/app.config.js';
+// Tidak perlu import keluarSistem secara manual kerana helpers.js telah di-load di admin.html
+// dan ia mendedahkan window.keluarSistem yang betul (dengan Swal).
 
 document.addEventListener('DOMContentLoaded', () => {
     initAdminPanel();
 });
 
 async function initAdminPanel() {
-    // 1. Semakan Keselamatan Asas
-    if (sessionStorage.getItem('smpid_auth') !== 'true') {
+    const isAuth = sessionStorage.getItem(APP_CONFIG.SESSION.AUTH_FLAG) === 'true';
+    const userRole = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+
+    // 1. Security Check
+    if (!isAuth) {
         window.location.replace('index.html');
         return;
     }
 
-    // 2. Semakan Peranan (Role Based Access Control)
-    const userRole = sessionStorage.getItem('smpid_user_role'); 
+    // 2. Role Setup
     const displayRole = document.getElementById('displayUserRole');
-
     if (userRole === 'PPD_UNIT') {
-        console.log("🔒 Mod PPD_UNIT diaktifkan.");
         setupUnitView(displayRole);
     } else {
-        console.log("🔓 Mod ADMIN penuh diaktifkan.");
         setupAdminView(displayRole);
     }
 
-    // 3. Setup Global Event Listeners (Tabs)
+    // 3. Global Listeners
     setupTabListeners();
 }
 
 function setupUnitView(displayRole) {
     if(displayRole) displayRole.innerHTML = "UNIT PPD VIEW";
-
-    // Sorokkan Tab Yang Tidak Berkaitan (Kecuali Pencapaian & Galeri)
+    
+    // Sembunyikan Tab & Fungsi yang tidak relevan (Strict Mode)
     const tabsToHide = ['dashboard-tab', 'analisa-tab', 'email-tab', 'helpdesk-tab', 'admin-users-tab'];
     tabsToHide.forEach(id => {
         const el = document.getElementById(id);
-        if(el && el.parentElement) el.parentElement.classList.add('hidden'); 
+        if(el && el.parentElement) el.parentElement.classList.add('hidden');
     });
 
-    // Sorokkan Butang Log Keluar Utama
-    const btnMainLogout = document.getElementById('btnMainLogout');
-    if(btnMainLogout) btnMainLogout.classList.add('hidden');
-    
-    // Tunjuk Butang Khas
-    const btnUnitLogout = document.getElementById('btnLogoutUnitPPD');
-    if(btnUnitLogout) btnUnitLogout.classList.remove('hidden');
-
-    const btnUbahPass = document.getElementById('btnUbahPassUnitPPD');
-    if(btnUbahPass) btnUbahPass.classList.remove('hidden');
+    // Butang Log Keluar Khas
+    document.getElementById('btnMainLogout')?.classList.add('hidden');
+    document.getElementById('btnLogoutUnitPPD')?.classList.remove('hidden');
+    document.getElementById('btnUbahPassUnitPPD')?.classList.remove('hidden');
 
     // Auto-Redirect ke Tab Pencapaian
     const tabPencapaianEl = document.getElementById('pencapaian-tab');
@@ -58,56 +56,43 @@ function setupUnitView(displayRole) {
         tabPencapaian.show();
     }
 
-    // Muat data asas (diperlukan untuk mapping nama sekolah)
-    if(window.fetchDashboardData) window.fetchDashboardData().then(() => {
-        if(window.populateTahunFilter) window.populateTahunFilter();
-    });
+    // Muat data asas (Tahun) untuk dropdown
+    if(window.populateTahunFilter) window.populateTahunFilter();
 }
 
 function setupAdminView(displayRole) {
     if(displayRole) displayRole.innerHTML = "MOD ADMIN";
-    // Muat turun data dashboard sepenuhnya
-    if(window.fetchDashboardData) window.fetchDashboardData(); 
+    // Trigger dashboard load
+    if(window.fetchDashboardData) window.fetchDashboardData();
 }
 
 function setupTabListeners() {
+    // Listener untuk load data hanya bila tab dibuka (Lazy Load)
+    
+    // Tab Analisa
+    const analisaTab = document.getElementById('analisa-tab');
+    if (analisaTab) analisaTab.addEventListener('shown.bs.tab', () => { if(window.loadDcsAdmin) window.loadDcsAdmin(); });
+
+    // Tab Pencapaian
+    const pencapaianTab = document.getElementById('pencapaian-tab');
+    if (pencapaianTab) pencapaianTab.addEventListener('shown.bs.tab', () => { if(window.populateTahunFilter) window.populateTahunFilter(); });
+
+    // Tab Galeri
+    const galleryTab = document.getElementById('gallery-tab');
+    if (galleryTab) galleryTab.addEventListener('shown.bs.tab', () => { if(window.initAdminGallery) window.initAdminGallery(); });
+
     // Tab Email
-    const emailTabBtn = document.getElementById('email-tab');
-    if (emailTabBtn) emailTabBtn.addEventListener('shown.bs.tab', function () { 
-        if(window.generateList) window.generateList(); 
-    });
+    const emailTab = document.getElementById('email-tab');
+    if (emailTab) emailTab.addEventListener('shown.bs.tab', () => { if(window.generateList) window.generateList(); });
 
     // Tab Helpdesk
-    const helpdeskTabBtn = document.getElementById('helpdesk-tab');
-    if (helpdeskTabBtn) helpdeskTabBtn.addEventListener('shown.bs.tab', function () { 
-        if(window.loadTiketAdmin) window.loadTiketAdmin(); 
-    });
+    const helpdeskTab = document.getElementById('helpdesk-tab');
+    if (helpdeskTab) helpdeskTab.addEventListener('shown.bs.tab', () => { if(window.loadTiketAdmin) window.loadTiketAdmin(); });
 
     // Tab Admin Users
-    const adminUsersTabBtn = document.getElementById('admin-users-tab');
-    if (adminUsersTabBtn) adminUsersTabBtn.addEventListener('shown.bs.tab', function () { 
-        if(window.loadAdminList) window.loadAdminList(); 
-    });
-
-    // Tab Analisa
-    const analisaTabBtn = document.getElementById('analisa-tab');
-    if (analisaTabBtn) analisaTabBtn.addEventListener('shown.bs.tab', function () { 
-        if(window.loadDcsAdmin) window.loadDcsAdmin(); 
-    });
-
-    // Tab Pencapaian (Penting: Load Tahun dulu)
-    const pencapaianTabBtn = document.getElementById('pencapaian-tab');
-    if (pencapaianTabBtn) {
-        pencapaianTabBtn.addEventListener('shown.bs.tab', function () { 
-            if(window.populateTahunFilter) window.populateTahunFilter(); 
-        });
-    }
-
-    // Tab Galeri (NEW)
-    const galleryTabBtn = document.getElementById('gallery-tab');
-    if (galleryTabBtn) {
-        galleryTabBtn.addEventListener('shown.bs.tab', function () { 
-            if(window.initAdminGallery) window.initAdminGallery(); 
-        });
-    }
+    const usersTab = document.getElementById('admin-users-tab');
+    if (usersTab) usersTab.addEventListener('shown.bs.tab', () => { if(window.loadAdminList) window.loadAdminList(); });
 }
+
+// NOTA PENTING: Fungsi keluarSistem() manual telah DIBUANG dari fail ini.
+// Sekarang ia akan menggunakan fungsi global dari helpers.js yang mempunyai SweetAlert.

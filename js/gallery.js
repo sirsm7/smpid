@@ -1,11 +1,15 @@
 /**
- * SMPID GALLERY MODULE (js/gallery.js)
- * Versi: 6.0 (Integrated Jawatan Word Cloud for Guru)
- * Fungsi: Memaparkan grid pencapaian dengan penapis pintar jawatan guru.
+ * GALLERY CONTROLLER (FIXED VISUALS)
+ * Memaparkan galeri pencapaian sekolah dengan visual penuh (Thumbnails + Masonry).
+ * * FIXES:
+ * - Removed truncation. Kad kini akan memanjang ke bawah.
  */
 
-let allGalleryData = []; // Simpan data tempatan
-let currentJawatanFilter = 'ALL'; // State untuk sub-filter
+import { AchievementService } from './services/achievement.service.js';
+import { SchoolService } from './services/school.service.js';
+
+let allGalleryData = [];
+let currentJawatanFilter = 'ALL';
 
 document.addEventListener('DOMContentLoaded', () => {
     initGallery();
@@ -13,168 +17,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function initGallery() {
     const urlParams = new URLSearchParams(window.location.search);
-    let rawKod = urlParams.get('kod');
-
-    const kodSekolah = rawKod ? rawKod.trim().toUpperCase() : null;
+    const kodSekolah = urlParams.get('kod');
 
     if (!kodSekolah) {
-        Swal.fire({
-            title: 'Tiada Kod Sekolah',
-            text: 'Sila pilih sekolah dari senarai utama.',
-            icon: 'warning',
-            confirmButtonText: 'Ke Carian Sekolah'
-        }).then(() => {
-            window.location.replace('public.html');
-        });
+        // Fallback jika tiada kod, balik ke laman awam
+        window.location.replace('public.html');
         return;
     }
 
-    // UPDATE UI HEADER
     try {
-        const { data: sekolahData, error } = await window.supabaseClient
-            .from('smpid_sekolah_data')
-            .select('nama_sekolah')
-            .eq('kod_sekolah', kodSekolah)
-            .single();
-
-        if (error) throw new Error("Sekolah tidak dijumpai.");
-
-        if (sekolahData) {
-            document.getElementById('headerSchoolName').innerText = sekolahData.nama_sekolah;
+        // 1. Muat Nama Sekolah
+        const sekolah = await SchoolService.getByCode(kodSekolah);
+        if (sekolah) {
+            document.getElementById('headerSchoolName').innerText = sekolah.nama_sekolah;
             document.getElementById('headerSchoolCode').innerText = kodSekolah;
         }
+
+        // 2. Muat Galeri
+        const data = await AchievementService.getBySchool(kodSekolah);
         
-        loadGalleryItems(kodSekolah);
-
-    } catch (e) { 
-        console.error("Ralat Init Galeri:", e); 
-        Swal.fire('Ralat', 'Gagal memuatkan data sekolah.', 'error').then(() => window.location.replace('public.html'));
-    }
-}
-
-async function loadGalleryItems(kod) {
-    const grid = document.getElementById('galleryGrid');
-    
-    try {
-        const { data, error } = await window.supabaseClient
-            .from('smpid_pencapaian')
-            .select('*')
-            .eq('kod_sekolah', kod)
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        allGalleryData = data.filter(item => 
-            item.kategori && ['MURID', 'GURU', 'SEKOLAH'].includes(item.kategori)
-        );
+        // Tapis data untuk paparan awam (hanya kategori tertentu)
+        allGalleryData = data.filter(item => ['MURID', 'GURU', 'SEKOLAH'].includes(item.kategori));
 
         updateStats(allGalleryData);
-        renderGallery('SEMUA'); // Papar semua secara default
+        window.renderGallery('SEMUA');
 
-    } catch (err) {
-        console.error(err);
-        grid.innerHTML = `<div class="col-12 text-center text-danger">Gagal memuatkan data galeri.</div>`;
+    } catch (e) {
+        console.error("Gallery Init Error:", e);
+        const grid = document.getElementById('galleryGrid');
+        if(grid) grid.innerHTML = `<div class="col-12 text-center text-danger py-5">Gagal memuatkan galeri.</div>`;
     }
 }
 
 function updateStats(data) {
-    const total = data.length;
-    const murid = data.filter(i => i.kategori === 'MURID').length;
-    const guru = data.filter(i => i.kategori === 'GURU').length;
-    const sekolah = data.filter(i => i.kategori === 'SEKOLAH').length;
-
-    document.getElementById('countTotal').innerText = total;
-    document.getElementById('countMurid').innerText = murid;
-    document.getElementById('countGuru').innerText = guru;
-    document.getElementById('countSekolah').innerText = sekolah;
+    const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+    setTxt('countTotal', data.length);
+    setTxt('countMurid', data.filter(i => i.kategori === 'MURID').length);
+    setTxt('countGuru', data.filter(i => i.kategori === 'GURU').length);
+    setTxt('countSekolah', data.filter(i => i.kategori === 'SEKOLAH').length);
 }
 
-// --- LOGIK FILTER UTAMA (KATEGORI) ---
-function filterGallery(type, btn) {
+// --- FUNGSI GLOBAL UI ---
+
+window.filterGallery = function(type, btn) {
     if(btn) {
         document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     }
 
-    // KAWALAN AWAN KATA (Hanya untuk GURU)
     const cloudWrapper = document.getElementById('jawatanCloudWrapper');
     
+    // Logik Paparan Cloud Jawatan
     if (type === 'GURU') {
-        cloudWrapper.classList.remove('hidden');
-        generateJawatanCloud(); // Jana cloud segar
+        if(cloudWrapper) cloudWrapper.classList.remove('hidden');
+        generateJawatanCloud();
     } else {
-        cloudWrapper.classList.add('hidden');
-        currentJawatanFilter = 'ALL'; // Reset sub-filter bila tukar kategori
+        if(cloudWrapper) cloudWrapper.classList.add('hidden');
+        currentJawatanFilter = 'ALL';
     }
 
-    renderGallery(type);
-}
+    window.renderGallery(type);
+};
 
-// --- LOGIK AWAN KATA (BARU) ---
-function generateJawatanCloud() {
-    const container = document.getElementById('jawatanCloudContainer');
-    if (!container) return;
-
-    // 1. Dapatkan data guru sahaja
-    const guruData = allGalleryData.filter(item => item.kategori === 'GURU');
-    
-    // 2. Kira Frekuensi Jawatan
-    const counts = {};
-    let maxCount = 0;
-
-    guruData.forEach(item => {
-        if (item.jawatan && item.jawatan.trim() !== "") {
-            const j = item.jawatan.trim();
-            counts[j] = (counts[j] || 0) + 1;
-            if (counts[j] > maxCount) maxCount = counts[j];
-        }
-    });
-
-    const entries = Object.entries(counts);
-    
-    // Jika tiada jawatan direkodkan
-    if (entries.length === 0) {
-        container.innerHTML = `<small class="text-muted fst-italic">Tiada data jawatan spesifik.</small>`;
-        return;
-    }
-
-    // 3. Susun (Paling banyak ke paling sikit)
-    entries.sort((a, b) => b[1] - a[1]);
-
-    // 4. Render HTML
-    container.innerHTML = '';
-    entries.forEach(([jawatan, count]) => {
-        // Tentukan saiz visual berdasarkan populariti
-        let sizeClass = `tag-size-${Math.ceil((count / maxCount) * 4)}`; 
-        if(count === 1) sizeClass = 'tag-size-1';
-
-        const isActive = (jawatan === currentJawatanFilter) ? 'active' : '';
-        
-        const btn = document.createElement('div');
-        btn.className = `cloud-tag ${sizeClass} ${isActive}`;
-        btn.innerHTML = `${jawatan} <span class="count-badge">${count}</span>`;
-        btn.onclick = () => filterByJawatan(jawatan);
-        
-        container.appendChild(btn);
-    });
-}
-
-function filterByJawatan(jawatan) {
-    currentJawatanFilter = (currentJawatanFilter === jawatan) ? 'ALL' : jawatan;
-    
-    // Update butang Reset
-    const btnReset = document.getElementById('btnResetJawatan');
-    if (currentJawatanFilter !== 'ALL') btnReset.classList.remove('hidden');
-    else btnReset.classList.add('hidden');
-
-    // Re-render Cloud (untuk update highlight 'active') & Grid
-    generateJawatanCloud();
-    renderGallery('GURU');
-}
-
-// --- RENDER GRID (DIKEMASKINI) ---
-function renderGallery(filterType) {
+window.renderGallery = function(filterType) {
     const grid = document.getElementById('galleryGrid');
+    if(!grid) return;
     grid.innerHTML = "";
 
     // 1. Tapis Kategori Utama
@@ -183,11 +90,11 @@ function renderGallery(filterType) {
         : allGalleryData.filter(item => item.kategori === filterType);
 
     // 2. Tapis Sub-Kategori (Jawatan Guru)
-    // Logik: Hanya tapis jika kita dalam mod GURU dan ada jawatan dipilih
     if (filterType === 'GURU' && currentJawatanFilter !== 'ALL') {
         filteredData = filteredData.filter(item => item.jawatan === currentJawatanFilter);
     }
 
+    // 3. Paparan Kosong
     if (filteredData.length === 0) {
         let msg = "Tiada rekod dijumpai.";
         if (filterType === 'GURU' && currentJawatanFilter !== 'ALL') {
@@ -203,7 +110,7 @@ function renderGallery(filterType) {
         return;
     }
 
-    // 3. Render Mengikut Tahun
+    // 4. Render Mengikut Tahun (Year Grouping)
     const uniqueYears = [...new Set(filteredData.map(item => item.tahun))].sort((a, b) => b - a);
 
     uniqueYears.forEach(year => {
@@ -220,12 +127,12 @@ function renderGallery(filterType) {
 
         const itemsInYear = filteredData.filter(item => item.tahun === year);
         itemsInYear.forEach(item => {
-            grid.innerHTML += createCard(item);
+            grid.innerHTML += createCardHTML(item);
         });
     });
-}
+};
 
-function createCard(item) {
+function createCardHTML(item) {
     const link = item.pautan_bukti || "";
     let thumbnailArea = "";
     let iconType = "fa-link";
@@ -243,7 +150,6 @@ function createCard(item) {
         borderClass = "border-top-indigo"; textClass = "text-indigo"; catIcon = "fa-school"; catColor = "#4b0082";
     }
 
-    // Regex Thumbnail
     const fileIdMatch = link.match(/\/d\/([a-zA-Z0-9_-]+)/);
     const folderMatch = link.match(/\/folders\/([a-zA-Z0-9_-]+)/);
     const youtubeMatch = link.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
@@ -268,19 +174,72 @@ function createCard(item) {
         thumbnailArea = `<div class="gallery-thumb-container bg-light d-flex align-items-center justify-content-center flex-column"><img src="${faviconUrl}" style="width: 48px; height: 48px;" class="mb-2 shadow-sm rounded-circle bg-white p-1" onerror="this.style.display='none';"><div class="text-muted small mt-1 text-truncate w-75 text-center">${domain}</div></div>`;
     }
 
+    // UPDATE: TEXT WRAP ENABLED
+    // Removed: text-truncate-2
+    // Added: text-wrap-safe, card-body-flex
     return `
     <div class="col-6 col-sm-4 col-md-3 col-lg-2 fade-up">
         <div class="card-gallery ${borderClass} h-100 shadow-sm" onclick="window.open('${link}', '_blank')" title="Klik untuk lihat bukti">
             ${thumbnailArea}
             <div class="category-icon ${textClass}"><i class="fas ${catIcon}"></i> ${item.kategori}</div>
             <div class="icon-overlay"><i class="fas ${iconType}"></i></div>
-            <div class="card-body d-flex flex-column p-3">
-                <h6 class="fw-bold text-dark mb-1 text-truncate-2" style="font-size: 0.85rem; line-height: 1.3;">${item.nama_pertandingan}</h6>
-                <p class="text-secondary mb-2 text-truncate small fw-bold opacity-75" style="font-size: 0.7rem;">${item.nama_peserta}</p>
+            <div class="card-body d-flex flex-column p-3 card-body-flex">
+                <h6 class="fw-bold text-dark mb-1 text-wrap-safe" style="font-size: 0.85rem; line-height: 1.3;">${item.nama_pertandingan}</h6>
+                <p class="text-secondary mb-2 small fw-bold opacity-75 text-wrap-safe" style="font-size: 0.7rem;">${item.nama_peserta}</p>
                 <div class="mt-auto pt-2 border-top border-light d-flex justify-content-between align-items-center">
-                    <span class="${textClass} fw-bold" style="font-size: 0.75rem;">${item.pencapaian}</span>
+                    <span class="${textClass} fw-bold text-wrap-safe" style="font-size: 0.75rem;">${item.pencapaian}</span>
                 </div>
             </div>
         </div>
     </div>`;
 }
+
+function generateJawatanCloud() {
+    const container = document.getElementById('jawatanCloudContainer');
+    if (!container) return;
+
+    const guruData = allGalleryData.filter(item => item.kategori === 'GURU');
+    
+    const counts = {};
+    let maxCount = 0;
+
+    guruData.forEach(item => {
+        if (item.jawatan && item.jawatan.trim() !== "") {
+            const j = item.jawatan.trim();
+            counts[j] = (counts[j] || 0) + 1;
+            if (counts[j] > maxCount) maxCount = counts[j];
+        }
+    });
+
+    const entries = Object.entries(counts);
+    
+    if (entries.length === 0) {
+        container.innerHTML = `<small class="text-muted fst-italic">Tiada data jawatan spesifik.</small>`;
+        return;
+    }
+
+    entries.sort((a, b) => b[1] - a[1]);
+
+    container.innerHTML = '';
+    entries.forEach(([jawatan, count]) => {
+        let sizeClass = `tag-size-${Math.ceil((count / maxCount) * 4)}`; 
+        if(count === 1) sizeClass = 'tag-size-1';
+
+        const isActive = (jawatan === currentJawatanFilter) ? 'active' : '';
+        const btnHTML = `<div class="cloud-tag ${sizeClass} ${isActive}" onclick="filterByJawatan('${jawatan}')">${jawatan} <span class="count-badge">${count}</span></div>`;
+        container.innerHTML += btnHTML;
+    });
+}
+
+window.filterByJawatan = function(jawatan) {
+    currentJawatanFilter = (currentJawatanFilter === jawatan) ? 'ALL' : jawatan;
+    
+    const btnReset = document.getElementById('btnResetJawatan');
+    if(btnReset) {
+        if (currentJawatanFilter !== 'ALL') btnReset.classList.remove('hidden');
+        else btnReset.classList.add('hidden');
+    }
+
+    generateJawatanCloud();
+    window.renderGallery('GURU');
+};
