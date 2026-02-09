@@ -113,5 +113,19 @@ export const AchievementService = {
         } catch (e) {
             console.error("[Service] Ralat sync jawatan:", e);
         }
+    },
+
+    /**
+     * BARU: Kemaskini Pukal Nama Program (Standardization)
+     * Mengubah semua rekod yang mempunyai 'oldName' kepada 'newName'
+     */
+    async batchUpdateProgramName(oldName, newName) {
+        const { error } = await db
+            .from('smpid_pencapaian')
+            .update({ nama_pertandingan: newName })
+            .eq('nama_pertandingan', oldName);
+
+        if (error) throw error;
+        return { success: true };
     }
 };
