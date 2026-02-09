@@ -482,10 +482,35 @@
                     <div class="mb-3 text-center"><div class="btn-group w-100 shadow-sm" role="group"><input type="radio" class="btn-check" name="radKatPPD" id="radPegawai" value="PEGAWAI" checked onchange="toggleKategoriPPD()"><label class="btn btn-outline-dark fw-bold" for="radPegawai">PEGAWAI</label><input type="radio" class="btn-check" name="radKatPPD" id="radUnit" value="PPD" onchange="toggleKategoriPPD()"><label class="btn btn-outline-dark fw-bold" for="radUnit">UNIT / SEKTOR</label></div></div>
                     <div class="mb-3 text-center"><div class="btn-group w-100 shadow-sm" role="group"><input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPertandingan" checked onchange="toggleJenisPencapaianPPD()"><label class="btn btn-outline-primary fw-bold" for="radPpdPertandingan">PERTANDINGAN</label><input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPensijilan" onchange="toggleJenisPencapaianPPD()"><label class="btn btn-outline-warning fw-bold text-dark" for="radPpdPensijilan">PENSIJILAN</label></div></div>
                     <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblPpdNamaPeserta">NAMA PEGAWAI</label><input type="text" id="ppdInputNama" class="form-control uppercase-input fw-bold" oninput="this.value = this.value.toUpperCase()"></div>
-                    <div id="divPpdPenyedia" class="mb-3 hidden"><label class="form-label small fw-bold text-muted text-warning">PENYEDIA</label><select id="ppdInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning"><option value="LAIN-LAIN">LAIN-LAIN</option><option value="GOOGLE">GOOGLE</option><option value="APPLE">APPLE</option><option value="MICROSOFT">MICROSOFT</option></select></div>
+                    
+                    <!-- NEW: Standardized Provider Dropdown -->
+                    <div id="divPpdPenyedia" class="mb-3 hidden">
+                        <label class="form-label small fw-bold text-muted text-warning">PENYEDIA</label>
+                        <select id="ppdInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning">
+                            <option value="LAIN-LAIN">LAIN-LAIN (AWS/CISCO/DLL)</option>
+                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
+                            <option value="APPLE">APPLE EDUCATION</option>
+                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
+                        </select>
+                    </div>
+
                     <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblPpdProgram">NAMA PERTANDINGAN</label><input type="text" id="ppdInputProgram" class="form-control uppercase-input" oninput="this.value = this.value.toUpperCase()"></div>
-                    <div class="row g-2 mb-3" id="rowPpdPeringkat"><div class="col-6"><label class="form-label small fw-bold text-muted">PERINGKAT</label><select id="ppdInputPeringkat" class="form-select bg-light"><option value="KEBANGSAAN">KEBANGSAAN</option><option value="ANTARABANGSA">ANTARABANGSA</option></select></div><div class="col-6"><label class="form-label small fw-bold text-muted">TAHUN</label><input type="number" id="ppdInputTahun" class="form-control bg-light fw-bold" min="2023"></div></div>
-                    <div id="divPpdTahunOnly" class="mb-3 hidden"><label class="form-label small fw-bold text-muted">TAHUN PEROLEHAN</label><input type="number" id="ppdInputTahun2" class="form-control bg-light fw-bold" min="2023"></div>
+                    
+                    <!-- NEW: Separated Year and Level Grid -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-6" id="divPpdColPeringkat">
+                            <label class="form-label small fw-bold text-muted">PERINGKAT</label>
+                            <select id="ppdInputPeringkat" class="form-select bg-light">
+                                <option value="KEBANGSAAN">KEBANGSAAN</option>
+                                <option value="ANTARABANGSA">ANTARABANGSA</option>
+                            </select>
+                        </div>
+                        <div class="col-6" id="divPpdColTahun">
+                            <label class="form-label small fw-bold text-muted">TAHUN</label>
+                            <input type="number" id="ppdInputTahun" class="form-control bg-white fw-bold" value="2026" min="2023">
+                        </div>
+                    </div>
+
                     <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblPpdPencapaian">PENCAPAIAN</label><input type="text" id="ppdInputPencapaian" class="form-control uppercase-input" oninput="this.value = this.value.toUpperCase()"></div>
                     <div class="mb-4"><label class="form-label small fw-bold text-muted">PAUTAN BUKTI</label><input type="url" id="ppdInputLink" class="form-control text-primary"></div>
                     <button type="submit" class="btn btn-indigo w-100 fw-bold py-3 rounded-3 shadow-sm">SIMPAN REKOD PPD</button>
@@ -507,7 +532,7 @@
                     
                     <div class="mb-3"><label class="form-label small fw-bold text-muted">NAMA PESERTA</label><input type="text" id="editInputNama" class="form-control uppercase-input fw-bold"></div>
                     
-                    <!-- NEW: JAWATAN FIELD -->
+                    <!-- NEW: Standardized JAWATAN FIELD -->
                     <div id="divEditJawatan" class="mb-3 hidden">
                         <label class="form-label small fw-bold text-muted text-warning">JAWATAN</label>
                         <select id="editInputJawatan" class="form-select fw-bold text-dark bg-light border-warning">
@@ -521,14 +546,39 @@
                             <option value="GURU DATA">GURU DATA</option>
                             <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>
                             <option value="GURU ADMIN DELIMA">GURU ADMIN DELIMA</option>
-							<option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
+                            <option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
                             <option value="GURU PERPUSTAKAAN & MEDIA">GURU PERPUSTAKAAN & MEDIA</option>
                         </select>
                     </div>
 
-                    <div id="divEditPenyedia" class="mb-3 hidden"><label class="form-label small fw-bold text-muted text-warning">PENYEDIA</label><select id="editInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning"><option value="LAIN-LAIN">LAIN-LAIN</option><option value="GOOGLE">GOOGLE</option><option value="APPLE">APPLE</option><option value="MICROSOFT">MICROSOFT</option></select></div>
+                    <!-- NEW: Standardized PROVIDER Dropdown -->
+                    <div id="divEditPenyedia" class="mb-3 hidden">
+                        <label class="form-label small fw-bold text-muted text-warning">PENYEDIA</label>
+                        <select id="editInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning">
+                            <option value="LAIN-LAIN">LAIN-LAIN (AWS/CISCO/DLL)</option>
+                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
+                            <option value="APPLE">APPLE EDUCATION</option>
+                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
+                        </select>
+                    </div>
+
                     <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblEditProgram">NAMA PERTANDINGAN</label><input type="text" id="editInputProgram" class="form-control uppercase-input"></div>
-                    <div class="row g-2 mb-3" id="rowEditPeringkat"><div class="col-6"><label class="form-label small fw-bold text-muted">PERINGKAT</label><select id="editInputPeringkat" class="form-select bg-light"><option value="KEBANGSAAN">KEBANGSAAN</option><option value="ANTARABANGSA">ANTARABANGSA</option></select></div><div class="col-6"><label class="form-label small fw-bold text-muted">TAHUN</label><input type="number" id="editInputTahun" class="form-control bg-light fw-bold" min="2023"></div></div>
+                    
+                    <!-- NEW: Separated Grid for Level and Year -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-6" id="divEditColPeringkat">
+                            <label class="form-label small fw-bold text-muted">PERINGKAT</label>
+                            <select id="editInputPeringkat" class="form-select bg-light">
+                                <option value="KEBANGSAAN">KEBANGSAAN</option>
+                                <option value="ANTARABANGSA">ANTARABANGSA</option>
+                            </select>
+                        </div>
+                        <div class="col-6" id="divEditColTahun">
+                            <label class="form-label small fw-bold text-muted">TAHUN</label>
+                            <input type="number" id="editInputTahun" class="form-control bg-white fw-bold" min="2023">
+                        </div>
+                    </div>
+
                     <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblEditPencapaian">PENCAPAIAN</label><input type="text" id="editInputPencapaian" class="form-control uppercase-input"></div>
                     <div class="mb-4"><label class="form-label small fw-bold text-muted">PAUTAN BUKTI</label><input type="url" id="editInputLink" class="form-control text-primary"></div>
                     <button type="submit" class="btn btn-warning w-100 fw-bold py-3 rounded-3 shadow-sm">SIMPAN PERUBAHAN</button>

@@ -196,7 +196,7 @@ window.togglePubJenis = function() {
     const type = document.getElementById('pubKategori').value;
 
     const divPenyedia = document.getElementById('divPubPenyedia');
-    const divPeringkat = document.getElementById('divPubPeringkat');
+    const colPeringkat = document.getElementById('divPubColPeringkat');
     
     const lblProgram = document.getElementById('lblPubProgram');
     const inpProgram = document.getElementById('pubProgram');
@@ -208,14 +208,14 @@ window.togglePubJenis = function() {
 
     if (isSijil && type === 'GURU') {
         divPenyedia.classList.remove('hidden');
-        divPeringkat.classList.add('hidden'); 
+        colPeringkat.classList.add('hidden'); 
         lblProgram.innerText = "NAMA SIJIL / PROGRAM";
         inpProgram.placeholder = "Contoh: GOOGLE CERTIFIED EDUCATOR L1";
         lblPencapaian.innerText = "TAHAP / SKOR";
         inpPencapaian.placeholder = "Contoh: LULUS / BAND C2";
     } else {
         divPenyedia.classList.add('hidden');
-        divPeringkat.classList.remove('hidden');
+        colPeringkat.classList.remove('hidden');
         lblProgram.innerText = "NAMA PERTANDINGAN";
         inpProgram.placeholder = "Contoh: DIGITAL COMPETENCY 2025";
         lblPencapaian.innerText = "PENCAPAIAN";
@@ -294,6 +294,7 @@ window.resetBorang = function(fullReset = true) {
     document.getElementById('pubProgram').value = "";
     document.getElementById('pubPencapaian').value = "";
     document.getElementById('pubLink').value = "";
+    // Jangan reset tahun - biarkan default HTML (2026)
     
     const cat = document.getElementById('pubKategori').value;
     if (cat !== 'SEKOLAH') {
@@ -342,7 +343,8 @@ window.toggleKategoriPPD = function() {
 window.toggleJenisPencapaianPPD = function() {
     const isPensijilan = document.getElementById('radPpdSijil').checked;
     const divPenyedia = document.getElementById('divPpdPenyedia');
-    const divPeringkat = document.getElementById('divPpdPeringkat');
+    const colPeringkat = document.getElementById('divPpdColPeringkat'); // Guna ID Column
+    
     const lblProgram = document.getElementById('lblPpdProgram');
     const inpProgram = document.getElementById('ppdProgram');
     const lblPencapaian = document.getElementById('lblPpdPencapaian');
@@ -352,14 +354,16 @@ window.toggleJenisPencapaianPPD = function() {
 
     if (isPensijilan) {
         divPenyedia.classList.remove('hidden');
-        divPeringkat.classList.add('hidden');
+        colPeringkat.classList.add('hidden'); 
+        
         lblProgram.innerText = "NAMA SIJIL / PROGRAM";
         inpProgram.placeholder = "Contoh: GOOGLE CERTIFIED EDUCATOR L1";
         lblPencapaian.innerText = "TAHAP / SKOR / BAND";
         inpPencapaian.placeholder = "Contoh: LULUS / BAND C2";
     } else {
         divPenyedia.classList.add('hidden');
-        divPeringkat.classList.remove('hidden');
+        colPeringkat.classList.remove('hidden');
+        
         lblProgram.innerText = "NAMA PERTANDINGAN";
         inpProgram.placeholder = "Contoh: DIGITAL COMPETENCY 2025";
         lblPencapaian.innerText = "PENCAPAIAN";
@@ -427,5 +431,6 @@ window.resetBorangPPD = function() {
     document.getElementById('ppdProgram').value = "";
     document.getElementById('ppdPencapaian').value = "";
     document.getElementById('ppdLink').value = "";
+    // Jangan reset tahun
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };

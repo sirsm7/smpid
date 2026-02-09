@@ -192,7 +192,7 @@
                     <input type="hidden" id="pInputJenisRekod" value="PERTANDINGAN">
                     <div class="mb-3"><label class="form-label small fw-bold text-muted" id="labelNamaPeserta">NAMA MURID / KUMPULAN</label><input type="text" id="pInputNama" class="form-control uppercase-input fw-bold" placeholder="Taip nama penuh..." oninput="this.value = this.value.toUpperCase()" required></div>
                     
-                    <!-- NEW JAWATAN DROPDOWN -->
+                    <!-- STANDARD JAWATAN DROPDOWN -->
                     <div id="divInputJawatan" class="mb-3 hidden fade-up">
                         <label class="form-label small fw-bold text-muted text-warning">JAWATAN (WAJIB)</label>
                         <select id="pInputJawatan" class="form-select fw-bold text-dark bg-light border-warning">
@@ -206,17 +206,41 @@
                             <option value="GURU DATA">GURU DATA</option>
                             <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>
                             <option value="GURU ADMIN DELIMA">GURU ADMIN DELIMA</option>
-							<option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
+                            <option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
                             <option value="GURU PERPUSTAKAAN & MEDIA">GURU PERPUSTAKAAN & MEDIA</option>
                         </select>
                     </div>
 
-                    <div id="divInputPenyedia" class="mb-3 hidden fade-up"><label class="form-label small fw-bold text-muted text-warning">PENYEDIA / JENAMA</label><select id="pInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning"><option value="LAIN-LAIN" selected>LAIN-LAIN (AWS/CISCO/DLL)</option><option value="GOOGLE">GOOGLE FOR EDUCATION</option><option value="APPLE">APPLE EDUCATION</option><option value="MICROSOFT">MICROSOFT EDUCATION</option></select></div>
-                    <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblProgram">NAMA PERTANDINGAN</label><input type="text" id="pInputProgram" class="form-control uppercase-input" placeholder="Contoh: DIGITAL COMPETENCY 2025" oninput="this.value = this.value.toUpperCase()" required></div>
-                    <div class="row g-2 mb-3" id="rowPeringkat">
-                        <div class="col-6"><label class="form-label small fw-bold text-muted">PERINGKAT</label><select id="pInputPeringkat" class="form-select bg-light" required><option value="KEBANGSAAN">KEBANGSAAN</option><option value="ANTARABANGSA">ANTARABANGSA</option></select></div>
-                        <div class="col-6"><label class="form-label small fw-bold text-muted">TAHUN</label><input type="number" id="pInputTahun" class="form-control bg-light fw-bold" placeholder="Contoh: 2026" min="2023" required></div>
+                    <!-- STANDARD PENYEDIA DROPDOWN -->
+                    <div id="divInputPenyedia" class="mb-3 hidden fade-up">
+                        <label class="form-label small fw-bold text-muted text-warning">PENYEDIA / JENAMA</label>
+                        <select id="pInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning">
+                            <option value="LAIN-LAIN" selected>LAIN-LAIN (AWS/CISCO/DLL)</option>
+                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
+                            <option value="APPLE">APPLE EDUCATION</option>
+                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
+                        </select>
                     </div>
+
+                    <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblProgram">NAMA PERTANDINGAN</label><input type="text" id="pInputProgram" class="form-control uppercase-input" placeholder="Contoh: DIGITAL COMPETENCY 2025" oninput="this.value = this.value.toUpperCase()" required></div>
+                    
+                    <!-- TAHUN & PERINGKAT ROW (STRUCTURE FIX) -->
+                    <div class="row g-2 mb-3">
+                        <!-- Peringkat Column (Toggled via JS) -->
+                        <div class="col-6" id="divColPeringkat">
+                            <label class="form-label small fw-bold text-muted">PERINGKAT</label>
+                            <select id="pInputPeringkat" class="form-select bg-light" required>
+                                <option value="KEBANGSAAN">KEBANGSAAN</option>
+                                <option value="ANTARABANGSA">ANTARABANGSA</option>
+                            </select>
+                        </div>
+                        <!-- Tahun Column (Always Visible) -->
+                        <div class="col-6" id="divColTahun">
+                            <label class="form-label small fw-bold text-muted">TAHUN</label>
+                            <input type="number" id="pInputTahun" class="form-control bg-white fw-bold" placeholder="2026" value="2026" min="2023" required>
+                        </div>
+                    </div>
+
                     <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblPencapaian">PENCAPAIAN</label><input type="text" id="pInputPencapaian" class="form-control uppercase-input" placeholder="Contoh: JOHAN / EMAS / PENYERTAAN" oninput="this.value = this.value.toUpperCase()" required></div>
                     <div class="mb-4"><label class="form-label small fw-bold text-muted">PAUTAN BUKTI</label><input type="url" id="pInputLink" class="form-control text-primary" placeholder="https://drive.google.com/..." required><div class="form-text small fst-italic">Sila pastikan link diset kepada 'Everyone with the link' (Viewer).</div></div>
                     <button type="submit" class="btn btn-hijau-aksi w-100 fw-bold py-3 rounded-3 shadow-sm"><i class="fas fa-save me-2"></i>SIMPAN REKOD</button>
@@ -259,6 +283,7 @@
     </div>
   </div>
 
+  <!-- MODAL EDIT PENYERTAAN -->
   <div class="modal fade" id="modalEditPencapaianUser" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
@@ -276,7 +301,7 @@
                         <input type="text" id="editUserNama" class="form-control uppercase-input fw-bold" oninput="this.value = this.value.toUpperCase()" required>
                     </div>
 
-                    <!-- NEW EDIT JAWATAN DROPDOWN -->
+                    <!-- STANDARD EDIT JAWATAN DROPDOWN -->
                     <div id="editUserDivJawatan" class="mb-3 hidden">
                         <label class="form-label small fw-bold text-muted text-warning">JAWATAN (WAJIB)</label>
                         <select id="editUserJawatan" class="form-select fw-bold text-dark bg-light border-warning">
@@ -290,7 +315,7 @@
                             <option value="GURU DATA">GURU DATA</option>
                             <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>
                             <option value="GURU ADMIN DELIMA">GURU ADMIN DELIMA</option>
-							<option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
+                            <option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
                             <option value="GURU PERPUSTAKAAN & MEDIA">GURU PERPUSTAKAAN & MEDIA</option>
                         </select>
                     </div>
@@ -298,10 +323,10 @@
                     <div id="editUserDivPenyedia" class="mb-3 hidden">
                         <label class="form-label small fw-bold text-muted text-warning">PENYEDIA</label>
                         <select id="editUserPenyedia" class="form-select fw-bold text-dark bg-light border-warning">
-                            <option value="LAIN-LAIN">LAIN-LAIN</option>
-                            <option value="GOOGLE">GOOGLE</option>
-                            <option value="APPLE">APPLE</option>
-                            <option value="MICROSOFT">MICROSOFT</option>
+                            <option value="LAIN-LAIN">LAIN-LAIN (AWS/CISCO/DLL)</option>
+                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
+                            <option value="APPLE">APPLE EDUCATION</option>
+                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
                         </select>
                     </div>
 
@@ -310,17 +335,18 @@
                         <input type="text" id="editUserProgram" class="form-control uppercase-input" oninput="this.value = this.value.toUpperCase()" required>
                     </div>
 
-                    <div class="row g-2 mb-3" id="editUserRowPeringkat">
-                        <div class="col-6">
+                    <!-- EDIT MODAL ROW STRUCTURE -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-6" id="editUserColPeringkat">
                             <label class="form-label small fw-bold text-muted">PERINGKAT</label>
                             <select id="editUserPeringkat" class="form-select bg-light">
                                 <option value="KEBANGSAAN">KEBANGSAAN</option>
                                 <option value="ANTARABANGSA">ANTARABANGSA</option>
                             </select>
                         </div>
-                        <div class="col-6">
+                        <div class="col-6" id="editUserColTahun">
                             <label class="form-label small fw-bold text-muted">TAHUN</label>
-                            <input type="number" id="editUserTahun" class="form-control bg-light fw-bold" min="2023" required>
+                            <input type="number" id="editUserTahun" class="form-control bg-white fw-bold" min="2023" required>
                         </div>
                     </div>
 

@@ -5,6 +5,7 @@
  * - REMOVED TRUNCATION: Teks dalam jadual kini wrap sepenuhnya.
  * - Added text-wrap-safe class.
  * - LOGIC FIX: Auto-set Peringkat ANTARABANGSA untuk Pensijilan Guru.
+ * - UI FIX: Tahun dipisahkan dari div Peringkat agar sentiasa kelihatan.
  */
 
 import { toggleLoading, checkEmailDomain, autoFormatPhone, keluarSistem, formatSentenceCase } from './core/helpers.js';
@@ -231,7 +232,6 @@ window.loadPencapaianSekolah = async function() {
             let program = item.nama_pertandingan;
             if (item.jenis_rekod === 'PENSIJILAN') program = `<span class="badge bg-secondary me-1"><i class="fas fa-certificate"></i></span> ${item.nama_pertandingan}`;
 
-            // UPDATE: Removed max-width and truncation. Added text-wrap-safe class.
             html += `
             <tr>
                 <td class="text-center align-middle">
@@ -301,6 +301,8 @@ window.simpanPencapaian = async function() {
         if(btn) btn.disabled = false;
         Swal.fire('Berjaya', 'Rekod disimpan.', 'success').then(() => {
             document.getElementById('formPencapaian').reset();
+            // Reset tahun default
+            document.getElementById('pInputTahun').value = '2026';
             window.loadPencapaianSekolah();
         });
     } catch (err) {
@@ -321,6 +323,7 @@ window.openEditPencapaianUser = function(id) {
     document.getElementById('editUserLink').value = item.pautan_bukti;
     document.getElementById('editUserTahun').value = item.tahun;
 
+    // Logic Papar/Sorok Jawatan
     const divJawatan = document.getElementById('editUserDivJawatan');
     if (item.kategori === 'GURU') {
         divJawatan.classList.remove('hidden');
@@ -329,16 +332,17 @@ window.openEditPencapaianUser = function(id) {
         divJawatan.classList.add('hidden');
     }
 
+    // Logic Papar/Sorok Peringkat vs Penyedia
     const divPenyedia = document.getElementById('editUserDivPenyedia');
-    const rowPeringkat = document.getElementById('editUserRowPeringkat');
+    const colPeringkat = document.getElementById('editUserColPeringkat'); // Ambil Column Grid, bukan select element
 
     if (item.jenis_rekod === 'PENSIJILAN') {
         divPenyedia.classList.remove('hidden');
-        rowPeringkat.classList.add('hidden');
+        colPeringkat.classList.add('hidden'); // Sembunyikan dropdown peringkat
         document.getElementById('editUserPenyedia').value = item.penyedia || 'LAIN-LAIN';
     } else {
         divPenyedia.classList.add('hidden');
-        rowPeringkat.classList.remove('hidden');
+        colPeringkat.classList.remove('hidden'); // Paparkan dropdown peringkat
         document.getElementById('editUserPeringkat').value = item.peringkat || 'KEBANGSAAN';
     }
 
@@ -368,10 +372,8 @@ window.updatePencapaianUser = async function() {
 
         if (jenis === 'PENSIJILAN') {
             payload.penyedia = document.getElementById('editUserPenyedia').value;
-            // EDIT FIX: Ensure update doesn't lose data, or maybe force Antarabangsa if needed? 
-            // Usually updates only send changed fields, but let's be safe.
-            // Note: DB constraints usually handle this, but for UX, let's leave it as is 
-            // since the hidden field in modal might not update correctly if we force it blindly.
+            // Force Antarabangsa untuk pensijilan walaupun disorok
+            payload.peringkat = 'ANTARABANGSA'; 
         } else {
             payload.peringkat = document.getElementById('editUserPeringkat').value;
         }
@@ -417,6 +419,7 @@ window.setPencapaianType = function(type) {
     } else {
         wrapperJenis.classList.add('hidden');
         divJawatan.classList.add('hidden');
+        // Reset radio to Pertandingan
         document.getElementById('radioPertandingan').checked = true;
         
         if (type === 'SEKOLAH') {
@@ -433,15 +436,17 @@ window.setPencapaianType = function(type) {
 window.toggleJenisPencapaian = function() {
     const isPensijilan = document.getElementById('radioPensijilan').checked;
     document.getElementById('pInputJenisRekod').value = isPensijilan ? 'PENSIJILAN' : 'PERTANDINGAN';
+    
     const divPenyedia = document.getElementById('divInputPenyedia');
-    const selectPeringkat = document.getElementById('pInputPeringkat');
+    const colPeringkat = document.getElementById('divColPeringkat');
     
     if (isPensijilan) {
         divPenyedia.classList.remove('hidden');
-        selectPeringkat.parentElement.classList.add('hidden');
+        colPeringkat.classList.add('hidden'); // Hanya sembunyikan dropdown Peringkat
+        // Input Tahun dalam divColTahun kekal wujud kerana ia di luar divColPeringkat
     } else {
         divPenyedia.classList.add('hidden');
-        selectPeringkat.parentElement.classList.remove('hidden');
+        colPeringkat.classList.remove('hidden');
     }
 };
 
@@ -475,7 +480,6 @@ window.loadTiketUser = async function() {
             const status = t.status === 'SELESAI' ? '<span class="badge bg-success">SELESAI</span>' : '<span class="badge bg-warning text-dark">DALAM PROSES</span>';
             const balasan = t.balasan_admin ? `<div class="bg-light p-2 mt-2 border rounded small"><strong>Admin:</strong> ${t.balasan_admin}</div>` : '';
             
-            // UPDATE: TEXT WRAP FOR TICKET DETAILS
             container.innerHTML += `
             <div class="card mb-2 shadow-sm border-0">
                 <div class="card-body p-3">

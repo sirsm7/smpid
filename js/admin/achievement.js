@@ -2,9 +2,9 @@
  * ADMIN MODULE: ACHIEVEMENT (DEV) - VISUAL FIX (FULL WRAP)
  * Menguruskan rekod pencapaian murid, guru, dan sekolah.
  * * CHANGE LOG:
- * - Dibuang: Logic truncate pada nama sekolah, peserta, dan program.
- * - Ditambah: class="text-wrap" untuk paparan penuh multi-line.
- * - NEW: Added CSV Export functionality based on filtered list.
+ * - STANDARDISASI: Dropdown Jawatan & Penyedia diselaraskan.
+ * - UI FIX: Logik tahun dipisahkan dari peringkat (tidak lagi hilang).
+ * - LOGIC: Auto-set peringkat Antarabangsa untuk Pensijilan.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -281,11 +281,9 @@ window.openEditPencapaian = function(id) {
     document.getElementById('editInputProgram').value = item.nama_pertandingan;
     document.getElementById('editInputPencapaian').value = item.pencapaian;
     document.getElementById('editInputLink').value = item.pautan_bukti;
+    document.getElementById('editInputTahun').value = item.tahun;
     
     const divJawatan = document.getElementById('divEditJawatan');
-    const divPenyedia = document.getElementById('divEditPenyedia');
-    const rowPeringkat = document.getElementById('rowEditPeringkat');
-
     if(item.kategori === 'GURU') {
         divJawatan.classList.remove('hidden');
         document.getElementById('editInputJawatan').value = item.jawatan || 'GURU AKADEMIK BIASA';
@@ -293,17 +291,20 @@ window.openEditPencapaian = function(id) {
         divJawatan.classList.add('hidden');
     }
     
+    // UPDATED: Logic to handle new HTML Structure
+    const divPenyedia = document.getElementById('divEditPenyedia');
+    const colPeringkat = document.getElementById('divEditColPeringkat');
+
     if (item.jenis_rekod === 'PENSIJILAN') {
         divPenyedia.classList.remove('hidden');
-        rowPeringkat.classList.add('hidden');
+        colPeringkat.classList.add('hidden'); // Hide dropdown Peringkat
         document.getElementById('editInputPenyedia').value = item.penyedia || 'LAIN-LAIN';
         document.getElementById('lblEditProgram').innerText = "NAMA SIJIL";
         document.getElementById('lblEditPencapaian').innerText = "TAHAP / SKOR";
     } else {
         divPenyedia.classList.add('hidden');
-        rowPeringkat.classList.remove('hidden');
+        colPeringkat.classList.remove('hidden'); // Show dropdown Peringkat
         document.getElementById('editInputPeringkat').value = item.peringkat;
-        document.getElementById('editInputTahun').value = item.tahun;
         document.getElementById('lblEditProgram').innerText = "NAMA PERTANDINGAN";
         document.getElementById('lblEditPencapaian').innerText = "PENCAPAIAN";
     }
@@ -319,7 +320,8 @@ window.simpanEditPencapaian = async function() {
         nama_peserta: document.getElementById('editInputNama').value.toUpperCase(),
         nama_pertandingan: document.getElementById('editInputProgram').value.toUpperCase(),
         pencapaian: document.getElementById('editInputPencapaian').value.toUpperCase(),
-        pautan_bukti: document.getElementById('editInputLink').value
+        pautan_bukti: document.getElementById('editInputLink').value,
+        tahun: parseInt(document.getElementById('editInputTahun').value)
     };
     
     if(!document.getElementById('divEditJawatan').classList.contains('hidden')) {
@@ -328,9 +330,9 @@ window.simpanEditPencapaian = async function() {
 
     if (jenis === 'PENSIJILAN') {
         payload.penyedia = document.getElementById('editInputPenyedia').value;
+        payload.peringkat = 'ANTARABANGSA'; // Force Antarabangsa
     } else {
         payload.peringkat = document.getElementById('editInputPeringkat').value;
-        payload.tahun = parseInt(document.getElementById('editInputTahun').value);
     }
 
     toggleLoading(true);
@@ -381,9 +383,17 @@ window.toggleJenisPencapaianPPD = function() {
     const isPensijilan = document.getElementById('radPpdPensijilan').checked;
     document.getElementById('ppdInputJenisRekod').value = isPensijilan ? 'PENSIJILAN' : 'PERTANDINGAN';
     
-    document.getElementById('divPpdPenyedia').classList.toggle('hidden', !isPensijilan);
-    document.getElementById('rowPpdPeringkat').classList.toggle('hidden', isPensijilan);
-    document.getElementById('divPpdTahunOnly').classList.toggle('hidden', !isPensijilan);
+    const divPenyedia = document.getElementById('divPpdPenyedia');
+    const colPeringkat = document.getElementById('divPpdColPeringkat');
+    
+    // UPDATED: Logic toggle Peringkat vs Penyedia
+    if (isPensijilan) {
+        divPenyedia.classList.remove('hidden');
+        colPeringkat.classList.add('hidden');
+    } else {
+        divPenyedia.classList.add('hidden');
+        colPeringkat.classList.remove('hidden');
+    }
     
     const lblProg = document.getElementById('lblPpdProgram');
     const inpProg = document.getElementById('ppdInputProgram');
@@ -409,17 +419,17 @@ window.simpanPencapaianPPD = async function() {
     const jenisRekod = document.getElementById('ppdInputJenisRekod').value;
     const nama = document.getElementById('ppdInputNama').value.trim().toUpperCase();
     
-    let tahun = 2024;
     let peringkat = 'KEBANGSAAN';
     let penyedia = 'LAIN-LAIN';
     
+    // UPDATED: Standardized Value Retrieval
+    const tahun = parseInt(document.getElementById('ppdInputTahun').value);
+
     if (jenisRekod === 'PENSIJILAN') {
         penyedia = document.getElementById('ppdInputPenyedia').value;
         peringkat = 'ANTARABANGSA';
-        tahun = document.getElementById('ppdInputTahun2').value;
     } else {
         peringkat = document.getElementById('ppdInputPeringkat').value;
-        tahun = document.getElementById('ppdInputTahun').value;
     }
 
     const program = document.getElementById('ppdInputProgram').value.trim().toUpperCase();
@@ -441,7 +451,7 @@ window.simpanPencapaianPPD = async function() {
             nama_peserta: nama,
             nama_pertandingan: program,
             peringkat: peringkat,
-            tahun: parseInt(tahun),
+            tahun: tahun,
             pencapaian: pencapaian,
             pautan_bukti: link,
             jenis_rekod: jenisRekod,
@@ -455,6 +465,7 @@ window.simpanPencapaianPPD = async function() {
         
         bootstrap.Modal.getInstance(document.getElementById('modalRekodPPD')).hide();
         document.getElementById('formPencapaianPPD').reset();
+        document.getElementById('ppdInputTahun').value = '2026'; // Reset default
         
         Swal.fire('Berjaya', 'Rekod PPD Disimpan.', 'success').then(() => window.loadMasterPencapaian());
     } catch(e) {

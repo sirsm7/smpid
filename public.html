@@ -8,17 +8,14 @@
   <meta name="theme-color" content="#198754">
   <link rel="icon" href="icoppdag.png">
   
-  <!-- CSS Bootstrap & FontAwesome (Fix: Removed Markdown formatting) -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   
-  <!-- MODULAR CSS -->
   <link href="css/core.css" rel="stylesheet">
   <link href="css/layout.css" rel="stylesheet">
   <link href="css/components.css" rel="stylesheet">
   
-  <!-- Library JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -136,12 +133,12 @@
                     </div>
                 </div>
 
-                <!-- NEW: JAWATAN DROPDOWN (GURU SAHAJA) -->
+                <!-- STANDARD JAWATAN DROPDOWN -->
                 <div id="divPubJawatan" class="mb-3 hidden">
                     <label class="form-label fw-bold text-warning">JAWATAN (WAJIB)</label>
                     <select id="pubJawatan" class="form-select bg-light border-warning fw-bold text-dark">
                         <option value="GURU AKADEMIK BIASA" selected>GURU AKADEMIK BIASA</option>
-                        <option value="PENGETUA / GURU BESAR">PENGARAH KV / PENGETUA / GURU BESAR</option>
+                        <option value="PENGARAH KV / PGB">PENGARAH KV / PENGETUA / GURU BESAR</option>
                         <option value="GPK PENTADBIRAN">GPK PENTADBIRAN</option>
                         <option value="GPK HAL EHWAL MURID">GPK HAL EHWAL MURID</option>
                         <option value="GPK KO-KURIKULUM">GPK KO-KURIKULUM</option>
@@ -150,7 +147,7 @@
                         <option value="GURU DATA">GURU DATA</option>
                         <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>
                         <option value="GURU ADMIN DELIMA">GURU ADMIN DELIMA</option>
-						<option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
+                        <option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
                         <option value="GURU PERPUSTAKAAN & MEDIA">GURU PERPUSTAKAAN & MEDIA</option>
                     </select>
                 </div>
@@ -161,11 +158,11 @@
                     <input type="text" id="pubNama" class="form-control uppercase-input" placeholder="Taip nama penuh..." oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
-                <!-- PENYEDIA (PENSIJILAN SAHAJA) -->
+                <!-- STANDARD PENYEDIA DROPDOWN -->
                 <div id="divPubPenyedia" class="mb-3 hidden">
                     <label class="form-label fw-bold text-warning">PENYEDIA / JENAMA</label>
                     <select id="pubPenyedia" class="form-select bg-light border-warning">
-                        <option value="LAIN-LAIN" selected>LAIN-LAIN</option>
+                        <option value="LAIN-LAIN" selected>LAIN-LAIN (AWS/CISCO/DLL)</option>
                         <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
                         <option value="APPLE">APPLE EDUCATION</option>
                         <option value="MICROSOFT">MICROSOFT EDUCATION</option>
@@ -178,25 +175,27 @@
                     <input type="text" id="pubProgram" class="form-control uppercase-input" placeholder="Contoh: DIGITAL COMPETENCY 2025" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
-                <!-- ROW 1: PERINGKAT (PERTANDINGAN SAHAJA) -->
-                <div class="mb-3" id="divPubPeringkat">
-                    <label class="form-label fw-bold">PERINGKAT</label>
-                    <select id="pubPeringkat" class="form-select bg-light">
-                        <option value="KEBANGSAAN">KEBANGSAAN</option>
-                        <option value="ANTARABANGSA">ANTARABANGSA</option>
-                    </select>
+                <!-- ROW: PERINGKAT & TAHUN -->
+                <div class="row g-2 mb-3">
+                    <!-- Column Peringkat (Toggled) -->
+                    <div class="col-6" id="divPubColPeringkat">
+                        <label class="form-label fw-bold">PERINGKAT</label>
+                        <select id="pubPeringkat" class="form-select bg-light">
+                            <option value="KEBANGSAAN">KEBANGSAAN</option>
+                            <option value="ANTARABANGSA">ANTARABANGSA</option>
+                        </select>
+                    </div>
+                    <!-- Column Tahun (Always Visible) -->
+                    <div class="col-6" id="divPubColTahun">
+                         <label class="form-label fw-bold">TAHUN</label>
+                         <input type="number" id="pubTahun" class="form-control bg-white" placeholder="2026" value="2026" min="2023" required>
+                    </div>
                 </div>
 
-                <!-- ROW 2: TAHUN & PENCAPAIAN -->
-                <div class="row g-3 mb-3">
-                    <div class="col-4">
-                         <label class="form-label fw-bold">TAHUN</label>
-                         <input type="number" id="pubTahun" class="form-control bg-light" placeholder="2026" min="2023" required>
-                    </div>
-                    <div class="col-8">
-                        <label class="form-label fw-bold" id="lblPubPencapaian">PENCAPAIAN</label>
-                        <input type="text" id="pubPencapaian" class="form-control uppercase-input" placeholder="Contoh: JOHAN / EMAS" oninput="this.value = this.value.toUpperCase()" required>
-                    </div>
+                <!-- PENCAPAIAN -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold" id="lblPubPencapaian">PENCAPAIAN</label>
+                    <input type="text" id="pubPencapaian" class="form-control uppercase-input" placeholder="Contoh: JOHAN / EMAS" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
                 <!-- PAUTAN BUKTI -->
@@ -259,7 +258,7 @@
                 <div id="divPpdPenyedia" class="mb-3 hidden">
                     <label class="form-label fw-bold text-warning">PENYEDIA</label>
                     <select id="ppdPenyedia" class="form-select bg-light border-warning">
-                        <option value="LAIN-LAIN">LAIN-LAIN</option>
+                        <option value="LAIN-LAIN" selected>LAIN-LAIN</option>
                         <option value="GOOGLE">GOOGLE</option>
                         <option value="APPLE">APPLE</option>
                         <option value="MICROSOFT">MICROSOFT</option>
@@ -272,25 +271,25 @@
                     <input type="text" id="ppdProgram" class="form-control uppercase-input" placeholder="Contoh: DIGITAL LEADERSHIP 2026" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
-                <!-- 6. PERINGKAT (PERTANDINGAN ONLY) -->
-                <div class="mb-3" id="divPpdPeringkat">
-                    <label class="form-label fw-bold">PERINGKAT</label>
-                    <select id="ppdPeringkat" class="form-select bg-light">
-                        <option value="KEBANGSAAN">KEBANGSAAN</option>
-                        <option value="ANTARABANGSA">ANTARABANGSA</option>
-                    </select>
+                <!-- ROW: PERINGKAT & TAHUN -->
+                <div class="row g-2 mb-3">
+                    <div class="col-6" id="divPpdColPeringkat">
+                        <label class="form-label fw-bold">PERINGKAT</label>
+                        <select id="ppdPeringkat" class="form-select bg-light">
+                            <option value="KEBANGSAAN">KEBANGSAAN</option>
+                            <option value="ANTARABANGSA">ANTARABANGSA</option>
+                        </select>
+                    </div>
+                    <div class="col-6" id="divPpdColTahun">
+                         <label class="form-label fw-bold">TAHUN</label>
+                         <input type="number" id="ppdTahun" class="form-control bg-white" placeholder="2026" value="2026" min="2023" required>
+                    </div>
                 </div>
 
-                <!-- 7. TAHUN & PENCAPAIAN -->
-                <div class="row g-3 mb-3">
-                    <div class="col-4">
-                         <label class="form-label fw-bold">TAHUN</label>
-                         <input type="number" id="ppdTahun" class="form-control bg-light" placeholder="2026" min="2023" required>
-                    </div>
-                    <div class="col-8">
-                        <label class="form-label fw-bold" id="lblPpdPencapaian">PENCAPAIAN</label>
-                        <input type="text" id="ppdPencapaian" class="form-control uppercase-input" placeholder="Contoh: ANUGERAH EMAS" oninput="this.value = this.value.toUpperCase()" required>
-                    </div>
+                <!-- 7. PENCAPAIAN -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold" id="lblPpdPencapaian">PENCAPAIAN</label>
+                    <input type="text" id="ppdPencapaian" class="form-control uppercase-input" placeholder="Contoh: ANUGERAH EMAS" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
                 <!-- 8. BUKTI -->
@@ -315,7 +314,8 @@
     </div>
   </div>
 
-  <!-- MODULAR JAVASCRIPT (DIKEMASKINI) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
   <script type="module" src="js/public.js"></script>
 
 </body>
