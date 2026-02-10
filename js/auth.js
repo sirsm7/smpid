@@ -74,12 +74,20 @@ window.prosesLogin = async function() {
         toggleLoading(false);
         if (btnLogin) btnLogin.disabled = false;
 
-        // Redirect Logic
-        if (user.role === 'ADMIN' || user.role === 'PPD_UNIT') {
+        // Redirect Logic - DIKEMASKINI UNTUK SUPER_ADMIN
+        if (user.role === 'ADMIN' || user.role === 'PPD_UNIT' || user.role === 'SUPER_ADMIN') {
             sessionStorage.setItem(APP_CONFIG.SESSION.AUTH_FLAG, 'true');
             
-            let welcomeTitle = (user.role === 'PPD_UNIT') ? 'Akses Unit PPD' : 'Admin Disahkan';
-            let welcomeMsg = (user.role === 'PPD_UNIT') ? 'Log masuk sebagai Unit PPD.' : 'Selamat kembali, Admin PPD.';
+            let welcomeTitle = 'Admin Disahkan';
+            let welcomeMsg = 'Selamat kembali, Admin PPD.';
+
+            if (user.role === 'PPD_UNIT') {
+                welcomeTitle = 'Akses Unit PPD';
+                welcomeMsg = 'Log masuk sebagai Unit PPD.';
+            } else if (user.role === 'SUPER_ADMIN') {
+                welcomeTitle = 'Akses Super Admin';
+                welcomeMsg = 'Log masuk dengan kuasa penuh.';
+            }
 
             Swal.fire({
                 icon: 'success', 

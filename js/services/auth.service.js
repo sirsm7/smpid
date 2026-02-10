@@ -25,7 +25,6 @@ export const AuthService = {
         }
 
         // Nota: Dalam produksi sebenar, password sepatutnya di-hash (bcrypt).
-        // Untuk sistem sedia ada ini, kita kekalkan perbandingan direct.
         if (data.password !== password) {
             throw new Error('Kata laluan salah.');
         }
@@ -34,14 +33,15 @@ export const AuthService = {
     },
 
     /**
-     * Dapatkan senarai semua admin (Untuk Super Admin)
+     * Dapatkan senarai semua admin
+     * Nota: Kita TIDAK select 'password' untuk keselamatan paparan.
      */
     async getAllAdmins() {
         const { data, error } = await db
             .from('smpid_users')
-            .select('*')
-            .in('role', ['ADMIN', 'PPD_UNIT'])
-            .order('email', { ascending: true });
+            .select('id, email, role, kod_sekolah') // Exclude password
+            .in('role', ['SUPER_ADMIN', 'ADMIN', 'PPD_UNIT'])
+            .order('role', { ascending: true }); // Sort by role priority visually if possible, or email
 
         if (error) throw error;
         return data;
@@ -67,20 +67,7 @@ export const AuthService = {
     },
 
     /**
-     * Kemaskini peranan admin
-     */
-    async updateRole(id, newRole) {
-        const { error } = await db
-            .from('smpid_users')
-            .update({ role: newRole })
-            .eq('id', id);
-
-        if (error) throw error;
-        return { success: true };
-    },
-
-    /**
-     * Tukar kata laluan pengguna (Self-service)
+     * Tukar kata laluan pengguna (Self-service - Perlu password lama)
      */
     async changePassword(userId, oldPassword, newPassword) {
         // 1. Sahkan password lama
@@ -100,6 +87,20 @@ export const AuthService = {
             .eq('id', userId);
 
         if (updateError) throw updateError;
+        return { success: true };
+    },
+
+    /**
+     * Reset Paksa Kata Laluan (Admin Action - Tanpa password lama)
+     * Digunakan oleh SUPER ADMIN atau ADMIN untuk reset user lain.
+     */
+    async forceResetUserPassword(targetUserId, newPassword) {
+        const { error } = await db
+            .from('smpid_users')
+            .update({ password: newPassword })
+            .eq('id', targetUserId);
+
+        if (error) throw error;
         return { success: true };
     },
 

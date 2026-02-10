@@ -24,9 +24,13 @@ async function initAdminPanel() {
 
     // 2. Role Setup
     const displayRole = document.getElementById('displayUserRole');
+    
     if (userRole === 'PPD_UNIT') {
         setupUnitView(displayRole);
+    } else if (userRole === 'SUPER_ADMIN') {
+        setupSuperAdminView(displayRole);
     } else {
+        // Default ADMIN
         setupAdminView(displayRole);
     }
 
@@ -66,6 +70,18 @@ function setupAdminView(displayRole) {
     if(window.fetchDashboardData) window.fetchDashboardData();
 }
 
+function setupSuperAdminView(displayRole) {
+    if(displayRole) {
+        displayRole.innerHTML = "SUPER ADMIN";
+        displayRole.classList.remove('text-primary');
+        displayRole.classList.add('text-danger', 'fw-black'); // Merah untuk Super Admin
+        displayRole.parentElement.classList.replace('border-primary', 'border-danger');
+        displayRole.parentElement.classList.replace('text-primary', 'text-danger');
+    }
+    // Super Admin akses semua, sama seperti Admin
+    if(window.fetchDashboardData) window.fetchDashboardData();
+}
+
 function setupTabListeners() {
     // Listener untuk load data hanya bila tab dibuka (Lazy Load)
     
@@ -93,6 +109,3 @@ function setupTabListeners() {
     const usersTab = document.getElementById('admin-users-tab');
     if (usersTab) usersTab.addEventListener('shown.bs.tab', () => { if(window.loadAdminList) window.loadAdminList(); });
 }
-
-// NOTA PENTING: Fungsi keluarSistem() manual telah DIBUANG dari fail ini.
-// Sekarang ia akan menggunakan fungsi global dari helpers.js yang mempunyai SweetAlert.
