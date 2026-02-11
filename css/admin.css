@@ -153,7 +153,7 @@
 .tag-size-4 { font-size: 0.85rem; border-width: 2px; }
 .tag-size-5 { font-size: 0.95rem; font-weight: 800; border-width: 2px; border-color: #6f42c1; color: #4b0082; }
 
-/* 6. QUILL EDITOR OVERRIDES (NEW) */
+/* 6. QUILL EDITOR OVERRIDES */
 .ql-toolbar.ql-snow {
     background-color: #f8f9fa;
     border-top-left-radius: 8px;
@@ -167,4 +167,30 @@
     background-color: white;
     font-family: 'Inter', sans-serif;
     font-size: 0.9rem;
+}
+
+/* 7. GALLERY GRID ADJUSTMENTS FOR ADMIN */
+#adminGalleryGrid {
+    margin-right: -0.5rem;
+    margin-left: -0.5rem;
+}
+#adminGalleryGrid > .col-12, 
+#adminGalleryGrid > .col-6, 
+#adminGalleryGrid > .col-sm-4, 
+#adminGalleryGrid > .col-md-3, 
+#adminGalleryGrid > .col-lg-2 {
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+}
+
+/* 8. KHAS: BUTANG PPD (INDIGO) */
+/* Diperlukan untuk tab Galeri Admin apabila melihat rekod PPD */
+.btn-outline-indigo {
+    color: #4b0082;
+    border-color: #4b0082;
+}
+.btn-outline-indigo:hover,
+.btn-outline-indigo.active {
+    background-color: #4b0082;
+    color: white;
 }
