@@ -1,8 +1,9 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (PRECISION UPDATE v2)
- * Menguruskan rekod pencapaian dengan kawalan integriti data (Pertandingan vs Pensijilan).
- * * UPDATE LOG:
- * - Refined Dropdown population logic for standardized UI.
+ * ADMIN MODULE: ACHIEVEMENT (FIXED MODAL BACKDROP ISSUE)
+ * Menguruskan rekod pencapaian dengan kawalan integriti data.
+ * * FIX LOG:
+ * - Fixed: Isu skrin kelabu (backdrop stuck) bila tekan Simpan dalam modal Seragamkan.
+ * - Logic: Mengasingkan logik 'Refresh Data UI' dari 'Buka Modal'.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -35,7 +36,12 @@ window.populateTahunFilter = async function() {
 window.loadMasterPencapaian = async function() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
     if(!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>`;
+    
+    // Jangan tunjuk loading spinner jika data sudah ada (untuk elak flash masa refresh background)
+    // Hanya tunjuk jika list kosong
+    if (pencapaianList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr>`;
+    }
     
     const tahun = document.getElementById('filterTahunPencapaian').value;
     
@@ -54,9 +60,6 @@ function populateSekolahFilter(data) {
     const oldVal = select.value; 
     
     select.innerHTML = '<option value="ALL">SEMUA SEKOLAH</option>';
-    
-    // Sort logic: PPD (M030) first, then others alphabetically by Name (not Code) if possible, else Code.
-    // Assuming globalDashboardData exists to get names.
     
     const sortedData = [...data].sort((a, b) => {
         if (a.kod_sekolah === 'M030') return -1;
@@ -83,19 +86,17 @@ function populateSekolahFilter(data) {
                 const s = window.globalDashboardData.find(x => x.kod_sekolah === i.kod_sekolah);
                 if(s) label = `${s.nama_sekolah} (${i.kod_sekolah})`;
             }
-            // Count specific to current year context if filtered, strictly speaking getAll(tahun) already filters list.
             const count = data.filter(d => d.kod_sekolah === i.kod_sekolah).length;
             select.innerHTML += `<option value="${i.kod_sekolah}">${label} (${count})</option>`;
             seen.add(i.kod_sekolah);
         }
     });
     
-    // Restore selection if valid
     if(seen.has(oldVal)) select.value = oldVal;
     else select.value = 'ALL';
 }
 
-// --- RENDERING TABLE (UPDATED) ---
+// --- RENDERING TABLE ---
 
 window.renderPencapaianTable = function() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
@@ -160,7 +161,6 @@ window.renderPencapaianTable = function() {
         else if (i.kategori === 'PEGAWAI') badgeClass = 'bg-dark';
         else if (i.kategori === 'PPD') badgeClass = 'bg-primary';
 
-        // VISUAL BADGE FOR INTEGRITY CHECK
         let jenisBadge = '';
         if (i.jenis_rekod === 'PENSIJILAN') {
             jenisBadge = `<span class="badge bg-warning text-dark border border-dark me-1" style="font-size:0.6rem; opacity:0.8;">PENSIJILAN</span>`;
@@ -281,8 +281,6 @@ window.resetPencapaianFilters = function() {
     document.getElementById('searchPencapaianInput').value = '';
     document.getElementById('filterKategoriPencapaian').value = 'ALL';
     document.getElementById('filterSekolahPencapaian').value = 'ALL';
-    // Don't reset year to ALL, keep current loaded year for stability or reload default
-    // document.getElementById('filterTahunPencapaian').value = 'ALL'; 
     document.getElementById('filterJenisPencapaian').value = 'ALL';
     window.loadMasterPencapaian();
     Swal.fire({ icon: 'success', title: 'Filter Direset', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 });
@@ -304,7 +302,7 @@ window.handleSort = function(col) {
 };
 window.handlePencapaianSearch = function() { window.renderPencapaianTable(); };
 
-// --- CRUD OPERATIONS (UPDATED INTEGRITY CHECK) ---
+// --- CRUD OPERATIONS ---
 
 window.openEditPencapaian = function(id) {
     const item = pencapaianList.find(i => i.id === id);
@@ -318,7 +316,6 @@ window.openEditPencapaian = function(id) {
     document.getElementById('editInputLink').value = item.pautan_bukti;
     document.getElementById('editInputTahun').value = item.tahun;
     
-    // NEW: SET RADIO BUTTON
     if (item.jenis_rekod === 'PENSIJILAN') {
         document.getElementById('editRadioPensijilan').checked = true;
     } else {
@@ -333,14 +330,12 @@ window.openEditPencapaian = function(id) {
         divJawatan.classList.add('hidden');
     }
     
-    // SETUP PENYEDIA vs PERINGKAT (Initial)
     if (item.jenis_rekod === 'PENSIJILAN') {
         document.getElementById('editInputPenyedia').value = item.penyedia || 'LAIN-LAIN';
     } else {
         document.getElementById('editInputPeringkat').value = item.peringkat;
     }
     
-    // APPLY TOGGLE UI
     window.toggleEditJenis();
     
     new bootstrap.Modal(document.getElementById('modalEditPencapaian')).show();
@@ -377,7 +372,7 @@ window.simpanEditPencapaian = async function() {
         pencapaian: document.getElementById('editInputPencapaian').value.toUpperCase(),
         pautan_bukti: document.getElementById('editInputLink').value,
         tahun: parseInt(document.getElementById('editInputTahun').value),
-        jenis_rekod: jenis // Capture Corrected Type
+        jenis_rekod: jenis
     };
     
     if(!document.getElementById('divEditJawatan').classList.contains('hidden')) {
@@ -386,7 +381,7 @@ window.simpanEditPencapaian = async function() {
 
     if (jenis === 'PENSIJILAN') {
         payload.penyedia = document.getElementById('editInputPenyedia').value;
-        payload.peringkat = 'ANTARABANGSA'; // Force default for Certification
+        payload.peringkat = 'ANTARABANGSA'; 
     } else {
         payload.peringkat = document.getElementById('editInputPeringkat').value;
     }
@@ -396,7 +391,7 @@ window.simpanEditPencapaian = async function() {
         await AchievementService.update(id, payload);
         toggleLoading(false);
         bootstrap.Modal.getInstance(document.getElementById('modalEditPencapaian')).hide();
-        Swal.fire('Berjaya', 'Integriti data telah dikemaskini.', 'success').then(() => window.loadMasterPencapaian());
+        Swal.fire('Berjaya', 'Data dikemaskini.', 'success').then(() => window.loadMasterPencapaian());
     } catch (e) {
         toggleLoading(false);
         Swal.fire('Ralat', 'Gagal mengemaskini.', 'error');
@@ -551,7 +546,7 @@ window.eksportPencapaian = function() {
             index + 1,
             clean(i.kod_sekolah),
             clean(namaSekolah),
-            clean(i.jenis_rekod), // Added Type
+            clean(i.jenis_rekod), 
             clean(i.kategori),
             clean(i.nama_peserta),
             clean(i.jawatan || '-'),
@@ -570,13 +565,14 @@ window.eksportPencapaian = function() {
     link.click();
 };
 
-// --- DATA STANDARDIZATION LOGIC (UPDATED) ---
+// --- DATA STANDARDIZATION LOGIC (FIXED) ---
 
-window.openStandardizeModal = function() {
+window.refreshStandardizeUI = function() {
     const counts = {};
     standardizationList = [];
     filteredStandardizationList = [];
 
+    // Guna data global yang sudah di-refresh
     pencapaianList.forEach(item => {
         const name = item.nama_pertandingan || "TIADA NAMA";
         counts[name] = (counts[name] || 0) + 1;
@@ -587,10 +583,29 @@ window.openStandardizeModal = function() {
     });
 
     filteredStandardizationList = standardizationList;
+    
+    // Kekalkan search jika ada
+    const searchVal = document.getElementById('standardizeSearch').value;
+    if (searchVal) {
+        handleStandardizeSearch(searchVal);
+    } else {
+        renderStandardizeTable(filteredStandardizationList);
+    }
+}
+
+window.openStandardizeModal = function() {
     document.getElementById('standardizeSearch').value = '';
     
-    renderStandardizeTable(filteredStandardizationList);
-    new bootstrap.Modal(document.getElementById('modalStandardize')).show();
+    // Refresh data dulu
+    window.refreshStandardizeUI();
+    
+    // Buka modal (guna instance jika ada)
+    const el = document.getElementById('modalStandardize');
+    let modal = bootstrap.Modal.getInstance(el);
+    if (!modal) {
+        modal = new bootstrap.Modal(el);
+    }
+    modal.show();
 };
 
 window.renderStandardizeTable = function(list) {
@@ -658,9 +673,16 @@ window.executeStandardization = function(oldName, inputId) {
             try {
                 await AchievementService.batchUpdateProgramName(oldName, newName);
                 toggleLoading(false);
-                Swal.fire({ title: 'Berjaya!', text: 'Data telah diseragamkan.', icon: 'success', timer: 1500, showConfirmButton: false });
+                
+                // Alert Success
+                await Swal.fire({ title: 'Berjaya!', text: 'Data telah diseragamkan.', icon: 'success', timer: 1500, showConfirmButton: false });
+                
+                // Refresh data utama di background
                 await window.loadMasterPencapaian(); 
-                window.openStandardizeModal(); 
+                
+                // Refresh data DALAM modal tanpa buka modal baru (Fix Backdrop Issue)
+                window.refreshStandardizeUI(); 
+                
             } catch (e) {
                 toggleLoading(false);
                 Swal.fire('Ralat', 'Gagal mengemaskini data.', 'error');
