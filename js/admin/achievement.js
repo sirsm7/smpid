@@ -4,6 +4,7 @@
  * * FIX LOG:
  * - Fixed: Isu skrin kelabu (backdrop stuck) bila tekan Simpan dalam modal Seragamkan.
  * - Logic: Mengasingkan logik 'Refresh Data UI' dari 'Buka Modal'.
+ * - FIX COLLISION: Rename filterByJawatan to filterPencapaianByJawatan.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -236,7 +237,8 @@ function updateCloud(data) {
             let sizeClass = `tag-size-${Math.ceil((c / maxCount) * 5)}`;
             if(c === 1) sizeClass = 'tag-size-1';
             const isActive = currentJawatanFilter === j ? 'active' : '';
-            return `<div class="cloud-tag ${sizeClass} ${isActive}" onclick="filterByJawatan('${j}')">${j} <span class="count-badge">${c}</span></div>`;
+            // Renamed function call
+            return `<div class="cloud-tag ${sizeClass} ${isActive}" onclick="filterPencapaianByJawatan('${j}')">${j} <span class="count-badge">${c}</span></div>`;
         }).join('');
 }
 
@@ -273,7 +275,20 @@ function renderTopSchools(data) {
 // --- GLOBAL EXPORTS ---
 window.filterByKategori = function(k) { document.getElementById('filterKategoriPencapaian').value = k; currentJawatanFilter = 'ALL'; window.renderPencapaianTable(); };
 window.filterByCard = function(c) { currentCardFilter = (currentCardFilter === c) ? 'ALL' : c; window.renderPencapaianTable(); };
-window.filterByJawatan = function(j) { currentJawatanFilter = (currentJawatanFilter === j) ? 'ALL' : j; window.renderPencapaianTable(); };
+
+// FIX: Renamed global function to avoid collision with Gallery Tab
+window.filterPencapaianByJawatan = function(j) { 
+    currentJawatanFilter = (currentJawatanFilter === j) ? 'ALL' : j; 
+    
+    const btnReset = document.getElementById('btnResetJawatan');
+    if(btnReset) {
+        if (currentJawatanFilter !== 'ALL') btnReset.classList.remove('hidden');
+        else btnReset.classList.add('hidden');
+    }
+    
+    window.renderPencapaianTable(); 
+};
+
 window.filterBySchoolFromTop5 = function(kod) { document.getElementById('filterSekolahPencapaian').value = kod; window.renderPencapaianTable(); };
 
 window.resetPencapaianFilters = function() { 

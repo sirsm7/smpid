@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SMPID - Admin Dashboard</title>
   
   <meta name="theme-color" content="#198754">
@@ -120,7 +120,7 @@
     </div>
   </div>
 
-  <!-- QUEUE MODAL -->
+  <!-- QUEUE MODAL (Modul Tindakan Pantas) -->
   <div id="queueModal" class="queue-overlay hidden">
       <div class="queue-card">
           <button class="btn-close-queue" onclick="document.getElementById('queueModal').classList.add('hidden')" title="Tutup">&times;</button>
@@ -238,7 +238,7 @@
             </div>
           </div>
 
-          <!-- TAB 3: PENCAPAIAN (DIKEMASKINI) -->
+          <!-- TAB 3: PENCAPAIAN (KEMENJADIAN) -->
           <div class="tab-pane fade" id="tab-pencapaian" role="tabpanel">
             <div class="card p-4 shadow-sm border-purple border-4 border-top">
                 
@@ -259,20 +259,16 @@
                     </div>
                 </div>
 
-                <!-- UNIFIED CONTROL DECK (FLOATING GRID LAYOUT) -->
+                <!-- UNIFIED CONTROL DECK -->
                 <div class="card border-0 shadow-sm bg-light rounded-4 mb-4">
                     <div class="card-body p-3">
                         <div class="row g-2 align-items-center">
-                            
-                            <!-- 1. SEARCH (Paling Kiri - Fokus Utama - 30%) -->
                             <div class="col-12 col-md-12 col-lg-3">
                                 <div class="form-floating">
-                                    <input type="text" class="form-control border-0 shadow-sm fw-bold" id="searchPencapaianInput" placeholder="Carian..." onkeyup="handlePencapaianSearch(this.value)">
+                                    <input type="text" class="form-control border-0 shadow-sm fw-bold" id="searchPencapaianInput" placeholder="Carian..." onkeyup="handlePencapaianSearch()">
                                     <label for="searchPencapaianInput"><i class="fas fa-search me-2 text-muted"></i>Cari Nama/Prog</label>
                                 </div>
                             </div>
-
-                            <!-- 2. TAHUN (15%) -->
                             <div class="col-6 col-md-3 col-lg-2">
                                 <div class="form-floating">
                                     <select class="form-select border-0 shadow-sm fw-bold text-primary" id="filterTahunPencapaian" onchange="loadMasterPencapaian()">
@@ -281,8 +277,6 @@
                                     <label for="filterTahunPencapaian">Tahun</label>
                                 </div>
                             </div>
-
-                            <!-- 3. KATEGORI (15%) -->
                             <div class="col-6 col-md-3 col-lg-2">
                                 <div class="form-floating">
                                     <select class="form-select border-0 shadow-sm fw-bold" id="filterKategoriPencapaian" onchange="renderPencapaianTable()">
@@ -296,8 +290,6 @@
                                     <label for="filterKategoriPencapaian">Kategori</label>
                                 </div>
                             </div>
-
-                            <!-- 4. JENIS REKOD (15%) -->
                             <div class="col-6 col-md-3 col-lg-2">
                                 <div class="form-floating">
                                     <select class="form-select border-0 shadow-sm fw-bold" id="filterJenisPencapaian" onchange="renderPencapaianTable()">
@@ -308,8 +300,6 @@
                                     <label for="filterJenisPencapaian">Jenis</label>
                                 </div>
                             </div>
-
-                            <!-- 5. SEKOLAH (20%) -->
                             <div class="col-6 col-md-3 col-lg-2">
                                 <div class="form-floating">
                                     <select class="form-select border-0 shadow-sm fw-bold" id="filterSekolahPencapaian" onchange="renderPencapaianTable()">
@@ -318,32 +308,29 @@
                                     <label for="filterSekolahPencapaian">Sekolah</label>
                                 </div>
                             </div>
-
-                            <!-- 6. RESET BUTTON (5% - Auto Width) -->
                             <div class="col-12 col-lg-1 d-flex align-items-stretch">
                                 <button onclick="resetPencapaianFilters()" class="btn btn-white border-0 shadow-sm w-100 py-3 text-secondary" title="Reset Filter" style="height: 58px;">
                                     <i class="fas fa-sync-alt fa-lg"></i>
                                 </button>
                             </div>
-
                         </div>
                     </div>
                 </div>
 
-                <!-- STATISTIK CARDS (KEKALKAN TAPI DIKEMASKINI) -->
-                <div class="row g-3 mb-3 justify-content-center">
-                    <div class="col-6 col-md-2"><div onclick="filterByKategori('MURID')" class="card bg-white border h-100 cursor-pointer hover-scale shadow-sm p-2 text-center"><small class="text-muted fw-bold">MURID</small><h4 class="fw-bold mb-0 text-info" id="statTotalMurid">0</h4></div></div>
-                    <div class="col-6 col-md-2"><div onclick="filterByKategori('GURU')" class="card bg-white border h-100 cursor-pointer hover-scale shadow-sm p-2 text-center"><small class="text-muted fw-bold">GURU</small><h4 class="fw-bold mb-0 text-warning" id="statTotalGuru">0</h4></div></div>
-                    <div class="col-6 col-md-2"><div onclick="filterByKategori('SEKOLAH')" class="card bg-white border h-100 cursor-pointer hover-scale shadow-sm p-2 text-center"><small class="text-muted fw-bold">SEKOLAH</small><h4 class="fw-bold mb-0 text-success" id="statTotalSekolah">0</h4></div></div>
-                    <div class="col-6 col-md-3"><div onclick="filterByKategori('PEGAWAI')" class="card bg-white border h-100 cursor-pointer hover-scale shadow-sm p-2 text-center"><small class="text-muted fw-bold">PEGAWAI PPD</small><h4 class="fw-bold mb-0 text-dark" id="statTotalPegawai">0</h4></div></div>
-                    <div class="col-6 col-md-3"><div onclick="filterByKategori('PPD')" class="card bg-white border h-100 cursor-pointer hover-scale shadow-sm p-2 text-center"><small class="text-muted fw-bold">UNIT PPD</small><h4 class="fw-bold mb-0 text-primary" id="statTotalUnit">0</h4></div></div>
+                <!-- STATISTIK CARDS -->
+                <div class="row g-3 mb-3 justify-content-center text-center">
+                    <div class="col-6 col-md-2"><div onclick="filterByKategori('MURID')" class="card bg-white border h-100 cursor-pointer shadow-sm p-2"><small class="text-muted fw-bold">MURID</small><h4 class="fw-bold mb-0 text-info" id="statTotalMurid">0</h4></div></div>
+                    <div class="col-6 col-md-2"><div onclick="filterByKategori('GURU')" class="card bg-white border h-100 cursor-pointer shadow-sm p-2"><small class="text-muted fw-bold">GURU</small><h4 class="fw-bold mb-0 text-warning" id="statTotalGuru">0</h4></div></div>
+                    <div class="col-6 col-md-2"><div onclick="filterByKategori('SEKOLAH')" class="card bg-white border h-100 cursor-pointer shadow-sm p-2"><small class="text-muted fw-bold">SEKOLAH</small><h4 class="fw-bold mb-0 text-success" id="statTotalSekolah">0</h4></div></div>
+                    <div class="col-6 col-md-3"><div onclick="filterByKategori('PEGAWAI')" class="card bg-white border h-100 cursor-pointer shadow-sm p-2"><small class="text-muted fw-bold">PEGAWAI PPD</small><h4 class="fw-bold mb-0 text-dark" id="statTotalPegawai">0</h4></div></div>
+                    <div class="col-6 col-md-3"><div onclick="filterByKategori('PPD')" class="card bg-white border h-100 cursor-pointer shadow-sm p-2"><small class="text-muted fw-bold">UNIT PPD</small><h4 class="fw-bold mb-0 text-primary" id="statTotalUnit">0</h4></div></div>
                 </div>
 
-                <!-- JAWATAN CLOUD (TAB PENCAPAIAN - GUNAKAN ID YANG SAMA DENGAN JS) -->
+                <!-- JAWATAN CLOUD (TAB PENCAPAIAN) -->
                 <div id="jawatanCloudWrapper" class="mb-4 hidden fade-up">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="fw-bold text-secondary mb-0 small text-uppercase"><i class="fas fa-tags me-1"></i>Tapisan Jawatan</h6>
-                        <button onclick="filterByJawatan('ALL')" id="btnResetJawatan" class="btn btn-xs btn-outline-secondary rounded-pill py-0 px-2 fw-bold hidden">
+                        <button onclick="filterPencapaianByJawatan('ALL')" id="btnResetJawatan" class="btn btn-xs btn-outline-secondary rounded-pill py-0 px-2 fw-bold hidden">
                             Reset Jawatan <i class="fas fa-times ms-1"></i>
                         </button>
                     </div>
@@ -355,43 +342,39 @@
                 <div class="row g-4 mb-4">
                     <div class="col-lg-8">
                         <div class="row g-3 mb-3">
-                            <div class="col-md-6"><div id="card-KEBANGSAAN" onclick="filterByCard('KEBANGSAAN')" class="card bg-purple text-white h-100 border-0 shadow-sm rounded-4 cursor-pointer hover-scale"><div class="card-body text-center p-3"><h2 class="fw-bold mb-0 display-5" id="statKebangsaan">-</h2><small class="text-white-50 text-uppercase fw-bold">Peringkat Kebangsaan</small></div></div></div>
-                            <div class="col-md-6"><div id="card-ANTARABANGSA" onclick="filterByCard('ANTARABANGSA')" class="card bg-orange text-white h-100 border-0 shadow-sm rounded-4 cursor-pointer hover-scale"><div class="card-body text-center p-3"><h2 class="fw-bold mb-0 display-5" id="statAntarabangsa">-</h2><small class="text-white-50 text-uppercase fw-bold">Antarabangsa / Pensijilan</small></div></div></div>
+                            <div class="col-md-6"><div id="card-KEBANGSAAN" onclick="filterByCard('KEBANGSAAN')" class="card bg-purple text-white h-100 border-0 shadow-sm rounded-4 cursor-pointer"><div class="card-body text-center p-3"><h2 class="fw-bold mb-0" id="statKebangsaan">-</h2><small class="text-white-50 text-uppercase fw-bold">Peringkat Kebangsaan</small></div></div></div>
+                            <div class="col-md-6"><div id="card-ANTARABANGSA" onclick="filterByCard('ANTARABANGSA')" class="card bg-orange text-white h-100 border-0 shadow-sm rounded-4 cursor-pointer"><div class="card-body text-center p-3"><h2 class="fw-bold mb-0" id="statAntarabangsa">-</h2><small class="text-white-50 text-uppercase fw-bold">Antarabangsa / Pensijilan</small></div></div></div>
                         </div>
                         <div class="row g-2">
-                            <div class="col-6 col-md-3"><div id="card-GOOGLE" onclick="filterByCard('GOOGLE')" class="card border-0 shadow-sm h-100 bg-google-sub border-google border-start border-3 cursor-pointer hover-scale"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-google" id="statGoogle">-</h4><small class="fw-bold text-muted">GOOGLE</small></div></div></div>
-                            <div class="col-6 col-md-3"><div id="card-APPLE" onclick="filterByCard('APPLE')" class="card border-0 shadow-sm h-100 bg-apple-sub border-apple border-start border-3 cursor-pointer hover-scale"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-apple" id="statApple">-</h4><small class="fw-bold text-muted">APPLE</small></div></div></div>
-                            <div class="col-6 col-md-3"><div id="card-MICROSOFT" onclick="filterByCard('MICROSOFT')" class="card border-0 shadow-sm h-100 bg-microsoft-sub border-microsoft border-start border-3 cursor-pointer hover-scale"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-microsoft" id="statMicrosoft">-</h4><small class="fw-bold text-muted">MICROSOFT</small></div></div></div>
-                            <div class="col-6 col-md-3"><div id="card-LAIN-LAIN" onclick="filterByCard('LAIN-LAIN')" class="card border-0 shadow-sm h-100 bg-light border-secondary border-start border-3 cursor-pointer hover-scale"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-dark" id="statLain">-</h4><small class="fw-bold text-muted">LAIN-LAIN</small></div></div></div>
+                            <div class="col-3"><div id="card-GOOGLE" onclick="filterByCard('GOOGLE')" class="card border-0 shadow-sm bg-google-sub border-google border-start border-3 cursor-pointer"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-google" id="statGoogle">-</h4><small class="fw-bold text-muted">GOOGLE</small></div></div></div>
+                            <div class="col-3"><div id="card-APPLE" onclick="filterByCard('APPLE')" class="card border-0 shadow-sm bg-apple-sub border-apple border-start border-3 cursor-pointer"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-apple" id="statApple">-</h4><small class="fw-bold text-muted">APPLE</small></div></div></div>
+                            <div class="col-3"><div id="card-MICROSOFT" onclick="filterByCard('MICROSOFT')" class="card border-0 shadow-sm bg-microsoft-sub border-microsoft border-start border-3 cursor-pointer"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-microsoft" id="statMicrosoft">-</h4><small class="fw-bold text-muted">MICROSOFT</small></div></div></div>
+                            <div class="col-3"><div id="card-LAIN-LAIN" onclick="filterByCard('LAIN-LAIN')" class="card border-0 shadow-sm bg-light border-secondary border-start border-3 cursor-pointer"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-dark" id="statLain">-</h4><small class="fw-bold text-muted">LAIN-LAIN</small></div></div></div>
                         </div>
                     </div>
                     <div class="col-lg-4">
                         <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
-                            <div class="card-header bg-dark text-white small fw-bold py-2 d-flex justify-content-between align-items-center"><span><i class="fas fa-medal me-2 text-warning"></i>5 Sekolah Paling Aktif</span><span class="badge bg-white text-dark rounded-pill" id="totalRecordsBadge">0 Rekod</span></div>
-                            <div class="table-responsive h-100 bg-white"><table class="table table-sm table-hover mb-0 small align-middle" id="tableTopContributors"><tbody class="text-secondary"><tr><td class="text-center p-4">Mengira data...</td></tr></tbody></table></div>
+                            <div class="card-header bg-dark text-white small fw-bold py-2 d-flex justify-content-between align-items-center"><span>Top 5 Sekolah</span><span class="badge bg-white text-dark rounded-pill" id="totalRecordsBadge">0 Rekod</span></div>
+                            <div class="table-responsive h-100 bg-white"><table class="table table-sm table-hover mb-0 small align-middle" id="tableTopContributors"><tbody><tr><td class="text-center p-4">Mengira data...</td></tr></tbody></table></div>
                         </div>
                     </div>
                 </div>
 
-                <div class="d-flex justify-content-between align-items-end mb-2">
-                    <h6 class="fw-bold text-secondary mb-0"><i class="fas fa-database me-2"></i>Senarai Penuh Pencapaian <span id="labelCurrentFilter" class="text-primary small ms-2 fw-normal"></span></h6>
-                    <button class="btn btn-sm btn-link text-decoration-none text-muted" onclick="loadMasterPencapaian()"><i class="fas fa-sync-alt"></i> Refresh</button>
-                </div>
                 <div class="table-responsive border rounded-3" style="max-height: 600px; background: white;">
                     <table class="table table-hover table-striped table-bordered align-middle small mb-0">
                         <thead class="table-dark sticky-top">
                             <tr>
                                 <th style="width: 8%;" class="sortable-header" onclick="handleSort('kod_sekolah')">Kod <i id="icon-kod_sekolah" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
-                                <th style="width: 20%;" class="sortable-header" onclick="handleSort('nama_sekolah')">Nama Sekolah / PPD <i id="icon-nama_sekolah" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
-                                <th style="width: 8%;" class="text-center sortable-header" onclick="handleSort('kategori')">Kategori <i id="icon-kategori" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
-                                <th style="width: 20%;" class="sortable-header" onclick="handleSort('nama_peserta')">Nama Peserta <i id="icon-nama_peserta" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
-                                <th style="width: 15%;" class="sortable-header" onclick="handleSort('nama_pertandingan')">Pertandingan / Sijil <i id="icon-nama_pertandingan" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
-                                <th style="width: 10%;" class="text-center sortable-header" onclick="handleSort('pencapaian')">Pencapaian <i id="icon-pencapaian" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
+                                <th style="width: 20%;" class="sortable-header" onclick="handleSort('nama_sekolah')">Nama Sekolah <i id="icon-nama_sekolah" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
+                                <th style="width: 8%;" class="text-center sortable-header" onclick="handleSort('kategori')">Kat <i id="icon-kategori" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
+                                <th style="width: 20%;" class="sortable-header" onclick="handleSort('nama_peserta')">Peserta <i id="icon-nama_peserta" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
+                                <th style="width: 15%;" class="sortable-header" onclick="handleSort('nama_pertandingan')">Program <i id="icon-nama_pertandingan" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
+                                <th style="width: 10%;" class="text-center sortable-header" onclick="handleSort('pencapaian')">Skor <i id="icon-pencapaian" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
                                 <th style="width: 5%;" class="text-center">Bukti</th>
-                                <th style="width: 8%;" class="text-center">Tindakan</th>
+                                <th style="width: 8%;" class="text-center">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody id="tbodyPencapaianMaster"><tr><td colspan="8" class="text-center py-5 text-muted">Sila pilih filter untuk memuatkan data...</td></tr></tbody>
+                        <tbody id="tbodyPencapaianMaster"></tbody>
                     </table>
                 </div>
             </div>
@@ -402,61 +385,40 @@
             <div class="card p-4 shadow-sm border-top-indigo border-4">
                 <div class="row align-items-end mb-4 border-bottom pb-3 g-3">
                     <div class="col-lg-7 col-md-6">
-                        <div class="d-flex flex-column justify-content-center">
-                            <h5 class="fw-bold text-indigo mb-1 text-truncate" id="galleryHeaderTitle" style="line-height: 1.2;">
-                                PPD ALOR GAJAH
-                            </h5>
-                            <div id="galleryHeaderSubtitle" class="d-flex align-items-center mt-1">
-                                <span class="badge bg-indigo me-2 rounded-1">M030</span> 
-                                <span class="text-muted small fw-bold text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">
-                                    Unit Sumber Teknologi Pendidikan
-                                </span>
-                            </div>
-                        </div>
+                        <h5 class="fw-bold text-indigo mb-1" id="galleryHeaderTitle">PPD ALOR GAJAH</h5>
+                        <div id="galleryHeaderSubtitle" class="small fw-bold text-muted uppercase">Unit Sumber Teknologi Pendidikan</div>
                     </div>
                     <div class="col-lg-5 col-md-6">
                         <div class="input-group shadow-sm">
-                            <span class="input-group-text bg-white border-end-0 text-muted ps-3"><i class="fas fa-search"></i></span>
-                            <input type="text" id="gallerySearchInput" class="form-control border-start-0 border-end-0" placeholder="Cari Sekolah..." oninput="handleGallerySchoolSearch(this.value)">
-                            <select id="gallerySchoolSelector" class="form-select border-start-0 border-end-0 fw-bold bg-light text-secondary" style="max-width: 140px; font-size: 0.85rem;" onchange="loadAdminGalleryGrid(this.value)">
+                            <span class="input-group-text bg-white"><i class="fas fa-search"></i></span>
+                            <input type="text" id="gallerySearchInput" class="form-control" placeholder="Cari Sekolah..." oninput="handleGallerySchoolSearch(this.value)">
+                            <select id="gallerySchoolSelector" class="form-select bg-light" style="max-width: 140px;" onchange="loadAdminGalleryGrid(this.value)">
                                 <option value="M030">M030</option>
                             </select>
-                            <button class="btn btn-light border border-start-0" onclick="resetGallery()" type="button" title="Reset Paparan"><i class="fas fa-sync-alt text-secondary"></i></button>
+                            <button class="btn btn-light border" onclick="resetGallery()" title="Reset Paparan"><i class="fas fa-sync-alt"></i></button>
                         </div>
                     </div>
                 </div>
                 
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div id="galleryFilterContainer" class="btn-group shadow-sm bg-white p-1 rounded-pill border">
-                        <span class="p-2 text-muted small fst-italic">Sila pilih sekolah...</span>
-                    </div>
-                    <span class="badge bg-white text-indigo border border-indigo px-3 py-2 rounded-pill shadow-sm" style="color: #4b0082; border-color: #4b0082;">
-                        <i class="fas fa-images me-2"></i>Total: <span id="galleryTotalCount" class="fw-bold">0</span> Rekod
+                    <div id="galleryFilterContainer" class="btn-group shadow-sm bg-white p-1 rounded-pill border"></div>
+                    <span class="badge bg-white text-indigo border border-indigo px-3 py-2 rounded-pill shadow-sm">
+                        <i class="fas fa-images me-2"></i>Total: <span id="galleryTotalCount">0</span> Rekod
                     </span>
                 </div>
 
-                <!-- JAWATAN WORD CLOUD (UPDATED UNIQUE IDs FOR GALLERY TAB) -->
-                <!-- Ini adalah perbaikan utama untuk mengelakkan konflik ID dengan Tab 3 -->
+                <!-- JAWATAN WORD CLOUD (TAB GALERI) -->
                 <div id="galleryCloudWrapper" class="mb-4 hidden fade-up">
                     <div class="d-flex justify-content-between align-items-center mb-2 px-1">
-                        <h6 class="fw-bold text-secondary mb-0 small text-uppercase">
-                            <i class="fas fa-filter me-1 text-warning"></i> TAPIS MENGIKUT JAWATAN
-                        </h6>
-                        <button onclick="filterByJawatan('ALL')" id="btnResetGalleryCloud" class="btn btn-sm btn-link text-decoration-none text-muted p-0 hidden" style="font-size: 0.75rem; font-weight: 700;">
+                        <h6 class="fw-bold text-secondary mb-0 small text-uppercase">Tapisan Jawatan</h6>
+                        <button onclick="filterGalleryByJawatan('ALL')" id="btnResetGalleryCloud" class="btn btn-sm btn-link text-decoration-none text-muted hidden">
                             RESET <i class="fas fa-times ms-1"></i>
                         </button>
                     </div>
-                    <div id="galleryCloudContainer" class="cloud-container p-3 border rounded-4 bg-white shadow-sm">
-                        <small class="text-muted fst-italic">Memuatkan senarai jawatan...</small>
-                    </div>
+                    <div id="galleryCloudContainer" class="cloud-container p-3 border rounded-4 bg-white shadow-sm"></div>
                 </div>
 
-                <div id="adminGalleryGrid" class="row g-3">
-                    <div class="col-12 text-center py-5 text-muted">
-                        <i class="fas fa-images fa-3x mb-3 opacity-25"></i>
-                        <p>Sila pilih sekolah daripada senarai di atas.</p>
-                    </div>
-                </div>
+                <div id="adminGalleryGrid" class="row g-3"></div>
             </div>
           </div>
 
@@ -464,24 +426,24 @@
           <div class="tab-pane fade" id="tab-email" role="tabpanel">
             <div class="card p-4 shadow-sm border-top-warning border-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-3">
-                    <div><h5 class="fw-bold text-dark mb-1"><i class="fas fa-filter me-2"></i>Kriteria Penerima</h5></div>
-                    <div class="d-flex gap-3 align-items-center flex-wrap">
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="checkGpict" checked onchange="generateList()"><label class="form-check-label fw-bold" for="checkGpict">GPICT</label></div>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="checkAdmin" checked onchange="generateList()"><label class="form-check-label fw-bold" for="checkAdmin">Admin DELIMa</label></div>
-                        <select id="statusFilter" class="form-select form-select-sm" style="width: auto;" onchange="generateList()"><option value="all">Semua Status</option><option value="unregistered" selected>Belum Daftar Bot (Target)</option><option value="registered">Sudah Daftar Bot</option></select>
+                    <h5 class="fw-bold text-dark mb-1">Kriteria Penerima</h5>
+                    <div class="d-flex gap-3 align-items-center">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="checkGpict" checked onchange="generateList()"><label class="form-check-label fw-bold">GPICT</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="checkAdmin" checked onchange="generateList()"><label class="form-check-label fw-bold">Admin DELIMa</label></div>
+                        <select id="statusFilter" class="form-select form-select-sm" onchange="generateList()"><option value="all">Semua Status</option><option value="unregistered" selected>Belum Bot</option></select>
                     </div>
                 </div>
                 <div class="mb-4">
-                    <div class="d-flex justify-content-between mb-2"><label class="fw-bold small text-muted">HASIL (<span id="countEmail">0</span> Penerima)</label><button class="btn btn-sm btn-outline-secondary py-0" onclick="copyEmails()"><i class="fas fa-copy me-1"></i> Salin</button></div>
+                    <div class="d-flex justify-content-between mb-2"><label class="fw-bold small text-muted">HASIL (<span id="countEmail">0</span> Penerima)</label><button class="btn btn-sm btn-outline-secondary py-0" onclick="copyEmails()">Salin</button></div>
                     <textarea id="emailOutput" class="form-control mb-2" rows="3" readonly placeholder="Senarai emel..."></textarea>
                 </div>
                 <div class="bg-light p-3 rounded border">
                     <h6 class="fw-bold text-success mb-3"><i class="fas fa-pen-fancy me-2"></i>Draf Mesej (Rich Text)</h6>
-                    <div class="mb-2"><input type="text" class="form-control fw-bold form-control-sm" id="msgSubject" value="[TINDAKAN] Pengesahan Pendaftaran Sistem SMPID"></div>
+                    <div class="mb-2"><input type="text" class="form-control fw-bold" id="msgSubject" value="[TINDAKAN] Pengesahan Pendaftaran Sistem SMPID"></div>
                     <div class="mb-3 bg-white"><div id="editor-container" style="height: 300px;"></div></div>
                     <div class="d-flex justify-content-end gap-2">
-                        <button class="btn btn-sm btn-success fw-bold shadow-sm" onclick="copyTemplate()"><i class="fas fa-copy me-1"></i> Salin (Format Penuh)</button>
-                        <a id="mailtoLink" href="#" class="btn btn-sm btn-outline-secondary"><i class="fas fa-paper-plane me-1"></i> Buka Emel (Teks Biasa)</a>
+                        <button class="btn btn-sm btn-success fw-bold shadow-sm" onclick="copyTemplate()">Salin HTML</button>
+                        <a id="mailtoLink" href="#" class="btn btn-sm btn-outline-secondary"><i class="fas fa-paper-plane me-1"></i> Buka Emel</a>
                     </div>
                 </div>
             </div>
@@ -491,35 +453,33 @@
           <div class="tab-pane fade" id="tab-helpdesk" role="tabpanel">
             <div class="card p-4 shadow-sm border-top border-danger border-4">
                 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
-                    <div><h5 class="mb-0 fw-bold text-danger">Helpdesk & Aduan</h5><small class="text-muted">Senarai tiket masuk</small></div>
+                    <div><h5 class="mb-0 fw-bold text-danger">Helpdesk & Aduan</h5></div>
                     <div><select id="filterTiketAdmin" class="form-select form-select-sm" onchange="loadTiketAdmin()"><option value="ALL">Semua Tiket</option><option value="DALAM PROSES" selected>Dalam Proses</option><option value="SELESAI">Selesai</option></select></div>
                 </div>
-                <div id="adminTiketWrapper"><div class="text-center text-muted">Memuatkan...</div></div>
+                <div id="adminTiketWrapper"></div>
             </div>
           </div>
 
           <!-- TAB 7: ADMIN USERS -->
           <div class="tab-pane fade" id="tab-admin-users" role="tabpanel">
             <div class="card p-4 shadow-sm border-top border-dark border-4">
-                <h5 class="mb-3 fw-bold text-dark"><i class="fas fa-users-cog me-2"></i>Pengurusan Akses Admin</h5>
+                <h5 class="mb-3 fw-bold text-dark">Pengurusan Akses Admin</h5>
                 <div class="bg-light p-3 rounded mb-4 border">
-                    <h6 class="fw-bold mb-3">Tambah Admin Baru</h6>
                     <div class="row g-2 align-items-end">
-                        <div class="col-md-4"><label class="small fw-bold text-muted">Emel Pengguna</label><input type="email" id="inputNewAdminEmail" class="form-control" placeholder="nama@moe.gov.my"></div>
-                        <div class="col-md-3"><label class="small fw-bold text-muted">Peranan</label><select id="inputNewAdminRole" class="form-select"><option value="ADMIN">ADMIN (Akses Penuh)</option><option value="PPD_UNIT">UNIT PPD (Pencapaian Sahaja)</option></select></div>
-                        <div class="col-md-3"><label class="small fw-bold text-muted">Kata Laluan</label><input type="text" id="inputNewAdminPass" class="form-control" placeholder="Kata laluan"></div>
-                        <div class="col-md-2"><button onclick="tambahAdmin()" class="btn btn-dark w-100 fw-bold"><i class="fas fa-plus me-1"></i> Tambah</button></div>
+                        <div class="col-md-4"><label class="small fw-bold text-muted">Emel Pengguna</label><input type="email" id="inputNewAdminEmail" class="form-control"></div>
+                        <div class="col-md-3"><label class="small fw-bold text-muted">Peranan</label><select id="inputNewAdminRole" class="form-select"></select></div>
+                        <div class="col-md-3"><label class="small fw-bold text-muted">Kata Laluan</label><input type="text" id="inputNewAdminPass" class="form-control"></div>
+                        <div class="col-md-2"><button onclick="tambahAdmin()" class="btn btn-dark w-100 fw-bold">Tambah</button></div>
                     </div>
                 </div>
-                <h6 class="fw-bold mt-4 mb-3">Senarai Admin Semasa</h6>
-                <div id="adminListWrapper" class="table-responsive"><div class="text-center text-muted">Memuatkan...</div></div>
+                <div id="adminListWrapper" class="table-responsive"></div>
             </div>
           </div>
 
         </div> <!-- End Tab Content -->
 
         <div class="text-center mt-5">
-            <button id="btnMainLogout" onclick="keluarSistem()" class="btn btn-outline-danger btn-sm"><i class="fas fa-sign-out-alt me-2"></i>Log Keluar Admin</button>
+            <button onclick="keluarSistem()" class="btn btn-outline-danger btn-sm fw-bold"><i class="fas fa-sign-out-alt me-2"></i>Log Keluar Admin</button>
         </div>
 
       </div>
@@ -530,16 +490,16 @@
   <div class="modal fade" id="modalEditDcs" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-header bg-primary text-white"><h6 class="modal-title fw-bold">Kemaskini Data <span id="modalDcsYearTitle"></span></h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-primary text-white"><h6 class="modal-title fw-bold">Edit Data <span id="modalDcsYearTitle"></span></h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
             <div class="modal-body p-4">
-                <form id="formEditDcs" onsubmit="event.preventDefault(); simpanDcs();">
+                <form onsubmit="event.preventDefault(); simpanDcs();">
                     <input type="hidden" id="editKodSekolah">
-                    <div class="mb-3"><label class="form-label small text-muted fw-bold">NAMA SEKOLAH</label><input type="text" id="displayEditNama" class="form-control bg-light fw-bold text-dark" readonly></div>
+                    <div class="mb-3"><label class="small fw-bold text-muted">NAMA SEKOLAH</label><input type="text" id="displayEditNama" class="form-control bg-light" readonly></div>
                     <div class="row g-3">
-                        <div class="col-6"><label class="form-label small text-primary fw-bold">SKOR DCS <span class="year-label"></span></label><input type="number" step="0.01" min="0" max="5" id="editDcsVal" class="form-control fw-bold border-primary"></div>
-                        <div class="col-6"><label class="form-label small text-success fw-bold">% AKTIF <span class="year-label"></span></label><input type="number" step="1" min="0" max="100" id="editAktifVal" class="form-control fw-bold border-success"></div>
+                        <div class="col-6"><label class="small fw-bold">SKOR DCS</label><input type="number" step="0.01" id="editDcsVal" class="form-control border-primary"></div>
+                        <div class="col-6"><label class="small fw-bold">% AKTIF</label><input type="number" id="editAktifVal" class="form-control border-success"></div>
                     </div>
-                    <div class="mt-4 d-grid"><button type="submit" class="btn btn-primary fw-bold">SIMPAN PERUBAHAN</button></div>
+                    <div class="mt-4 d-grid"><button type="submit" class="btn btn-primary fw-bold">SIMPAN</button></div>
                 </form>
             </div>
         </div>
@@ -550,179 +510,68 @@
   <div class="modal fade" id="modalRekodPPD" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-header bg-indigo text-white"><h6 class="modal-title fw-bold">Rekod Pencapaian PPD</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-indigo text-white"><h6 class="modal-title fw-bold">Rekod Unit PPD</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
             <div class="modal-body p-4">
                 <form id="formPencapaianPPD" onsubmit="event.preventDefault(); simpanPencapaianPPD();">
                     <input type="hidden" id="ppdInputJenisRekod" value="PERTANDINGAN">
-                    <div class="mb-3 text-center"><div class="btn-group w-100 shadow-sm" role="group"><input type="radio" class="btn-check" name="radKatPPD" id="radPegawai" value="PEGAWAI" checked onchange="toggleKategoriPPD()"><label class="btn btn-outline-dark fw-bold" for="radPegawai">PEGAWAI</label><input type="radio" class="btn-check" name="radKatPPD" id="radUnit" value="PPD" onchange="toggleKategoriPPD()"><label class="btn btn-outline-dark fw-bold" for="radUnit">UNIT / SEKTOR</label></div></div>
-                    <div class="mb-3 text-center"><div class="btn-group w-100 shadow-sm" role="group"><input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPertandingan" checked onchange="toggleJenisPencapaianPPD()"><label class="btn btn-outline-primary fw-bold" for="radPpdPertandingan">PERTANDINGAN</label><input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPensijilan" onchange="toggleJenisPencapaianPPD()"><label class="btn btn-outline-warning fw-bold text-dark" for="radPpdPensijilan">PENSIJILAN</label></div></div>
-                    <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblPpdNamaPeserta">NAMA PEGAWAI</label><input type="text" id="ppdInputNama" class="form-control uppercase-input fw-bold" oninput="this.value = this.value.toUpperCase()"></div>
-                    
-                    <div id="divPpdPenyedia" class="mb-3 hidden">
-                        <label class="form-label small fw-bold text-muted text-warning">PENYEDIA</label>
-                        <select id="ppdInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning">
-                            <option value="LAIN-LAIN">LAIN-LAIN (AWS/CISCO/DLL)</option>
-                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
-                            <option value="APPLE">APPLE EDUCATION</option>
-                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblPpdProgram">NAMA PERTANDINGAN</label><input type="text" id="ppdInputProgram" class="form-control uppercase-input" oninput="this.value = this.value.toUpperCase()"></div>
-                    
-                    <div class="row g-2 mb-3">
-                        <div class="col-6" id="divPpdColPeringkat">
-                            <label class="form-label small fw-bold text-muted">PERINGKAT</label>
-                            <select id="ppdInputPeringkat" class="form-select bg-light">
-                                <option value="KEBANGSAAN">KEBANGSAAN</option>
-                                <option value="ANTARABANGSA">ANTARABANGSA</option>
-                            </select>
-                        </div>
-                        <div class="col-6" id="divPpdColTahun">
-                            <label class="form-label small fw-bold text-muted">TAHUN</label>
-                            <input type="number" id="ppdInputTahun" class="form-control bg-white fw-bold" value="2026" min="2023">
-                        </div>
-                    </div>
-
-                    <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblPpdPencapaian">PENCAPAIAN</label><input type="text" id="ppdInputPencapaian" class="form-control uppercase-input" oninput="this.value = this.value.toUpperCase()"></div>
-                    <div class="mb-4"><label class="form-label small fw-bold text-muted">PAUTAN BUKTI</label><input type="url" id="ppdInputLink" class="form-control text-primary"></div>
-                    <button type="submit" class="btn btn-indigo w-100 fw-bold py-3 rounded-3 shadow-sm">SIMPAN REKOD PPD</button>
+                    <div class="mb-3 text-center"><div class="btn-group w-100" role="group"><input type="radio" class="btn-check" name="radKatPPD" id="radPegawai" value="PEGAWAI" checked onchange="toggleKategoriPPD()"><label class="btn btn-outline-dark fw-bold" for="radPegawai">Pegawai</label><input type="radio" class="btn-check" name="radKatPPD" id="radUnit" value="PPD" onchange="toggleKategoriPPD()"><label class="btn btn-outline-dark fw-bold" for="radUnit">Unit</label></div></div>
+                    <div class="mb-3 text-center"><div class="btn-group w-100" role="group"><input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPertandingan" checked onchange="toggleJenisPencapaianPPD()"><label class="btn btn-outline-primary fw-bold" for="radPpdPertandingan">Pertandingan</label><input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPensijilan" onchange="toggleJenisPencapaianPPD()"><label class="btn btn-outline-warning text-dark fw-bold" for="radPpdPensijilan">Sijil</label></div></div>
+                    <div class="mb-3"><label class="small fw-bold" id="lblPpdNamaPeserta">NAMA</label><input type="text" id="ppdInputNama" class="form-control uppercase-input"></div>
+                    <div id="divPpdPenyedia" class="mb-3 hidden"><label class="small fw-bold">PENYEDIA</label><select id="ppdInputPenyedia" class="form-select"><option value="LAIN-LAIN">LAIN</option><option value="GOOGLE">GOOGLE</option><option value="APPLE">APPLE</option><option value="MICROSOFT">MS</option></select></div>
+                    <div class="mb-3"><label class="small fw-bold" id="lblPpdProgram">PROGRAM</label><input type="text" id="ppdInputProgram" class="form-control uppercase-input"></div>
+                    <div class="row g-2 mb-3"><div class="col-6" id="divPpdColPeringkat"><label class="small fw-bold">PERINGKAT</label><select id="ppdInputPeringkat" class="form-select"><option value="KEBANGSAAN">KEBANGSAAN</option><option value="ANTARABANGSA">ANTARABANGSA</option></select></div><div class="col-6"><label class="small fw-bold">TAHUN</label><input type="number" id="ppdInputTahun" class="form-control" value="2026"></div></div>
+                    <div class="mb-3"><label class="small fw-bold" id="lblPpdPencapaian">PENCAPAIAN</label><input type="text" id="ppdInputPencapaian" class="form-control uppercase-input"></div>
+                    <div class="mb-4"><label class="small fw-bold">PAUTAN BUKTI</label><input type="url" id="ppdInputLink" class="form-control"></div>
+                    <button type="submit" class="btn btn-indigo w-100 fw-bold py-3 shadow-sm">SIMPAN REKOD</button>
                 </form>
             </div>
         </div>
     </div>
   </div>
 
-  <!-- MODAL EDIT PENCAPAIAN (DIKEMASKINI) -->
+  <!-- MODAL EDIT PENCAPAIAN -->
   <div class="modal fade" id="modalEditPencapaian" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-header bg-warning text-dark"><h6 class="modal-title fw-bold">Kemaskini Rekod</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-warning text-dark"><h6 class="modal-title fw-bold">Edit Rekod</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body p-4">
                 <form id="formEditPencapaian" onsubmit="event.preventDefault(); simpanEditPencapaian();">
                     <input type="hidden" id="editIdPencapaian">
-                    <!-- REMOVED: <input type="hidden" id="editJenisRekod"> -->
-                    <!-- ADDED: RADIO BUTTON JENIS REKOD -->
-                    <div class="mb-4 text-center">
-                        <div class="btn-group w-100 shadow-sm" role="group">
-                            <input type="radio" class="btn-check" name="editRadioJenis" id="editRadioPertandingan" value="PERTANDINGAN" onchange="toggleEditJenis()">
-                            <label class="btn btn-outline-primary fw-bold" for="editRadioPertandingan">PERTANDINGAN</label>
-
-                            <input type="radio" class="btn-check" name="editRadioJenis" id="editRadioPensijilan" value="PENSIJILAN" onchange="toggleEditJenis()">
-                            <label class="btn btn-outline-warning fw-bold text-dark" for="editRadioPensijilan">PENSIJILAN</label>
-                        </div>
-                    </div>
-
-                    <div class="mb-3"><label class="form-label small fw-bold text-muted">SEKOLAH</label><input type="text" id="editNamaSekolah" class="form-control bg-light fw-bold text-dark" readonly disabled></div>
-                    
-                    <div class="mb-3"><label class="form-label small fw-bold text-muted">NAMA PESERTA</label><input type="text" id="editInputNama" class="form-control uppercase-input fw-bold"></div>
-                    
-                    <div id="divEditJawatan" class="mb-3 hidden">
-                        <label class="form-label small fw-bold text-muted text-warning">JAWATAN</label>
-                        <select id="editInputJawatan" class="form-select fw-bold text-dark bg-light border-warning">
-                            <option value="GURU AKADEMIK BIASA">GURU AKADEMIK BIASA</option>
-                            <option value="PENGARAH KV / PGB">PENGARAH KV / PENGETUA / GURU BESAR</option>
-                            <option value="GPK PENTADBIRAN">GPK PENTADBIRAN</option>
-                            <option value="GPK HAL EHWAL MURID">GPK HAL EHWAL MURID</option>
-                            <option value="GPK KO-KURIKULUM">GPK KO-KURIKULUM</option>
-                            <option value="GPK PENDIDIKAN KHAS">GPK PENDIDIKAN KHAS</option>
-                            <option value="GURU KANAN MATA PELAJARAN">GURU KANAN MATA PELAJARAN</option>
-                            <option value="GURU DATA">GURU DATA</option>
-                            <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>
-                            <option value="GURU ADMIN DELIMA">GURU ADMIN DELIMA</option>
-                            <option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
-                            <option value="GURU PERPUSTAKAAN & MEDIA">GURU PERPUSTAKAAN & MEDIA</option>
-                        </select>
-                    </div>
-
-                    <div id="divEditPenyedia" class="mb-3 hidden">
-                        <label class="form-label small fw-bold text-muted text-warning">PENYEDIA</label>
-                        <select id="editInputPenyedia" class="form-select fw-bold text-dark bg-light border-warning">
-                            <option value="LAIN-LAIN">LAIN-LAIN (AWS/CISCO/DLL)</option>
-                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
-                            <option value="APPLE">APPLE EDUCATION</option>
-                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblEditProgram">NAMA PERTANDINGAN</label><input type="text" id="editInputProgram" class="form-control uppercase-input"></div>
-                    
-                    <div class="row g-2 mb-3">
-                        <div class="col-6" id="divEditColPeringkat">
-                            <label class="form-label small fw-bold text-muted">PERINGKAT</label>
-                            <select id="editInputPeringkat" class="form-select bg-light">
-                                <option value="KEBANGSAAN">KEBANGSAAN</option>
-                                <option value="ANTARABANGSA">ANTARABANGSA</option>
-                            </select>
-                        </div>
-                        <div class="col-6" id="divEditColTahun">
-                            <label class="form-label small fw-bold text-muted">TAHUN</label>
-                            <input type="number" id="editInputTahun" class="form-control bg-white fw-bold" min="2023">
-                        </div>
-                    </div>
-
-                    <div class="mb-3"><label class="form-label small fw-bold text-muted" id="lblEditPencapaian">PENCAPAIAN</label><input type="text" id="editInputPencapaian" class="form-control uppercase-input"></div>
-                    <div class="mb-4"><label class="form-label small fw-bold text-muted">PAUTAN BUKTI</label><input type="url" id="editInputLink" class="form-control text-primary"></div>
-                    <button type="submit" class="btn btn-warning w-100 fw-bold py-3 rounded-3 shadow-sm">SIMPAN PERUBAHAN</button>
+                    <div class="mb-4 text-center"><div class="btn-group w-100 shadow-sm"><input type="radio" class="btn-check" name="editRadioJenis" id="editRadioPertandingan" value="PERTANDINGAN" onchange="toggleEditJenis()"><label class="btn btn-outline-primary fw-bold" for="editRadioPertandingan">Pertandingan</label><input type="radio" class="btn-check" name="editRadioJenis" id="editRadioPensijilan" value="PENSIJILAN" onchange="toggleEditJenis()"><label class="btn btn-outline-warning fw-bold text-dark" for="editRadioPensijilan">Sijil</label></div></div>
+                    <div class="mb-3"><label class="small fw-bold">SEKOLAH</label><input type="text" id="editNamaSekolah" class="form-control bg-light" readonly></div>
+                    <div class="mb-3"><label class="small fw-bold">PESERTA</label><input type="text" id="editInputNama" class="form-control uppercase-input"></div>
+                    <div id="divEditJawatan" class="mb-3 hidden"><label class="small fw-bold">JAWATAN</label><select id="editInputJawatan" class="form-select"></select></div>
+                    <div id="divEditPenyedia" class="mb-3 hidden"><label class="small fw-bold text-warning">PENYEDIA</label><select id="editInputPenyedia" class="form-select"></select></div>
+                    <div class="mb-3"><label class="small fw-bold" id="lblEditProgram">PROGRAM</label><input type="text" id="editInputProgram" class="form-control uppercase-input"></div>
+                    <div class="row g-2 mb-3"><div class="col-6" id="divEditColPeringkat"><label class="small fw-bold">PERINGKAT</label><select id="editInputPeringkat" class="form-select"><option value="KEBANGSAAN">KEBANGSAAN</option><option value="ANTARABANGSA">ANTARABANGSA</option></select></div><div class="col-6"><label class="small fw-bold">TAHUN</label><input type="number" id="editInputTahun" class="form-control"></div></div>
+                    <div class="mb-3"><label class="small fw-bold" id="lblEditPencapaian">SKOR</label><input type="text" id="editInputPencapaian" class="form-control uppercase-input"></div>
+                    <div class="mb-4"><label class="small fw-bold">BUKTI</label><input type="url" id="editInputLink" class="form-control"></div>
+                    <button type="submit" class="btn btn-warning w-100 fw-bold py-3 shadow-sm">SIMPAN PERUBAHAN</button>
                 </form>
             </div>
         </div>
     </div>
   </div>
 
-  <!-- MODAL: STANDARDIZE DATA -->
-  <div class="modal fade" id="modalStandardize" data-bs-backdrop="static" data-bs-keyboard="false">
+  <!-- MODAL PENYERAGAMAN DATA -->
+  <div class="modal fade" id="modalStandardize" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
         <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-header bg-dark text-white">
-                <div class="d-flex flex-column">
-                    <h6 class="modal-title fw-bold"><i class="fas fa-magic me-2 text-warning"></i>Penyeragaman Data Induk</h6>
-                    <small class="opacity-75" style="font-size: 0.75rem;">Kemaskini nama program secara pukal untuk mengelakkan duplikasi.</small>
-                </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-dark text-white"><h6 class="modal-title fw-bold">Penyeragaman Data Induk</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body p-0">
+                <div class="p-3 sticky-top bg-white border-bottom shadow-sm"><input type="text" id="standardizeSearch" class="form-control" placeholder="Cari Nama Program..." oninput="handleStandardizeSearch(this.value)"></div>
+                <div class="table-responsive"><table class="table table-hover table-striped mb-0 small"><thead class="bg-dark text-white sticky-top"><tr><th style="width:5%">#</th><th style="width:40%">Program Asal</th><th style="width:10%">Kekerapan</th><th style="width:35%">Nama Baru</th><th style="width:10%">Aksi</th></tr></thead><tbody id="tbodyStandardize"></tbody></table></div>
             </div>
-            
-            <div class="modal-body p-0 bg-light">
-                <div class="p-3 bg-white border-bottom sticky-top shadow-sm z-index-10">
-                    <div class="input-group">
-                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
-                        <input type="text" id="standardizeSearch" class="form-control border-start-0" placeholder="Cari nama program (Contoh: CATUR)..." oninput="handleStandardizeSearch(this.value)">
-                        <button class="btn btn-outline-secondary" onclick="document.getElementById('standardizeSearch').value=''; handleStandardizeSearch('');">Reset</button>
-                    </div>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="table table-hover table-striped mb-0 small align-middle">
-                        <thead class="bg-dark text-white sticky-top" style="top: 0px;">
-                            <tr>
-                                <th style="width: 5%;" class="text-center">#</th>
-                                <th style="width: 40%;">Nama Program Asal (Sedia Ada)</th>
-                                <th style="width: 10%;" class="text-center">Kekerapan</th>
-                                <th style="width: 35%;">Nama Baru (Untuk Diseragamkan)</th>
-                                <th style="width: 10%;" class="text-center">Tindakan</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tbodyStandardize">
-                            <tr><td colspan="5" class="text-center py-5 text-muted">Memuatkan data analisa...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="modal-footer bg-white p-2 justify-content-between">
-                <span class="text-muted small ms-2"><i class="fas fa-info-circle me-1"></i> Perubahan akan dikemaskini serta-merta di pangkalan data.</span>
-                <button type="button" class="btn btn-sm btn-secondary fw-bold" data-bs-dismiss="modal">Tutup</button>
-            </div>
+            <div class="modal-footer p-2"><button type="button" class="btn btn-sm btn-secondary fw-bold" data-bs-dismiss="modal">Tutup</button></div>
         </div>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   
-  <!-- CORE MODULES -->
+  <!-- CORE & ADMIN MODULES -->
   <script type="module" src="js/core/helpers.js"></script>
   <script type="module" src="js/core/db.js"></script>
-  
-  <!-- ADMIN MODULES -->
   <script type="module" src="js/admin/dashboard.js"></script>
   <script type="module" src="js/admin/analysis.js"></script>
   <script type="module" src="js/admin/achievement.js"></script>
@@ -733,384 +582,3 @@
 
 </body>
 </html>
-}
-
-{
-type: uploaded file
-fileName: sirsm7/dev/dev-a0901576d197401e3763ef1139a45e364d0313dc/js/admin/gallery_manager.js
-fullContent:
-/**
- * ADMIN MODULE: GALLERY MANAGER (DEV)
- * Menguruskan paparan galeri admin, carian sekolah, dan tapisan.
- * * DIKEMASKINI: Word Cloud fix & Visual Kad 100% Sekolah Parity.
- * * UPDATE FIX (ID COLLISION): Added prefix 'gallery' to IDs to avoid conflict with Tab 3.
- */
-
-import { AchievementService } from '../services/achievement.service.js';
-
-let adminGalleryData = [];
-let gallerySchoolListCache = [];
-let searchDebounceTimer;
-let currentJawatanFilter = 'ALL'; 
-
-// --- 1. INITIALIZATION ---
-window.initAdminGallery = function() {
-    // Pastikan reset filter bila init
-    currentJawatanFilter = 'ALL';
-    
-    if (window.globalDashboardData && window.globalDashboardData.length > 0) {
-        populateGallerySchoolList();
-    } else {
-        console.warn("Gallery: Global data missing. Waiting...");
-    }
-};
-
-// --- 2. POPULATE & SEARCH LOGIC ---
-function populateGallerySchoolList() {
-    const select = document.getElementById('gallerySchoolSelector');
-    if (!select) return;
-
-    gallerySchoolListCache = window.globalDashboardData.filter(s => s.kod_sekolah !== 'M030');
-    renderGalleryDropdown();
-    
-    // Default load M030
-    window.loadAdminGalleryGrid('M030');
-}
-
-function renderGalleryDropdown(filterText = '') {
-    const select = document.getElementById('gallerySchoolSelector');
-    if (!select) return;
-
-    const currentValue = select.value;
-    select.innerHTML = '<option value="M030">PPD ALOR GAJAH (M030)</option>';
-
-    const listToRender = filterText 
-        ? gallerySchoolListCache.filter(s => 
-            s.nama_sekolah.toUpperCase().includes(filterText.toUpperCase()) || 
-            s.kod_sekolah.toUpperCase().includes(filterText.toUpperCase())
-          )
-        : gallerySchoolListCache;
-
-    listToRender.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.kod_sekolah;
-        opt.innerText = s.nama_sekolah;
-        select.appendChild(opt);
-    });
-
-    const exactMatch = listToRender.find(s => s.kod_sekolah === filterText.toUpperCase());
-    if (exactMatch) {
-        select.value = exactMatch.kod_sekolah;
-        return; 
-    }
-
-    if (filterText && listToRender.length === 1) {
-        select.value = listToRender[0].kod_sekolah;
-    } else {
-        const exists = Array.from(select.options).some(o => o.value === currentValue);
-        if (exists && currentValue) {
-            select.value = currentValue;
-        } else if (filterText && listToRender.length > 0) {
-            select.value = listToRender[0].kod_sekolah;
-        }
-    }
-}
-
-window.handleGallerySchoolSearch = function(val) {
-    renderGalleryDropdown(val);
-    const select = document.getElementById('gallerySchoolSelector');
-    const selectedKod = select.value;
-
-    clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(() => {
-        if(selectedKod) {
-            window.loadAdminGalleryGrid(selectedKod);
-        }
-    }, 500);
-};
-
-window.resetGallery = function() {
-    const select = document.getElementById('gallerySchoolSelector');
-    const searchInput = document.getElementById('gallerySearchInput');
-
-    if(select) {
-        clearTimeout(searchDebounceTimer);
-        if(searchInput) searchInput.value = "";
-        renderGalleryDropdown(''); 
-        select.value = "M030";
-        window.loadAdminGalleryGrid("M030");
-    }
-};
-
-// --- 3. DATA LOADING & RENDERING ---
-window.loadAdminGalleryGrid = async function(kod) {
-    const grid = document.getElementById('adminGalleryGrid');
-    const filterContainer = document.getElementById('galleryFilterContainer');
-    const counterEl = document.getElementById('galleryTotalCount');
-    
-    // UPDATED ID: galleryCloudWrapper (Fix ID Collision)
-    const cloudWrapper = document.getElementById('galleryCloudWrapper');
-
-    if(!grid) return;
-
-    updateGalleryHeader(kod);
-
-    // Reset UI
-    grid.innerHTML = `<div class="col-12 text-center py-5"><div class="spinner-border text-indigo"></div><p class="mt-2 small text-muted">Memuatkan galeri...</p></div>`;
-    if(counterEl) counterEl.innerText = "0";
-    filterContainer.innerHTML = '';
-    
-    // Reset Filter State & Hide Cloud
-    currentJawatanFilter = 'ALL';
-    if(cloudWrapper) {
-        cloudWrapper.classList.add('hidden');
-        // Reset butang reset dalam cloud juga (UPDATED ID)
-        const btnReset = document.getElementById('btnResetGalleryCloud');
-        if(btnReset) btnReset.classList.add('hidden');
-    }
-
-    try {
-        const data = await AchievementService.getBySchool(kod);
-        adminGalleryData = data;
-
-        const categories = [...new Set(data.map(item => item.kategori))].filter(c => c).sort();
-        let filterHtml = `<button class="btn btn-sm btn-dark rounded-pill px-3 active fw-bold" onclick="filterAdminGallery('ALL', this)">SEMUA</button>`;
-        
-        categories.forEach(cat => {
-            let btnClass = 'btn-outline-secondary';
-            if (cat === 'MURID') btnClass = 'btn-outline-primary';
-            else if (cat === 'GURU') btnClass = 'btn-outline-warning text-dark';
-            else if (cat === 'SEKOLAH') btnClass = 'btn-outline-success';
-            else if (cat === 'PPD') btnClass = 'btn-outline-indigo';
-            
-            filterHtml += `<button class="btn btn-sm ${btnClass} rounded-pill px-3 fw-bold ms-1" onclick="filterAdminGallery('${cat}', this)">${cat}</button>`;
-        });
-        
-        filterContainer.innerHTML = filterHtml;
-        renderAdminCards('ALL');
-
-    } catch (e) {
-        console.error(e);
-        grid.innerHTML = `<div class="col-12 text-center text-danger py-5">Gagal memuatkan data.</div>`;
-    }
-};
-
-function updateGalleryHeader(kod) {
-    const lblTitle = document.getElementById('galleryHeaderTitle');
-    const lblSub = document.getElementById('galleryHeaderSubtitle');
-    
-    if (kod === 'M030') {
-        lblTitle.innerText = "PPD ALOR GAJAH";
-        lblSub.innerHTML = `<span class="badge bg-indigo me-2">M030</span> <span class="text-muted fw-bold">Unit Sumber Teknologi Pendidikan</span>`;
-    } else {
-        let nama = kod;
-        const s = window.globalDashboardData?.find(x => x.kod_sekolah === kod);
-        if(s) nama = s.nama_sekolah;
-        
-        lblTitle.innerText = nama;
-        lblSub.innerHTML = `<span class="badge bg-indigo me-2">${kod}</span> <span class="text-muted fw-bold">Galeri Sekolah</span>`;
-    }
-}
-
-// --- 4. FILTERING & CARDS ---
-window.filterAdminGallery = function(type, btn) {
-    if (btn) {
-        const btns = document.querySelectorAll('#galleryFilterContainer button');
-        btns.forEach(b => {
-            const txt = b.innerText;
-            b.className = "btn btn-sm rounded-pill px-3 fw-bold ms-1 " + getBtnClass(txt, false);
-        });
-        btn.className = "btn btn-sm rounded-pill px-3 fw-bold ms-1 active btn-dark text-white";
-    }
-
-    // --- LOGIK WORD CLOUD ---
-    // UPDATED ID: galleryCloudWrapper
-    const cloudWrapper = document.getElementById('galleryCloudWrapper');
-    
-    if (type === 'GURU') {
-        if(cloudWrapper) {
-            cloudWrapper.classList.remove('hidden');
-            generateJawatanCloud();
-        }
-    } else {
-        if(cloudWrapper) cloudWrapper.classList.add('hidden');
-        currentJawatanFilter = 'ALL';
-    }
-
-    renderAdminCards(type);
-};
-
-function getBtnClass(cat, isActive) {
-    if(isActive) return 'btn-dark text-white active';
-    if (cat === 'MURID') return 'btn-outline-primary';
-    if (cat === 'GURU') return 'btn-outline-warning text-dark';
-    if (cat === 'SEKOLAH') return 'btn-outline-success';
-    if (cat === 'PPD') return 'btn-outline-indigo';
-    return 'btn-outline-secondary';
-}
-
-function renderAdminCards(filterType) {
-    const grid = document.getElementById('adminGalleryGrid');
-    const counterEl = document.getElementById('galleryTotalCount');
-    grid.innerHTML = '';
-
-    // Filter Utama
-    let filtered = (filterType === 'ALL') 
-        ? adminGalleryData 
-        : adminGalleryData.filter(item => item.kategori === filterType);
-
-    // Filter Sub-Kategori (Jawatan)
-    if (filterType === 'GURU' && currentJawatanFilter !== 'ALL') {
-        filtered = filtered.filter(item => (item.jawatan || '') === currentJawatanFilter);
-    }
-
-    if(counterEl) counterEl.innerText = filtered.length;
-
-    if (filtered.length === 0) {
-        let msg = "Tiada rekod untuk kategori ini.";
-        if (filterType === 'GURU' && currentJawatanFilter !== 'ALL') {
-            msg = `Tiada rekod untuk jawatan <b>${currentJawatanFilter}</b>.`;
-        }
-        grid.innerHTML = `<div class="col-12 text-center py-5 text-muted fst-italic">${msg}</div>`;
-        return;
-    }
-
-    const uniqueYears = [...new Set(filtered.map(item => item.tahun))].sort((a, b) => b - a);
-
-    uniqueYears.forEach(year => {
-        grid.innerHTML += `
-            <div class="col-12 mt-3 mb-2 fade-up">
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-light text-dark border me-2 shadow-sm" style="font-size: 0.9rem;">
-                        <i class="fas fa-calendar-alt me-1 text-secondary"></i> ${year}
-                    </span>
-                    <div class="flex-grow-1 border-bottom opacity-25"></div>
-                </div>
-            </div>`;
-
-        const itemsInYear = filtered.filter(item => item.tahun === year);
-        itemsInYear.forEach(item => {
-            grid.innerHTML += createAdminCardHTML(item);
-        });
-    });
-}
-
-// --- FUNGSI WORD CLOUD ---
-function generateJawatanCloud() {
-    // UPDATED ID: galleryCloudContainer
-    const container = document.getElementById('galleryCloudContainer');
-    if (!container) return;
-
-    // Guna data Guru sahaja
-    const guruData = adminGalleryData.filter(item => item.kategori === 'GURU');
-    
-    const counts = {};
-    let maxCount = 0;
-
-    guruData.forEach(item => {
-        // SAFETY FIX: Handle null/undefined jawatan
-        const j = (item.jawatan || '').trim();
-        if (j !== "") {
-            counts[j] = (counts[j] || 0) + 1;
-            if (counts[j] > maxCount) maxCount = counts[j];
-        }
-    });
-
-    const entries = Object.entries(counts);
-    
-    if (entries.length === 0) {
-        container.innerHTML = `<small class="text-muted fst-italic">Tiada data jawatan spesifik.</small>`;
-        return;
-    }
-
-    entries.sort((a, b) => b[1] - a[1]);
-
-    container.innerHTML = '';
-    entries.forEach(([jawatan, count]) => {
-        let sizeClass = `tag-size-${Math.ceil((count / maxCount) * 4)}`; 
-        if(count === 1) sizeClass = 'tag-size-1';
-
-        const isActive = (jawatan === currentJawatanFilter) ? 'active' : '';
-        // Perhatian: Menggunakan filterByJawatan (fungsi global)
-        const btnHTML = `<div class="cloud-tag ${sizeClass} ${isActive}" onclick="filterByJawatan('${jawatan}')">${jawatan} <span class="count-badge">${count}</span></div>`;
-        container.innerHTML += btnHTML;
-    });
-}
-
-window.filterByJawatan = function(jawatan) {
-    currentJawatanFilter = (currentJawatanFilter === jawatan) ? 'ALL' : jawatan;
-    
-    // UPDATED ID: btnResetGalleryCloud
-    const btnReset = document.getElementById('btnResetGalleryCloud');
-    if(btnReset) {
-        if (currentJawatanFilter !== 'ALL') btnReset.classList.remove('hidden');
-        else btnReset.classList.add('hidden');
-    }
-
-    generateJawatanCloud(); // Re-render cloud untuk update status 'active'
-    renderAdminCards('GURU'); // Re-render grid dengan filter jawatan
-};
-
-function createAdminCardHTML(item) {
-    const link = item.pautan_bukti || "";
-    let thumbnailArea = "";
-    let iconType = "fa-link";
-    
-    let borderClass = "";
-    let textClass = "";
-    let catIcon = "";
-    let catColor = "";
-
-    if (item.kategori === 'MURID') {
-        borderClass = "border-top-primary"; textClass = "text-primary"; catIcon = "fa-user-graduate"; catColor = "#0d6efd";
-    } else if (item.kategori === 'GURU') {
-        borderClass = "border-top-warning"; textClass = "text-warning"; catIcon = "fa-chalkboard-user"; catColor = "#ffc107";
-    } else if (item.kategori === 'SEKOLAH') {
-        borderClass = "border-top-success"; textClass = "text-success"; catIcon = "fa-school"; catColor = "#198754";
-    } else if (item.kategori === 'PPD') {
-        borderClass = "border-top-indigo"; textClass = "text-indigo"; catIcon = "fa-building"; catColor = "#4b0082";
-    } else {
-        borderClass = "border-top-dark"; textClass = "text-dark"; catIcon = "fa-folder"; catColor = "#212529";
-    }
-
-    const fileIdMatch = link.match(/\/d\/([a-zA-Z0-9_-]+)/);
-    const folderMatch = link.match(/\/folders\/([a-zA-Z0-9_-]+)/);
-    const youtubeMatch = link.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
-
-    if (folderMatch) {
-        iconType = "fa-folder";
-        thumbnailArea = `<div class="gallery-thumb-container bg-light d-flex align-items-center justify-content-center"><i class="fas fa-folder folder-icon" style="color: ${catColor} !important; opacity: 0.8;"></i></div>`;
-    } else if (fileIdMatch) {
-        const fileId = fileIdMatch[1];
-        const thumbUrl = `https://lh3.googleusercontent.com/d/${fileId}=s400`;
-        iconType = "fa-image";
-        thumbnailArea = `<div class="gallery-thumb-container"><img src="${thumbUrl}" class="gallery-thumb" loading="lazy" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'gallery-thumb-container bg-light d-flex align-items-center justify-content-center\\'><i class=\\'fas fa-file-image fa-2x text-secondary opacity-25\\'></i></div>'"></div>`;
-    } else if (youtubeMatch) {
-        const videoId = youtubeMatch[1];
-        const thumbUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`; 
-        iconType = "fa-play";
-        thumbnailArea = `<div class="gallery-thumb-container"><img src="${thumbUrl}" class="gallery-thumb" loading="lazy" style="object-fit: cover;"><div class="position-absolute top-50 start-50 translate-middle text-white opacity-75"><i class="fas fa-play-circle fa-3x shadow-sm"></i></div></div>`;
-    } else {
-        iconType = "fa-globe";
-        let domain = ""; try { domain = new URL(link).hostname; } catch(e) {}
-        const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
-        thumbnailArea = `<div class="gallery-thumb-container bg-light d-flex align-items-center justify-content-center flex-column"><img src="${faviconUrl}" style="width: 48px; height: 48px;" class="mb-2 shadow-sm rounded-circle bg-white p-1" onerror="this.style.display='none';"><div class="text-muted small mt-1 text-truncate w-75 text-center">${domain}</div></div>`;
-    }
-
-    return `
-    <div class="col-6 col-sm-4 col-md-3 col-lg-2 fade-up">
-        <div class="card-gallery ${borderClass} h-100 shadow-sm" onclick="window.open('${link}', '_blank')" title="Klik untuk lihat bukti">
-            ${thumbnailArea}
-            <div class="category-icon ${textClass}"><i class="fas ${catIcon}"></i> ${item.kategori}</div>
-            <div class="icon-overlay"><i class="fas ${iconType}"></i></div>
-            <div class="card-body p-3 card-body-flex">
-                <h6 class="fw-bold text-dark mb-1 text-wrap-safe" style="font-size: 0.85rem; line-height: 1.3;">${item.nama_pertandingan}</h6>
-                <p class="text-secondary mb-2 small fw-bold opacity-75 text-wrap-safe" style="font-size: 0.7rem;">${item.nama_peserta}</p>
-                <div class="mt-auto pt-2 border-top border-light d-flex justify-content-between align-items-center">
-                    <span class="${textClass} fw-bold text-wrap-safe" style="font-size: 0.75rem;">${item.pencapaian}</span>
-                </div>
-            </div>
-        </div>
-    </div>`;
-}
-}

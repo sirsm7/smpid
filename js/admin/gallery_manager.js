@@ -2,7 +2,7 @@
  * ADMIN MODULE: GALLERY MANAGER (DEV)
  * Menguruskan paparan galeri admin, carian sekolah, dan tapisan.
  * * DIKEMASKINI: Word Cloud fix & Visual Kad 100% Sekolah Parity.
- * * UPDATE FIX (ID COLLISION): Added prefix 'gallery' to IDs to avoid conflict with Tab 3.
+ * * UPDATE FIX (ID COLLISION): Rename filterByJawatan to filterGalleryByJawatan.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -10,12 +10,12 @@ import { AchievementService } from '../services/achievement.service.js';
 let adminGalleryData = [];
 let gallerySchoolListCache = [];
 let searchDebounceTimer;
-let currentJawatanFilter = 'ALL'; 
+let currentGalleryJawatanFilter = 'ALL'; 
 
 // --- 1. INITIALIZATION ---
 window.initAdminGallery = function() {
     // Pastikan reset filter bila init
-    currentJawatanFilter = 'ALL';
+    currentGalleryJawatanFilter = 'ALL';
     
     if (window.globalDashboardData && window.globalDashboardData.length > 0) {
         populateGallerySchoolList();
@@ -120,7 +120,7 @@ window.loadAdminGalleryGrid = async function(kod) {
     filterContainer.innerHTML = '';
     
     // Reset Filter State & Hide Cloud
-    currentJawatanFilter = 'ALL';
+    currentGalleryJawatanFilter = 'ALL';
     if(cloudWrapper) {
         cloudWrapper.classList.add('hidden');
         // Reset butang reset dalam cloud juga (UPDATED ID)
@@ -193,7 +193,7 @@ window.filterAdminGallery = function(type, btn) {
         }
     } else {
         if(cloudWrapper) cloudWrapper.classList.add('hidden');
-        currentJawatanFilter = 'ALL';
+        currentGalleryJawatanFilter = 'ALL';
     }
 
     renderAdminCards(type);
@@ -219,16 +219,16 @@ function renderAdminCards(filterType) {
         : adminGalleryData.filter(item => item.kategori === filterType);
 
     // Filter Sub-Kategori (Jawatan)
-    if (filterType === 'GURU' && currentJawatanFilter !== 'ALL') {
-        filtered = filtered.filter(item => (item.jawatan || '') === currentJawatanFilter);
+    if (filterType === 'GURU' && currentGalleryJawatanFilter !== 'ALL') {
+        filtered = filtered.filter(item => (item.jawatan || '') === currentGalleryJawatanFilter);
     }
 
     if(counterEl) counterEl.innerText = filtered.length;
 
     if (filtered.length === 0) {
         let msg = "Tiada rekod untuk kategori ini.";
-        if (filterType === 'GURU' && currentJawatanFilter !== 'ALL') {
-            msg = `Tiada rekod untuk jawatan <b>${currentJawatanFilter}</b>.`;
+        if (filterType === 'GURU' && currentGalleryJawatanFilter !== 'ALL') {
+            msg = `Tiada rekod untuk jawatan <b>${currentGalleryJawatanFilter}</b>.`;
         }
         grid.innerHTML = `<div class="col-12 text-center py-5 text-muted fst-italic">${msg}</div>`;
         return;
@@ -289,20 +289,21 @@ function generateJawatanCloud() {
         let sizeClass = `tag-size-${Math.ceil((count / maxCount) * 4)}`; 
         if(count === 1) sizeClass = 'tag-size-1';
 
-        const isActive = (jawatan === currentJawatanFilter) ? 'active' : '';
-        // Perhatian: Menggunakan filterByJawatan (fungsi global)
-        const btnHTML = `<div class="cloud-tag ${sizeClass} ${isActive}" onclick="filterByJawatan('${jawatan}')">${jawatan} <span class="count-badge">${count}</span></div>`;
+        const isActive = (jawatan === currentGalleryJawatanFilter) ? 'active' : '';
+        // Renamed function call to filterGalleryByJawatan
+        const btnHTML = `<div class="cloud-tag ${sizeClass} ${isActive}" onclick="filterGalleryByJawatan('${jawatan}')">${jawatan} <span class="count-badge">${count}</span></div>`;
         container.innerHTML += btnHTML;
     });
 }
 
-window.filterByJawatan = function(jawatan) {
-    currentJawatanFilter = (currentJawatanFilter === jawatan) ? 'ALL' : jawatan;
+// FIX: Renamed global function to avoid collision with Achievement Tab
+window.filterGalleryByJawatan = function(jawatan) {
+    currentGalleryJawatanFilter = (currentGalleryJawatanFilter === jawatan) ? 'ALL' : jawatan;
     
     // UPDATED ID: btnResetGalleryCloud
     const btnReset = document.getElementById('btnResetGalleryCloud');
     if(btnReset) {
-        if (currentJawatanFilter !== 'ALL') btnReset.classList.remove('hidden');
+        if (currentGalleryJawatanFilter !== 'ALL') btnReset.classList.remove('hidden');
         else btnReset.classList.add('hidden');
     }
 
