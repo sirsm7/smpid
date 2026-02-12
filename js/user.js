@@ -6,6 +6,7 @@
  * - Added text-wrap-safe class.
  * - LOGIC FIX: Auto-set Peringkat ANTARABANGSA untuk Pensijilan Guru.
  * - UI FIX: Tahun dipisahkan dari div Peringkat agar sentiasa kelihatan.
+ * - UI FIX: Penyeragaman label NAMA PESERTA secara dinamik.
  */
 
 import { toggleLoading, checkEmailDomain, autoFormatPhone, keluarSistem, formatSentenceCase } from './core/helpers.js';
@@ -316,12 +317,22 @@ window.openEditPencapaianUser = function(id) {
     if (!item) return;
 
     document.getElementById('editUserId').value = item.id;
-    document.getElementById('editUserJenis').value = item.jenis_rekod;
+    
+    // Check radio button appropriately
+    if (item.jenis_rekod === 'PENSIJILAN') {
+        document.getElementById('editRadioPensijilanUser').checked = true;
+    } else {
+        document.getElementById('editRadioPertandinganUser').checked = true;
+    }
+
     document.getElementById('editUserNama').value = item.nama_peserta;
     document.getElementById('editUserProgram').value = item.nama_pertandingan;
     document.getElementById('editUserPencapaian').value = item.pencapaian;
     document.getElementById('editUserLink').value = item.pautan_bukti;
     document.getElementById('editUserTahun').value = item.tahun;
+
+    // Force UI update
+    window.toggleEditUserJenis();
 
     // Logic Papar/Sorok Jawatan
     const divJawatan = document.getElementById('editUserDivJawatan');
@@ -332,27 +343,40 @@ window.openEditPencapaianUser = function(id) {
         divJawatan.classList.add('hidden');
     }
 
-    // Logic Papar/Sorok Peringkat vs Penyedia
-    const divPenyedia = document.getElementById('editUserDivPenyedia');
-    const colPeringkat = document.getElementById('editUserColPeringkat'); // Ambil Column Grid, bukan select element
-
     if (item.jenis_rekod === 'PENSIJILAN') {
-        divPenyedia.classList.remove('hidden');
-        colPeringkat.classList.add('hidden'); // Sembunyikan dropdown peringkat
         document.getElementById('editUserPenyedia').value = item.penyedia || 'LAIN-LAIN';
     } else {
-        divPenyedia.classList.add('hidden');
-        colPeringkat.classList.remove('hidden'); // Paparkan dropdown peringkat
         document.getElementById('editUserPeringkat').value = item.peringkat || 'KEBANGSAAN';
     }
 
     new bootstrap.Modal(document.getElementById('modalEditPencapaianUser')).show();
 };
 
+window.toggleEditUserJenis = function() {
+    const jenis = document.querySelector('input[name="editRadioJenisUser"]:checked').value;
+    
+    const divPenyedia = document.getElementById('editUserDivPenyedia');
+    const colPeringkat = document.getElementById('editUserColPeringkat');
+    const lblProgram = document.getElementById('lblEditUserProgram');
+    const lblPencapaian = document.getElementById('lblEditUserPencapaian');
+
+    if (jenis === 'PENSIJILAN') {
+        divPenyedia.classList.remove('hidden');
+        colPeringkat.classList.add('hidden'); 
+        lblProgram.innerText = "NAMA SIJIL / PROGRAM";
+        lblPencapaian.innerText = "TAHAP / SKOR";
+    } else {
+        divPenyedia.classList.add('hidden');
+        colPeringkat.classList.remove('hidden'); 
+        lblProgram.innerText = "NAMA PERTANDINGAN";
+        lblPencapaian.innerText = "PENCAPAIAN";
+    }
+};
+
 window.updatePencapaianUser = async function() {
     const id = document.getElementById('editUserId').value;
     const btn = document.querySelector('#formEditPencapaianUser button[type="submit"]');
-    const jenis = document.getElementById('editUserJenis').value;
+    const jenis = document.querySelector('input[name="editRadioJenisUser"]:checked').value;
 
     if(btn) btn.disabled = true;
     toggleLoading(true);
@@ -363,7 +387,8 @@ window.updatePencapaianUser = async function() {
             nama_pertandingan: document.getElementById('editUserProgram').value.toUpperCase(),
             pencapaian: document.getElementById('editUserPencapaian').value.toUpperCase(),
             pautan_bukti: document.getElementById('editUserLink').value,
-            tahun: parseInt(document.getElementById('editUserTahun').value)
+            tahun: parseInt(document.getElementById('editUserTahun').value),
+            jenis_rekod: jenis
         };
 
         if (!document.getElementById('editUserDivJawatan').classList.contains('hidden')) {
@@ -372,7 +397,6 @@ window.updatePencapaianUser = async function() {
 
         if (jenis === 'PENSIJILAN') {
             payload.penyedia = document.getElementById('editUserPenyedia').value;
-            // Force Antarabangsa untuk pensijilan walaupun disorok
             payload.peringkat = 'ANTARABANGSA'; 
         } else {
             payload.peringkat = document.getElementById('editUserPeringkat').value;
@@ -410,12 +434,14 @@ window.setPencapaianType = function(type) {
     const wrapperJenis = document.getElementById('wrapperJenisRekod');
     const divJawatan = document.getElementById('divInputJawatan');
     const inpName = document.getElementById('pInputNama');
+    const lblName = document.getElementById('labelNamaPeserta');
 
     if (type === 'GURU') {
         wrapperJenis.classList.remove('hidden');
         divJawatan.classList.remove('hidden');
         inpName.value = "";
         inpName.readOnly = false;
+        lblName.innerText = "NAMA GURU";
     } else {
         wrapperJenis.classList.add('hidden');
         divJawatan.classList.add('hidden');
@@ -425,9 +451,11 @@ window.setPencapaianType = function(type) {
         if (type === 'SEKOLAH') {
             inpName.value = document.getElementById('dispNamaSekolah').innerText;
             inpName.readOnly = true;
+            lblName.innerText = "NAMA SEKOLAH";
         } else {
             inpName.value = "";
             inpName.readOnly = false;
+            lblName.innerText = "NAMA MURID / KUMPULAN";
         }
     }
     window.toggleJenisPencapaian();

@@ -182,7 +182,7 @@
                     <input type="radio" class="btn-check" name="radioJenis" id="radioPertandingan" autocomplete="off" checked onchange="toggleJenisPencapaian()">
                     <label class="btn btn-outline-primary fw-bold" for="radioPertandingan">PERTANDINGAN</label>
                     <input type="radio" class="btn-check" name="radioJenis" id="radioPensijilan" autocomplete="off" onchange="toggleJenisPencapaian()">
-                    <label class="btn btn-outline-warning fw-bold text-dark" for="radioPensijilan">PENSIJILAN PROFESIONAL</label>
+                    <label class="btn btn-outline-warning fw-bold text-dark" for="radioPensijilan">PENSIJILAN</label>
                 </div>
             </div>
             <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 border-top border-purple border-4">
@@ -294,8 +294,16 @@
             <div class="modal-body p-4">
                 <form id="formEditPencapaianUser" onsubmit="event.preventDefault(); updatePencapaianUser();">
                     <input type="hidden" id="editUserId">
-                    <input type="hidden" id="editUserJenis">
                     
+                    <div class="mb-4 text-center">
+                        <div class="btn-group w-100 shadow-sm">
+                            <input type="radio" class="btn-check" name="editRadioJenisUser" id="editRadioPertandinganUser" value="PERTANDINGAN" onchange="toggleEditUserJenis()">
+                            <label class="btn btn-outline-primary fw-bold" for="editRadioPertandinganUser">PERTANDINGAN</label>
+                            <input type="radio" class="btn-check" name="editRadioJenisUser" id="editRadioPensijilanUser" value="PENSIJILAN" onchange="toggleEditUserJenis()">
+                            <label class="btn btn-outline-warning fw-bold text-dark" for="editRadioPensijilanUser">PENSIJILAN</label>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-muted">NAMA PESERTA / SEKOLAH</label>
                         <input type="text" id="editUserNama" class="form-control uppercase-input fw-bold" oninput="this.value = this.value.toUpperCase()" required>

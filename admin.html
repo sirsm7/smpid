@@ -514,13 +514,34 @@
             <div class="modal-body p-4">
                 <form id="formPencapaianPPD" onsubmit="event.preventDefault(); simpanPencapaianPPD();">
                     <input type="hidden" id="ppdInputJenisRekod" value="PERTANDINGAN">
-                    <div class="mb-3 text-center"><div class="btn-group w-100" role="group"><input type="radio" class="btn-check" name="radKatPPD" id="radPegawai" value="PEGAWAI" checked onchange="toggleKategoriPPD()"><label class="btn btn-outline-dark fw-bold" for="radPegawai">Pegawai</label><input type="radio" class="btn-check" name="radKatPPD" id="radUnit" value="PPD" onchange="toggleKategoriPPD()"><label class="btn btn-outline-dark fw-bold" for="radUnit">Unit</label></div></div>
-                    <div class="mb-3 text-center"><div class="btn-group w-100" role="group"><input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPertandingan" checked onchange="toggleJenisPencapaianPPD()"><label class="btn btn-outline-primary fw-bold" for="radPpdPertandingan">Pertandingan</label><input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPensijilan" onchange="toggleJenisPencapaianPPD()"><label class="btn btn-outline-warning text-dark fw-bold" for="radPpdPensijilan">Sijil</label></div></div>
-                    <div class="mb-3"><label class="small fw-bold" id="lblPpdNamaPeserta">NAMA</label><input type="text" id="ppdInputNama" class="form-control uppercase-input"></div>
-                    <div id="divPpdPenyedia" class="mb-3 hidden"><label class="small fw-bold">PENYEDIA</label><select id="ppdInputPenyedia" class="form-select"><option value="LAIN-LAIN">LAIN</option><option value="GOOGLE">GOOGLE</option><option value="APPLE">APPLE</option><option value="MICROSOFT">MS</option></select></div>
-                    <div class="mb-3"><label class="small fw-bold" id="lblPpdProgram">PROGRAM</label><input type="text" id="ppdInputProgram" class="form-control uppercase-input"></div>
-                    <div class="row g-2 mb-3"><div class="col-6" id="divPpdColPeringkat"><label class="small fw-bold">PERINGKAT</label><select id="ppdInputPeringkat" class="form-select"><option value="KEBANGSAAN">KEBANGSAAN</option><option value="ANTARABANGSA">ANTARABANGSA</option></select></div><div class="col-6"><label class="small fw-bold">TAHUN</label><input type="number" id="ppdInputTahun" class="form-control" value="2026"></div></div>
-                    <div class="mb-3"><label class="small fw-bold" id="lblPpdPencapaian">PENCAPAIAN</label><input type="text" id="ppdInputPencapaian" class="form-control uppercase-input"></div>
+                    <div class="mb-3 text-center">
+                        <div class="btn-group w-100 shadow-sm" role="group">
+                            <input type="radio" class="btn-check" name="radKatPPD" id="radPegawai" value="PEGAWAI" checked onchange="toggleKategoriPPD()">
+                            <label class="btn btn-outline-dark fw-bold" for="radPegawai">PEGAWAI</label>
+                            <input type="radio" class="btn-check" name="radKatPPD" id="radUnit" value="PPD" onchange="toggleKategoriPPD()">
+                            <label class="btn btn-outline-dark fw-bold" for="radUnit">UNIT / SEKTOR</label>
+                        </div>
+                    </div>
+                    <div class="mb-3 text-center">
+                        <div class="btn-group w-100 shadow-sm" role="group">
+                            <input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPertandingan" checked onchange="toggleJenisPencapaianPPD()">
+                            <label class="btn btn-outline-primary fw-bold" for="radPpdPertandingan">PERTANDINGAN</label>
+                            <input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPensijilan" onchange="toggleJenisPencapaianPPD()">
+                            <label class="btn btn-outline-warning fw-bold text-dark" for="radPpdPensijilan">PENSIJILAN</label>
+                        </div>
+                    </div>
+                    <div class="mb-3"><label class="small fw-bold" id="lblPpdNamaPeserta">NAMA PEGAWAI</label><input type="text" id="ppdInputNama" class="form-control uppercase-input"></div>
+                    <div id="divPpdPenyedia" class="mb-3 hidden"><label class="small fw-bold text-warning">PENYEDIA</label>
+                        <select id="ppdInputPenyedia" class="form-select bg-light border-warning fw-bold text-dark">
+                            <option value="LAIN-LAIN" selected>LAIN-LAIN (AWS/CISCO/DLL)</option>
+                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
+                            <option value="APPLE">APPLE EDUCATION</option>
+                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
+                        </select>
+                    </div>
+                    <div class="mb-3"><label class="small fw-bold" id="lblPpdProgram">NAMA PROGRAM</label><input type="text" id="ppdInputProgram" class="form-control uppercase-input"></div>
+                    <div class="row g-2 mb-3"><div class="col-6" id="divPpdColPeringkat"><label class="small fw-bold">PERINGKAT</label><select id="ppdInputPeringkat" class="form-select bg-light"><option value="KEBANGSAAN">KEBANGSAAN</option><option value="ANTARABANGSA">ANTARABANGSA</option></select></div><div class="col-6"><label class="small fw-bold">TAHUN</label><input type="number" id="ppdInputTahun" class="form-control" value="2026"></div></div>
+                    <div class="mb-3"><label class="small fw-bold" id="lblPpdPencapaian">PENCAPAIAN / SKOR</label><input type="text" id="ppdInputPencapaian" class="form-control uppercase-input"></div>
                     <div class="mb-4"><label class="small fw-bold">PAUTAN BUKTI</label><input type="url" id="ppdInputLink" class="form-control"></div>
                     <button type="submit" class="btn btn-indigo w-100 fw-bold py-3 shadow-sm">SIMPAN REKOD</button>
                 </form>
@@ -537,15 +558,46 @@
             <div class="modal-body p-4">
                 <form id="formEditPencapaian" onsubmit="event.preventDefault(); simpanEditPencapaian();">
                     <input type="hidden" id="editIdPencapaian">
-                    <div class="mb-4 text-center"><div class="btn-group w-100 shadow-sm"><input type="radio" class="btn-check" name="editRadioJenis" id="editRadioPertandingan" value="PERTANDINGAN" onchange="toggleEditJenis()"><label class="btn btn-outline-primary fw-bold" for="editRadioPertandingan">Pertandingan</label><input type="radio" class="btn-check" name="editRadioJenis" id="editRadioPensijilan" value="PENSIJILAN" onchange="toggleEditJenis()"><label class="btn btn-outline-warning fw-bold text-dark" for="editRadioPensijilan">Sijil</label></div></div>
+                    <div class="mb-4 text-center">
+                        <div class="btn-group w-100 shadow-sm">
+                            <input type="radio" class="btn-check" name="editRadioJenis" id="editRadioPertandingan" value="PERTANDINGAN" onchange="toggleEditJenis()">
+                            <label class="btn btn-outline-primary fw-bold" for="editRadioPertandingan">PERTANDINGAN</label>
+                            <input type="radio" class="btn-check" name="editRadioJenis" id="editRadioPensijilan" value="PENSIJILAN" onchange="toggleEditJenis()">
+                            <label class="btn btn-outline-warning fw-bold text-dark" for="editRadioPensijilan">PENSIJILAN</label>
+                        </div>
+                    </div>
                     <div class="mb-3"><label class="small fw-bold">SEKOLAH</label><input type="text" id="editNamaSekolah" class="form-control bg-light" readonly></div>
-                    <div class="mb-3"><label class="small fw-bold">PESERTA</label><input type="text" id="editInputNama" class="form-control uppercase-input"></div>
-                    <div id="divEditJawatan" class="mb-3 hidden"><label class="small fw-bold">JAWATAN</label><select id="editInputJawatan" class="form-select"></select></div>
-                    <div id="divEditPenyedia" class="mb-3 hidden"><label class="small fw-bold text-warning">PENYEDIA</label><select id="editInputPenyedia" class="form-select"></select></div>
-                    <div class="mb-3"><label class="small fw-bold" id="lblEditProgram">PROGRAM</label><input type="text" id="editInputProgram" class="form-control uppercase-input"></div>
+                    <div class="mb-3"><label class="small fw-bold">NAMA PESERTA</label><input type="text" id="editInputNama" class="form-control uppercase-input"></div>
+                    <div id="divEditJawatan" class="mb-3 hidden">
+                        <label class="small fw-bold text-warning">JAWATAN (WAJIB)</label>
+                        <select id="editInputJawatan" class="form-select bg-light border-warning fw-bold text-dark">
+                            <option value="GURU AKADEMIK BIASA" selected>GURU AKADEMIK BIASA</option>
+                            <option value="PENGARAH KV / PGB">PENGARAH KV / PENGETUA / GURU BESAR</option>
+                            <option value="GPK PENTADBIRAN">GPK PENTADBIRAN</option>
+                            <option value="GPK HAL EHWAL MURID">GPK HAL EHWAL MURID</option>
+                            <option value="GPK KO-KURIKULUM">GPK KO-KURIKULUM</option>
+                            <option value="GPK PENDIDIKAN KHAS">GPK PENDIDIKAN KHAS</option>
+                            <option value="GURU KANAN MATA PELAJARAN">GURU KANAN MATA PELAJARAN</option>
+                            <option value="GURU DATA">GURU DATA</option>
+                            <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>
+                            <option value="GURU ADMIN DELIMA">GURU ADMIN DELIMA</option>
+                            <option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
+                            <option value="GURU PERPUSTAKAAN & MEDIA">GURU PERPUSTAKAAN & MEDIA</option>
+                        </select>
+                    </div>
+                    <div id="divEditPenyedia" class="mb-3 hidden">
+                        <label class="small fw-bold text-warning">PENYEDIA</label>
+                        <select id="editInputPenyedia" class="form-select bg-light border-warning fw-bold text-dark">
+                            <option value="LAIN-LAIN" selected>LAIN-LAIN (AWS/CISCO/DLL)</option>
+                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
+                            <option value="APPLE">APPLE EDUCATION</option>
+                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
+                        </select>
+                    </div>
+                    <div class="mb-3"><label class="small fw-bold" id="lblEditProgram">NAMA PROGRAM</label><input type="text" id="editInputProgram" class="form-control uppercase-input"></div>
                     <div class="row g-2 mb-3"><div class="col-6" id="divEditColPeringkat"><label class="small fw-bold">PERINGKAT</label><select id="editInputPeringkat" class="form-select"><option value="KEBANGSAAN">KEBANGSAAN</option><option value="ANTARABANGSA">ANTARABANGSA</option></select></div><div class="col-6"><label class="small fw-bold">TAHUN</label><input type="number" id="editInputTahun" class="form-control"></div></div>
-                    <div class="mb-3"><label class="small fw-bold" id="lblEditPencapaian">SKOR</label><input type="text" id="editInputPencapaian" class="form-control uppercase-input"></div>
-                    <div class="mb-4"><label class="small fw-bold">BUKTI</label><input type="url" id="editInputLink" class="form-control"></div>
+                    <div class="mb-3"><label class="small fw-bold" id="lblEditPencapaian">PENCAPAIAN / SKOR</label><input type="text" id="editInputPencapaian" class="form-control uppercase-input"></div>
+                    <div class="mb-4"><label class="small fw-bold">PAUTAN BUKTI</label><input type="url" id="editInputLink" class="form-control"></div>
                     <button type="submit" class="btn btn-warning w-100 fw-bold py-3 shadow-sm">SIMPAN PERUBAHAN</button>
                 </form>
             </div>
