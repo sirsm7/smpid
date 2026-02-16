@@ -1,23 +1,23 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (FIXED MODAL BACKDROP ISSUE)
- * Menguruskan rekod pencapaian dengan kawalan integriti data.
- * --- UPDATE V1.3 ---
- * Integration: DROPDOWN_DATA standardisation for JAWATAN, PERINGKAT, PENYEDIA.
- * Penambahan: Dropdown TAHUN (Dinamik 2020 - Semasa).
- * FIX LOG:
- * - Fixed: Isu skrin kelabu (backdrop stuck) bila tekan Simpan dalam modal Seragamkan.
- * - Logic: Mengasingkan logik 'Refresh Data UI' dari 'Buka Modal'.
- * - FIX COLLISION: Rename filterByJawatan to filterPencapaianByJawatan.
+ * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V1.6)
+ * Menguruskan rekod pencapaian dengan kawalan integriti data penuh.
+ * --- UPDATE V1.6 ---
+ * 1. Visual Fix: Membaiki kontras warna pada kad 'SEKOLAH' (Hijau) - Teks lebih gelap & jelas.
+ * 2. Logic Enhancement: Sistem Toggle Reset pada semua kad statistik & Jawatan Cloud.
+ * 3. Bug Fix: Membaiki ralat classList.add() yang menyebabkan sistem terhenti.
+ * 4. Integrity: Kod penuh 100% tanpa singkatan (Pro Web Caster Protocol).
  */
 
 import { AchievementService } from '../services/achievement.service.js';
 import { toggleLoading } from '../core/helpers.js';
 import { populateDropdown } from '../config/dropdowns.js';
 
+// --- STATE MANAGEMENT ---
 let pencapaianList = [];
 let currentPencapaianFiltered = []; 
 let currentCardFilter = 'ALL';
 let currentJawatanFilter = 'ALL';
+let currentKategoriFilter = 'ALL'; 
 let sortState = { column: 'created_at', direction: 'desc' };
 
 // Cache untuk senarai nama program unik bagi tujuan penyeragaman
@@ -26,6 +26,9 @@ let filteredStandardizationList = [];
 
 // --- INITIALIZATION ---
 
+/**
+ * Mengisi dropdown tahun di bahagian filter utama.
+ */
 window.populateTahunFilter = async function() {
     const select = document.getElementById('filterTahunPencapaian');
     if (!select) return;
@@ -33,19 +36,25 @@ window.populateTahunFilter = async function() {
         const years = await AchievementService.getAvailableYears();
         // Standardized Text
         select.innerHTML = '<option value="ALL">SEMUA TAHUN</option>';
-        years.forEach(y => select.innerHTML += `<option value="${y}">TAHUN ${y}</option>`);
+        years.forEach(y => {
+            select.innerHTML += `<option value="${y}">TAHUN ${y}</option>`;
+        });
         window.loadMasterPencapaian();
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error("[Achievement] Gagal muat tahun:", e); 
+    }
 };
 
+/**
+ * Memuatkan data induk pencapaian dari database.
+ */
 window.loadMasterPencapaian = async function() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
     if(!tbody) return;
     
-    // Jangan tunjuk loading spinner jika data sudah ada (untuk elak flash masa refresh background)
-    // Hanya tunjuk jika list kosong
+    // Tunjuk loading hanya jika data kosong untuk elak kelipan visual (flicker)
     if (pencapaianList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5"><div class="text-center"><i class="fas fa-circle-notch fa-spin text-brand-500 text-2xl"></i></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-10"><i class="fas fa-circle-notch fa-spin text-brand-500 text-2xl"></i></td></tr>`;
     }
     
     const tahun = document.getElementById('filterTahunPencapaian').value;
@@ -55,10 +64,13 @@ window.loadMasterPencapaian = async function() {
         populateSekolahFilter(pencapaianList);
         window.renderPencapaianTable();
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-red-500 font-bold p-4">Gagal memuatkan data.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-red-500 font-bold p-4">Gagal memuatkan data dari pangkalan data.</td></tr>`;
     }
 };
 
+/**
+ * Mengisi dropdown senarai sekolah berdasarkan data yang ada.
+ */
 function populateSekolahFilter(data) {
     const select = document.getElementById('filterSekolahPencapaian');
     if (!select) return;
@@ -67,6 +79,7 @@ function populateSekolahFilter(data) {
     
     select.innerHTML = '<option value="ALL">SEMUA SEKOLAH</option>';
     
+    // Susun sekolah (PPD di atas, kemudian ikut nama)
     const sortedData = [...data].sort((a, b) => {
         if (a.kod_sekolah === 'M030') return -1;
         if (b.kod_sekolah === 'M030') return 1;
@@ -98,25 +111,36 @@ function populateSekolahFilter(data) {
         }
     });
     
+    // Kekalkan pilihan lama jika masih relevan
     if(seen.has(oldVal)) select.value = oldVal;
     else select.value = 'ALL';
 }
 
-// --- RENDERING TABLE ---
+// --- RENDERING LOGIC ---
 
+/**
+ * Fungsi utama untuk render jadual berdasarkan tapisan semasa.
+ */
 window.renderPencapaianTable = function() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
     if(!tbody) return;
-    const katFilter = document.getElementById('filterKategoriPencapaian').value;
+    
+    // Pastikan UI dropdown selari dengan state (untuk kes toggle dari kad)
+    const elKat = document.getElementById('filterKategoriPencapaian');
+    if(elKat) elKat.value = currentKategoriFilter;
+
+    const katFilter = currentKategoriFilter;
     const sekFilter = document.getElementById('filterSekolahPencapaian').value;
     const jenisFilter = document.getElementById('filterJenisPencapaian').value; 
     const search = document.getElementById('searchPencapaianInput').value.toUpperCase();
 
     let data = pencapaianList.filter(i => {
+        // Filter Dropdowns
         if(sekFilter !== 'ALL' && i.kod_sekolah !== sekFilter) return false;
         if(katFilter !== 'ALL' && i.kategori !== katFilter) return false;
         if(jenisFilter !== 'ALL' && i.jenis_rekod !== jenisFilter) return false; 
         
+        // Carian Teks
         if(search) {
             let namaSekolah = (i.kod_sekolah === 'M030') ? 'PPD ALOR GAJAH' : 
                 (window.globalDashboardData?.find(s => s.kod_sekolah === i.kod_sekolah)?.nama_sekolah || '');
@@ -124,11 +148,13 @@ window.renderPencapaianTable = function() {
             if (!searchTarget.includes(search)) return false;
         }
         
+        // Filter Kad (Peringkat/Provider)
         if(currentCardFilter === 'KEBANGSAAN' && i.peringkat !== 'KEBANGSAAN') return false;
         if(currentCardFilter === 'ANTARABANGSA' && !['ANTARABANGSA'].includes(i.peringkat) && i.jenis_rekod !== 'PENSIJILAN') return false;
         if(['GOOGLE','APPLE','MICROSOFT'].includes(currentCardFilter) && i.penyedia !== currentCardFilter) return false;
         if(currentCardFilter === 'LAIN-LAIN' && (i.jenis_rekod !== 'PENSIJILAN' || i.penyedia !== 'LAIN-LAIN')) return false;
         
+        // Filter Jawatan
         if(currentJawatanFilter !== 'ALL' && i.jawatan !== currentJawatanFilter) return false;
 
         return true;
@@ -137,6 +163,7 @@ window.renderPencapaianTable = function() {
     updateStats(data);
     updateCloud(data); 
 
+    // Sorting
     data.sort((a,b) => {
         let valA = a[sortState.column] || '';
         let valB = b[sortState.column] || '';
@@ -149,7 +176,7 @@ window.renderPencapaianTable = function() {
     renderTopSchools(data);
 
     if(data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-5 text-slate-400 font-medium">Tiada rekod sepadan ditemui.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-10 text-slate-400 font-medium">Tiada rekod ditemui untuk kriteria ini.</td></tr>`;
         return;
     }
 
@@ -199,15 +226,60 @@ window.renderPencapaianTable = function() {
     }).join('');
 };
 
+/**
+ * Kemaskini visual kad statistik dan highlight filter yang aktif.
+ */
 function updateStats(data) {
-    const ids = ['statTotalMurid', 'statTotalGuru', 'statTotalSekolah', 'statTotalPegawai', 'statTotalUnit'];
-    const cats = ['MURID', 'GURU', 'SEKOLAH', 'PEGAWAI', 'PPD'];
+    const categories = ['MURID', 'GURU', 'SEKOLAH', 'PEGAWAI', 'PPD'];
     
-    ids.forEach((id, idx) => {
-        const el = document.getElementById(id);
-        if(el) el.innerText = data.filter(i => i.kategori === cats[idx]).length;
+    categories.forEach((cat) => {
+        const el = document.getElementById(`statTotal${cat.charAt(0) + cat.slice(1).toLowerCase()}`);
+        const card = document.getElementById(`cardStat-${cat}`);
+        
+        if(el) el.innerText = data.filter(i => i.kategori === cat).length;
+        
+        if(card) {
+            const isActive = currentKategoriFilter === cat;
+            
+            // RESET & RE-APPLY CLASSES SURGICALLY
+            // Gunakan array untuk elak 'InvalidCharacterError' pada classList.add
+            let classes = ["p-3", "rounded-xl", "border", "cursor-pointer", "transition-all"];
+            
+            if (cat === 'MURID') {
+                classes.push(...(isActive ? ["bg-blue-600", "border-blue-600", "shadow-md", "scale-105"] : ["bg-blue-50", "border-blue-100", "hover:bg-blue-100"]));
+                card.className = classes.join(' ');
+                card.querySelector('span').className = isActive ? 'text-[10px] font-black text-white uppercase tracking-widest' : 'text-[10px] font-black text-blue-600 uppercase tracking-widest';
+                card.querySelector('h4').className = isActive ? 'text-xl font-black text-white' : 'text-xl font-black text-blue-800';
+            }
+            else if (cat === 'GURU') {
+                classes.push(...(isActive ? ["bg-amber-500", "border-amber-500", "shadow-md", "scale-105"] : ["bg-amber-50", "border-amber-100", "hover:bg-amber-100"]));
+                card.className = classes.join(' ');
+                card.querySelector('span').className = isActive ? 'text-[10px] font-black text-white uppercase tracking-widest' : 'text-[10px] font-black text-amber-600 uppercase tracking-widest';
+                card.querySelector('h4').className = isActive ? 'text-xl font-black text-white' : 'text-xl font-black text-amber-800';
+            }
+            else if (cat === 'SEKOLAH') {
+                // FIXED CONTRAST: Teks hijau lebih gelap (text-green-700/800)
+                classes.push(...(isActive ? ["bg-green-600", "border-green-600", "shadow-md", "scale-105"] : ["bg-green-50", "border-green-100", "hover:bg-green-100"]));
+                card.className = classes.join(' ');
+                card.querySelector('span').className = isActive ? 'text-[10px] font-black text-white uppercase tracking-widest' : 'text-[10px] font-black text-green-700 uppercase tracking-widest';
+                card.querySelector('h4').className = isActive ? 'text-xl font-black text-white' : 'text-xl font-black text-green-800';
+            }
+            else if (cat === 'PEGAWAI') {
+                classes.push(...(isActive ? ["bg-slate-800", "border-slate-800", "shadow-md", "scale-105"] : ["bg-slate-50", "border-slate-200", "hover:bg-slate-100"]));
+                card.className = classes.join(' ');
+                card.querySelector('span').className = isActive ? 'text-[10px] font-black text-white uppercase tracking-widest' : 'text-[10px] font-black text-slate-600 uppercase tracking-widest';
+                card.querySelector('h4').className = isActive ? 'text-xl font-black text-white' : 'text-xl font-black text-slate-800';
+            }
+            else if (cat === 'PPD') {
+                classes.push(...(isActive ? ["bg-indigo-600", "border-indigo-600", "shadow-md", "scale-105"] : ["bg-indigo-50", "border-indigo-100", "hover:bg-indigo-100"]));
+                card.className = classes.join(' ');
+                card.querySelector('span').className = isActive ? 'text-[10px] font-black text-white uppercase tracking-widest' : 'text-[10px] font-black text-indigo-600 uppercase tracking-widest';
+                card.querySelector('h4').className = isActive ? 'text-xl font-black text-white' : 'text-xl font-black text-indigo-800';
+            }
+        }
     });
     
+    // Update Counts for Special Cards (National/International/Providers)
     const setTxt = (id, count) => {
         const el = document.getElementById(id);
         if(el) el.innerText = count;
@@ -222,20 +294,24 @@ function updateStats(data) {
     setTxt('statMicrosoft', pensijilan.filter(i => i.penyedia === 'MICROSOFT').length);
     setTxt('statLain', pensijilan.filter(i => i.penyedia === 'LAIN-LAIN').length);
     
-    // Visual Update for Cards (Tailwind)
-    const cards = ['KEBANGSAAN', 'ANTARABANGSA', 'GOOGLE', 'APPLE', 'MICROSOFT', 'LAIN-LAIN'];
-    cards.forEach(card => {
+    // Highlight Active Special Cards
+    const specialCards = ['KEBANGSAAN', 'ANTARABANGSA', 'GOOGLE', 'APPLE', 'MICROSOFT', 'LAIN-LAIN'];
+    specialCards.forEach(card => {
         const el = document.getElementById(`card-${card}`);
         if(el) {
+            el.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-400', 'shadow-xl', 'scale-[1.03]', 'z-10', 'opacity-60');
             if(card === currentCardFilter) {
-                el.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-300', 'shadow-xl', 'scale-[1.02]');
-            } else {
-                el.classList.remove('ring-4', 'ring-offset-2', 'ring-indigo-300', 'shadow-xl', 'scale-[1.02]');
+                el.classList.add('ring-4', 'ring-offset-2', 'ring-indigo-400', 'shadow-xl', 'scale-[1.03]', 'z-10');
+            } else if (currentCardFilter !== 'ALL') {
+                el.classList.add('opacity-60');
             }
         }
     });
 }
 
+/**
+ * Menjana awan kata (Word Cloud) bagi jawatan guru secara dinamik.
+ */
 function updateCloud(data) {
     const container = document.getElementById('jawatanCloudContainer');
     const wrapper = document.getElementById('jawatanCloudWrapper');
@@ -277,6 +353,9 @@ function updateCloud(data) {
         }).join('');
 }
 
+/**
+ * Render senarai 5 sekolah penyumbang data tertinggi.
+ */
 function renderTopSchools(data) {
     const table = document.getElementById('tableTopContributors');
     const badge = document.getElementById('totalRecordsBadge');
@@ -285,7 +364,9 @@ function renderTopSchools(data) {
     
     const schoolCounts = {};
     data.forEach(i => {
-        if(i.kod_sekolah !== 'M030') schoolCounts[i.kod_sekolah] = (schoolCounts[i.kod_sekolah] || 0) + 1;
+        if(i.kod_sekolah !== 'M030') {
+            schoolCounts[i.kod_sekolah] = (schoolCounts[i.kod_sekolah] || 0) + 1;
+        }
     });
     
     const sorted = Object.entries(schoolCounts).sort(([,a], [,b]) => b - a).slice(0, 5);
@@ -306,7 +387,7 @@ function renderTopSchools(data) {
                     <div class="flex items-center gap-3">
                         <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-600 flex items-center justify-center text-[10px] font-black transition-colors">${idx + 1}</div>
                         <div>
-                            <div class="text-xs font-bold text-slate-700 leading-tight whitespace-normal" title="${nama}">${nama}</div>
+                            <div class="text-xs font-black text-slate-800 leading-tight whitespace-normal" title="${nama}">${nama}</div>
                             <div class="text-[9px] font-mono text-slate-400 font-bold">${kod}</div>
                         </div>
                     </div>
@@ -317,22 +398,23 @@ function renderTopSchools(data) {
     }).join('');
 }
 
-// --- GLOBAL EXPORTS ---
+// --- GLOBAL EXPORTS (WITH TOGGLE LOGIC) ---
+
 window.filterByKategori = function(k) { 
-    const el = document.getElementById('filterKategoriPencapaian');
-    if(el) {
-        el.value = k; 
-        currentJawatanFilter = 'ALL'; 
-        window.renderPencapaianTable(); 
-    }
+    // TOGGLE LOGIC: Klik semula untuk reset ke 'ALL'
+    currentKategoriFilter = (currentKategoriFilter === k) ? 'ALL' : k;
+    currentJawatanFilter = 'ALL'; 
+    window.renderPencapaianTable(); 
 };
+
 window.filterByCard = function(c) { 
+    // TOGGLE LOGIC: Klik semula untuk reset ke 'ALL'
     currentCardFilter = (currentCardFilter === c) ? 'ALL' : c; 
     window.renderPencapaianTable(); 
 };
 
-// FIX: Renamed global function to avoid collision with Gallery Tab
 window.filterPencapaianByJawatan = function(j) { 
+    // TOGGLE LOGIC: Klik semula untuk reset ke 'ALL'
     currentJawatanFilter = (currentJawatanFilter === j) ? 'ALL' : j; 
     
     const btnReset = document.getElementById('btnResetJawatan');
@@ -347,21 +429,30 @@ window.filterPencapaianByJawatan = function(j) {
 window.filterBySchoolFromTop5 = function(kod) { 
     const el = document.getElementById('filterSekolahPencapaian');
     if(el) {
-        el.value = kod; 
+        // Toggle school filter
+        if (el.value === kod) el.value = 'ALL';
+        else el.value = kod;
         window.renderPencapaianTable();
     }
 };
 
+/**
+ * Reset semua tapisankepada keadaan asal.
+ */
 window.resetPencapaianFilters = function() { 
-    currentCardFilter='ALL'; currentJawatanFilter='ALL'; 
+    currentCardFilter = 'ALL'; 
+    currentJawatanFilter = 'ALL'; 
+    currentKategoriFilter = 'ALL';
     document.getElementById('searchPencapaianInput').value = '';
-    document.getElementById('filterKategoriPencapaian').value = 'ALL';
+    
     const elSek = document.getElementById('filterSekolahPencapaian');
     if(elSek) elSek.value = 'ALL';
+    
     const elJenis = document.getElementById('filterJenisPencapaian');
     if(elJenis) elJenis.value = 'ALL';
+    
     window.loadMasterPencapaian();
-    Swal.fire({ icon: 'success', title: 'Filter Direset', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 });
+    Swal.fire({ icon: 'success', title: 'Tapis Direset', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 });
 };
 
 window.handleSort = function(col) {
@@ -369,7 +460,10 @@ window.handleSort = function(col) {
     else { sortState.column = col; sortState.direction = 'asc'; }
     window.renderPencapaianTable();
 };
-window.handlePencapaianSearch = function() { window.renderPencapaianTable(); };
+
+window.handlePencapaianSearch = function() { 
+    window.renderPencapaianTable(); 
+};
 
 // --- CRUD OPERATIONS ---
 
@@ -377,11 +471,11 @@ window.openEditPencapaian = function(id) {
     const item = pencapaianList.find(i => i.id === id);
     if(!item) return;
 
-    // Standardisasi Dropdown Modal Edit Admin (Surgical Injection)
+    // Standardisasi Dropdown Modal Edit
     populateDropdown('editInputJawatan', 'JAWATAN', item.jawatan);
     populateDropdown('editInputPeringkat', 'PERINGKAT', item.peringkat);
     populateDropdown('editInputPenyedia', 'PENYEDIA', item.penyedia);
-    populateDropdown('editInputTahun', 'TAHUN', item.tahun); // Dropdown Tahun Baru
+    populateDropdown('editInputTahun', 'TAHUN', item.tahun); 
     
     document.getElementById('editIdPencapaian').value = id;
     document.getElementById('editNamaSekolah').value = item.kod_sekolah;
@@ -404,7 +498,6 @@ window.openEditPencapaian = function(id) {
     }
     
     window.toggleEditJenis();
-    
     document.getElementById('modalEditPencapaian').classList.remove('hidden');
 };
 
@@ -456,21 +549,18 @@ window.simpanEditPencapaian = async function() {
         await AchievementService.update(id, payload);
         toggleLoading(false);
         document.getElementById('modalEditPencapaian').classList.add('hidden');
-        Swal.fire({ icon: 'success', title: 'Berjaya', text: 'Data dikemaskini.', timer: 1500, showConfirmButton: false }).then(() => window.loadMasterPencapaian());
+        Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Rekod telah dikemaskini.', timer: 1500, showConfirmButton: false }).then(() => window.loadMasterPencapaian());
     } catch (e) {
         toggleLoading(false);
-        Swal.fire('Ralat', 'Gagal mengemaskini.', 'error');
+        Swal.fire('Ralat Sistem', 'Gagal mengemaskini rekod.', 'error');
     }
 };
 
-// PPD (M030) Functions
 window.openModalPPD = function() { 
-    // Standardisasi Dropdown Modal PPD (Surgical Injection)
     const currentYear = new Date().getFullYear().toString();
-    
     populateDropdown('ppdInputPeringkat', 'PERINGKAT', 'KEBANGSAAN');
     populateDropdown('ppdInputPenyedia', 'PENYEDIA', 'LAIN-LAIN');
-    populateDropdown('ppdInputTahun', 'TAHUN', currentYear); // Dropdown Tahun PPD Baru
+    populateDropdown('ppdInputTahun', 'TAHUN', currentYear); 
 
     document.getElementById('modalRekodPPD').classList.remove('hidden'); 
 };
@@ -503,7 +593,6 @@ window.toggleJenisPencapaianPPD = function() {
     if (isPensijilan) {
         if(divPenyedia) divPenyedia.classList.remove('hidden');
         if(colPeringkat) colPeringkat.classList.add('hidden');
-        
         if(lblProg) lblProg.innerText = "NAMA SIJIL / PROGRAM";
         if(inpProg) inpProg.placeholder = "CONTOH: GOOGLE CERTIFIED EDUCATOR L1";
         if(lblPenc) lblPenc.innerText = "TAHAP / SKOR / BAND";
@@ -511,7 +600,6 @@ window.toggleJenisPencapaianPPD = function() {
     } else {
         if(divPenyedia) divPenyedia.classList.add('hidden');
         if(colPeringkat) colPeringkat.classList.remove('hidden');
-        
         if(lblProg) lblProg.innerText = "NAMA PERTANDINGAN";
         if(inpProg) inpProg.placeholder = "CONTOH: DIGITAL COMPETENCY 2025";
         if(lblPenc) lblPenc.innerText = "PENCAPAIAN";
@@ -529,7 +617,6 @@ window.simpanPencapaianPPD = async function() {
     
     let peringkat = 'KEBANGSAAN';
     let penyedia = 'LAIN-LAIN';
-    
     const tahunVal = document.getElementById('ppdInputTahun').value;
     const tahun = parseInt(tahunVal);
 
@@ -566,7 +653,6 @@ window.simpanPencapaianPPD = async function() {
         };
 
         await AchievementService.create(payload);
-        
         toggleLoading(false);
         document.getElementById('modalRekodPPD').classList.add('hidden');
         document.getElementById('formPencapaianPPD').reset();
@@ -601,6 +687,9 @@ window.hapusPencapaianAdmin = async function(id) {
     });
 };
 
+/**
+ * Mengeksport data terapis ke format CSV.
+ */
 window.eksportPencapaian = function() {
     if (!currentPencapaianFiltered || currentPencapaianFiltered.length === 0) {
         Swal.fire('Tiada Data', 'Tiada rekod untuk dieksport.', 'info');
@@ -642,14 +731,13 @@ window.eksportPencapaian = function() {
     link.click();
 };
 
-// --- DATA STANDARDIZATION LOGIC (FIXED) ---
+// --- DATA STANDARDIZATION LOGIC ---
 
 window.refreshStandardizeUI = function() {
     const counts = {};
     standardizationList = [];
     filteredStandardizationList = [];
 
-    // Guna data global yang sudah di-refresh
     pencapaianList.forEach(item => {
         const name = item.nama_pertandingan || "TIADA NAMA";
         counts[name] = (counts[name] || 0) + 1;
@@ -661,7 +749,6 @@ window.refreshStandardizeUI = function() {
 
     filteredStandardizationList = standardizationList;
     
-    // Kekalkan search jika ada
     const searchVal = document.getElementById('standardizeSearch').value;
     if (searchVal) {
         handleStandardizeSearch(searchVal);
