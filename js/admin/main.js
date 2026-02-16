@@ -1,10 +1,9 @@
 /**
- * ADMIN MODULE: MAIN CONTROLLER & ROUTER
+ * ADMIN MODULE: MAIN CONTROLLER & ROUTER (BUG FIX V2.2)
  * Fungsi: Menguruskan navigasi tab, keselamatan, dan peranan (RBAC).
- * --- UPDATE V2.1 (CONSOLIDATED CONTROLLER) ---
- * 1. Menyatukan logik switchAdminTab ke dalam fail ini.
- * 2. Menguatkuasakan sekatan UNIT PPD (Hanya Kemenjadian & Akses).
- * 3. Membuang kebergantungan inline script di HTML.
+ * --- UPDATE V2.2 (CROSS-TAB SYNC) ---
+ * Integrasi penuh dengan sistem localStorage untuk memastikan konsistensi
+ * apabila membuka tab baru (Admin View User).
  */
 
 import { AuthService } from '../services/auth.service.js';

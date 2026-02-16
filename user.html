@@ -542,13 +542,13 @@
           }
       }
 
-      // Hash-based Routing for User Portal
+      // Hash-based Routing for User Portal (BUG FIX V2.2 - LOCALSTORAGE SYNC)
       document.addEventListener('DOMContentLoaded', () => {
-          // Check localStorage instead of sessionStorage
+          // UPDATE: Gunakan localStorage untuk konsistensi dengan Admin View
           const userKod = localStorage.getItem('smpid_user_kod');
           const isAuth = localStorage.getItem('smpid_auth') === 'true';
 
-          // Basic security check here for consistency, though auth.guard.js should handle it
+          // Basic security check here for consistency
           if (!userKod && !isAuth) { return; }
 
           // Listen for hash changes to support browser back/forward buttons

@@ -1,10 +1,14 @@
 /**
- * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - VISUAL UPDATE)
+ * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - BUG FIX V2.2)
  * Menguruskan senarai sekolah, filter berwarna, dan status data.
+ * --- UPDATE V2.2 ---
+ * Fix Critical: Menukarkan sessionStorage kepada localStorage pada fungsi viewSchoolProfile.
+ * Ini memastikan modul 'User View' mengambil kod sekolah yang betul mengikut standard v1.3.
  */
 
 import { SchoolService } from '../services/school.service.js';
 import { toggleLoading, generateWhatsAppLink } from '../core/helpers.js';
+import { APP_CONFIG } from '../config/app.config.js';
 
 let dashboardData = [];
 let currentFilteredList = [];
@@ -21,7 +25,7 @@ window.fetchDashboardData = async function() {
         const data = await SchoolService.getAll();
         window.globalDashboardData = data; 
         
-        // Filter out PPD (M030) untuk visual dashboard
+        // Asingkan PPD (M030) daripada visual dashboard utama
         dashboardData = data.filter(item => item.kod_sekolah !== 'M030');
         
         renderFilters();
@@ -43,12 +47,11 @@ function renderFilters() {
     
     const container = document.getElementById('filterContainer');
     if(container) {
-        // Update: Warna Warni Mengikut Status (Parity dengan SMPID Live)
         container.innerHTML = `
         <div class="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
           <div class="flex flex-wrap gap-2 justify-center md:justify-start">
             
-            <!-- Butang SEMUA (Kelabu/Default) -->
+            <!-- Butang SEMUA (Kelabu) -->
             <button onclick="setFilter('ALL')" id="badgeAll" class="filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200 border-slate-200">
                 Semua <span id="cntAll" class="bg-white text-slate-600 px-2 py-0.5 rounded-full text-[10px] shadow-sm">0</span>
             </button>
@@ -103,11 +106,8 @@ window.runFilter = function() {
 };
 
 function updateBadgeCounts() {
-    // 1. Reset Semua Button ke state 'Inactive' (Tapi kekalkan warna asas border/text)
-    // Kita reset kelas 'active-shadow' atau 'ring' sahaja
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.classList.remove('ring-2', 'ring-offset-1', 'shadow-md', 'scale-105');
-        // Reset background jika ia adalah butang aktif sebelum ini
         if(btn.id === 'badgeAll') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200";
         if(btn.id === 'badgeLengkap') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-emerald-200 text-emerald-600 hover:bg-emerald-50";
         if(btn.id === 'badgeBelum') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-red-200 text-red-600 hover:bg-red-50";
@@ -115,26 +115,22 @@ function updateBadgeCounts() {
         if(btn.id === 'badgeBerbeza') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-amber-200 text-amber-600 hover:bg-amber-50";
     });
 
-    // 2. Set Active Style (Solid Background & Shadow)
     const map = { 'ALL': 'badgeAll', 'LENGKAP': 'badgeLengkap', 'BELUM': 'badgeBelum', 'SAMA': 'badgeSama', 'BERBEZA': 'badgeBerbeza' };
     const activeId = map[activeStatus];
     if (activeId) {
         const btn = document.getElementById(activeId);
         if (btn) {
-            // Tambah kelas aktif yang Solid
             if(activeStatus === 'ALL') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-slate-600 text-white border-slate-600 shadow-md scale-105";
             if(activeStatus === 'LENGKAP') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-emerald-500 text-white border-emerald-500 shadow-md scale-105";
             if(activeStatus === 'BELUM') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-red-500 text-white border-red-500 shadow-md scale-105";
             if(activeStatus === 'SAMA') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-purple-500 text-white border-purple-500 shadow-md scale-105";
             if(activeStatus === 'BERBEZA') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-amber-500 text-white border-amber-500 shadow-md scale-105";
             
-            // Update badge dalaman menjadi putih lutsinar
             const span = btn.querySelector('span');
             if(span) span.className = "bg-white/20 text-white px-2 py-0.5 rounded-full text-[10px]";
         }
     }
     
-    // Kiraan dinamik
     const context = dashboardData.filter(i => {
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
         const searchMatch = !searchTerm || i.kod_sekolah.includes(searchTerm) || i.nama_sekolah.includes(searchTerm);
@@ -184,7 +180,6 @@ function renderGrid(data) {
                 return btns;
             };
 
-            // HTML KAD SEKOLAH (Tailwind)
             html += `
             <div class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col h-full" onclick="viewSchoolProfile('${s.kod_sekolah}')">
                 <div class="p-5 flex-grow">
@@ -194,7 +189,6 @@ function renderGrid(data) {
                         </div>
                         ${statusBadge}
                     </div>
-                    <!-- UPDATE: Allow Text Wrap -->
                     <h4 class="font-bold text-slate-800 text-sm leading-snug group-hover:text-brand-600 transition mb-1 whitespace-normal">${s.nama_sekolah}</h4>
                     
                     <button onclick="event.stopPropagation(); window.resetPasswordSekolah('${s.kod_sekolah}')" class="text-[10px] font-bold text-amber-500 hover:text-amber-600 flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition">
@@ -219,8 +213,14 @@ function renderGrid(data) {
 }
 
 // --- UTILS & EXPORTS ---
+
+/**
+ * FIXED: Menghalakan pandangan admin ke profil sekolah yang dipilih.
+ * Menggunakan localStorage untuk integriti data silang modul.
+ */
 window.viewSchoolProfile = function(kod) {
-    sessionStorage.setItem('smpid_user_kod', kod);
+    // SULAM (Surgical Injection): Tukar sessionStorage -> localStorage
+    localStorage.setItem(APP_CONFIG.SESSION.USER_KOD, kod);
     window.location.href = 'user.html'; 
 };
 
