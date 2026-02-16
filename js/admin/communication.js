@@ -104,7 +104,14 @@ window.copyEmails = function() {
     const el = document.getElementById("emailOutput");
     if(el.value) {
         el.select();
-        navigator.clipboard.writeText(el.value).then(() => Swal.fire('Disalin', 'Senarai emel disalin.', 'success'));
+        navigator.clipboard.writeText(el.value).then(() => Swal.fire({
+            icon: 'success',
+            title: 'Disalin',
+            text: 'Senarai emel disalin.',
+            timer: 1000,
+            showConfirmButton: false,
+            confirmButtonColor: '#22c55e'
+        }));
     }
 };
 
@@ -140,11 +147,11 @@ window.copyTemplate = function() {
     });
 };
 
-// --- HELPDESK ---
+// --- HELPDESK (TAILWIND UI) ---
 window.loadTiketAdmin = async function() {
     const wrapper = document.getElementById('adminTiketWrapper');
     if(!wrapper) return;
-    wrapper.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>`;
+    wrapper.innerHTML = `<div class="text-center py-10 text-slate-400 font-medium animate-pulse">Memuatkan tiket...</div>`;
     
     const filter = document.getElementById('filterTiketAdmin').value;
     
@@ -153,7 +160,7 @@ window.loadTiketAdmin = async function() {
         wrapper.innerHTML = "";
         
         if (data.length === 0) {
-            wrapper.innerHTML = `<div class="alert alert-light text-center">Tiada tiket dalam kategori ini.</div>`;
+            wrapper.innerHTML = `<div class="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-400 font-medium">Tiada tiket dalam kategori ini.</div>`;
             return;
         }
 
@@ -163,41 +170,55 @@ window.loadTiketAdmin = async function() {
 
             if (t.status !== 'SELESAI') {
                 actionArea = `
-                <div class="mt-3 border-top pt-2 bg-light p-2 rounded">
-                    <label class="small fw-bold">Balasan Admin:</label>
-                    <textarea id="reply-${t.id}" class="form-control mb-2 form-control-sm" rows="2" placeholder="Tulis balasan..."></textarea>
-                    <div class="d-flex justify-content-end gap-2">
-                        <button onclick="padamTiket(${t.id})" class="btn btn-outline-danger btn-sm">Padam</button>
-                        <button onclick="submitBalasanAdmin(${t.id})" class="btn btn-primary btn-sm">Hantar & Tutup</button>
+                <div class="mt-4 pt-4 border-t border-red-100 bg-red-50 p-3 rounded-lg">
+                    <label class="block text-xs font-bold text-red-600 uppercase mb-2">Balasan Admin:</label>
+                    <textarea id="reply-${t.id}" class="w-full p-2 rounded border border-red-200 text-sm focus:border-red-400 outline-none mb-3" rows="2" placeholder="Tulis balasan..."></textarea>
+                    <div class="flex justify-end gap-2">
+                        <button onclick="padamTiket(${t.id})" class="px-3 py-1.5 rounded border border-red-200 text-red-500 hover:bg-white text-xs font-bold transition">Padam</button>
+                        <button onclick="submitBalasanAdmin(${t.id})" class="px-3 py-1.5 rounded bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-sm">Hantar & Tutup</button>
                     </div>
                 </div>`;
             } else {
                 actionArea = `
-                <div class="mt-2 text-success small border-top pt-2">
-                    <i class="fas fa-check-circle"></i> <strong>Respon:</strong> ${t.balasan_admin} 
-                    <button onclick="padamTiket(${t.id})" class="btn btn-link text-danger p-0 ms-2 text-decoration-none" title="Padam Tiket"><i class="fas fa-trash"></i></button>
+                <div class="mt-3 text-green-700 text-sm border-t border-green-100 pt-3 bg-green-50 p-3 rounded-lg">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <i class="fas fa-check-circle mr-1"></i> <span class="font-bold">Respon:</span> ${t.balasan_admin}
+                        </div>
+                        <button onclick="padamTiket(${t.id})" class="text-red-400 hover:text-red-600 text-xs ml-2" title="Padam Tiket"><i class="fas fa-trash"></i></button>
+                    </div>
                 </div>`;
             }
 
+            const borderClass = t.status === 'SELESAI' ? 'border-l-4 border-l-green-500 opacity-80' : 'border-l-4 border-l-red-500';
+            const statusBadge = t.status === 'SELESAI' 
+                ? `<span class="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase">SELESAI</span>`
+                : `<span class="bg-red-100 text-red-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase animate-pulse">DALAM PROSES</span>`;
+
             wrapper.innerHTML += `
-            <div class="card mb-3 shadow-sm ${t.status === 'SELESAI' ? 'bg-light opacity-75' : 'border-danger'}">
-                <div class="card-body p-3">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div>
-                            <span class="badge bg-dark me-1">${t.kod_sekolah}</span>
-                            <span class="badge bg-secondary">${t.peranan_pengirim}</span>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden ${borderClass} mb-4">
+                <div class="p-5">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="bg-slate-800 text-white text-[10px] px-2 py-0.5 rounded font-bold">${t.kod_sekolah}</span>
+                            <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded font-bold border border-slate-200">${t.peranan_pengirim}</span>
                         </div>
-                        <small class="text-muted fw-bold">${dateStr}</small>
+                        <div class="flex flex-col items-end">
+                            ${statusBadge}
+                            <span class="text-[10px] text-slate-400 font-medium mt-1">${dateStr}</span>
+                        </div>
                     </div>
-                    <h6 class="fw-bold mb-1">${t.tajuk}</h6>
-                    <p class="small text-secondary mb-0 bg-white p-2 rounded border">${t.butiran_masalah}</p>
+                    <h6 class="font-bold text-slate-800 text-sm mb-2">${t.tajuk}</h6>
+                    <div class="bg-slate-50 p-3 rounded border border-slate-100 text-slate-600 text-xs leading-relaxed">
+                        ${t.butiran_masalah}
+                    </div>
                     ${actionArea}
                 </div>
             </div>`;
         });
     } catch (e) { 
         console.error(e);
-        wrapper.innerHTML = `<div class="text-danger text-center">Ralat memuatkan tiket.</div>`; 
+        wrapper.innerHTML = `<div class="text-center text-red-500 font-bold py-10">Ralat memuatkan tiket.</div>`; 
     }
 };
 
@@ -214,7 +235,14 @@ window.submitBalasanAdmin = async function(id) {
         });
         
         toggleLoading(false);
-        Swal.fire('Selesai', 'Tiket ditutup dan notifikasi dihantar.', 'success').then(() => window.loadTiketAdmin());
+        Swal.fire({
+            icon: 'success',
+            title: 'Selesai',
+            text: 'Tiket ditutup dan notifikasi dihantar.',
+            timer: 1500,
+            showConfirmButton: false,
+            confirmButtonColor: '#22c55e'
+        }).then(() => window.loadTiketAdmin());
     } catch (e) {
         toggleLoading(false);
         Swal.fire('Ralat', 'Gagal mengemaskini tiket.', 'error');
@@ -227,7 +255,7 @@ window.padamTiket = async function(id) {
         text: "Tindakan ini tidak boleh dikembalikan.",
         icon: 'warning', 
         showCancelButton: true, 
-        confirmButtonColor: '#d33',
+        confirmButtonColor: '#ef4444',
         confirmButtonText: 'Ya, Padam',
         cancelButtonText: 'Batal'
     }).then(async (r) => {
@@ -236,7 +264,12 @@ window.padamTiket = async function(id) {
             try {
                 await SupportService.delete(id);
                 toggleLoading(false);
-                Swal.fire('Dipadam', '', 'success').then(() => window.loadTiketAdmin());
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Dipadam',
+                    timer: 1000,
+                    showConfirmButton: false
+                }).then(() => window.loadTiketAdmin());
             } catch (e) {
                 toggleLoading(false);
                 Swal.fire('Ralat', 'Gagal memadam.', 'error');

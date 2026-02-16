@@ -1,7 +1,7 @@
 /**
  * SMPID Telegram Bot & API (Deno Deploy)
  * Versi: Helpdesk Module Added
- * Host: appppdag.cloud
+ * Host: tech4ag.my
  */
 
 import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";

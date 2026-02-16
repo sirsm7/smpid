@@ -1,111 +1,186 @@
 /**
- * ADMIN MODULE: MAIN CONTROLLER (DEV)
- * Fungsi: Menguruskan logik permulaan admin, keselamatan, dan peranan.
+ * ADMIN MODULE: MAIN CONTROLLER & ROUTER
+ * Fungsi: Menguruskan navigasi tab, keselamatan, dan peranan (RBAC).
+ * --- UPDATE V2.1 (CONSOLIDATED CONTROLLER) ---
+ * 1. Menyatukan logik switchAdminTab ke dalam fail ini.
+ * 2. Menguatkuasakan sekatan UNIT PPD (Hanya Kemenjadian & Akses).
+ * 3. Membuang kebergantungan inline script di HTML.
  */
 
 import { AuthService } from '../services/auth.service.js';
 import { APP_CONFIG } from '../config/app.config.js';
-// Tidak perlu import keluarSistem secara manual kerana helpers.js telah di-load di admin.html
-// dan ia mendedahkan window.keluarSistem yang betul (dengan Swal).
 
+// --- GLOBAL VARIABLES & EXPORTS ---
+// Kita bind fungsi ke window supaya boleh dipanggil dari HTML onclick=""
+window.switchAdminTab = switchAdminTab;
+
+// --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
     initAdminPanel();
 });
 
+/**
+ * Inisialisasi Utama
+ */
 async function initAdminPanel() {
-    const isAuth = sessionStorage.getItem(APP_CONFIG.SESSION.AUTH_FLAG) === 'true';
-    const userRole = sessionStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+    // 1. Semakan Sesi (Auth Guard)
+    // Gunakan localStorage untuk ketahanan antara tab
+    const isAuth = localStorage.getItem(APP_CONFIG.SESSION.AUTH_FLAG) === 'true';
+    const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
 
-    // 1. Security Check
     if (!isAuth) {
+        console.warn("⛔ [AdminMain] Sesi tidak sah. Mengalihkan ke landing page...");
         window.location.replace('index.html');
         return;
     }
 
-    // 2. Role Setup
+    // 2. Paparan Label Peranan
     const displayRole = document.getElementById('displayUserRole');
-    
-    if (userRole === 'PPD_UNIT') {
-        setupUnitView(displayRole);
-    } else if (userRole === 'SUPER_ADMIN') {
-        setupSuperAdminView(displayRole);
-    } else {
-        // Default ADMIN
-        setupAdminView(displayRole);
+    if(displayRole) {
+        if (userRole === 'SUPER_ADMIN') {
+            displayRole.innerText = 'SUPER ADMIN';
+            displayRole.classList.add('text-red-400', 'font-black'); // Visual Khas
+        } else if (userRole === 'PPD_UNIT') {
+            displayRole.innerText = 'UNIT PPD';
+        } else {
+            displayRole.innerText = 'MOD ADMIN';
+        }
     }
 
-    // 3. Global Listeners
-    setupTabListeners();
-}
+    // 3. Konfigurasi Modul Mengikut Peranan (Strict Mode)
+    if (userRole === 'PPD_UNIT') {
+        setupUnitView();
+    } 
 
-function setupUnitView(displayRole) {
-    if(displayRole) displayRole.innerHTML = "UNIT PPD VIEW";
+    // 4. Mulakan Routing (Hash Handler)
+    // Semak hash URL semasa atau default ke 'dashboard' (atau 'pencapaian' untuk Unit PPD)
+    let initialTab = window.location.hash.replace('#', '');
     
-    // Sembunyikan Tab & Fungsi yang tidak relevan (Strict Mode)
-    const tabsToHide = ['dashboard-tab', 'analisa-tab', 'email-tab', 'helpdesk-tab', 'admin-users-tab'];
-    tabsToHide.forEach(id => {
-        const el = document.getElementById(id);
-        if(el && el.parentElement) el.parentElement.classList.add('hidden');
+    // Jika Unit PPD cuba masuk dashboard, paksa ke pencapaian
+    if (userRole === 'PPD_UNIT' && (!initialTab || initialTab === 'dashboard')) {
+        initialTab = 'pencapaian';
+    } else if (!initialTab) {
+        initialTab = 'dashboard';
+    }
+
+    switchAdminTab(initialTab);
+
+    // Listener untuk perubahan hash (Back/Forward browser)
+    window.addEventListener('hashchange', () => {
+        const hash = window.location.hash.replace('#', '') || 'dashboard';
+        switchAdminTab(hash);
     });
 
-    // Butang Log Keluar Khas
-    document.getElementById('btnMainLogout')?.classList.add('hidden');
-    document.getElementById('btnLogoutUnitPPD')?.classList.remove('hidden');
-    document.getElementById('btnUbahPassUnitPPD')?.classList.remove('hidden');
+    // 5. Muat data Dashboard secara automatik (hanya jika bukan Unit PPD)
+    if (userRole !== 'PPD_UNIT' && window.fetchDashboardData) {
+        window.fetchDashboardData();
+    }
+}
 
-    // Auto-Redirect ke Tab Pencapaian
-    const tabPencapaianEl = document.getElementById('pencapaian-tab');
-    if(tabPencapaianEl) {
-        const tabPencapaian = new bootstrap.Tab(tabPencapaianEl);
-        tabPencapaian.show();
+/**
+ * Fungsi Navigasi Tab Utama
+ * Menguruskan pertukaran paparan dan lazy-loading modul.
+ * @param {string} tabId - ID Tab (contoh: 'dashboard', 'analisa')
+ * @param {Event} event - (Opsional) Event klik
+ */
+function switchAdminTab(tabId, event) {
+    // Halang default anchor behavior jika diklik
+    if (event) {
+        event.preventDefault();
+        history.pushState(null, null, '#' + tabId);
     }
 
-    // Muat data asas (Tahun) untuk dropdown
-    if(window.populateTahunFilter) window.populateTahunFilter();
-}
+    // SEMAKAN KESELAMATAN (GATEKEEPER)
+    // Pastikan Unit PPD tidak boleh akses tab dilarang walaupun tukar hash manual
+    const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+    const forbiddenForUnit = ['dashboard', 'analisa', 'gallery', 'email', 'helpdesk'];
 
-function setupAdminView(displayRole) {
-    if(displayRole) displayRole.innerHTML = "MOD ADMIN";
-    // Trigger dashboard load
-    if(window.fetchDashboardData) window.fetchDashboardData();
-}
-
-function setupSuperAdminView(displayRole) {
-    if(displayRole) {
-        displayRole.innerHTML = "SUPER ADMIN";
-        displayRole.classList.remove('text-primary');
-        displayRole.classList.add('text-danger', 'fw-black'); // Merah untuk Super Admin
-        displayRole.parentElement.classList.replace('border-primary', 'border-danger');
-        displayRole.parentElement.classList.replace('text-primary', 'text-danger');
+    if (userRole === 'PPD_UNIT' && forbiddenForUnit.includes(tabId)) {
+        // Redirect senyap ke pencapaian
+        tabId = 'pencapaian'; 
+        history.replaceState(null, null, '#pencapaian');
     }
-    // Super Admin akses semua, sama seperti Admin
-    if(window.fetchDashboardData) window.fetchDashboardData();
+
+    // 1. Sembunyikan semua konten tab
+    const allContents = document.querySelectorAll('[id^="tab-"]');
+    allContents.forEach(el => el.classList.add('hidden'));
+
+    // 2. Paparkan konten tab yang dipilih
+    const targetContent = document.getElementById('tab-' + tabId);
+    if (targetContent) {
+        targetContent.classList.remove('hidden');
+    } else {
+        console.warn(`[AdminMain] Tab ID 'tab-${tabId}' tidak ditemui.`);
+        return;
+    }
+
+    // 3. Kemaskini butang navigasi (Active State)
+    const allButtons = document.querySelectorAll('[id$="-tab"]');
+    allButtons.forEach(btn => {
+        // Reset ke style inactive
+        btn.className = "tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap";
+    });
+
+    const activeButton = document.getElementById(tabId + '-tab');
+    if (activeButton) {
+        // Set ke style active
+        activeButton.className = "tab-active px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap";
+    }
+
+    // 4. Lazy Load Data (Muat data hanya bila tab dibuka)
+    loadModuleData(tabId);
 }
 
-function setupTabListeners() {
-    // Listener untuk load data hanya bila tab dibuka (Lazy Load)
-    
-    // Tab Analisa
-    const analisaTab = document.getElementById('analisa-tab');
-    if (analisaTab) analisaTab.addEventListener('shown.bs.tab', () => { if(window.loadDcsAdmin) window.loadDcsAdmin(); });
+/**
+ * Memanggil fungsi inisialisasi modul berkaitan
+ */
+function loadModuleData(tabId) {
+    switch (tabId) {
+        case 'analisa':
+            if (window.loadDcsAdmin) window.loadDcsAdmin();
+            break;
+        case 'pencapaian':
+            if (window.populateTahunFilter) window.populateTahunFilter();
+            break;
+        case 'gallery':
+            if (window.initAdminGallery) window.initAdminGallery();
+            break;
+        case 'email':
+            if (window.generateList) window.generateList();
+            break;
+        case 'helpdesk':
+            if (window.loadTiketAdmin) window.loadTiketAdmin();
+            break;
+        case 'admin-users':
+            if (window.loadAdminList) window.loadAdminList();
+            break;
+    }
+}
 
-    // Tab Pencapaian
-    const pencapaianTab = document.getElementById('pencapaian-tab');
-    if (pencapaianTab) pencapaianTab.addEventListener('shown.bs.tab', () => { if(window.populateTahunFilter) window.populateTahunFilter(); });
+/**
+ * Konfigurasi Paparan Khas UNIT PPD
+ * Menyembunyikan butang navigasi yang dilarang dari DOM.
+ */
+function setupUnitView() {
+    // Senarai ID butang navigasi yang perlu disembunyikan
+    // Hanya 'pencapaian-tab' dan 'admin-users-tab' yang DIBIARKAN.
+    const hideButtons = [
+        'dashboard-tab', 
+        'analisa-tab', 
+        'gallery-tab', 
+        'email-tab', 
+        'helpdesk-tab'
+    ];
 
-    // Tab Galeri
-    const galleryTab = document.getElementById('gallery-tab');
-    if (galleryTab) galleryTab.addEventListener('shown.bs.tab', () => { if(window.initAdminGallery) window.initAdminGallery(); });
+    hideButtons.forEach(btnId => {
+        const el = document.getElementById(btnId);
+        if (el) {
+            // Tambah class hidden dan 'pointer-events-none' untuk keselamatan tambahan
+            el.classList.add('hidden', 'pointer-events-none');
+            // Alih keluar ID supaya tidak boleh diakses script lain
+            el.id = ""; 
+        }
+    });
 
-    // Tab Email
-    const emailTab = document.getElementById('email-tab');
-    if (emailTab) emailTab.addEventListener('shown.bs.tab', () => { if(window.generateList) window.generateList(); });
-
-    // Tab Helpdesk
-    const helpdeskTab = document.getElementById('helpdesk-tab');
-    if (helpdeskTab) helpdeskTab.addEventListener('shown.bs.tab', () => { if(window.loadTiketAdmin) window.loadTiketAdmin(); });
-
-    // Tab Admin Users
-    const usersTab = document.getElementById('admin-users-tab');
-    if (usersTab) usersTab.addEventListener('shown.bs.tab', () => { if(window.loadAdminList) window.loadAdminList(); });
+    console.log("🔒 [AdminMain] Mod UNIT PPD diaktifkan. Akses dihadkan.");
 }

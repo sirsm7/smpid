@@ -5,632 +5,702 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SMPID - Admin Dashboard</title>
   
-  <meta name="theme-color" content="#198754">
+  <meta name="theme-color" content="#16a34a">
   <link rel="icon" href="icoppdag.png">
   
-  <!-- CSS Bootstrap & FontAwesome -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  
-  <!-- QUILL JS THEME -->
   <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   
-  <!-- MODULAR CSS -->
-  <link href="css/core.css" rel="stylesheet">
-  <link href="css/layout.css" rel="stylesheet">
-  <link href="css/components.css" rel="stylesheet">
-  <link href="css/admin.css" rel="stylesheet">
-  
-  <!-- Library JS -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            brand: { 50: '#f0fdf4', 100: '#dcfce7', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 900: '#14532d' },
+            indigo: { 50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 900: '#312e81' }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .hidden { display: none !important; }
+    .tab-active { @apply bg-brand-600 text-white shadow-md transform scale-105; }
+    .tab-inactive { @apply bg-white text-slate-600 hover:bg-slate-50 hover:text-brand-600; }
+    
+    /* Global Table Wrapping Fix */
+    table td, table th {
+      white-space: normal !important;
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
+      vertical-align: middle;
+    }
+
+    /* Word Cloud Styles */
+    .cloud-tag { @apply inline-flex items-center px-3 py-1.5 rounded-full text-[10px] font-bold bg-white border border-slate-200 text-slate-500 cursor-pointer transition-all hover:bg-slate-50 hover:border-brand-300 hover:text-brand-600 shadow-sm m-1; }
+    .cloud-tag.active { @apply bg-brand-600 text-white border-brand-600 shadow-md transform scale-105; }
+    .cloud-tag .count { @apply ml-2 bg-slate-100 text-slate-400 px-1.5 rounded-full text-[9px]; }
+    .cloud-tag.active .count { @apply bg-white/20 text-white; }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
+    .uppercase-input { text-transform: uppercase; }
+  </style>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-  <!-- Quill JS Library -->
   <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
-
-  <style>
-      .sortable-header {
-          cursor: pointer;
-          transition: background-color 0.2s;
-          user-select: none;
-      }
-      .sortable-header:hover {
-          background-color: #343a40 !important;
-      }
-      
-      /* --- NAVIGASI TAB COMPACT --- */
-      .nav-compact {
-          display: flex;
-          justify-content: center;
-          flex-wrap: wrap;
-          gap: 8px;
-          background: #f8f9fa;
-          padding: 8px;
-          border-radius: 50px;
-          border: 1px solid #dee2e6;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-      }
-      
-      .nav-compact .nav-link {
-          color: #6c757d;
-          border-radius: 30px;
-          padding: 8px 16px;
-          font-size: 0.85rem;
-          font-weight: 700;
-          border: none;
-          transition: all 0.2s ease;
-          background: transparent;
-      }
-      
-      .nav-compact .nav-link:hover {
-          color: #0d6efd;
-          background-color: rgba(13, 110, 253, 0.1);
-      }
-      
-      .nav-compact .nav-link.active {
-          background-color: #0d6efd;
-          color: white;
-          box-shadow: 0 4px 10px rgba(13, 110, 253, 0.3);
-          transform: translateY(-1px);
-      }
-      
-      .nav-compact .nav-link i {
-          margin-right: 6px;
-      }
-
-      /* FORM SELECT CUSTOMIZATION */
-      .form-select-clean {
-          border: 1px solid #dee2e6;
-          background-color: #f8f9fa;
-          font-size: 0.85rem;
-          font-weight: 600;
-          color: #495057;
-          border-radius: 8px;
-          padding-top: 0.4rem;
-          padding-bottom: 0.4rem;
-          transition: all 0.2s;
-      }
-      .form-select-clean:focus {
-          border-color: #86b7fe;
-          box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
-          background-color: white;
-      }
-      .input-group-clean .form-control {
-          border-top-right-radius: 8px;
-          border-bottom-right-radius: 8px;
-          font-size: 0.85rem;
-      }
-      .input-group-clean .input-group-text {
-          border-top-left-radius: 8px;
-          border-bottom-left-radius: 8px;
-          background-color: #f8f9fa;
-          border: 1px solid #dee2e6;
-          border-right: none;
-      }
-  </style>
 </head>
-<body id="page-admin">
+<body id="page-admin" class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
 
-  <!-- LOADING OVERLAY -->
-  <div id="loadingOverlay" class="hidden">
-    <div class="text-center">
-      <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
-      <p class="mt-2 fw-bold text-dark">Memproses Data...</p>
+  <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+    <div class="text-center text-white">
+      <i class="fas fa-circle-notch fa-spin fa-3x mb-3 text-brand-500"></i>
+      <p class="font-bold tracking-wide animate-pulse">Memproses Data...</p>
     </div>
   </div>
 
-  <!-- QUEUE MODAL (Modul Tindakan Pantas) -->
-  <div id="queueModal" class="queue-overlay hidden">
-      <div class="queue-card">
-          <button class="btn-close-queue" onclick="document.getElementById('queueModal').classList.add('hidden')" title="Tutup">&times;</button>
-          <div class="queue-progress fw-bold text-muted mb-3" id="qProgress">Sasaran 1 / 10</div>
-          <span class="badge bg-warning text-dark mb-3" id="qRoleBadge">GPICT</span>
-          <h3 class="queue-school fw-bold mb-1" id="qSchoolName">SK CONTOH</h3>
-          <p class="text-muted small mb-1" id="qCode">MBA0000</p>
-          <div class="queue-person text-success fw-bold mb-4 fs-5" id="qPersonName">Cikgu Ali</div>
-          <div class="alert alert-light border small text-start mb-3 bg-light">
-              <i class="fas fa-info-circle me-1 text-primary"></i> Tekan butang hijau untuk buka WhatsApp Web.
-          </div>
-          <a href="#" id="qWaBtn" target="_blank" class="btn-wa-big" onclick="setTimeout(nextQueue, 1500)">
-              <i class="fab fa-whatsapp fa-lg"></i> Hantar Mesej
-          </a>
-          <div class="d-flex gap-2">
-            <button class="btn btn-light border w-50" onclick="prevQueue()" id="btnPrev"><i class="fas fa-chevron-left me-1"></i> Sebelum</button>
-            <button class="btn btn-light border w-50" onclick="nextQueue()">Seterusnya <i class="fas fa-chevron-right ms-1"></i></button>
+  <div id="queueModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm p-4">
+      <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden relative">
+          <button class="absolute top-4 right-4 text-slate-400 hover:text-red-500 text-2xl" onclick="document.getElementById('queueModal').classList.add('hidden')">&times;</button>
+          <div class="p-8 text-center">
+              <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4" id="qProgress">Sasaran 1 / 10</div>
+              <span class="inline-block bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full mb-4" id="qRoleBadge">GPICT</span>
+              <h3 class="text-2xl font-black text-slate-800 mb-1" id="qSchoolName">SK CONTOH</h3>
+              <p class="text-sm font-mono font-bold text-slate-400 mb-6" id="qCode">MBA0000</p>
+              
+              <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
+                  <div class="text-lg font-bold text-brand-600" id="qPersonName">Cikgu Ali</div>
+              </div>
+
+              <div class="flex items-center gap-2 text-xs text-slate-500 bg-blue-50 p-3 rounded-lg border border-blue-100 mb-6 text-left">
+                  <i class="fas fa-info-circle text-blue-500 text-lg"></i>
+                  <span>Tekan butang hijau untuk buka WhatsApp Web & hantar peringatan.</span>
+              </div>
+
+              <a href="#" id="qWaBtn" target="_blank" class="block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-green-500/30 transition-all mb-4 flex items-center justify-center gap-2" onclick="setTimeout(nextQueue, 1500)">
+                  <i class="fab fa-whatsapp text-xl"></i> Hantar Mesej
+              </a>
+
+              <div class="flex gap-3">
+                <button class="flex-1 py-3 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition" onclick="prevQueue()" id="btnPrev">
+                    <i class="fas fa-chevron-left mr-1"></i> Sebelum
+                </button>
+                <button class="flex-1 py-3 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition" onclick="nextQueue()">
+                    Seterusnya <i class="fas fa-chevron-right mr-1"></i>
+                </button>
+              </div>
           </div>
       </div>
   </div>
 
-  <!-- HEADER -->
-  <div class="header-bg text-center">
-    <img src="icoppdag.png" alt="Logo PPD" class="mb-3" style="width: 100px; height: auto;">
-    <h3 class="fw-bold px-3">Panel Admin SMPID</h3>
-    <p class="opacity-75 mb-0">Pengurusan Data & Komunikasi</p>
-    <div class="mt-3">
-        <span class="badge bg-white text-primary border border-primary shadow-sm px-3 py-2 rounded-pill">
-            <i class="fas fa-user-shield me-2"></i><span id="displayUserRole">MOD ADMIN</span>
-        </span>
+  <!-- HEADER COMPACT -->
+  <header class="bg-slate-900 text-white pb-24 pt-6 px-4 relative overflow-hidden shadow-lg">
+    <div class="absolute top-0 right-0 w-64 h-64 bg-brand-500 rounded-full blur-3xl opacity-10 -mr-20 -mt-20 pointer-events-none"></div>
+    <div class="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <img src="icoppdag.png" alt="Logo" class="w-14 h-auto drop-shadow-lg bg-white rounded-full p-1">
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold leading-tight">Panel Admin SMPID</h1>
+                <p class="text-slate-400 text-xs font-medium">Pengurusan Data & Komunikasi Digital</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-white backdrop-blur-sm">
+                <i class="fas fa-user-shield text-brand-400"></i> <span id="displayUserRole">MOD ADMIN</span>
+            </span>
+            <!-- Tombol Keluar Global -->
+            <button onclick="keluarSistem()" class="flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-500/20 border border-red-500/30 text-xs font-bold text-red-400 hover:bg-red-500/30 transition-all backdrop-blur-sm">
+                <i class="fas fa-sign-out-alt"></i> Keluar
+            </button>
+        </div>
     </div>
-  </div>
+  </header>
 
-  <div class="container main-container pb-5">
-    <div class="row justify-content-center">
-      <div class="col-lg-12 col-xl-11">
+  <div class="container mx-auto px-4 -mt-16 pb-20 relative z-20 max-w-7xl">
+    
+    <!-- NAVIGATION TABS -->
+    <div class="flex flex-wrap justify-center gap-2 mb-6 bg-white p-2 rounded-2xl shadow-lg border border-slate-100 max-w-5xl mx-auto overflow-x-auto">
+        <a href="#dashboard" class="tab-active px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="dashboard-tab" onclick="switchAdminTab('dashboard', event)"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <a href="#analisa" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="analisa-tab" onclick="switchAdminTab('analisa', event)"><i class="fas fa-chart-pie"></i> Analisa</a>
+        <a href="#pencapaian" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="pencapaian-tab" onclick="switchAdminTab('pencapaian', event)"><i class="fas fa-trophy"></i> Kemenjadian</a>
+        <a href="#gallery" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="gallery-tab" onclick="switchAdminTab('gallery', event)"><i class="fas fa-images"></i> Galeri</a>
+        <a href="#email" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="email-tab" onclick="switchAdminTab('email', event)"><i class="fas fa-paper-plane"></i> Blaster</a>
+        <a href="#helpdesk" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="helpdesk-tab" onclick="switchAdminTab('helpdesk', event)"><i class="fas fa-headset"></i> Aduan</a>
+        <a href="#admin-users" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="admin-users-tab" onclick="switchAdminTab('admin-users', event)"><i class="fas fa-users-cog"></i> Akses</a>
+    </div>
 
-        <!-- NAV TABS (COMPACT VERSION) -->
-        <div class="d-flex justify-content-center mb-4">
-            <ul class="nav nav-pills nav-compact" id="adminTabs" role="tablist">
-              <li class="nav-item"><button class="nav-link active" id="dashboard-tab" data-bs-toggle="pill" data-bs-target="#tab-dashboard"><i class="fas fa-tachometer-alt"></i>Dashboard</button></li>
-              <li class="nav-item"><button class="nav-link" id="analisa-tab" data-bs-toggle="pill" data-bs-target="#tab-analisa"><i class="fas fa-chart-pie"></i>DCS & DELIMa</button></li>
-              <li class="nav-item"><button class="nav-link" id="pencapaian-tab" data-bs-toggle="pill" data-bs-target="#tab-pencapaian"><i class="fas fa-trophy"></i>Kemenjadian</button></li>
-              <li class="nav-item"><button class="nav-link" id="gallery-tab" data-bs-toggle="pill" data-bs-target="#tab-gallery"><i class="fas fa-images"></i>Galeri</button></li>
-              <li class="nav-item"><button class="nav-link" id="email-tab" data-bs-toggle="pill" data-bs-target="#tab-email"><i class="fas fa-paper-plane"></i>Blaster</button></li>
-              <li class="nav-item"><button class="nav-link" id="helpdesk-tab" data-bs-toggle="pill" data-bs-target="#tab-helpdesk"><i class="fas fa-headset"></i>Aduan</button></li>
-              <li class="nav-item"><button class="nav-link" id="admin-users-tab" data-bs-toggle="pill" data-bs-target="#tab-admin-users"><i class="fas fa-users-cog"></i>Akses</button></li>
-            </ul>
+    <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden min-h-[500px]">
+        
+        <!-- TAB 1: DASHBOARD -->
+        <div id="tab-dashboard" class="p-6 md:p-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 border-b border-slate-100 pb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800">Pantau Pendaftaran</h2>
+                    <p class="text-slate-500 text-sm">Senarai status pengisian sekolah.</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="mulaTindakanPantas()" class="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-bold transition shadow-sm flex items-center gap-2"><i class="fab fa-whatsapp"></i> Tindakan Pantas</button>
+                    <button onclick="janaSenaraiTelegram()" class="px-4 py-2 rounded-lg bg-amber-400 hover:bg-amber-50 text-slate-900 text-xs font-bold transition shadow-sm flex items-center gap-2"><i class="fab fa-telegram-plane"></i> Copy List</button>
+                    <button onclick="eksportDataTapis()" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold transition shadow-sm flex items-center gap-2"><i class="fas fa-file-export"></i> Eksport</button>
+                </div>
+            </div>
+
+            <div class="relative mb-6">
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="adminSearchInput" class="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none font-semibold text-slate-700 placeholder-slate-400" placeholder="Cari Nama Sekolah atau Kod..." oninput="handleSearch(this.value)">
+            </div>
+
+            <div class="mb-8" id="filterContainer">
+                <!-- Filter buttons akan di-render oleh JS -->
+            </div>
+
+            <div id="schoolGridWrapper" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            </div>
         </div>
 
-        <div class="tab-content" id="adminTabsContent">
-          <!-- TAB 1: DASHBOARD -->
-          <div class="tab-pane fade show active" id="tab-dashboard" role="tabpanel">
-            <div id="dashboardCard" class="card p-4 shadow-sm border-top-primary border-4">
-                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
-                  <div><h5 class="mb-0 fw-bold text-primary">Pantau Pendaftaran</h5><small class="text-muted">Senarai sekolah dan status pengisian</small></div>
-                  <div class="d-flex gap-2 flex-wrap">
-                    <button onclick="mulaTindakanPantas()" class="btn btn-success btn-sm fw-bold shadow-sm"><i class="fab fa-whatsapp me-1"></i> Modul Tindakan Pantas</button>
-                    <button onclick="janaSenaraiTelegram()" class="btn btn-warning btn-sm text-dark fw-bold shadow-sm"><i class="fab fa-telegram-plane me-1"></i> Copy List</button>
-                    <button onclick="eksportDataTapis()" class="btn btn-secondary btn-sm fw-bold text-white shadow-sm"><i class="fas fa-file-export me-1"></i> Eksport Paparan</button>
-                    <button onclick="keluarSistem()" class="btn btn-outline-danger btn-sm fw-bold"><i class="fas fa-sign-out-alt me-1"></i> Log Keluar</button>
-                  </div>
-                </div>
-                
-                <div class="mb-3 position-relative">
-                    <input type="text" id="adminSearchInput" class="form-control form-control-lg admin-search-bar" placeholder="Cari Nama Sekolah atau Kod..." oninput="handleSearch(this.value)">
-                    <i class="fas fa-search position-absolute top-50 end-0 translate-middle-y me-3 text-muted"></i>
-                </div>
-
-                <div class="mb-4" id="filterContainer"></div>
-                <div id="schoolGridWrapper"></div>
+        <!-- TAB 2: ANALISA -->
+        <div id="tab-analisa" class="hidden p-6 md:p-8">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-xl font-bold text-slate-800">Laporan Pencapaian</h2>
+                <select id="pilihTahunAnalisa" class="px-4 py-2 rounded-lg border border-slate-200 text-sm font-bold bg-white focus:border-brand-500 outline-none" onchange="updateDashboardAnalisa()">
+                    <option value="" disabled selected>Mengesan Data...</option>
+                </select>
             </div>
-          </div>
 
-          <!-- TAB 2: ANALISA -->
-          <div class="tab-pane fade" id="tab-analisa" role="tabpanel">
-            <div class="card p-4 shadow-sm border-top border-dark border-4 bg-white">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div><h5 class="fw-bold mb-0 text-dark">Laporan Pencapaian Daerah</h5></div>
-                    <div><select id="pilihTahunAnalisa" class="form-select form-select-sm fw-bold shadow-sm bg-light" onchange="updateDashboardAnalisa()"><option value="" disabled selected>Mengesan Data...</option></select></div>
-                </div>
-                <div class="row g-4">
-                    <div class="col-lg-6 border-end-lg">
-                        <div class="p-2">
-                            <h6 class="text-primary fw-bold border-bottom pb-2 mb-3">Lensa Kualiti: Skor DCS</h6>
-                            <div class="card border-0 bg-primary bg-opacity-10 mb-3 rounded-4"><div class="card-body text-center p-3"><small class="text-primary fw-bold">PURATA SKOR DAERAH</small><h1 class="display-4 fw-bold text-primary mb-0" id="kpiDcsScore">-</h1><span class="badge bg-primary mt-2" id="kpiDcsLabel">Memuatkan...</span></div></div>
-                            <div class="card border-0 shadow-sm rounded-4 mb-3 p-3"><div style="height: 250px;"><canvas id="chartDcsDonut"></canvas></div></div>
-                            <div class="card border-0 shadow-sm rounded-4"><div class="card-header bg-primary text-white small fw-bold">5 Sekolah Terbaik (DCS)</div><div class="table-responsive"><table class="table table-sm table-hover mb-0 small" id="tableTopDcs"><tbody><tr><td class="p-3 text-center">Memuatkan...</td></tr></tbody></table></div></div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-blue-50/50 rounded-2xl p-6 border border-blue-100">
+                    <h3 class="text-blue-700 font-bold mb-4 border-b border-blue-200 pb-2">Lensa Kualiti: Skor DCS</h3>
+                    <div class="flex items-center gap-6 mb-6">
+                        <div class="text-center">
+                            <div class="text-4xl font-black text-blue-600" id="kpiDcsScore">-</div>
+                            <span class="inline-block px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold mt-2" id="kpiDcsLabel">...</span>
+                        </div>
+                        <div class="flex-grow h-32 relative">
+                            <canvas id="chartDcsDonut"></canvas>
                         </div>
                     </div>
-                    <div class="col-lg-6">
-                        <div class="p-2">
-                            <h6 class="text-success fw-bold border-bottom pb-2 mb-3">Lensa Kuantiti: % Aktif</h6>
-                            <div class="card border-0 bg-success bg-opacity-10 mb-3 rounded-4"><div class="card-body text-center p-3"><small class="text-success fw-bold">PURATA % AKTIF DAERAH</small><h1 class="display-4 fw-bold text-success mb-0"><span id="kpiActiveScore">-</span>%</h1><span class="badge bg-success mt-2">Pencapaian Semasa</span></div></div>
-                            <div class="card border-0 shadow-sm rounded-4 mb-3 p-3"><div style="height: 250px;"><canvas id="chartActiveBar"></canvas></div></div>
-                            <div class="card border-0 shadow-sm rounded-4"><div class="card-header bg-success text-white small fw-bold">5 Sekolah Paling Aktif</div><div class="table-responsive"><table class="table table-sm table-hover mb-0 small" id="tableTopActive"><tbody><tr><td class="p-3 text-center">Memuatkan...</td></tr></tbody></table></div></div>
-                        </div>
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-blue-100">
+                        <div class="px-4 py-2 bg-blue-50 text-xs font-bold text-blue-600 uppercase">5 Sekolah Terbaik</div>
+                        <table class="w-full text-sm text-left" id="tableTopDcs"><tbody><tr><td class="p-4 text-center text-slate-400">...</td></tr></tbody></table>
                     </div>
                 </div>
-                <div class="mt-5">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold m-0 text-dark">Data Terperinci Sekolah</h6>
-                        <div class="d-flex gap-2 align-items-center">
-                            <button onclick="eksportDcs()" class="btn btn-sm btn-outline-success fw-bold shadow-sm text-nowrap"><i class="fas fa-file-csv me-1"></i> Eksport CSV</button>
-                            <input type="text" id="searchAnalisa" class="form-control form-control-sm" style="min-width: 200px;" placeholder="Cari Sekolah..." onkeyup="filterAnalisaTable()">
+
+                <div class="bg-green-50/50 rounded-2xl p-6 border border-green-100">
+                    <h3 class="text-green-700 font-bold mb-4 border-b border-green-200 pb-2">Lensa Kuantiti: % Aktif</h3>
+                    <div class="flex items-center gap-6 mb-6">
+                        <div class="text-center">
+                            <div class="text-4xl font-black text-green-600"><span id="kpiActiveScore">-</span>%</div>
+                            <span class="inline-block px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold mt-2">Pencapaian</span>
+                        </div>
+                        <div class="flex-grow h-32 relative">
+                            <canvas id="chartActiveBar"></canvas>
                         </div>
                     </div>
-                    <div class="table-responsive border rounded-3" style="max-height: 500px;">
-                        <table class="table table-hover table-striped mb-0 small align-middle">
-                            <thead class="table-dark sticky-top"><tr><th style="width: 10%;">Kod</th><th style="width: 35%;">Nama Sekolah</th><th style="width: 25%;" class="text-center bg-primary bg-opacity-25">DCS <span id="lblYearDcs">-</span></th><th style="width: 20%;" class="text-center bg-success bg-opacity-25">% Aktif <span id="lblYearAktif">-</span></th><th style="width: 10%;" class="text-center">Tindakan</th></tr></thead>
-                            <tbody id="tableAnalisaBody"><tr><td colspan="5" class="text-center py-4">Memuatkan data...</td></tr></tbody>
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-green-100">
+                        <div class="px-4 py-2 bg-blue-50 text-xs font-bold text-green-600 uppercase">5 Paling Aktif</div>
+                        <table class="w-full text-sm text-left" id="tableTopActive"><tbody><tr><td class="p-4 text-center text-slate-400">...</td></tr></tbody></table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-slate-700">Data Terperinci</h3>
+                <div class="flex gap-2">
+                    <button onclick="eksportDcs()" class="px-3 py-1.5 rounded bg-white border border-slate-200 text-xs font-bold hover:bg-slate-50 transition"><i class="fas fa-download mr-1"></i> CSV</button>
+                    <input type="text" id="searchAnalisa" class="px-3 py-1.5 rounded bg-white border border-slate-200 text-xs w-48 outline-none focus:border-brand-500" placeholder="Cari Sekolah..." onkeyup="filterAnalisaTable()">
+                </div>
+            </div>
+            
+            <div class="overflow-auto max-h-[500px] border border-slate-200 rounded-xl">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10">
+                        <tr>
+                            <th class="px-6 py-3 font-bold">Kod</th>
+                            <th class="px-6 py-3 font-bold">Nama Sekolah</th>
+                            <th class="px-6 py-3 text-center bg-blue-50 text-blue-700">DCS <span id="lblYearDcs" class="text-[10px] ml-1 opacity-70">-</span></th>
+                            <th class="px-6 py-3 text-center bg-green-50 text-green-700">% Aktif <span id="lblYearAktif" class="text-[10px] ml-1 opacity-70">-</span></th>
+                            <th class="px-6 py-3 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableAnalisaBody" class="divide-y divide-slate-100"><tr><td colspan="5" class="p-8 text-center text-slate-400">Memuatkan data...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 3: PENCAPAIAN (KEMENJADIAN) -->
+        <div id="tab-pencapaian" class="hidden p-6 md:p-8">
+            <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800">Analisa Kemenjadian</h2>
+                    <p class="text-slate-500 text-sm">Pangkalan Data Pusat</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="eksportPencapaian()" class="px-4 py-2 rounded-lg border border-green-200 text-green-600 hover:bg-green-50 text-xs font-bold transition flex items-center gap-2"><i class="fas fa-file-csv"></i> Eksport</button>
+                    <button onclick="openStandardizeModal()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition flex items-center gap-2"><i class="fas fa-magic"></i> Seragamkan</button>
+                    <button onclick="openModalPPD()" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-2"><i class="fas fa-plus-circle"></i> Rekod PPD</button>
+                </div>
+            </div>
+
+            <!-- UNIFIED FILTER DECK -->
+            <div class="bg-slate-50 p-4 rounded-2xl mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div class="col-span-1 lg:col-span-2 relative">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchPencapaianInput" class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-sm font-semibold" placeholder="Cari Nama / Program..." onkeyup="handlePencapaianSearch()">
+                </div>
+                <select id="filterTahunPencapaian" class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold outline-none" onchange="loadMasterPencapaian()">
+                    <option disabled>Memuatkan...</option>
+                </select>
+                <select id="filterKategoriPencapaian" class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold outline-none" onchange="renderPencapaianTable()">
+                    <option value="ALL">SEMUA KATEGORI</option>
+                    <option value="MURID">MURID</option>
+                    <option value="GURU">GURU</option>
+                    <option value="SEKOLAH">SEKOLAH</option>
+                    <option value="PEGAWAI">PEGAWAI PPD</option>
+                    <option value="PPD">UNIT PPD</option>
+                </select>
+                <select id="filterJenisPencapaian" class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold outline-none" onchange="renderPencapaianTable()">
+                    <option value="ALL">SEMUA JENIS</option>
+                    <option value="PERTANDINGAN">PERTANDINGAN</option>
+                    <option value="PENSIJILAN">PENSIJILAN</option>
+                </select>
+                <select id="filterSekolahPencapaian" class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold outline-none col-span-1 lg:col-span-2" onchange="renderPencapaianTable()">
+                    <option value="ALL">SEMUA SEKOLAH</option>
+                </select>
+                <button onclick="resetPencapaianFilters()" class="px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 transition font-bold text-xs flex items-center justify-center">
+                    <i class="fas fa-sync-alt mr-1"></i> RESET
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6 text-center">
+                <div onclick="filterByKategori('MURID')" class="p-3 bg-blue-50 rounded-xl border border-blue-100 cursor-pointer hover:bg-blue-100 transition"><span class="text-[10px] font-bold text-blue-500 uppercase">Murid</span><h4 class="text-xl font-black text-blue-700" id="statTotalMurid">0</h4></div>
+                <div onclick="filterByKategori('GURU')" class="p-3 bg-amber-50 rounded-xl border border-amber-100 cursor-pointer hover:bg-amber-100 transition"><span class="text-[10px] font-bold text-amber-500 uppercase">Guru</span><h4 class="text-xl font-black text-amber-700" id="statTotalGuru">0</h4></div>
+                <div onclick="filterByKategori('SEKOLAH')" class="p-3 bg-green-50 rounded-xl border border-green-100 cursor-pointer hover:bg-green-100 transition"><span class="text-[10px] font-bold text-green-100 uppercase">Sekolah</span><h4 class="text-xl font-black text-green-700" id="statTotalSekolah">0</h4></div>
+                <div onclick="filterByKategori('PEGAWAI')" class="p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition"><span class="text-[10px] font-bold text-slate-500 uppercase">Pegawai</span><h4 class="text-xl font-black text-slate-700" id="statTotalPegawai">0</h4></div>
+                <div onclick="filterByKategori('PPD')" class="p-3 bg-indigo-50 rounded-xl border border-indigo-100 cursor-pointer hover:bg-indigo-100 transition"><span class="text-[10px] font-bold text-indigo-500 uppercase">Unit</span><h4 class="text-xl font-black text-indigo-700" id="statTotalUnit">0</h4></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div onclick="filterByCard('KEBANGSAAN')" id="card-KEBANGSAAN" class="bg-purple-600 rounded-2xl p-5 text-white cursor-pointer hover:shadow-lg transition transform hover:-translate-y-1 relative overflow-hidden group">
+                            <div class="absolute right-0 top-0 w-24 h-24 bg-white/10 rounded-full -mr-6 -mt-6 blur-2xl group-hover:bg-white/20 transition"></div>
+                            <h3 class="text-4xl font-black mb-1" id="statKebangsaan">-</h3>
+                            <p class="text-xs font-bold text-purple-200 uppercase tracking-wider">Peringkat Kebangsaan</p>
+                        </div>
+                        <div onclick="filterByCard('ANTARABANGSA')" id="card-ANTARABANGSA" class="bg-orange-500 rounded-2xl p-5 text-white cursor-pointer hover:shadow-lg transition transform hover:-translate-y-1 relative overflow-hidden group">
+                            <div class="absolute right-0 top-0 w-24 h-24 bg-white/10 rounded-full -mr-6 -mt-6 blur-2xl group-hover:bg-white/20 transition"></div>
+                            <h3 class="text-4xl font-black mb-1" id="statAntarabangsa">-</h3>
+                            <p class="text-xs font-bold text-orange-200 uppercase tracking-wider">Antarabangsa / Sijil</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-3">
+                        <div onclick="filterByCard('GOOGLE')" id="card-GOOGLE" class="bg-white border border-red-100 p-3 rounded-xl cursor-pointer hover:bg-red-50 hover:border-red-300 transition text-center group">
+                            <i class="fab fa-google text-red-500 text-xl mb-2 group-hover:scale-110 transition"></i>
+                            <h4 class="text-lg font-black text-slate-700" id="statGoogle">-</h4>
+                            <p class="text-[9px] font-bold text-slate-400 uppercase">Google</p>
+                        </div>
+                        <div onclick="filterByCard('APPLE')" id="card-APPLE" class="bg-white border border-slate-200 p-3 rounded-xl cursor-pointer hover:bg-slate-100 hover:border-slate-400 transition text-center group">
+                            <i class="fab fa-apple text-slate-800 text-xl mb-2 group-hover:scale-110 transition"></i>
+                            <h4 class="text-lg font-black text-slate-700" id="statApple">-</h4>
+                            <p class="text-[9px] font-bold text-slate-400 uppercase">Apple</p>
+                        </div>
+                        <div onclick="filterByCard('MICROSOFT')" id="card-MICROSOFT" class="bg-white border border-blue-100 p-3 rounded-xl cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition text-center group">
+                            <i class="fab fa-microsoft text-blue-500 text-xl mb-2 group-hover:scale-110 transition"></i>
+                            <h4 class="text-lg font-black text-slate-700" id="statMicrosoft">-</h4>
+                            <p class="text-[9px] font-bold text-slate-400 uppercase">Microsoft</p>
+                        </div>
+                        <div onclick="filterByCard('LAIN-LAIN')" id="card-LAIN-LAIN" class="bg-white border border-slate-200 p-3 rounded-xl cursor-pointer hover:bg-slate-50 transition text-center group">
+                            <i class="fas fa-layer-group text-slate-400 text-xl mb-2 group-hover:scale-110 transition"></i>
+                            <h4 class="text-lg font-black text-slate-700" id="statLain">-</h4>
+                            <p class="text-[9px] font-bold text-slate-400 uppercase">Lain-lain</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col shadow-sm">
+                    <div class="bg-slate-900 px-4 py-3 flex justify-between items-center">
+                        <h4 class="text-xs font-bold text-white uppercase tracking-wider">Top 5 Sekolah</h4>
+                        <span class="bg-white/20 text-white text-[9px] font-bold px-2 py-0.5 rounded-full" id="totalRecordsBadge">0 Rekod</span>
+                    </div>
+                    <div class="flex-grow overflow-y-auto max-h-[250px]">
+                        <table class="w-full text-sm text-left">
+                            <tbody id="tableTopContributors" class="divide-y divide-slate-100">
+                                <tr><td class="p-4 text-center text-slate-400 text-xs">Mengira data...</td></tr>
+                            </tbody>
                         </table>
                     </div>
                 </div>
             </div>
-          </div>
 
-          <!-- TAB 3: PENCAPAIAN (KEMENJADIAN) -->
-          <div class="tab-pane fade" id="tab-pencapaian" role="tabpanel">
-            <div class="card p-4 shadow-sm border-purple border-4 border-top">
-                
-                <!-- HEADER & ACTIONS -->
-                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
-                    <div class="d-flex align-items-center">
-                         <button id="btnLogoutUnitPPD" onclick="keluarSistem()" class="btn btn-outline-danger btn-sm fw-bold me-3 hidden"><i class="fas fa-sign-out-alt me-1"></i> Log Keluar</button>
-                         <button id="btnUbahPassUnitPPD" onclick="ubahKataLaluanSendiri()" class="btn btn-outline-warning text-dark btn-sm fw-bold me-3 hidden"><i class="fas fa-key me-1"></i> Tukar Password</button>
-                         <div>
-                             <h5 class="fw-bold mb-0 text-purple">Analisa Kemenjadian</h5>
-                             <small class="text-muted">Pangkalan Data Pusat</small>
-                         </div>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button onclick="eksportPencapaian()" class="btn btn-outline-success btn-sm fw-bold shadow-sm" title="Eksport ke CSV"><i class="fas fa-file-csv me-1"></i> Eksport</button>
-                        <button onclick="openStandardizeModal()" class="btn btn-dark btn-sm fw-bold shadow-sm" title="Seragamkan Data"><i class="fas fa-magic me-1"></i> Seragamkan</button>
-                        <button onclick="openModalPPD()" class="btn btn-indigo btn-sm fw-bold shadow-sm text-nowrap"><i class="fas fa-plus-circle me-1"></i> Rekod PPD</button>
-                    </div>
+            <div id="jawatanCloudWrapper" class="mb-6 hidden animate-fade-up">
+                <div class="flex justify-between items-center mb-2">
+                    <h6 class="font-bold text-slate-400 text-[10px] uppercase tracking-widest"><i class="fas fa-tags mr-1"></i> Tapisan Jawatan Guru</h6>
+                    <button onclick="filterPencapaianByJawatan('ALL')" id="btnResetJawatan" class="text-[10px] font-bold text-red-400 hover:text-red-600 hidden uppercase">Reset Tapis</button>
                 </div>
-
-                <!-- UNIFIED CONTROL DECK -->
-                <div class="card border-0 shadow-sm bg-light rounded-4 mb-4">
-                    <div class="card-body p-3">
-                        <div class="row g-2 align-items-center">
-                            <div class="col-12 col-md-12 col-lg-3">
-                                <div class="form-floating">
-                                    <input type="text" class="form-control border-0 shadow-sm fw-bold" id="searchPencapaianInput" placeholder="Carian..." onkeyup="handlePencapaianSearch()">
-                                    <label for="searchPencapaianInput"><i class="fas fa-search me-2 text-muted"></i>Cari Nama/Prog</label>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2">
-                                <div class="form-floating">
-                                    <select class="form-select border-0 shadow-sm fw-bold text-primary" id="filterTahunPencapaian" onchange="loadMasterPencapaian()">
-                                        <option value="" disabled selected>Memuatkan...</option>
-                                    </select>
-                                    <label for="filterTahunPencapaian">Tahun</label>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2">
-                                <div class="form-floating">
-                                    <select class="form-select border-0 shadow-sm fw-bold" id="filterKategoriPencapaian" onchange="renderPencapaianTable()">
-                                        <option value="ALL" selected>SEMUA</option>
-                                        <option value="MURID">MURID</option>
-                                        <option value="GURU">GURU</option>
-                                        <option value="SEKOLAH">SEKOLAH</option>
-                                        <option value="PEGAWAI">PEGAWAI PPD</option>
-                                        <option value="PPD">UNIT PPD</option>
-                                    </select>
-                                    <label for="filterKategoriPencapaian">Kategori</label>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2">
-                                <div class="form-floating">
-                                    <select class="form-select border-0 shadow-sm fw-bold" id="filterJenisPencapaian" onchange="renderPencapaianTable()">
-                                        <option value="ALL" selected>SEMUA</option>
-                                        <option value="PERTANDINGAN">PERTANDINGAN</option>
-                                        <option value="PENSIJILAN">PENSIJILAN</option>
-                                    </select>
-                                    <label for="filterJenisPencapaian">Jenis</label>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2">
-                                <div class="form-floating">
-                                    <select class="form-select border-0 shadow-sm fw-bold" id="filterSekolahPencapaian" onchange="renderPencapaianTable()">
-                                        <option value="ALL" selected>SEMUA SEKOLAH</option>
-                                    </select>
-                                    <label for="filterSekolahPencapaian">Sekolah</label>
-                                </div>
-                            </div>
-                            <div class="col-12 col-lg-1 d-flex align-items-stretch">
-                                <button onclick="resetPencapaianFilters()" class="btn btn-white border-0 shadow-sm w-100 py-3 text-secondary" title="Reset Filter" style="height: 58px;">
-                                    <i class="fas fa-sync-alt fa-lg"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- STATISTIK CARDS -->
-                <div class="row g-3 mb-3 justify-content-center text-center">
-                    <div class="col-6 col-md-2"><div onclick="filterByKategori('MURID')" class="card bg-white border h-100 cursor-pointer shadow-sm p-2"><small class="text-muted fw-bold">MURID</small><h4 class="fw-bold mb-0 text-info" id="statTotalMurid">0</h4></div></div>
-                    <div class="col-6 col-md-2"><div onclick="filterByKategori('GURU')" class="card bg-white border h-100 cursor-pointer shadow-sm p-2"><small class="text-muted fw-bold">GURU</small><h4 class="fw-bold mb-0 text-warning" id="statTotalGuru">0</h4></div></div>
-                    <div class="col-6 col-md-2"><div onclick="filterByKategori('SEKOLAH')" class="card bg-white border h-100 cursor-pointer shadow-sm p-2"><small class="text-muted fw-bold">SEKOLAH</small><h4 class="fw-bold mb-0 text-success" id="statTotalSekolah">0</h4></div></div>
-                    <div class="col-6 col-md-3"><div onclick="filterByKategori('PEGAWAI')" class="card bg-white border h-100 cursor-pointer shadow-sm p-2"><small class="text-muted fw-bold">PEGAWAI PPD</small><h4 class="fw-bold mb-0 text-dark" id="statTotalPegawai">0</h4></div></div>
-                    <div class="col-6 col-md-3"><div onclick="filterByKategori('PPD')" class="card bg-white border h-100 cursor-pointer shadow-sm p-2"><small class="text-muted fw-bold">UNIT PPD</small><h4 class="fw-bold mb-0 text-primary" id="statTotalUnit">0</h4></div></div>
-                </div>
-
-                <!-- JAWATAN CLOUD (TAB PENCAPAIAN) -->
-                <div id="jawatanCloudWrapper" class="mb-4 hidden fade-up">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold text-secondary mb-0 small text-uppercase"><i class="fas fa-tags me-1"></i>Tapisan Jawatan</h6>
-                        <button onclick="filterPencapaianByJawatan('ALL')" id="btnResetJawatan" class="btn btn-xs btn-outline-secondary rounded-pill py-0 px-2 fw-bold hidden">
-                            Reset Jawatan <i class="fas fa-times ms-1"></i>
-                        </button>
-                    </div>
-                    <div id="jawatanCloudContainer" class="cloud-container p-3 border rounded-3 bg-light bg-opacity-50">
-                        <small class="text-muted fst-italic">Memuatkan kata kunci jawatan...</small>
-                    </div>
-                </div>
-
-                <div class="row g-4 mb-4">
-                    <div class="col-lg-8">
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6"><div id="card-KEBANGSAAN" onclick="filterByCard('KEBANGSAAN')" class="card bg-purple text-white h-100 border-0 shadow-sm rounded-4 cursor-pointer"><div class="card-body text-center p-3"><h2 class="fw-bold mb-0" id="statKebangsaan">-</h2><small class="text-white-50 text-uppercase fw-bold">Peringkat Kebangsaan</small></div></div></div>
-                            <div class="col-md-6"><div id="card-ANTARABANGSA" onclick="filterByCard('ANTARABANGSA')" class="card bg-orange text-white h-100 border-0 shadow-sm rounded-4 cursor-pointer"><div class="card-body text-center p-3"><h2 class="fw-bold mb-0" id="statAntarabangsa">-</h2><small class="text-white-50 text-uppercase fw-bold">Antarabangsa / Pensijilan</small></div></div></div>
-                        </div>
-                        <div class="row g-2">
-                            <div class="col-3"><div id="card-GOOGLE" onclick="filterByCard('GOOGLE')" class="card border-0 shadow-sm bg-google-sub border-google border-start border-3 cursor-pointer"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-google" id="statGoogle">-</h4><small class="fw-bold text-muted">GOOGLE</small></div></div></div>
-                            <div class="col-3"><div id="card-APPLE" onclick="filterByCard('APPLE')" class="card border-0 shadow-sm bg-apple-sub border-apple border-start border-3 cursor-pointer"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-apple" id="statApple">-</h4><small class="fw-bold text-muted">APPLE</small></div></div></div>
-                            <div class="col-3"><div id="card-MICROSOFT" onclick="filterByCard('MICROSOFT')" class="card border-0 shadow-sm bg-microsoft-sub border-microsoft border-start border-3 cursor-pointer"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-microsoft" id="statMicrosoft">-</h4><small class="fw-bold text-muted">MICROSOFT</small></div></div></div>
-                            <div class="col-3"><div id="card-LAIN-LAIN" onclick="filterByCard('LAIN-LAIN')" class="card border-0 shadow-sm bg-light border-secondary border-start border-3 cursor-pointer"><div class="card-body p-2 text-center"><h4 class="fw-bold mb-0 text-dark" id="statLain">-</h4><small class="fw-bold text-muted">LAIN-LAIN</small></div></div></div>
-                        </div>
-                    </div>
-                    <div class="col-lg-4">
-                        <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
-                            <div class="card-header bg-dark text-white small fw-bold py-2 d-flex justify-content-between align-items-center"><span>Top 5 Sekolah</span><span class="badge bg-white text-dark rounded-pill" id="totalRecordsBadge">0 Rekod</span></div>
-                            <div class="table-responsive h-100 bg-white"><table class="table table-sm table-hover mb-0 small align-middle" id="tableTopContributors"><tbody><tr><td class="text-center p-4">Mengira data...</td></tr></tbody></table></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="table-responsive border rounded-3" style="max-height: 600px; background: white;">
-                    <table class="table table-hover table-striped table-bordered align-middle small mb-0">
-                        <thead class="table-dark sticky-top">
-                            <tr>
-                                <th style="width: 8%;" class="sortable-header" onclick="handleSort('kod_sekolah')">Kod <i id="icon-kod_sekolah" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
-                                <th style="width: 20%;" class="sortable-header" onclick="handleSort('nama_sekolah')">Nama Sekolah <i id="icon-nama_sekolah" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
-                                <th style="width: 8%;" class="text-center sortable-header" onclick="handleSort('kategori')">Kat <i id="icon-kategori" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
-                                <th style="width: 20%;" class="sortable-header" onclick="handleSort('nama_peserta')">Peserta <i id="icon-nama_peserta" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
-                                <th style="width: 15%;" class="sortable-header" onclick="handleSort('nama_pertandingan')">Program <i id="icon-nama_pertandingan" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
-                                <th style="width: 10%;" class="text-center sortable-header" onclick="handleSort('pencapaian')">Skor <i id="icon-pencapaian" class="fas fa-sort ms-1 text-muted opacity-25"></i></th>
-                                <th style="width: 5%;" class="text-center">Bukti</th>
-                                <th style="width: 8%;" class="text-center">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tbodyPencapaianMaster"></tbody>
-                    </table>
-                </div>
+                <div id="jawatanCloudContainer" class="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-wrap justify-center"></div>
             </div>
-          </div>
 
-          <!-- TAB 4: GALERI -->
-          <div class="tab-pane fade" id="tab-gallery" role="tabpanel">
-            <div class="card p-4 shadow-sm border-top-indigo border-4">
-                <div class="row align-items-end mb-4 border-bottom pb-3 g-3">
-                    <div class="col-lg-7 col-md-6">
-                        <h5 class="fw-bold text-indigo mb-1" id="galleryHeaderTitle">PPD ALOR GAJAH</h5>
-                        <div id="galleryHeaderSubtitle" class="small fw-bold text-muted uppercase">Unit Sumber Teknologi Pendidikan</div>
-                    </div>
-                    <div class="col-lg-5 col-md-6">
-                        <div class="input-group shadow-sm">
-                            <span class="input-group-text bg-white"><i class="fas fa-search"></i></span>
-                            <input type="text" id="gallerySearchInput" class="form-control" placeholder="Cari Sekolah..." oninput="handleGallerySchoolSearch(this.value)">
-                            <select id="gallerySchoolSelector" class="form-select bg-light" style="max-width: 140px;" onchange="loadAdminGalleryGrid(this.value)">
-                                <option value="M030">M030</option>
-                            </select>
-                            <button class="btn btn-light border" onclick="resetGallery()" title="Reset Paparan"><i class="fas fa-sync-alt"></i></button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div id="galleryFilterContainer" class="btn-group shadow-sm bg-white p-1 rounded-pill border"></div>
-                    <span class="badge bg-white text-indigo border border-indigo px-3 py-2 rounded-pill shadow-sm">
-                        <i class="fas fa-images me-2"></i>Total: <span id="galleryTotalCount">0</span> Rekod
-                    </span>
-                </div>
-
-                <!-- JAWATAN WORD CLOUD (TAB GALERI) -->
-                <div id="galleryCloudWrapper" class="mb-4 hidden fade-up">
-                    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
-                        <h6 class="fw-bold text-secondary mb-0 small text-uppercase">Tapisan Jawatan</h6>
-                        <button onclick="filterGalleryByJawatan('ALL')" id="btnResetGalleryCloud" class="btn btn-sm btn-link text-decoration-none text-muted hidden">
-                            RESET <i class="fas fa-times ms-1"></i>
-                        </button>
-                    </div>
-                    <div id="galleryCloudContainer" class="cloud-container p-3 border rounded-4 bg-white shadow-sm"></div>
-                </div>
-
-                <div id="adminGalleryGrid" class="row g-3"></div>
+            <div class="overflow-auto border border-slate-200 rounded-xl max-h-[600px]">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs text-white uppercase bg-slate-800 sticky top-0 z-10">
+                        <tr>
+                            <th class="px-6 py-3 cursor-pointer hover:bg-slate-700" onclick="handleSort('kod_sekolah')">Kod</th>
+                            <th class="px-6 py-3 cursor-pointer hover:bg-slate-700" onclick="handleSort('nama_sekolah')">Nama Sekolah</th>
+                            <th class="px-6 py-3 text-center">Kategori</th>
+                            <th class="px-6 py-3 cursor-pointer hover:bg-slate-700" onclick="handleSort('nama_peserta')">Peserta</th>
+                            <th class="px-6 py-3 cursor-pointer hover:bg-slate-700" onclick="handleSort('nama_pertandingan')">Program</th>
+                            <th class="px-6 py-3 text-center">Skor</th>
+                            <th class="px-6 py-3 text-center">Bukti</th>
+                            <th class="px-6 py-3 text-center">Tindakan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyPencapaianMaster" class="divide-y divide-slate-100"></tbody>
+                </table>
             </div>
-          </div>
-
-          <!-- TAB 5: EMAIL BLASTER -->
-          <div class="tab-pane fade" id="tab-email" role="tabpanel">
-            <div class="card p-4 shadow-sm border-top-warning border-4">
-                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-3">
-                    <h5 class="fw-bold text-dark mb-1">Kriteria Penerima</h5>
-                    <div class="d-flex gap-3 align-items-center">
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="checkGpict" checked onchange="generateList()"><label class="form-check-label fw-bold">GPICT</label></div>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="checkAdmin" checked onchange="generateList()"><label class="form-check-label fw-bold">Admin DELIMa</label></div>
-                        <select id="statusFilter" class="form-select form-select-sm" onchange="generateList()"><option value="all">Semua Status</option><option value="unregistered" selected>Belum Bot</option></select>
-                    </div>
-                </div>
-                <div class="mb-4">
-                    <div class="d-flex justify-content-between mb-2"><label class="fw-bold small text-muted">HASIL (<span id="countEmail">0</span> Penerima)</label><button class="btn btn-sm btn-outline-secondary py-0" onclick="copyEmails()">Salin</button></div>
-                    <textarea id="emailOutput" class="form-control mb-2" rows="3" readonly placeholder="Senarai emel..."></textarea>
-                </div>
-                <div class="bg-light p-3 rounded border">
-                    <h6 class="fw-bold text-success mb-3"><i class="fas fa-pen-fancy me-2"></i>Draf Mesej (Rich Text)</h6>
-                    <div class="mb-2"><input type="text" class="form-control fw-bold" id="msgSubject" value="[TINDAKAN] Pengesahan Pendaftaran Sistem SMPID"></div>
-                    <div class="mb-3 bg-white"><div id="editor-container" style="height: 300px;"></div></div>
-                    <div class="d-flex justify-content-end gap-2">
-                        <button class="btn btn-sm btn-success fw-bold shadow-sm" onclick="copyTemplate()">Salin HTML</button>
-                        <a id="mailtoLink" href="#" class="btn btn-sm btn-outline-secondary"><i class="fas fa-paper-plane me-1"></i> Buka Emel</a>
-                    </div>
-                </div>
-            </div>
-          </div>
-
-          <!-- TAB 6: HELPDESK -->
-          <div class="tab-pane fade" id="tab-helpdesk" role="tabpanel">
-            <div class="card p-4 shadow-sm border-top border-danger border-4">
-                <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 border-bottom pb-3 gap-2">
-                    <div><h5 class="mb-0 fw-bold text-danger">Helpdesk & Aduan</h5></div>
-                    <div><select id="filterTiketAdmin" class="form-select form-select-sm" onchange="loadTiketAdmin()"><option value="ALL">Semua Tiket</option><option value="DALAM PROSES" selected>Dalam Proses</option><option value="SELESAI">Selesai</option></select></div>
-                </div>
-                <div id="adminTiketWrapper"></div>
-            </div>
-          </div>
-
-          <!-- TAB 7: ADMIN USERS -->
-          <div class="tab-pane fade" id="tab-admin-users" role="tabpanel">
-            <div class="card p-4 shadow-sm border-top border-dark border-4">
-                <h5 class="mb-3 fw-bold text-dark">Pengurusan Akses Admin</h5>
-                <div class="bg-light p-3 rounded mb-4 border">
-                    <div class="row g-2 align-items-end">
-                        <div class="col-md-4"><label class="small fw-bold text-muted">Emel Pengguna</label><input type="email" id="inputNewAdminEmail" class="form-control"></div>
-                        <div class="col-md-3"><label class="small fw-bold text-muted">Peranan</label><select id="inputNewAdminRole" class="form-select"></select></div>
-                        <div class="col-md-3"><label class="small fw-bold text-muted">Kata Laluan</label><input type="text" id="inputNewAdminPass" class="form-control"></div>
-                        <div class="col-md-2"><button onclick="tambahAdmin()" class="btn btn-dark w-100 fw-bold">Tambah</button></div>
-                    </div>
-                </div>
-                <div id="adminListWrapper" class="table-responsive"></div>
-            </div>
-          </div>
-
-        </div> <!-- End Tab Content -->
-
-        <div class="text-center mt-5">
-            <button onclick="keluarSistem()" class="btn btn-outline-danger btn-sm fw-bold"><i class="fas fa-sign-out-alt me-2"></i>Log Keluar Admin</button>
         </div>
 
+        <!-- TAB 4: GALERI -->
+        <div id="tab-gallery" class="hidden p-6 md:p-8">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-6 border-b border-slate-100 pb-4 gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-indigo-900" id="galleryHeaderTitle">PPD ALOR GAJAH</h2>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest" id="galleryHeaderSubtitle">Unit Sumber Teknologi Pendidikan</p>
+                </div>
+                <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                    <input type="text" id="gallerySearchInput" class="px-3 py-2 rounded-lg border border-slate-200 text-xs grow md:w-40 outline-none focus:border-indigo-500" placeholder="Cari Sekolah..." oninput="handleGallerySchoolSearch(this.value)">
+                    <select id="gallerySchoolSelector" class="px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white outline-none grow md:w-40" onchange="loadAdminGalleryGrid(this.value)"><option value="M030">M030</option></select>
+                    <button class="px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition" onclick="resetGallery()"><i class="fas fa-sync-alt text-slate-400"></i></button>
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center mb-6">
+                <div id="galleryFilterContainer" class="flex flex-wrap gap-2"></div>
+                <span class="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 shadow-sm whitespace-nowrap">Total: <span id="galleryTotalCount">0</span></span>
+            </div>
+
+            <div id="galleryCloudWrapper" class="mb-6 hidden animate-fade-up">
+                <div class="flex justify-between items-center mb-2">
+                    <h6 class="font-bold text-slate-400 text-[10px] uppercase tracking-widest"><i class="fas fa-tags mr-1"></i> Tapisan Jawatan Galeri</h6>
+                    <button onclick="filterGalleryByJawatan('ALL')" id="btnResetGalleryCloud" class="text-[10px] font-bold text-red-400 hover:text-red-600 hidden uppercase">Reset</button>
+                </div>
+                <div id="galleryCloudContainer" class="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-wrap justify-center"></div>
+            </div>
+
+            <div id="adminGalleryGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+        </div>
+
+        <!-- TAB 5: EMAIL BLASTER -->
+        <div id="tab-email" class="hidden p-6 md:p-8">
+            <h2 class="text-xl font-bold text-slate-800 mb-4">Email Blaster</h2>
+            <div class="bg-amber-50 p-6 rounded-2xl border border-amber-100 mb-6">
+                <div class="flex flex-wrap gap-6 items-center mb-4">
+                    <label class="flex items-center gap-2 cursor-pointer font-bold text-sm text-slate-700">
+                        <input type="checkbox" id="checkGpict" checked onchange="generateList()" class="accent-amber-500 w-4 h-4"> GPICT
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer font-bold text-sm text-slate-700">
+                        <input type="checkbox" id="checkAdmin" checked onchange="generateList()" class="accent-amber-500 w-4 h-4"> Admin DELIMa
+                    </label>
+                    <select id="statusFilter" class="px-3 py-1.5 rounded-lg border border-amber-200 bg-white text-xs font-bold outline-none" onchange="generateList()">
+                        <option value="all">Semua Status</option>
+                        <option value="unregistered" selected>Belum Bot</option>
+                    </select>
+                </div>
+                <div class="relative">
+                    <label class="absolute -top-3 left-3 bg-amber-50 px-2 text-[10px] font-bold text-amber-600 uppercase">Senarai Emel (<span id="countEmail">0</span>)</label>
+                    <textarea id="emailOutput" class="w-full p-4 rounded-xl border border-amber-200 bg-white text-xs font-mono text-slate-600 h-24 focus:outline-none" readonly></textarea>
+                    <button onclick="copyEmails()" class="absolute top-2 right-2 text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded font-bold hover:bg-amber-200 transition">Salin</button>
+                </div>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                <div class="p-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                    <h6 class="font-bold text-slate-700 text-sm"><i class="fas fa-pen-fancy mr-2"></i>Draf Mesej</h6>
+                </div>
+                <div class="p-4">
+                    <input type="text" id="msgSubject" class="w-full p-2 mb-3 border-b border-slate-100 font-bold text-sm outline-none placeholder-slate-300" value="[TINDAKAN] Pengesahan Pendaftaran Sistem SMPID">
+                    <div id="editor-container" class="h-64 bg-white"></div>
+                </div>
+                <div class="p-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+                    <button class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition" onclick="copyTemplate()">Salin HTML</button>
+                    <a id="mailtoLink" href="#" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-bold transition flex items-center gap-2"><i class="fas fa-paper-plane"></i> Buka Emel</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 6: HELPDESK -->
+        <div id="tab-helpdesk" class="hidden p-6 md:p-8">
+            <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                <h2 class="text-xl font-bold text-red-600">Pusat Aduan</h2>
+                <select id="filterTiketAdmin" class="px-3 py-1.5 rounded-lg border border-red-100 bg-red-50 text-red-700 text-xs font-bold outline-none" onchange="loadTiketAdmin()">
+                    <option value="ALL">Semua Tiket</option>
+                    <option value="DALAM PROSES" selected>Dalam Proses</option>
+                    <option value="SELESAI">Selesai</option>
+                </select>
+            </div>
+            <div id="adminTiketWrapper" class="space-y-4"></div>
+        </div>
+
+        <!-- TAB 7: ADMIN USERS -->
+        <div id="tab-admin-users" class="hidden p-6 md:p-8">
+            <h2 class="text-xl font-bold text-slate-800 mb-6">Pengurusan Akses Admin</h2>
+            <div id="addUserFormContainer" class="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div class="md:col-span-1">
+                        <label class="block text-xs font-bold text-slate-500 mb-1 ml-1">Emel Pengguna</label>
+                        <input type="email" id="inputNewAdminEmail" class="w-full p-2.5 rounded-lg border border-slate-300 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1 ml-1">Peranan</label>
+                        <select id="inputNewAdminRole" class="w-full p-2.5 rounded-lg border border-slate-300 text-sm bg-white"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1 ml-1">Kata Laluan</label>
+                        <input type="text" id="inputNewAdminPass" class="w-full p-2.5 rounded-lg border border-slate-300 text-sm">
+                    </div>
+                    <div>
+                        <button onclick="tambahAdmin()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-lg text-sm transition">Tambah</button>
+                    </div>
+                </div>
+            </div>
+            <div id="adminListWrapper"></div>
+        </div>
+
+    </div>
+  </div>
+
+  <div id="modalEditDcs" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
+      <div class="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl">
+          <div class="bg-blue-600 p-4 flex justify-between items-center text-white">
+              <h3 class="font-bold text-sm">Kemaskini Data <span id="modalDcsYearTitle"></span></h3>
+              <button onclick="document.getElementById('modalEditDcs').classList.add('hidden')" class="hover:text-blue-200 text-lg">&times;</button>
+          </div>
+          <div class="p-6">
+              <form onsubmit="event.preventDefault(); simpanDcs();">
+                  <input type="hidden" id="editKodSekolah">
+                  <div class="mb-4">
+                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Sekolah</label>
+                      <input type="text" id="displayEditNama" class="w-full p-3 rounded-lg bg-slate-100 border-none text-slate-600 font-bold text-sm" readonly>
+                  </div>
+                  <div class="grid grid-cols-2 gap-4 mb-6">
+                      <div>
+                          <label class="block text-xs font-bold text-blue-600 uppercase mb-1">Skor DCS</label>
+                          <input type="number" step="0.01" id="editDcsVal" class="w-full p-3 rounded-lg border border-slate-300 focus:border-blue-500 outline-none font-bold">
+                      </div>
+                      <div>
+                          <label class="block text-xs font-bold text-green-600 uppercase mb-1">% Aktif</label>
+                          <input type="number" id="editAktifVal" class="w-full p-3 rounded-lg border border-slate-300 focus:border-green-500 outline-none font-bold">
+                      </div>
+                  </div>
+                  <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition">SIMPAN</button>
+              </form>
+          </div>
       </div>
-    </div>
   </div>
 
-  <!-- MODAL EDIT DCS -->
-  <div class="modal fade" id="modalEditDcs" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-header bg-primary text-white"><h6 class="modal-title fw-bold">Edit Data <span id="modalDcsYearTitle"></span></h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body p-4">
-                <form onsubmit="event.preventDefault(); simpanDcs();">
-                    <input type="hidden" id="editKodSekolah">
-                    <div class="mb-3"><label class="small fw-bold text-muted">NAMA SEKOLAH</label><input type="text" id="displayEditNama" class="form-control bg-light" readonly></div>
-                    <div class="row g-3">
-                        <div class="col-6"><label class="small fw-bold">SKOR DCS</label><input type="number" step="0.01" id="editDcsVal" class="form-control border-primary"></div>
-                        <div class="col-6"><label class="small fw-bold">% AKTIF</label><input type="number" id="editAktifVal" class="form-control border-success"></div>
-                    </div>
-                    <div class="mt-4 d-grid"><button type="submit" class="btn btn-primary fw-bold">SIMPAN</button></div>
-                </form>
-            </div>
-        </div>
-    </div>
+  <div id="modalEditPencapaian" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
+      <div class="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
+          <div class="bg-amber-400 p-4 flex justify-between items-center text-slate-900">
+              <h3 class="font-bold text-sm">Edit Rekod</h3>
+              <button class="btn-close" onclick="document.getElementById('modalEditPencapaian').classList.add('hidden')">&times;</button>
+          </div>
+          <div class="p-6 overflow-y-auto max-h-[80vh]">
+              <form id="formEditPencapaian" onsubmit="event.preventDefault(); simpanEditPencapaian();">
+                  <input type="hidden" id="editIdPencapaian">
+                  <div class="flex justify-center gap-4 mb-6">
+                      <label class="flex items-center gap-2 cursor-pointer">
+                          <input type="radio" name="editRadioJenis" id="editRadioPertandingan" value="PERTANDINGAN" onchange="toggleEditJenis()" class="accent-amber-500">
+                          <span class="text-xs font-bold">PERTANDINGAN</span>
+                      </label>
+                      <label class="flex items-center gap-2 cursor-pointer">
+                          <input type="radio" name="editRadioJenis" id="editRadioPensijilan" value="PENSIJILAN" onchange="toggleEditJenis()" class="accent-amber-500">
+                          <span class="text-xs font-bold">PENSIJILAN</span>
+                      </label>
+                  </div>
+                  
+                  <div class="space-y-4">
+                      <input type="text" id="editNamaSekolah" class="w-full p-3 bg-slate-100 rounded-lg text-xs font-bold text-slate-500" readonly>
+                      <input type="text" id="editInputNama" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" placeholder="NAMA PESERTA" oninput="this.value = this.value.toUpperCase()">
+                      
+                      <div id="divEditJawatan" class="hidden">
+                          <select id="editInputJawatan" class="w-full p-3 border border-amber-300 bg-amber-50 rounded-lg text-sm font-bold">
+                              <!-- Populated by JS -->
+                          </select>
+                      </div>
+
+                      <div id="divEditPenyedia" class="hidden">
+                          <select id="editInputPenyedia" class="w-full p-3 border border-slate-300 rounded-lg text-sm">
+                              <!-- Populated by JS -->
+                          </select>
+                      </div>
+
+                      <input type="text" id="editInputProgram" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()">
+                      
+                      <div class="grid grid-cols-2 gap-4">
+                          <div id="divEditColPeringkat">
+                              <select id="editInputPeringkat" class="w-full p-3 border border-slate-300 rounded-lg text-sm">
+                                  <!-- Populated by JS -->
+                              </select>
+                          </div>
+                          <div>
+                              <div class="relative">
+                                  <select id="editInputTahun" class="w-full p-3 border border-slate-300 rounded-lg text-sm text-center font-bold appearance-none bg-white">
+                                      <!-- Populated by JS -->
+                                  </select>
+                                  <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                              </div>
+                          </div>
+                      </div>
+
+                      <input type="text" id="editInputPencapaian" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()">
+                      <input type="url" id="editInputLink" class="w-full p-3 border border-slate-300 rounded-lg text-sm text-blue-600">
+                  </div>
+
+                  <button type="submit" class="w-full mt-6 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl shadow transition">SIMPAN PERUBAHAN</button>
+              </form>
+          </div>
+      </div>
   </div>
 
-  <!-- MODAL REKOD PPD -->
-  <div class="modal fade" id="modalRekodPPD" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-header bg-indigo text-white"><h6 class="modal-title fw-bold">Rekod Unit PPD</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body p-4">
-                <form id="formPencapaianPPD" onsubmit="event.preventDefault(); simpanPencapaianPPD();">
-                    <input type="hidden" id="ppdInputJenisRekod" value="PERTANDINGAN">
-                    <div class="mb-3 text-center">
-                        <div class="btn-group w-100 shadow-sm" role="group">
-                            <input type="radio" class="btn-check" name="radKatPPD" id="radPegawai" value="PEGAWAI" checked onchange="toggleKategoriPPD()">
-                            <label class="btn btn-outline-dark fw-bold" for="radPegawai">PEGAWAI</label>
-                            <input type="radio" class="btn-check" name="radKatPPD" id="radUnit" value="PPD" onchange="toggleKategoriPPD()">
-                            <label class="btn btn-outline-dark fw-bold" for="radUnit">UNIT / SEKTOR</label>
-                        </div>
-                    </div>
-                    <div class="mb-3 text-center">
-                        <div class="btn-group w-100 shadow-sm" role="group">
-                            <input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPertandingan" checked onchange="toggleJenisPencapaianPPD()">
-                            <label class="btn btn-outline-primary fw-bold" for="radPpdPertandingan">PERTANDINGAN</label>
-                            <input type="radio" class="btn-check" name="radJenisPPD" id="radPpdPensijilan" onchange="toggleJenisPencapaianPPD()">
-                            <label class="btn btn-outline-warning fw-bold text-dark" for="radPpdPensijilan">PENSIJILAN</label>
-                        </div>
-                    </div>
-                    <div class="mb-3"><label class="small fw-bold" id="lblPpdNamaPeserta">NAMA PEGAWAI</label><input type="text" id="ppdInputNama" class="form-control uppercase-input"></div>
-                    <div id="divPpdPenyedia" class="mb-3 hidden"><label class="small fw-bold text-warning">PENYEDIA</label>
-                        <select id="ppdInputPenyedia" class="form-select bg-light border-warning fw-bold text-dark">
-                            <option value="LAIN-LAIN" selected>LAIN-LAIN (AWS/CISCO/DLL)</option>
-                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
-                            <option value="APPLE">APPLE EDUCATION</option>
-                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
-                        </select>
-                    </div>
-                    <div class="mb-3"><label class="small fw-bold" id="lblPpdProgram">NAMA PROGRAM</label><input type="text" id="ppdInputProgram" class="form-control uppercase-input"></div>
-                    <div class="row g-2 mb-3"><div class="col-6" id="divPpdColPeringkat"><label class="small fw-bold">PERINGKAT</label><select id="ppdInputPeringkat" class="form-select bg-light"><option value="KEBANGSAAN">KEBANGSAAN</option><option value="ANTARABANGSA">ANTARABANGSA</option></select></div><div class="col-6"><label class="small fw-bold">TAHUN</label><input type="number" id="ppdInputTahun" class="form-control" value="2026"></div></div>
-                    <div class="mb-3"><label class="small fw-bold" id="lblPpdPencapaian">PENCAPAIAN / SKOR</label><input type="text" id="ppdInputPencapaian" class="form-control uppercase-input"></div>
-                    <div class="mb-4"><label class="small fw-bold">PAUTAN BUKTI</label><input type="url" id="ppdInputLink" class="form-control"></div>
-                    <button type="submit" class="btn btn-indigo w-100 fw-bold py-3 shadow-sm">SIMPAN REKOD</button>
-                </form>
-            </div>
-        </div>
-    </div>
+  <div id="modalRekodPPD" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
+      <div class="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
+          <div class="bg-indigo-600 p-4 flex justify-between items-center text-white">
+              <h3 class="font-bold text-sm">Rekod Unit PPD</h3>
+              <button onclick="document.getElementById('modalRekodPPD').classList.add('hidden')" class="hover:text-indigo-200 text-lg">&times;</button>
+          </div>
+          <div class="p-6 overflow-y-auto max-h-[80vh]">
+              <form id="formPencapaianPPD" onsubmit="event.preventDefault(); simpanPencapaianPPD();" class="space-y-4">
+                  <input type="hidden" id="ppdInputJenisRekod" value="PERTANDINGAN">
+                  
+                  <div class="grid grid-cols-2 gap-3 mb-4">
+                      <label class="cursor-pointer">
+                          <input type="radio" name="radKatPPD" id="radPegawai" value="PEGAWAI" class="peer hidden" checked onchange="toggleKategoriPPD()">
+                          <div class="p-2 rounded-lg border border-slate-200 text-center text-xs font-bold text-slate-500 peer-checked:bg-indigo-600 peer-checked:text-white transition-all uppercase tracking-widest">PEGAWAI</div>
+                      </label>
+                      <label class="cursor-pointer">
+                          <input type="radio" name="radKatPPD" id="radUnit" value="PPD" class="peer hidden" onchange="toggleKategoriPPD()">
+                          <div class="p-2 rounded-lg border border-slate-200 text-center text-xs font-bold text-slate-500 peer-checked:bg-indigo-600 peer-checked:text-white transition-all uppercase tracking-widest">UNIT / SEKTOR</div>
+                      </label>
+                  </div>
+
+                  <div class="flex justify-center gap-4 mb-4">
+                      <label class="flex items-center gap-2 cursor-pointer">
+                          <input type="radio" name="radJenisPPD" id="radPpdPertandingan" checked onchange="toggleJenisPencapaianPPD()" class="accent-indigo-600">
+                          <span class="text-xs font-bold">PERTANDINGAN</span>
+                      </label>
+                      <label class="flex items-center gap-2 cursor-pointer">
+                          <input type="radio" name="radJenisPPD" id="radPpdPensijilan" onchange="toggleJenisPencapaianPPD()" class="accent-indigo-600">
+                          <span class="text-xs font-bold">PENSIJILAN</span>
+                      </label>
+                  </div>
+
+                  <div class="space-y-3">
+                      <div>
+                          <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="lblPpdNamaPeserta">NAMA PEGAWAI</label>
+                          <input type="text" id="ppdInputNama" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold shadow-sm" oninput="this.value = this.value.toUpperCase()">
+                      </div>
+                      
+                      <div id="divPpdPenyedia" class="hidden">
+                          <label class="block text-[10px] font-bold text-amber-600 uppercase mb-1">PENYEDIA</label>
+                          <select id="ppdInputPenyedia" class="w-full p-3 rounded-lg border border-amber-300 bg-amber-50 text-sm font-bold shadow-sm">
+                              <!-- Populated by JS -->
+                          </select>
+                      </div>
+
+                      <div>
+                          <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="lblPpdProgram">NAMA PROGRAM</label>
+                          <input type="text" id="ppdInputProgram" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold shadow-sm" oninput="this.value = this.value.toUpperCase()">
+                      </div>
+
+                      <div class="grid grid-cols-2 gap-3">
+                          <div id="divPpdColPeringkat">
+                              <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">PERINGKAT</label>
+                              <select id="ppdInputPeringkat" class="w-full p-3 rounded-lg border border-slate-300 text-sm font-bold bg-white shadow-sm">
+                                  <!-- Populated by JS -->
+                              </select>
+                          </div>
+                          <div>
+                              <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">TAHUN</label>
+                              <div class="relative">
+                                  <select id="ppdInputTahun" class="w-full p-3 rounded-lg border border-slate-300 text-center font-bold text-sm shadow-sm appearance-none bg-white">
+                                      <!-- Populated by JS -->
+                                  </select>
+                                  <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                              </div>
+                          </div>
+                      </div>
+
+                      <div>
+                          <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="lblPpdPencapaian">PENCAPAIAN</label>
+                          <input type="text" id="ppdInputPencapaian" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold shadow-sm" oninput="this.value = this.value.toUpperCase()">
+                      </div>
+
+                      <div>
+                          <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">PAUTAN BUKTI</label>
+                          <input type="url" id="ppdInputLink" class="w-full p-3 rounded-lg border border-slate-300 text-sm text-blue-600 shadow-sm">
+                      </div>
+                  </div>
+
+                  <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition mt-4 tracking-widest uppercase text-sm">
+                      <i class="fas fa-save mr-2"></i> Simpan Rekod PPD
+                  </button>
+              </form>
+          </div>
+      </div>
   </div>
 
-  <!-- MODAL EDIT PENCAPAIAN -->
-  <div class="modal fade" id="modalEditPencapaian" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-header bg-warning text-dark"><h6 class="modal-title fw-bold">Edit Rekod</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body p-4">
-                <form id="formEditPencapaian" onsubmit="event.preventDefault(); simpanEditPencapaian();">
-                    <input type="hidden" id="editIdPencapaian">
-                    <div class="mb-4 text-center">
-                        <div class="btn-group w-100 shadow-sm">
-                            <input type="radio" class="btn-check" name="editRadioJenis" id="editRadioPertandingan" value="PERTANDINGAN" onchange="toggleEditJenis()">
-                            <label class="btn btn-outline-primary fw-bold" for="editRadioPertandingan">PERTANDINGAN</label>
-                            <input type="radio" class="btn-check" name="editRadioJenis" id="editRadioPensijilan" value="PENSIJILAN" onchange="toggleEditJenis()">
-                            <label class="btn btn-outline-warning fw-bold text-dark" for="editRadioPensijilan">PENSIJILAN</label>
-                        </div>
-                    </div>
-                    <div class="mb-3"><label class="small fw-bold">SEKOLAH</label><input type="text" id="editNamaSekolah" class="form-control bg-light" readonly></div>
-                    <div class="mb-3"><label class="small fw-bold">NAMA PESERTA</label><input type="text" id="editInputNama" class="form-control uppercase-input"></div>
-                    <div id="divEditJawatan" class="mb-3 hidden">
-                        <label class="small fw-bold text-warning">JAWATAN (WAJIB)</label>
-                        <select id="editInputJawatan" class="form-select bg-light border-warning fw-bold text-dark">
-                            <option value="GURU AKADEMIK BIASA" selected>GURU AKADEMIK BIASA</option>
-                            <option value="PENGARAH KV / PGB">PENGARAH KV / PENGETUA / GURU BESAR</option>
-                            <option value="GPK PENTADBIRAN">GPK PENTADBIRAN</option>
-                            <option value="GPK HAL EHWAL MURID">GPK HAL EHWAL MURID</option>
-                            <option value="GPK KO-KURIKULUM">GPK KO-KURIKULUM</option>
-                            <option value="GPK PENDIDIKAN KHAS">GPK PENDIDIKAN KHAS</option>
-                            <option value="GURU KANAN MATA PELAJARAN">GURU KANAN MATA PELAJARAN</option>
-                            <option value="GURU DATA">GURU DATA</option>
-                            <option value="GURU PENYELARAS ICT">GURU PENYELARAS ICT</option>
-                            <option value="GURU ADMIN DELIMA">GURU ADMIN DELIMA</option>
-                            <option value="GURU ICT & ADMIN DELIMA">GURU ICT & ADMIN DELIMA</option>
-                            <option value="GURU PERPUSTAKAAN & MEDIA">GURU PERPUSTAKAAN & MEDIA</option>
-                        </select>
-                    </div>
-                    <div id="divEditPenyedia" class="mb-3 hidden">
-                        <label class="small fw-bold text-warning">PENYEDIA</label>
-                        <select id="editInputPenyedia" class="form-select bg-light border-warning fw-bold text-dark">
-                            <option value="LAIN-LAIN" selected>LAIN-LAIN (AWS/CISCO/DLL)</option>
-                            <option value="GOOGLE">GOOGLE FOR EDUCATION</option>
-                            <option value="APPLE">APPLE EDUCATION</option>
-                            <option value="MICROSOFT">MICROSOFT EDUCATION</option>
-                        </select>
-                    </div>
-                    <div class="mb-3"><label class="small fw-bold" id="lblEditProgram">NAMA PROGRAM</label><input type="text" id="editInputProgram" class="form-control uppercase-input"></div>
-                    <div class="row g-2 mb-3"><div class="col-6" id="divEditColPeringkat"><label class="small fw-bold">PERINGKAT</label><select id="editInputPeringkat" class="form-select"><option value="KEBANGSAAN">KEBANGSAAN</option><option value="ANTARABANGSA">ANTARABANGSA</option></select></div><div class="col-6"><label class="small fw-bold">TAHUN</label><input type="number" id="editInputTahun" class="form-control"></div></div>
-                    <div class="mb-3"><label class="small fw-bold" id="lblEditPencapaian">PENCAPAIAN / SKOR</label><input type="text" id="editInputPencapaian" class="form-control uppercase-input"></div>
-                    <div class="mb-4"><label class="small fw-bold">PAUTAN BUKTI</label><input type="url" id="editInputLink" class="form-control"></div>
-                    <button type="submit" class="btn btn-warning w-100 fw-bold py-3 shadow-sm">SIMPAN PERUBAHAN</button>
-                </form>
-            </div>
-        </div>
-    </div>
+  <div id="modalStandardize" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
+      <div class="bg-white w-full max-w-4xl h-[80vh] rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+          <div class="bg-slate-800 p-4 flex justify-between items-center text-white shrink-0">
+              <h3 class="font-bold text-sm">Penyeragaman Data Induk</h3>
+              <button onclick="document.getElementById('modalStandardize').classList.add('hidden')" class="hover:text-slate-300 text-lg">&times;</button>
+          </div>
+          
+          <div class="p-4 border-b border-slate-200 bg-slate-50 shrink-0">
+              <input type="text" id="standardizeSearch" class="w-full p-3 rounded-lg border border-slate-300 focus:border-slate-500 outline-none text-sm font-bold shadow-sm" placeholder="Cari Nama Program (Contoh: MSSM)..." oninput="handleStandardizeSearch(this.value)">
+          </div>
+
+          <div class="overflow-y-auto p-0 grow">
+              <table class="w-full text-sm text-left">
+                  <thead class="bg-slate-100 text-slate-500 uppercase text-xs sticky top-0 z-10 shadow-sm">
+                      <tr>
+                          <th class="px-6 py-3 font-bold">#</th>
+                          <th class="px-6 py-3 font-bold w-1/3">Program Asal</th>
+                          <th class="px-6 py-3 font-bold text-center">Kekerapan</th>
+                          <th class="px-6 py-3 font-bold w-1/3">Nama Baru</th>
+                          <th class="px-6 py-3 font-bold text-center">Aksi</th>
+                      </tr>
+                  </thead>
+                  <tbody id="tbodyStandardize" class="divide-y divide-slate-100"></tbody>
+              </table>
+          </div>
+          
+          <div class="p-3 bg-slate-50 border-t border-slate-200 shrink-0 text-right">
+              <button onclick="document.getElementById('modalStandardize').classList.add('hidden')" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-bold transition shadow-sm">Tutup</button>
+          </div>
+      </div>
   </div>
 
-  <!-- MODAL PENYERAGAMAN DATA -->
-  <div class="modal fade" id="modalStandardize" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-header bg-dark text-white"><h6 class="modal-title fw-bold">Penyeragaman Data Induk</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body p-0">
-                <div class="p-3 sticky-top bg-white border-bottom shadow-sm"><input type="text" id="standardizeSearch" class="form-control" placeholder="Cari Nama Program..." oninput="handleStandardizeSearch(this.value)"></div>
-                <div class="table-responsive"><table class="table table-hover table-striped mb-0 small"><thead class="bg-dark text-white sticky-top"><tr><th style="width:5%">#</th><th style="width:40%">Program Asal</th><th style="width:10%">Kekerapan</th><th style="width:35%">Nama Baru</th><th style="width:10%">Aksi</th></tr></thead><tbody id="tbodyStandardize"></tbody></table></div>
-            </div>
-            <div class="modal-footer p-2"><button type="button" class="btn btn-sm btn-secondary fw-bold" data-bs-dismiss="modal">Tutup</button></div>
-        </div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  
-  <!-- CORE & ADMIN MODULES -->
   <script type="module" src="js/core/helpers.js"></script>
   <script type="module" src="js/core/db.js"></script>
+  
+  <!-- ADMIN MODULES -->
+  <script type="module" src="js/admin/main.js"></script> <!-- MAIN CONTROLLER MESTI DILOAD -->
   <script type="module" src="js/admin/dashboard.js"></script>
   <script type="module" src="js/admin/analysis.js"></script>
   <script type="module" src="js/admin/achievement.js"></script>
   <script type="module" src="js/admin/communication.js"></script>
   <script type="module" src="js/admin/gallery_manager.js"></script>
   <script type="module" src="js/admin/settings.js"></script>
-  <script type="module" src="js/admin/main.js"></script>
 
 </body>
 </html>

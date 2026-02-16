@@ -5,239 +5,176 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SMPID - Galeri Kemenjadian</title>
   
+  <meta name="theme-color" content="#16a34a">
   <link rel="icon" href="icoppdag.png">
   
-  <!-- CSS Bootstrap & FontAwesome -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- CSS Tempatan -->
-  <link href="css/core.css" rel="stylesheet">
-  <link href="css/components.css" rel="stylesheet">
-
-  <!-- Library JS -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            brand: { 50: '#f0fdf4', 100: '#dcfce7', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 900: '#14532d' },
+            indigo: { 50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 900: '#312e81' }
+          },
+          animation: {
+            'fade-up': 'fadeUp 0.5s ease-out forwards',
+          },
+          keyframes: {
+            fadeUp: {
+              '0%': { opacity: '0', transform: 'translateY(20px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
 
   <style>
-      /* GAYA GALERI MASONRY */
-      body {
-          background-color: #f8f9fa;
-          font-family: 'Inter', sans-serif;
-      }
-      .gallery-header {
-          background: white;
-          border-bottom: 1px solid #e9ecef;
-          padding: 1.5rem 0 1rem;
-          margin-bottom: 1rem;
-      }
-      .card-gallery {
-          border: 1px solid #e9ecef;
-          /* Border top akan dikawal oleh JS (primary/warning/indigo) */
-          border-radius: 8px; 
-          overflow: hidden;
-          transition: transform 0.2s, box-shadow 0.2s;
-          background: white;
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          cursor: pointer;
-          position: relative;
-      }
-      .card-gallery:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-      }
-      .gallery-thumb-container {
-          position: relative;
-          width: 100%;
-          padding-top: 56.25%; /* 16:9 Aspect Ratio */
-          background-color: #f1f3f5;
-          overflow: hidden;
-      }
-      .gallery-thumb {
-          position: absolute;
-          top: 0; left: 0;
-          width: 100%; height: 100%;
-          object-fit: cover;
-      }
-      .icon-overlay {
-          position: absolute;
-          top: 8px; right: 8px;
-          background: rgba(255,255,255,0.95);
-          border-radius: 50%;
-          width: 28px; height: 28px;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 0.8rem;
-          color: #495057;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-          z-index: 10;
-      }
-      .category-icon {
-          position: absolute;
-          top: 8px; left: 8px;
-          background: rgba(255,255,255,0.9);
-          padding: 3px 8px;
-          border-radius: 4px;
-          font-size: 0.65rem;
-          font-weight: 800;
-          text-transform: uppercase;
-          z-index: 10;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-          display: flex; align-items: center; gap: 5px;
-      }
-      .folder-icon {
-          position: absolute;
-          top: 50%; left: 50%;
-          transform: translate(-50%, -50%);
-          font-size: 3rem;
-          color: #ffc107;
-          text-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      }
-      .card-body {
-          padding: 1rem;
-          flex-grow: 1;
-      }
-      
-      /* STATS BAR STYLES */
-      .stats-card {
-          background: #f8f9fa;
-          border-radius: 10px;
-          padding: 10px 15px;
-          border: 1px solid #e9ecef;
-          display: flex;
-          align-items: center;
-          gap: 15px;
-          margin-top: 15px;
-      }
-      .stat-item {
-          display: flex;
-          flex-direction: column;
-          line-height: 1.2;
-      }
-      .stat-value { font-weight: 800; font-size: 1.1rem; color: #212529; }
-      .stat-label { font-size: 0.65rem; color: #6c757d; text-transform: uppercase; font-weight: 600; }
-      
-      /* FILTER BUTTONS */
-      .btn-filter {
-          border-radius: 50px;
-          font-weight: 700;
-          font-size: 0.8rem;
-          padding: 6px 16px;
-          border: 1px solid transparent;
-          color: #6c757d;
-          background: white;
-          transition: all 0.2s;
-      }
-      .btn-filter:hover { background: #f8f9fa; color: #212529; }
-      .btn-filter.active {
-          background: #212529;
-          color: white;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-      }
-  </style>
-</head>
-<body>
+    .hidden { display: none !important; }
+    
+    .card-gallery { @apply bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full; }
+    .gallery-thumb-container { @apply relative aspect-video bg-slate-100 overflow-hidden flex-shrink-0; }
+    .gallery-thumb { @apply absolute inset-0 w-full h-full object-cover transition-transform duration-700 hover:scale-110; }
+    
+    /* Global Table Wrapping Fix */
+    table td, table th {
+      white-space: normal !important;
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
+    }
 
-  <!-- LOADING -->
-  <div id="loadingOverlay" class="hidden">
-    <div class="text-center">
-      <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
-      <p class="mt-2 fw-bold small">Mengambil Data...</p>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+    <div class="text-center text-white">
+      <i class="fas fa-circle-notch fa-spin fa-3x mb-3 text-brand-500"></i>
+      <p class="font-bold tracking-wide animate-pulse">Mengambil Data Galeri...</p>
     </div>
   </div>
 
-  <!-- HEADER & STATS -->
-  <div class="gallery-header shadow-sm">
-      <div class="container">
-          <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
-              <div>
-                  <small class="text-primary fw-bold text-uppercase ls-1" style="font-size: 0.7rem;"><i class="fas fa-chart-line me-1"></i> DASHBOARD KEMENJADIAN</small>
-                  <h4 class="fw-bold text-dark mt-1 mb-0" id="headerSchoolName">MEMUATKAN...</h4>
-                  <p class="text-muted mb-0 small" id="headerSchoolCode">-</p>
-              </div>
-              <button id="btnBackHome" class="btn btn-outline-secondary rounded-pill btn-sm fw-bold px-3 mt-2 mt-md-0" onclick="window.location.href='index.html'">
-                  <i class="fas fa-home me-1"></i> Portal Utama
-              </button>
-          </div>
+  <header class="bg-gradient-to-br from-brand-900 via-brand-700 to-emerald-900 pb-28 pt-10 px-4 shadow-xl relative overflow-hidden">
+    <div class="absolute top-0 right-0 w-80 h-80 bg-white opacity-5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+    
+    <div class="relative z-10 max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+        <div class="text-center md:text-left">
+            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-brand-300 text-[10px] font-black uppercase tracking-widest border border-white/10 mb-4">
+                <i class="fas fa-chart-line"></i> Dashboard Kemenjadian
+            </span>
+            <h1 class="text-2xl md:text-4xl font-black text-white leading-tight mb-1 uppercase tracking-tight" id="headerSchoolName">MEMUATKAN...</h1>
+            <p class="text-emerald-200 text-sm font-bold tracking-widest" id="headerSchoolCode">-</p>
+        </div>
 
-          <!-- BAR STATISTIK -->
-          <div class="row g-3 align-items-center">
-              <div class="col-lg-7">
-                  <div class="stats-card">
-                      <div class="d-flex align-items-center border-end pe-3 me-2">
-                          <div class="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width:40px; height:40px;">
-                              <i class="fas fa-trophy"></i>
-                          </div>
-                          <div class="stat-item">
-                              <span class="stat-value" id="countTotal">0</span>
-                              <span class="stat-label">REKOD</span>
-                          </div>
-                      </div>
-                      
-                      <!-- Pecahan -->
-                      <div class="d-flex gap-3 text-start">
-                          <div class="stat-item">
-                              <span class="stat-value text-primary" id="countMurid">0</span>
-                              <span class="stat-label text-primary"><i class="fas fa-user-graduate me-1"></i>MURID</span>
-                          </div>
-                          <div class="stat-item">
-                              <span class="stat-value text-warning" id="countGuru">0</span>
-                              <span class="stat-label text-warning"><i class="fas fa-chalkboard-user me-1"></i>GURU</span>
-                          </div>
-                          <div class="stat-item">
-                              <span class="stat-value text-indigo" id="countSekolah">0</span>
-                              <span class="stat-label text-indigo"><i class="fas fa-school me-1"></i>SEKOLAH</span>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-              
-              <div class="col-lg-5">
-                  <div class="d-flex gap-2 justify-content-lg-end overflow-auto py-2">
-                      <button class="btn-filter active" onclick="filterGallery('SEMUA', this)">SEMUA</button>
-                      <button class="btn-filter" onclick="filterGallery('MURID', this)">MURID</button>
-                      <button class="btn-filter" onclick="filterGallery('GURU', this)">GURU</button>
-                      <button class="btn-filter" onclick="filterGallery('SEKOLAH', this)">SEKOLAH</button>
-                  </div>
-              </div>
-          </div>
-      </div>
+        <div class="flex gap-3">
+            <button onclick="window.location.href='index.html'" class="px-6 py-2.5 rounded-full bg-white/10 text-white hover:bg-white hover:text-brand-900 transition-all text-xs font-black border border-white/20 shadow-lg flex items-center gap-2">
+                <i class="fas fa-home"></i> PORTAL UTAMA
+            </button>
+        </div>
+    </div>
+  </header>
+
+  <div class="container mx-auto px-4 -mt-16 pb-20 relative z-20 max-w-7xl">
+    
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 md:p-8 mb-8 animate-fade-up">
+        <div class="flex flex-col lg:flex-row justify-between items-center gap-8">
+            
+            <div class="flex flex-wrap justify-center md:justify-start items-center gap-6 md:gap-10">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-lg shadow-lg">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-black text-slate-800" id="countTotal">0</div>
+                        <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Jumlah Rekod</div>
+                    </div>
+                </div>
+
+                <div class="h-10 w-px bg-slate-100 hidden md:block"></div>
+
+                <div class="flex gap-8">
+                    <div class="text-center md:text-left">
+                        <div class="text-lg font-black text-blue-600" id="countMurid">0</div>
+                        <div class="text-[9px] font-black text-blue-400 uppercase tracking-widest">Murid</div>
+                    </div>
+                    <div class="text-center md:text-left">
+                        <div class="text-lg font-black text-amber-500" id="countGuru">0</div>
+                        <div class="text-[9px] font-black text-amber-400 uppercase tracking-widest">Guru</div>
+                    </div>
+                    <div class="text-center md:text-left">
+                        <div class="text-lg font-black text-indigo-600" id="countSekolah">0</div>
+                        <div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Sekolah</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100 w-full lg:w-auto">
+                <button onclick="filterGallery('SEMUA', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all bg-slate-900 text-white shadow-md uppercase tracking-widest">SEMUA</button>
+                <button onclick="filterGallery('MURID', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-blue-600 uppercase tracking-widest">MURID</button>
+                <button onclick="filterGallery('GURU', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-amber-600 uppercase tracking-widest">GURU</button>
+                <button onclick="filterGallery('SEKOLAH', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-indigo-600 uppercase tracking-widest">SEKOLAH</button>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="jawatanCloudWrapper" class="mb-8 hidden animate-fade-up">
+        <div class="flex justify-between items-center mb-3 px-2">
+            <h6 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                <i class="fas fa-tags text-amber-500"></i> Tapisan Jawatan Guru
+            </h6>
+            <button onclick="filterByJawatan('ALL')" id="btnResetJawatan" class="text-[10px] font-black text-red-400 hover:text-red-600 hidden uppercase tracking-widest">
+                Padam Tapis <i class="fas fa-times ml-1"></i>
+            </button>
+        </div>
+        <div id="jawatanCloudContainer" class="p-4 bg-white rounded-3xl border border-slate-100 shadow-sm flex flex-wrap justify-center">
+        </div>
+    </div>
+
+    <div id="galleryGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+        <div class="col-span-full py-20 text-center">
+            <i class="fas fa-circle-notch fa-spin fa-2x text-slate-200 mb-4"></i>
+            <p class="text-slate-400 font-bold italic">Sedang menyusun papan pencapaian...</p>
+        </div>
+    </div>
+
   </div>
 
-  <!-- CONTENT GRID -->
-  <div class="container pb-5">
-      
-      <!-- JAWATAN WORD CLOUD (BARU) -->
-      <!-- Hanya muncul apabila filter GURU dipilih -->
-      <div id="jawatanCloudWrapper" class="mb-4 hidden fade-up">
-          <div class="d-flex justify-content-between align-items-center mb-2 px-1">
-              <h6 class="fw-bold text-secondary mb-0 small text-uppercase" style="font-size: 0.7rem;">
-                  <i class="fas fa-filter me-1 text-warning"></i> TAPIS MENGIKUT JAWATAN
-              </h6>
-              <button onclick="filterByJawatan('ALL')" id="btnResetJawatan" class="btn btn-sm btn-link text-decoration-none text-muted p-0 hidden" style="font-size: 0.75rem; font-weight: 700;">
-                  RESET <i class="fas fa-times ms-1"></i>
-              </button>
-          </div>
-          <div id="jawatanCloudContainer" class="cloud-container p-3 border rounded-4 bg-white shadow-sm">
-              <small class="text-muted fst-italic">Memuatkan senarai jawatan...</small>
-          </div>
+  <footer class="mt-auto py-12 bg-white border-t border-slate-100">
+      <div class="container mx-auto px-4 text-center">
+          <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">&copy; 2026 USTP PPD ALOR GAJAH</p>
       </div>
+  </footer>
 
-      <div id="galleryGrid" class="row g-3">
-          <!-- KAD AKAN DIJANA DI SINI -->
-          <div class="col-12 text-center py-5 text-muted">
-              <i class="fas fa-circle-notch fa-spin fa-2x mb-3"></i>
-              <p>Sedang mendapatkan data...</p>
-          </div>
-      </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  
-  <!-- MODULAR JS (DIKEMASKINI) -->
   <script type="module" src="js/gallery.js"></script>
+
+  <script>
+      window.updateFilterUI = function(btn) {
+          const btns = document.querySelectorAll('.btn-filter');
+          btns.forEach(b => {
+              b.className = "btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:bg-white/50 uppercase tracking-widest";
+          });
+          btn.className = "btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all bg-slate-900 text-white shadow-md uppercase tracking-widest transform scale-105";
+      };
+
+      const originalFilterGallery = window.filterGallery;
+      window.filterGallery = function(type, btn) {
+          if(btn) window.updateFilterUI(btn);
+          if(typeof originalFilterGallery === 'function') originalFilterGallery(type, btn);
+      };
+  </script>
 
 </body>
 </html>

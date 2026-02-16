@@ -1,6 +1,7 @@
 /**
  * SMPID HELPER UTILITIES
  * Fungsi bantuan umum untuk manipulasi data dan UI.
+ * * UPDATE V1.1: Migrasi log keluar ke localStorage.
  */
 
 /**
@@ -83,6 +84,7 @@ export function generateWhatsAppLink(nama, noTel, isRaw = false) {
 
 /**
  * Fungsi Log Keluar Global
+ * UPDATE: Membersihkan localStorage bukannya sessionStorage.
  */
 export function keluarSistem() {
     Swal.fire({
@@ -94,7 +96,8 @@ export function keluarSistem() {
         cancelButtonText: 'Batal'
     }).then((result) => {
         if (result.isConfirmed) {
-            sessionStorage.clear();
+            // UPDATE: Gunakan localStorage.clear() supaya semua tab terkesan
+            localStorage.clear();
             window.location.replace('index.html');
         }
     });

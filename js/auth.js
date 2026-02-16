@@ -2,6 +2,7 @@
  * AUTHENTICATION CONTROLLER
  * Menguruskan interaksi UI untuk halaman log masuk.
  * Menggunakan: AuthService, toggleLoading
+ * * UPDATE V1.1: Migrasi dari sessionStorage ke localStorage untuk sokongan cross-tab.
  */
 
 import { AuthService } from './services/auth.service.js';
@@ -10,11 +11,14 @@ import { APP_CONFIG } from './config/app.config.js';
 
 // Bind event listeners bila DOM sedia
 document.addEventListener('DOMContentLoaded', () => {
-    // Bersihkan sesi lama
-    sessionStorage.clear();
+    // Bersihkan sesi lama jika masuk ke halaman login
+    // Nota: Penggunaan localStorage membolehkan perkongsian sesi antara tab baharu.
+    // Namun, jika pengguna sengaja ke login.html, kita anggap mereka ingin memulakan sesi segar.
+    localStorage.clear();
+    
     // Halang butang 'Back'
     window.history.replaceState(null, null, window.location.href);
-    console.log("🔒 [Auth] Sesi dibersihkan.");
+    console.log("🔒 [Auth] Sesi localStorage dibersihkan.");
 
     // Auto-detect Kod Sekolah dari URL (?kod=M030)
     const params = new URLSearchParams(window.location.search);
@@ -66,17 +70,17 @@ window.prosesLogin = async function() {
         // Panggil Service (Backend Logic)
         const user = await AuthService.login(email, password);
 
-        // Simpan Sesi (Frontend Logic)
-        sessionStorage.setItem(APP_CONFIG.SESSION.USER_KOD, user.kod_sekolah);
-        sessionStorage.setItem(APP_CONFIG.SESSION.USER_ROLE, user.role);
-        sessionStorage.setItem(APP_CONFIG.SESSION.USER_ID, user.id);
+        // Simpan Sesi (Guna localStorage untuk sokongan Open in New Tab)
+        localStorage.setItem(APP_CONFIG.SESSION.USER_KOD, user.kod_sekolah);
+        localStorage.setItem(APP_CONFIG.SESSION.USER_ROLE, user.role);
+        localStorage.setItem(APP_CONFIG.SESSION.USER_ID, user.id);
 
         toggleLoading(false);
         if (btnLogin) btnLogin.disabled = false;
 
-        // Redirect Logic - DIKEMASKINI UNTUK SUPER_ADMIN
+        // Redirect Logic - PPD & ADMIN
         if (user.role === 'ADMIN' || user.role === 'PPD_UNIT' || user.role === 'SUPER_ADMIN') {
-            sessionStorage.setItem(APP_CONFIG.SESSION.AUTH_FLAG, 'true');
+            localStorage.setItem(APP_CONFIG.SESSION.AUTH_FLAG, 'true');
             
             let welcomeTitle = 'Admin Disahkan';
             let welcomeMsg = 'Selamat kembali, Admin PPD.';
@@ -100,7 +104,7 @@ window.prosesLogin = async function() {
             });
         } else {
             // Sekolah
-            sessionStorage.setItem(APP_CONFIG.SESSION.AUTH_FLAG, 'false'); 
+            localStorage.setItem(APP_CONFIG.SESSION.AUTH_FLAG, 'false'); 
             Swal.fire({
                 icon: 'success', 
                 title: 'Log Masuk Berjaya', 

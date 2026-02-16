@@ -1,10 +1,6 @@
 /**
- * ADMIN MODULE: DASHBOARD (DEV)
- * Menguruskan senarai sekolah, filter, dan status data.
- * * FIXES:
- * - Menambah fungsi 'eksportDataTapis' dan 'janaSenaraiTelegram'.
- * - Memastikan fungsi 'resetPasswordSekolah' boleh dipanggil.
- * - REMOVED TRUNCATION: Nama sekolah dan kod kini wrap text sepenuhnya.
+ * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - VISUAL UPDATE)
+ * Menguruskan senarai sekolah, filter berwarna, dan status data.
  */
 
 import { SchoolService } from '../services/school.service.js';
@@ -39,24 +35,48 @@ window.fetchDashboardData = async function() {
     }
 };
 
-// --- FILTER LOGIC ---
+// --- FILTER LOGIC (COLORFUL UI) ---
 function renderFilters() {
     const types = [...new Set(dashboardData.map(i => i.jenis))].sort();
-    let opts = `<option value="ALL">SEMUA JENIS SEKOLAH</option>`;
+    let opts = `<option value="ALL">SEMUA JENIS</option>`;
     types.forEach(t => opts += `<option value="${t}">${t}</option>`);
     
     const container = document.getElementById('filterContainer');
     if(container) {
+        // Update: Warna Warni Mengikut Status (Parity dengan SMPID Live)
         container.innerHTML = `
-        <div class="row align-items-center g-3">
-          <div class="col-md-9 col-12 d-flex flex-wrap gap-2">
-            <span onclick="setFilter('ALL')" id="badgeAll" class="badge bg-secondary cursor-pointer filter-badge active p-2">Semua <span id="cntAll" class="badge bg-light text-dark ms-1">0</span></span>
-            <span onclick="setFilter('LENGKAP')" id="badgeLengkap" class="badge bg-success cursor-pointer filter-badge p-2">Lengkap <span id="cntLengkap" class="badge bg-light text-dark ms-1">0</span></span>
-            <span onclick="setFilter('BELUM')" id="badgeBelum" class="badge bg-danger cursor-pointer filter-badge p-2">Belum <span id="cntBelum" class="badge bg-light text-dark ms-1">0</span></span>
-            <span onclick="setFilter('SAMA')" id="badgeSama" class="badge bg-purple cursor-pointer filter-badge p-2">Jawatan Sama <span id="cntSama" class="badge bg-light text-dark ms-1">0</span></span>
-            <span onclick="setFilter('BERBEZA')" id="badgeBerbeza" class="badge bg-orange cursor-pointer filter-badge p-2">Jawatan Berbeza <span id="cntBerbeza" class="badge bg-light text-dark ms-1">0</span></span>
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+          <div class="flex flex-wrap gap-2 justify-center md:justify-start">
+            
+            <!-- Butang SEMUA (Kelabu/Default) -->
+            <button onclick="setFilter('ALL')" id="badgeAll" class="filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200 border-slate-200">
+                Semua <span id="cntAll" class="bg-white text-slate-600 px-2 py-0.5 rounded-full text-[10px] shadow-sm">0</span>
+            </button>
+
+            <!-- Butang LENGKAP (Hijau) -->
+            <button onclick="setFilter('LENGKAP')" id="badgeLengkap" class="filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-emerald-200 text-emerald-600 hover:bg-emerald-50">
+                Lengkap <span id="cntLengkap" class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px]">0</span>
+            </button>
+
+            <!-- Butang BELUM (Merah) -->
+            <button onclick="setFilter('BELUM')" id="badgeBelum" class="filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-red-200 text-red-600 hover:bg-red-50">
+                Belum <span id="cntBelum" class="bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-[10px]">0</span>
+            </button>
+
+            <!-- Butang SAMA (Ungu) -->
+            <button onclick="setFilter('SAMA')" id="badgeSama" class="filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-purple-200 text-purple-600 hover:bg-purple-50">
+                Sama <span id="cntSama" class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-[10px]">0</span>
+            </button>
+
+            <!-- Butang BERBEZA (Oren/Amber) -->
+            <button onclick="setFilter('BERBEZA')" id="badgeBerbeza" class="filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-amber-200 text-amber-600 hover:bg-amber-50">
+                Berbeza <span id="cntBerbeza" class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px]">0</span>
+            </button>
+
           </div>
-          <div class="col-md-3"><select class="form-select rounded-pill shadow-sm" onchange="setType(this.value)">${opts}</select></div>
+          <div class="w-full md:w-auto">
+            <select class="w-full md:w-48 px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold outline-none focus:border-brand-500 bg-slate-50" onchange="setType(this.value)">${opts}</select>
+          </div>
         </div>`;
     }
 }
@@ -83,11 +103,38 @@ window.runFilter = function() {
 };
 
 function updateBadgeCounts() {
-    document.querySelectorAll('.filter-badge').forEach(e => e.classList.remove('active'));
+    // 1. Reset Semua Button ke state 'Inactive' (Tapi kekalkan warna asas border/text)
+    // Kita reset kelas 'active-shadow' atau 'ring' sahaja
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('ring-2', 'ring-offset-1', 'shadow-md', 'scale-105');
+        // Reset background jika ia adalah butang aktif sebelum ini
+        if(btn.id === 'badgeAll') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200";
+        if(btn.id === 'badgeLengkap') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-emerald-200 text-emerald-600 hover:bg-emerald-50";
+        if(btn.id === 'badgeBelum') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-red-200 text-red-600 hover:bg-red-50";
+        if(btn.id === 'badgeSama') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-purple-200 text-purple-600 hover:bg-purple-50";
+        if(btn.id === 'badgeBerbeza') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-amber-200 text-amber-600 hover:bg-amber-50";
+    });
+
+    // 2. Set Active Style (Solid Background & Shadow)
     const map = { 'ALL': 'badgeAll', 'LENGKAP': 'badgeLengkap', 'BELUM': 'badgeBelum', 'SAMA': 'badgeSama', 'BERBEZA': 'badgeBerbeza' };
-    if (map[activeStatus]) document.getElementById(map[activeStatus])?.classList.add('active');
+    const activeId = map[activeStatus];
+    if (activeId) {
+        const btn = document.getElementById(activeId);
+        if (btn) {
+            // Tambah kelas aktif yang Solid
+            if(activeStatus === 'ALL') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-slate-600 text-white border-slate-600 shadow-md scale-105";
+            if(activeStatus === 'LENGKAP') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-emerald-500 text-white border-emerald-500 shadow-md scale-105";
+            if(activeStatus === 'BELUM') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-red-500 text-white border-red-500 shadow-md scale-105";
+            if(activeStatus === 'SAMA') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-purple-500 text-white border-purple-500 shadow-md scale-105";
+            if(activeStatus === 'BERBEZA') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-amber-500 text-white border-amber-500 shadow-md scale-105";
+            
+            // Update badge dalaman menjadi putih lutsinar
+            const span = btn.querySelector('span');
+            if(span) span.className = "bg-white/20 text-white px-2 py-0.5 rounded-full text-[10px]";
+        }
+    }
     
-    // Kiraan dinamik context
+    // Kiraan dinamik
     const context = dashboardData.filter(i => {
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
         const searchMatch = !searchTerm || i.kod_sekolah.includes(searchTerm) || i.nama_sekolah.includes(searchTerm);
@@ -108,7 +155,7 @@ function renderGrid(data) {
     wrapper.innerHTML = "";
     
     if (data.length === 0) { 
-        wrapper.innerHTML = `<div class="alert alert-light text-center w-100 mt-4">Tiada data untuk paparan ini.</div>`; 
+        wrapper.innerHTML = `<div class="col-span-full text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-slate-400 font-medium">Tiada data untuk paparan ini.</div>`; 
         return; 
     }
 
@@ -116,48 +163,57 @@ function renderGrid(data) {
 
     Object.keys(groups).sort().forEach(jenis => {
         const items = groups[jenis];
-        let html = `<div class="mb-4 fade-up"><h6 class="category-header">${jenis} (${items.length})</h6><div class="row g-3">`;
+        
+        let html = `<div class="col-span-full mt-6 mb-2 border-b border-slate-200 pb-2"><h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-brand-500"></div> ${jenis} (${items.length})</h3></div>`;
         
         items.forEach(s => {
             const statusBadge = s.is_lengkap 
-                ? `<span class="badge bg-success status-badge p-2 shadow-sm"><i class="fas fa-check fa-lg"></i></span>` 
-                : `<span class="badge bg-danger status-badge p-2 shadow-sm"><i class="fas fa-times fa-lg"></i></span>`;
+                ? `<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-full border border-emerald-200"><i class="fas fa-check"></i> LENGKAP</span>` 
+                : `<span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-1 rounded-full border border-red-200"><i class="fas fa-times"></i> BELUM</span>`;
             
             const linkG = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, true);
             const linkA = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, true);
 
             const renderActions = (linkRaw, hasTele) => {
-                let btns = '<div class="d-flex align-items-center gap-1 justify-content-end">';
-                if(hasTele) btns += `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary"><i class="fas fa-check-circle"></i> OK</span>`;
-                if(linkRaw) btns += `<a href="${linkRaw}" target="_blank" onclick="event.stopPropagation()" class="btn btn-sm btn-light border text-secondary"><i class="fas fa-comment"></i></a>`;
-                else btns += `<span class="text-muted small">-</span>`;
+                let btns = '<div class="flex items-center gap-2 justify-end">';
+                if(hasTele) btns += `<span class="text-blue-500 text-xs" title="Berdaftar"><i class="fas fa-check-circle"></i></span>`;
+                else btns += `<span class="text-slate-300 text-xs" title="Belum"><i class="fas fa-circle"></i></span>`;
+                
+                if(linkRaw) btns += `<a href="${linkRaw}" target="_blank" onclick="event.stopPropagation()" class="w-6 h-6 rounded bg-slate-100 hover:bg-green-100 hover:text-green-600 text-slate-400 flex items-center justify-center transition"><i class="fab fa-whatsapp text-xs"></i></a>`;
                 btns += '</div>';
                 return btns;
             };
 
-            // UPDATE: Removed text-truncate and style="max-width: 100%"
-            // Added card-body-flex for flex growth
+            // HTML KAD SEKOLAH (Tailwind)
             html += `
-            <div class="col-6 col-md-4 col-lg-3">
-              <div class="card school-card h-100 position-relative" onclick="viewSchoolProfile('${s.kod_sekolah}')">
-                <div class="card-body p-3 card-body-flex">
-                  <div class="d-flex justify-content-between align-items-start mb-2">
-                    <div>
-                        <h6 class="fw-bold text-primary mb-0 text-wrap-safe">${s.kod_sekolah}</h6>
-                        <button onclick="event.stopPropagation(); window.resetPasswordSekolah('${s.kod_sekolah}')" class="btn btn-sm btn-link text-warning p-0 text-decoration-none small fw-bold mt-1" title="Reset Password Default"><i class="fas fa-key me-1"></i>Reset</button>
+            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col h-full" onclick="viewSchoolProfile('${s.kod_sekolah}')">
+                <div class="p-5 flex-grow">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <span class="text-xs font-black text-brand-600 bg-brand-50 px-2 py-0.5 rounded border border-brand-100">${s.kod_sekolah}</span>
+                        </div>
+                        ${statusBadge}
                     </div>
-                    ${statusBadge}
-                  </div>
-                  <p class="school-name mb-auto text-wrap-safe" title="${s.nama_sekolah}">${s.nama_sekolah}</p>
+                    <!-- UPDATE: Allow Text Wrap -->
+                    <h4 class="font-bold text-slate-800 text-sm leading-snug group-hover:text-brand-600 transition mb-1 whitespace-normal">${s.nama_sekolah}</h4>
+                    
+                    <button onclick="event.stopPropagation(); window.resetPasswordSekolah('${s.kod_sekolah}')" class="text-[10px] font-bold text-amber-500 hover:text-amber-600 flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition">
+                        <i class="fas fa-key"></i> Reset Password
+                    </button>
                 </div>
-                <div class="tele-status-row bg-light border-top">
-                   <div class="row-item p-2"><span class="small fw-bold text-muted">GPICT</span> ${renderActions(linkG, s.telegram_id_gpict)}</div>
-                   <div class="row-item p-2 border-top border-light"><span class="small fw-bold text-muted">Admin</span> ${renderActions(linkA, s.telegram_id_admin)}</div>
+                
+                <div class="bg-slate-50 border-t border-slate-100 p-3 grid grid-cols-2 divide-x divide-slate-200 mt-auto">
+                    <div class="px-2 flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">GPICT</span>
+                        ${renderActions(linkG, s.telegram_id_gpict)}
+                    </div>
+                    <div class="px-2 flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Admin</span>
+                        ${renderActions(linkA, s.telegram_id_admin)}
+                    </div>
                 </div>
-              </div>
             </div>`;
         });
-        html += `</div></div>`;
         wrapper.innerHTML += html;
     });
 }
@@ -198,7 +254,7 @@ window.janaSenaraiTelegram = function() {
     navigator.clipboard.writeText(txt).then(() => Swal.fire('Disalin!', 'Senarai disalin.', 'success'));
 };
 
-// --- QUEUE SYSTEM ---
+// --- QUEUE SYSTEM (MODAL CONTROL) ---
 window.mulaTindakanPantas = function() {
     let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
     reminderQueue = [];
@@ -233,8 +289,14 @@ function renderQueue() {
     
     const link = generateWhatsAppLink(item.targetName, item.targetTel);
     const btn = document.getElementById('qWaBtn');
-    if (link) { btn.href = link; btn.classList.remove('disabled'); } 
-    else { btn.removeAttribute('href'); btn.classList.add('disabled'); }
+    
+    if (link) { 
+        btn.href = link; 
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    } else { 
+        btn.removeAttribute('href'); 
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
 }
 
 window.nextQueue = function() { qIndex++; renderQueue(); }
