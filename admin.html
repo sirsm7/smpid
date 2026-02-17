@@ -27,31 +27,88 @@
     }
   </script>
 
-  <style>
-    .hidden { display: none !important; }
-    .tab-active { @apply bg-brand-600 text-white shadow-md transform scale-105; }
-    .tab-inactive { @apply bg-white text-slate-600 hover:bg-slate-50 hover:text-brand-600; }
-    
-    /* Global Table Wrapping Fix */
-    table td, table th {
-      white-space: normal !important;
-      word-wrap: break-word !important;
-      overflow-wrap: break-word !important;
-      vertical-align: middle;
+  <style type="text/tailwindcss">
+    @layer components {
+        .hidden { display: none !important; }
+        
+        /* Tab Styles dengan Border Nyata */
+        .tab-active { 
+            @apply bg-brand-600 text-white shadow-md transform scale-105 border-2 border-brand-700 ring-2 ring-brand-100; 
+        }
+        .tab-inactive { 
+            @apply bg-white text-slate-600 hover:bg-slate-50 hover:text-brand-600 border-2 border-slate-200; 
+        }
+        
+        /* Global Table Wrapping Fix - Memastikan tiada teks terpotong dalam jadual */
+        table td, table th {
+            white-space: normal !important;
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            word-break: break-word !important;
+            vertical-align: middle;
+        }
+
+        /* Word Cloud Styles */
+        .cloud-tag { 
+            @apply inline-flex items-center px-3 py-1.5 rounded-full text-[10px] font-bold bg-white border-2 border-slate-200 text-slate-500 cursor-pointer transition-all hover:bg-slate-50 hover:border-brand-300 hover:text-brand-600 shadow-sm m-1; 
+        }
+        .cloud-tag.active { 
+            @apply bg-brand-600 text-white border-brand-700 shadow-md transform scale-105; 
+        }
+
+        /* Calendar Tile Styles (Booking Module Integration) - Visual Lebih Jelas & Border Tegas */
+        .day-card { 
+            @apply relative flex flex-col justify-between p-4 rounded-2xl border-2 border-slate-300 transition-all duration-300 bg-white hover:shadow-lg hover:-translate-y-1 shadow-sm; 
+            min-height: 140px; 
+        }
+        /* FIX: Buang 'group' daripada @apply untuk elak CssSyntaxError */
+        .card-open { 
+            @apply border-slate-300 hover:border-brand-500 hover:bg-brand-50/10 cursor-pointer; 
+        }
+        .card-partial { 
+            @apply border-amber-400 bg-amber-50/40 hover:border-amber-600 cursor-pointer; 
+        }
+        .card-full { 
+            @apply border-red-400 bg-red-50/50 opacity-90 grayscale-[0.2] cursor-not-allowed; 
+        }
+        .card-locked { 
+            @apply border-purple-400 bg-purple-50/70 opacity-95 cursor-pointer; 
+        }
+        .card-closed { 
+            @apply border-slate-200 bg-slate-100 opacity-60 grayscale cursor-not-allowed; 
+        }
+        .card-active { 
+            @apply !border-brand-600 ring-4 ring-brand-100 bg-brand-50/30 transform scale-[1.03] shadow-xl z-20; 
+        }
+        
+        /* Text Wrapping Helper - Digunakan untuk mematikan truncation */
+        .wrap-safe { 
+            white-space: normal !important; 
+            word-wrap: break-word !important; 
+            overflow-wrap: break-word !important; 
+            word-break: break-word !important; 
+            line-height: 1.5 !important;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .uppercase-input { text-transform: uppercase; }
+
+        /* Week Navigation Tabs dalam Admin */
+        .week-tab-admin {
+            @apply px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border-2;
+        }
+        .week-tab-admin-active {
+            @apply bg-slate-800 text-white border-slate-900 shadow-md scale-105;
+        }
+        .week-tab-admin-inactive {
+            @apply bg-white text-slate-400 border-slate-200 hover:border-slate-400 hover:text-brand-600;
+        }
     }
-
-    /* Word Cloud Styles */
-    .cloud-tag { @apply inline-flex items-center px-3 py-1.5 rounded-full text-[10px] font-bold bg-white border border-slate-200 text-slate-500 cursor-pointer transition-all hover:bg-slate-50 hover:border-brand-300 hover:text-brand-600 shadow-sm m-1; }
-    .cloud-tag.active { @apply bg-brand-600 text-white border-brand-600 shadow-md transform scale-105; }
-    .cloud-tag .count { @apply ml-2 bg-slate-100 text-slate-400 px-1.5 rounded-full text-[9px]; }
-    .cloud-tag.active .count { @apply bg-white/20 text-white; }
-
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #f1f5f9; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    
-    .uppercase-input { text-transform: uppercase; }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -78,13 +135,13 @@
               <h3 class="text-2xl font-black text-slate-800 mb-1" id="qSchoolName">SK CONTOH</h3>
               <p class="text-sm font-mono font-bold text-slate-400 mb-6" id="qCode">MBA0000</p>
               
-              <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-100">
+              <div class="bg-slate-50 rounded-xl p-4 mb-6 border-2 border-slate-100">
                   <div class="text-lg font-bold text-brand-600" id="qPersonName">Cikgu Ali</div>
               </div>
 
-              <div class="flex items-center gap-2 text-xs text-slate-500 bg-blue-50 p-3 rounded-lg border border-blue-100 mb-6 text-left">
+              <div class="flex items-center gap-2 text-xs text-slate-500 bg-blue-50 p-3 rounded-lg border-2 border-blue-100 mb-6 text-left">
                   <i class="fas fa-info-circle text-blue-500 text-lg"></i>
-                  <span>Tekan butang hijau untuk buka WhatsApp Web & hantar peringatan.</span>
+                  <span class="wrap-safe">Tekan butang hijau untuk buka WhatsApp Web & hantar peringatan.</span>
               </div>
 
               <a href="#" id="qWaBtn" target="_blank" class="block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-green-500/30 transition-all mb-4 flex items-center justify-center gap-2" onclick="setTimeout(nextQueue, 1500)">
@@ -92,10 +149,10 @@
               </a>
 
               <div class="flex gap-3">
-                <button class="flex-1 py-3 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition" onclick="prevQueue()" id="btnPrev">
+                <button class="flex-1 py-3 rounded-xl border-2 border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition" onclick="prevQueue()" id="btnPrev">
                     <i class="fas fa-chevron-left mr-1"></i> Sebelum
                 </button>
-                <button class="flex-1 py-3 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition" onclick="nextQueue()">
+                <button class="flex-1 py-3 rounded-xl border-2 border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition" onclick="nextQueue()">
                     Seterusnya <i class="fas fa-chevron-right mr-1"></i>
                 </button>
               </div>
@@ -108,7 +165,7 @@
     <div class="absolute top-0 right-0 w-64 h-64 bg-brand-500 rounded-full blur-3xl opacity-10 -mr-20 -mt-20 pointer-events-none"></div>
     <div class="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-4">
-            <img src="icoppdag.png" alt="Logo" class="w-14 h-auto drop-shadow-lg bg-white rounded-full p-1">
+            <img src="icoppdag.png" alt="Logo" class="w-14 h-auto drop-shadow-lg bg-white rounded-full p-1 border-2 border-white/20">
             <div>
                 <h1 class="text-xl md:text-2xl font-bold leading-tight">Panel Admin SMPID</h1>
                 <p class="text-slate-400 text-xs font-medium">Pengurusan Data & Komunikasi Digital</p>
@@ -129,11 +186,12 @@
   <div class="container mx-auto px-4 -mt-16 pb-20 relative z-20 max-w-7xl">
     
     <!-- NAVIGATION TABS -->
-    <div class="flex flex-wrap justify-center gap-2 mb-6 bg-white p-2 rounded-2xl shadow-lg border border-slate-100 max-w-5xl mx-auto overflow-x-auto">
+    <div class="flex flex-wrap justify-center gap-2 mb-6 bg-white p-2 rounded-2xl shadow-lg border-2 border-slate-100 max-w-5xl mx-auto overflow-x-auto">
         <a href="#dashboard" class="tab-active px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="dashboard-tab" onclick="switchAdminTab('dashboard', event)"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
         <a href="#analisa" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="analisa-tab" onclick="switchAdminTab('analisa', event)"><i class="fas fa-chart-pie"></i> Analisa</a>
         <a href="#pencapaian" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="pencapaian-tab" onclick="switchAdminTab('pencapaian', event)"><i class="fas fa-trophy"></i> Kemenjadian</a>
         <a href="#gallery" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="gallery-tab" onclick="switchAdminTab('gallery', event)"><i class="fas fa-images"></i> Galeri</a>
+        <a href="#tempahan" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="tempahan-tab" onclick="switchAdminTab('tempahan', event)"><i class="fas fa-calendar-check"></i> Tempahan</a>
         <a href="#email" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="email-tab" onclick="switchAdminTab('email', event)"><i class="fas fa-paper-plane"></i> Blaster</a>
         <a href="#helpdesk" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="helpdesk-tab" onclick="switchAdminTab('helpdesk', event)"><i class="fas fa-headset"></i> Aduan</a>
         <a href="#admin-users" class="tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap" id="admin-users-tab" onclick="switchAdminTab('admin-users', event)"><i class="fas fa-users-cog"></i> Akses</a>
@@ -157,7 +215,7 @@
 
             <div class="relative mb-6">
                 <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input type="text" id="adminSearchInput" class="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none font-semibold text-slate-700 placeholder-slate-400" placeholder="Cari Nama Sekolah atau Kod..." oninput="handleSearch(this.value)">
+                <input type="text" id="adminSearchInput" class="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none font-semibold text-slate-700 placeholder-slate-400" placeholder="Cari Nama Sekolah atau Kod..." oninput="handleSearch(this.value)">
             </div>
 
             <div class="mb-8" id="filterContainer">
@@ -172,13 +230,13 @@
         <div id="tab-analisa" class="hidden p-6 md:p-8">
             <div class="flex justify-between items-center mb-8">
                 <h2 class="text-xl font-bold text-slate-800">Laporan Pencapaian</h2>
-                <select id="pilihTahunAnalisa" class="px-4 py-2 rounded-lg border border-slate-200 text-sm font-bold bg-white focus:border-brand-500 outline-none" onchange="updateDashboardAnalisa()">
+                <select id="pilihTahunAnalisa" class="px-4 py-2 rounded-lg border-2 border-slate-200 text-sm font-bold bg-white focus:border-brand-500 outline-none" onchange="updateDashboardAnalisa()">
                     <option value="" disabled selected>Mengesan Data...</option>
                 </select>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                <div class="bg-blue-50/50 rounded-2xl p-6 border border-blue-100">
+                <div class="bg-blue-50/50 rounded-2xl p-6 border-2 border-blue-100">
                     <h3 class="text-blue-700 font-bold mb-4 border-b border-blue-200 pb-2">Lensa Kualiti: Skor DCS</h3>
                     <div class="flex items-center gap-6 mb-6">
                         <div class="text-center">
@@ -195,7 +253,7 @@
                     </div>
                 </div>
 
-                <div class="bg-green-50/50 rounded-2xl p-6 border border-green-100">
+                <div class="bg-green-50/50 rounded-2xl p-6 border-2 border-green-100">
                     <h3 class="text-green-700 font-bold mb-4 border-b border-green-200 pb-2">Lensa Kuantiti: % Aktif</h3>
                     <div class="flex items-center gap-6 mb-6">
                         <div class="text-center">
@@ -252,7 +310,7 @@
             </div>
 
             <!-- UNIFIED FILTER DECK -->
-            <div class="bg-slate-50 p-4 rounded-2xl mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div class="bg-slate-50 p-4 rounded-2xl mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 border border-slate-100">
                 <div class="col-span-1 lg:col-span-2 relative">
                     <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
                     <input type="text" id="searchPencapaianInput" class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-sm font-semibold" placeholder="Cari Nama / Program..." onkeyup="handlePencapaianSearch()">
@@ -281,7 +339,7 @@
                 </button>
             </div>
 
-            <!-- STATISTIC CARDS (FIXED VISIBILITY) -->
+            <!-- STATISTIC CARDS -->
             <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6 text-center">
                 <div onclick="filterByKategori('MURID')" id="cardStat-MURID" class="p-3 bg-blue-50 rounded-xl border border-blue-100 cursor-pointer hover:bg-blue-100 transition">
                     <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest">Murid</span>
@@ -308,34 +366,34 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <div class="lg:col-span-2 space-y-4">
                     <div class="grid grid-cols-2 gap-4">
-                        <div onclick="filterByCard('KEBANGSAAN')" id="card-KEBANGSAAN" class="bg-purple-600 rounded-2xl p-5 text-white cursor-pointer hover:shadow-lg transition transform hover:-translate-y-1 relative overflow-hidden group">
+                        <div onclick="filterByCard('KEBANGSAAN')" id="card-KEBANGSAAN" class="bg-purple-600 rounded-2xl p-5 text-white cursor-pointer hover:shadow-lg transition transform hover:-translate-y-1 relative overflow-hidden group border border-purple-700">
                             <div class="absolute right-0 top-0 w-24 h-24 bg-white/10 rounded-full -mr-6 -mt-6 blur-2xl group-hover:bg-white/20 transition"></div>
                             <h3 class="text-4xl font-black mb-1" id="statKebangsaan">-</h3>
                             <p class="text-xs font-bold text-purple-200 uppercase tracking-wider">Peringkat Kebangsaan</p>
                         </div>
-                        <div onclick="filterByCard('ANTARABANGSA')" id="card-ANTARABANGSA" class="bg-orange-500 rounded-2xl p-5 text-white cursor-pointer hover:shadow-lg transition transform hover:-translate-y-1 relative overflow-hidden group">
+                        <div onclick="filterByCard('ANTARABANGSA')" id="card-ANTARABANGSA" class="bg-orange-500 rounded-2xl p-5 text-white cursor-pointer hover:shadow-lg transition transform hover:-translate-y-1 relative overflow-hidden group border border-orange-600">
                             <div class="absolute right-0 top-0 w-24 h-24 bg-white/10 rounded-full -mr-6 -mt-6 blur-2xl group-hover:bg-white/20 transition"></div>
                             <h3 class="text-4xl font-black mb-1" id="statAntarabangsa">-</h3>
                             <p class="text-xs font-bold text-orange-200 uppercase tracking-wider">Antarabangsa / Sijil</p>
                         </div>
                     </div>
                     <div class="grid grid-cols-4 gap-3">
-                        <div onclick="filterByCard('GOOGLE')" id="card-GOOGLE" class="bg-white border border-red-100 p-3 rounded-xl cursor-pointer hover:bg-red-50 hover:border-red-300 transition text-center group">
+                        <div onclick="filterByCard('GOOGLE')" id="card-GOOGLE" class="bg-white border-2 border-red-100 p-3 rounded-xl cursor-pointer hover:bg-red-50 hover:border-red-300 transition text-center group">
                             <i class="fab fa-google text-red-500 text-xl mb-2 group-hover:scale-110 transition"></i>
                             <h4 class="text-lg font-black text-slate-700" id="statGoogle">-</h4>
                             <p class="text-[9px] font-bold text-slate-400 uppercase">Google</p>
                         </div>
-                        <div onclick="filterByCard('APPLE')" id="card-APPLE" class="bg-white border border-slate-200 p-3 rounded-xl cursor-pointer hover:bg-slate-100 hover:border-slate-400 transition text-center group">
+                        <div onclick="filterByCard('APPLE')" id="card-APPLE" class="bg-white border-2 border-slate-200 p-3 rounded-xl cursor-pointer hover:bg-slate-100 hover:border-slate-400 transition text-center group">
                             <i class="fab fa-apple text-slate-800 text-xl mb-2 group-hover:scale-110 transition"></i>
                             <h4 class="text-lg font-black text-slate-700" id="statApple">-</h4>
                             <p class="text-[9px] font-bold text-slate-400 uppercase">Apple</p>
                         </div>
-                        <div onclick="filterByCard('MICROSOFT')" id="card-MICROSOFT" class="bg-white border border-blue-100 p-3 rounded-xl cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition text-center group">
+                        <div onclick="filterByCard('MICROSOFT')" id="card-MICROSOFT" class="bg-white border-2 border-blue-100 p-3 rounded-xl cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition text-center group">
                             <i class="fab fa-microsoft text-blue-500 text-xl mb-2 group-hover:scale-110 transition"></i>
                             <h4 class="text-lg font-black text-slate-700" id="statMicrosoft">-</h4>
                             <p class="text-[9px] font-bold text-slate-400 uppercase">Microsoft</p>
                         </div>
-                        <div onclick="filterByCard('LAIN-LAIN')" id="card-LAIN-LAIN" class="bg-white border border-slate-200 p-3 rounded-xl cursor-pointer hover:bg-slate-50 transition text-center group">
+                        <div onclick="filterByCard('LAIN-LAIN')" id="card-LAIN-LAIN" class="bg-white border-2 border-slate-200 p-3 rounded-xl cursor-pointer hover:bg-slate-50 transition text-center group">
                             <i class="fas fa-layer-group text-slate-400 text-xl mb-2 group-hover:scale-110 transition"></i>
                             <h4 class="text-lg font-black text-slate-700" id="statLain">-</h4>
                             <p class="text-[9px] font-bold text-slate-400 uppercase">Lain-lain</p>
@@ -343,7 +401,7 @@
                     </div>
                 </div>
 
-                <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col shadow-sm">
+                <div class="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden flex flex-col shadow-sm">
                     <div class="bg-slate-900 px-4 py-3 flex justify-between items-center">
                         <h4 class="text-xs font-bold text-white uppercase tracking-wider">Top 5 Sekolah</h4>
                         <span class="bg-white/20 text-white text-[9px] font-bold px-2 py-0.5 rounded-full" id="totalRecordsBadge">0 Rekod</span>
@@ -363,10 +421,10 @@
                     <h6 class="font-bold text-slate-400 text-[10px] uppercase tracking-widest"><i class="fas fa-tags mr-1"></i> Tapisan Jawatan Guru</h6>
                     <button onclick="filterPencapaianByJawatan('ALL')" id="btnResetJawatan" class="text-[10px] font-bold text-red-400 hover:text-red-600 hidden uppercase">Reset Tapis</button>
                 </div>
-                <div id="jawatanCloudContainer" class="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-wrap justify-center"></div>
+                <div id="jawatanCloudContainer" class="p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl flex flex-wrap justify-center"></div>
             </div>
 
-            <div class="overflow-auto border border-slate-200 rounded-xl max-h-[600px]">
+            <div class="overflow-auto border-2 border-slate-200 rounded-xl max-h-[600px]">
                 <table class="w-full text-sm text-left">
                     <thead class="text-xs text-white uppercase bg-slate-800 sticky top-0 z-10">
                         <tr>
@@ -393,9 +451,9 @@
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest" id="galleryHeaderSubtitle">Unit Sumber Teknologi Pendidikan</p>
                 </div>
                 <div class="flex flex-wrap gap-2 w-full md:w-auto">
-                    <input type="text" id="gallerySearchInput" class="px-3 py-2 rounded-lg border border-slate-200 text-xs grow md:w-40 outline-none focus:border-indigo-500" placeholder="Cari Sekolah..." oninput="handleGallerySchoolSearch(this.value)">
-                    <select id="gallerySchoolSelector" class="px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white outline-none grow md:w-40" onchange="loadAdminGalleryGrid(this.value)"><option value="M030">M030</option></select>
-                    <button class="px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 transition" onclick="resetGallery()"><i class="fas fa-sync-alt text-slate-400"></i></button>
+                    <input type="text" id="gallerySearchInput" class="px-3 py-2 rounded-lg border-2 border-slate-200 text-xs grow md:w-40 outline-none focus:border-indigo-500" placeholder="Cari Sekolah..." oninput="handleGallerySchoolSearch(this.value)">
+                    <select id="gallerySchoolSelector" class="px-3 py-2 rounded-lg border-2 border-slate-200 text-xs bg-white outline-none grow md:w-40" onchange="loadAdminGalleryGrid(this.value)"><option value="M030">M030</option></select>
+                    <button class="px-3 py-2 rounded-lg border-2 border-slate-200 hover:bg-slate-50 transition" onclick="resetGallery()"><i class="fas fa-sync-alt text-slate-400"></i></button>
                 </div>
             </div>
             
@@ -409,16 +467,21 @@
                     <h6 class="font-bold text-slate-400 text-[10px] uppercase tracking-widest"><i class="fas fa-tags mr-1"></i> Tapisan Jawatan Galeri</h6>
                     <button onclick="filterGalleryByJawatan('ALL')" id="btnResetGalleryCloud" class="text-[10px] font-bold text-red-400 hover:text-red-600 hidden uppercase">Reset</button>
                 </div>
-                <div id="galleryCloudContainer" class="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex flex-wrap justify-center"></div>
+                <div id="galleryCloudContainer" class="p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl flex flex-wrap justify-center"></div>
             </div>
 
             <div id="adminGalleryGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
         </div>
 
-        <!-- TAB 5: EMAIL BLASTER -->
+        <!-- TAB 5: TEMPAHAN BIMBINGAN & BENGKEL -->
+        <div id="tab-tempahan" class="hidden">
+            <!-- Content Injected by booking_manager.js -->
+        </div>
+
+        <!-- TAB 6: EMAIL BLASTER -->
         <div id="tab-email" class="hidden p-6 md:p-8">
             <h2 class="text-xl font-bold text-slate-800 mb-4">Email Blaster</h2>
-            <div class="bg-amber-50 p-6 rounded-2xl border border-amber-100 mb-6">
+            <div class="bg-amber-50 p-6 rounded-2xl border-2 border-amber-100 mb-6">
                 <div class="flex flex-wrap gap-6 items-center mb-4">
                     <label class="flex items-center gap-2 cursor-pointer font-bold text-sm text-slate-700">
                         <input type="checkbox" id="checkGpict" checked onchange="generateList()" class="accent-amber-500 w-4 h-4"> GPICT
@@ -426,38 +489,38 @@
                     <label class="flex items-center gap-2 cursor-pointer font-bold text-sm text-slate-700">
                         <input type="checkbox" id="checkAdmin" checked onchange="generateList()" class="accent-amber-500 w-4 h-4"> Admin DELIMa
                     </label>
-                    <select id="statusFilter" class="px-3 py-1.5 rounded-lg border border-amber-200 bg-white text-xs font-bold outline-none" onchange="generateList()">
+                    <select id="statusFilter" class="px-3 py-1.5 rounded-lg border-2 border-amber-200 bg-white text-xs font-bold outline-none" onchange="generateList()">
                         <option value="all">Semua Status</option>
                         <option value="unregistered" selected>Belum Bot</option>
                     </select>
                 </div>
                 <div class="relative">
                     <label class="absolute -top-3 left-3 bg-amber-50 px-2 text-[10px] font-bold text-amber-600 uppercase">Senarai Emel (<span id="countEmail">0</span>)</label>
-                    <textarea id="emailOutput" class="w-full p-4 rounded-xl border border-amber-200 bg-white text-xs font-mono text-slate-600 h-24 focus:outline-none" readonly></textarea>
+                    <textarea id="emailOutput" class="w-full p-4 rounded-xl border-2 border-amber-200 bg-white text-xs font-mono text-slate-600 h-24 focus:outline-none" readonly></textarea>
                     <button onclick="copyEmails()" class="absolute top-2 right-2 text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded font-bold hover:bg-amber-200 transition">Salin</button>
                 </div>
             </div>
 
-            <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+            <div class="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                 <div class="p-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                     <h6 class="font-bold text-slate-700 text-sm"><i class="fas fa-pen-fancy mr-2"></i>Draf Mesej</h6>
                 </div>
                 <div class="p-4">
-                    <input type="text" id="msgSubject" class="w-full p-2 mb-3 border-b border-slate-100 font-bold text-sm outline-none placeholder-slate-300" value="[TINDAKAN] Pengesahan Pendaftaran Sistem SMPID">
+                    <input type="text" id="msgSubject" class="w-full p-2 mb-3 border-b-2 border-slate-100 font-bold text-sm outline-none placeholder-slate-300" value="[TINDAKAN] Pengesahan Pendaftaran Sistem SMPID">
                     <div id="editor-container" class="h-64 bg-white"></div>
                 </div>
                 <div class="p-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
                     <button class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition" onclick="copyTemplate()">Salin HTML</button>
-                    <a id="mailtoLink" href="#" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-bold transition flex items-center gap-2"><i class="fas fa-paper-plane"></i> Buka Emel</a>
+                    <a id="mailtoLink" href="#" class="px-4 py-2 rounded-lg border-2 border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-bold transition flex items-center gap-2"><i class="fas fa-paper-plane"></i> Buka Emel</a>
                 </div>
             </div>
         </div>
 
-        <!-- TAB 6: HELPDESK -->
+        <!-- TAB 7: HELPDESK -->
         <div id="tab-helpdesk" class="hidden p-6 md:p-8">
             <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                 <h2 class="text-xl font-bold text-red-600">Pusat Aduan</h2>
-                <select id="filterTiketAdmin" class="px-3 py-1.5 rounded-lg border border-red-100 bg-red-50 text-red-700 text-xs font-bold outline-none" onchange="loadTiketAdmin()">
+                <select id="filterTiketAdmin" class="px-3 py-1.5 rounded-lg border-2 border-red-100 bg-red-50 text-red-700 text-xs font-bold outline-none" onchange="loadTiketAdmin()">
                     <option value="ALL">Semua Tiket</option>
                     <option value="DALAM PROSES" selected>Dalam Proses</option>
                     <option value="SELESAI">Selesai</option>
@@ -466,22 +529,22 @@
             <div id="adminTiketWrapper" class="space-y-4"></div>
         </div>
 
-        <!-- TAB 7: ADMIN USERS -->
+        <!-- TAB 8: ADMIN USERS -->
         <div id="tab-admin-users" class="hidden p-6 md:p-8">
             <h2 class="text-xl font-bold text-slate-800 mb-6">Pengurusan Akses Admin</h2>
-            <div id="addUserFormContainer" class="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-6">
+            <div id="addUserFormContainer" class="bg-slate-50 p-6 rounded-2xl border-2 border-slate-200 mb-6">
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <div class="md:col-span-1">
                         <label class="block text-xs font-bold text-slate-500 mb-1 ml-1">Emel Pengguna</label>
-                        <input type="email" id="inputNewAdminEmail" class="w-full p-2.5 rounded-lg border border-slate-300 text-sm">
+                        <input type="email" id="inputNewAdminEmail" class="w-full p-2.5 rounded-lg border-2 border-slate-300 text-sm">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1 ml-1">Peranan</label>
-                        <select id="inputNewAdminRole" class="w-full p-2.5 rounded-lg border border-slate-300 text-sm bg-white"></select>
+                        <select id="inputNewAdminRole" class="w-full p-2.5 rounded-lg border-2 border-slate-300 text-sm bg-white"></select>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1 ml-1">Kata Laluan</label>
-                        <input type="text" id="inputNewAdminPass" class="w-full p-2.5 rounded-lg border border-slate-300 text-sm">
+                        <input type="text" id="inputNewAdminPass" class="w-full p-2.5 rounded-lg border-2 border-slate-300 text-sm">
                     </div>
                     <div>
                         <button onclick="tambahAdmin()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-lg text-sm transition">Tambah</button>
@@ -510,11 +573,11 @@
                   <div class="grid grid-cols-2 gap-4 mb-6">
                       <div>
                           <label class="block text-xs font-bold text-blue-600 uppercase mb-1">Skor DCS</label>
-                          <input type="number" step="0.01" id="editDcsVal" class="w-full p-3 rounded-lg border border-slate-300 focus:border-blue-500 outline-none font-bold">
+                          <input type="number" step="0.01" id="editDcsVal" class="w-full p-3 rounded-lg border-2 border-slate-300 focus:border-blue-500 outline-none font-bold">
                       </div>
                       <div>
                           <label class="block text-xs font-bold text-green-600 uppercase mb-1">% Aktif</label>
-                          <input type="number" id="editAktifVal" class="w-full p-3 rounded-lg border border-slate-300 focus:border-green-500 outline-none font-bold">
+                          <input type="number" id="editAktifVal" class="w-full p-3 rounded-lg border-2 border-slate-300 focus:border-green-500 outline-none font-bold">
                       </div>
                   </div>
                   <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition">SIMPAN</button>
@@ -545,31 +608,31 @@
                   
                   <div class="space-y-4">
                       <input type="text" id="editNamaSekolah" class="w-full p-3 bg-slate-100 rounded-lg text-xs font-bold text-slate-500" readonly>
-                      <input type="text" id="editInputNama" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" placeholder="NAMA PESERTA" oninput="this.value = this.value.toUpperCase()">
+                      <input type="text" id="editInputNama" class="w-full p-3 border-2 border-slate-300 rounded-lg text-sm font-bold uppercase" placeholder="NAMA PESERTA" oninput="this.value = this.value.toUpperCase()">
                       
                       <div id="divEditJawatan" class="hidden">
-                          <select id="editInputJawatan" class="w-full p-3 border border-amber-300 bg-amber-50 rounded-lg text-sm font-bold">
+                          <select id="editInputJawatan" class="w-full p-3 border-2 border-amber-300 bg-amber-50 rounded-lg text-sm font-bold">
                               <!-- Populated by JS -->
                           </select>
                       </div>
 
                       <div id="divEditPenyedia" class="hidden">
-                          <select id="editInputPenyedia" class="w-full p-3 border border-slate-300 rounded-lg text-sm">
+                          <select id="editInputPenyedia" class="w-full p-3 border-2 border-slate-300 rounded-lg text-sm">
                               <!-- Populated by JS -->
                           </select>
                       </div>
 
-                      <input type="text" id="editInputProgram" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()">
+                      <input type="text" id="editInputProgram" class="w-full p-3 border-2 border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()">
                       
                       <div class="grid grid-cols-2 gap-4">
                           <div id="divEditColPeringkat">
-                              <select id="editInputPeringkat" class="w-full p-3 border border-slate-300 rounded-lg text-sm">
+                              <select id="editInputPeringkat" class="w-full p-3 border-2 border-slate-300 rounded-lg text-sm">
                                   <!-- Populated by JS -->
                               </select>
                           </div>
                           <div>
                               <div class="relative">
-                                  <select id="editInputTahun" class="w-full p-3 border border-slate-300 rounded-lg text-sm text-center font-bold appearance-none bg-white">
+                                  <select id="editInputTahun" class="w-full p-3 border-2 border-slate-300 rounded-lg text-sm text-center font-bold appearance-none bg-white">
                                       <!-- Populated by JS -->
                                   </select>
                                   <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
@@ -577,8 +640,8 @@
                           </div>
                       </div>
 
-                      <input type="text" id="editInputPencapaian" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()">
-                      <input type="url" id="editInputLink" class="w-full p-3 border border-slate-300 rounded-lg text-sm text-blue-600">
+                      <input type="text" id="editInputPencapaian" class="w-full p-3 border-2 border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()">
+                      <input type="url" id="editInputLink" class="w-full p-3 border-2 border-slate-300 rounded-lg text-sm text-blue-600">
                   </div>
 
                   <button type="submit" class="w-full mt-6 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl shadow transition">SIMPAN PERUBAHAN</button>
@@ -600,11 +663,11 @@
                   <div class="grid grid-cols-2 gap-3 mb-4">
                       <label class="cursor-pointer">
                           <input type="radio" name="radKatPPD" id="radPegawai" value="PEGAWAI" class="peer hidden" checked onchange="toggleKategoriPPD()">
-                          <div class="p-2 rounded-lg border border-slate-200 text-center text-xs font-bold text-slate-500 peer-checked:bg-indigo-600 peer-checked:text-white transition-all uppercase tracking-widest">PEGAWAI</div>
+                          <div class="p-2 rounded-lg border-2 border-slate-200 text-center text-xs font-bold text-slate-500 peer-checked:bg-indigo-600 peer-checked:text-white transition-all uppercase tracking-widest">PEGAWAI</div>
                       </label>
                       <label class="cursor-pointer">
                           <input type="radio" name="radKatPPD" id="radUnit" value="PPD" class="peer hidden" onchange="toggleKategoriPPD()">
-                          <div class="p-2 rounded-lg border border-slate-200 text-center text-xs font-bold text-slate-500 peer-checked:bg-indigo-600 peer-checked:text-white transition-all uppercase tracking-widest">UNIT / SEKTOR</div>
+                          <div class="p-2 rounded-lg border-2 border-slate-200 text-center text-xs font-bold text-slate-500 peer-checked:bg-indigo-600 peer-checked:text-white transition-all uppercase tracking-widest">UNIT / SEKTOR</div>
                       </label>
                   </div>
 
@@ -622,32 +685,32 @@
                   <div class="space-y-3">
                       <div>
                           <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="lblPpdNamaPeserta">NAMA PEGAWAI</label>
-                          <input type="text" id="ppdInputNama" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold shadow-sm" oninput="this.value = this.value.toUpperCase()">
+                          <input type="text" id="ppdInputNama" class="w-full p-3 rounded-lg border-2 border-slate-300 uppercase-input text-sm font-bold shadow-sm" oninput="this.value = this.value.toUpperCase()">
                       </div>
                       
                       <div id="divPpdPenyedia" class="hidden">
                           <label class="block text-[10px] font-bold text-amber-600 uppercase mb-1">PENYEDIA</label>
-                          <select id="ppdInputPenyedia" class="w-full p-3 rounded-lg border border-amber-300 bg-amber-50 text-sm font-bold shadow-sm">
+                          <select id="ppdInputPenyedia" class="w-full p-3 rounded-lg border-2 border-amber-300 bg-amber-50 text-sm font-bold shadow-sm">
                               <!-- Populated by JS -->
                           </select>
                       </div>
 
                       <div>
                           <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="lblPpdProgram">NAMA PROGRAM</label>
-                          <input type="text" id="ppdInputProgram" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold shadow-sm" oninput="this.value = this.value.toUpperCase()">
+                          <input type="text" id="ppdInputProgram" class="w-full p-3 rounded-lg border-2 border-slate-300 uppercase-input text-sm font-bold shadow-sm" oninput="this.value = this.value.toUpperCase()">
                       </div>
 
                       <div class="grid grid-cols-2 gap-3">
                           <div id="divPpdColPeringkat">
                               <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">PERINGKAT</label>
-                              <select id="ppdInputPeringkat" class="w-full p-3 rounded-lg border border-slate-300 text-sm font-bold bg-white shadow-sm">
+                              <select id="ppdInputPeringkat" class="w-full p-3 rounded-lg border-2 border-slate-300 text-sm font-bold bg-white shadow-sm">
                                   <!-- Populated by JS -->
                               </select>
                           </div>
                           <div>
                               <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">TAHUN</label>
                               <div class="relative">
-                                  <select id="ppdInputTahun" class="w-full p-3 rounded-lg border border-slate-300 text-center font-bold text-sm shadow-sm appearance-none bg-white">
+                                  <select id="ppdInputTahun" class="w-full p-3 rounded-lg border-2 border-slate-300 text-center font-bold text-sm shadow-sm appearance-none bg-white">
                                       <!-- Populated by JS -->
                                   </select>
                                   <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
@@ -657,12 +720,12 @@
 
                       <div>
                           <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1" id="lblPpdPencapaian">PENCAPAIAN</label>
-                          <input type="text" id="ppdInputPencapaian" class="w-full p-3 rounded-lg border border-slate-300 uppercase-input text-sm font-bold shadow-sm" oninput="this.value = this.value.toUpperCase()">
+                          <input type="text" id="ppdInputPencapaian" class="w-full p-3 rounded-lg border-2 border-slate-300 uppercase-input text-sm font-bold shadow-sm" oninput="this.value = this.value.toUpperCase()">
                       </div>
 
                       <div>
                           <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">PAUTAN BUKTI</label>
-                          <input type="url" id="ppdInputLink" class="w-full p-3 rounded-lg border border-slate-300 text-sm text-blue-600 shadow-sm">
+                          <input type="url" id="ppdInputLink" class="w-full p-3 rounded-lg border-2 border-slate-300 text-sm text-blue-600 shadow-sm">
                       </div>
                   </div>
 
@@ -682,7 +745,7 @@
           </div>
           
           <div class="p-4 border-b border-slate-200 bg-slate-50 shrink-0">
-              <input type="text" id="standardizeSearch" class="w-full p-3 rounded-lg border border-slate-300 focus:border-slate-500 outline-none text-sm font-bold shadow-sm" placeholder="Cari Nama Program (Contoh: MSSM)..." oninput="handleStandardizeSearch(this.value)">
+              <input type="text" id="standardizeSearch" class="w-full p-3 rounded-lg border-2 border-slate-300 focus:border-slate-500 outline-none text-sm font-bold shadow-sm" placeholder="Cari Nama Program (Contoh: MSSM)..." oninput="handleStandardizeSearch(this.value)">
           </div>
 
           <div class="overflow-y-auto p-0 grow">
@@ -701,7 +764,7 @@
           </div>
           
           <div class="p-3 bg-slate-50 border-t border-slate-200 shrink-0 text-right">
-              <button onclick="document.getElementById('modalStandardize').classList.add('hidden')" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-bold transition shadow-sm">Tutup</button>
+              <button onclick="document.getElementById('modalStandardize').classList.add('hidden')" class="px-4 py-2 rounded-lg border-2 border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-bold transition shadow-sm">Tutup</button>
           </div>
       </div>
   </div>
@@ -710,12 +773,13 @@
   <script type="module" src="js/core/db.js"></script>
   
   <!-- ADMIN MODULES -->
-  <script type="module" src="js/admin/main.js"></script> <!-- MAIN CONTROLLER MESTI DILOAD -->
+  <script type="module" src="js/admin/main.js"></script>
   <script type="module" src="js/admin/dashboard.js"></script>
   <script type="module" src="js/admin/analysis.js"></script>
   <script type="module" src="js/admin/achievement.js"></script>
   <script type="module" src="js/admin/communication.js"></script>
   <script type="module" src="js/admin/gallery_manager.js"></script>
+  <script type="module" src="js/admin/booking_manager.js"></script>
   <script type="module" src="js/admin/settings.js"></script>
 
 </body>

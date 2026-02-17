@@ -1,10 +1,11 @@
 /**
  * js/config/dropdowns.js
  * PUSAT DATA DROPDOWN SMPID (PPD ALOR GAJAH)
- * Fungsi: Membekalkan senarai jawatan, peringkat, penyedia, dan tahun secara konsisten
+ * Fungsi: Membekalkan senarai jawatan, peringkat, penyedia, tahun, dan tajuk bengkel
  * merentas semua modul (Public, User, Admin).
- * --- UPDATE V1.3 ---
- * Penambahan: Kategori TAHUN (Dinamik: 2020 - Tahun Semasa).
+ * --- UPDATE V1.4 ---
+ * Penambahan: Kategori BENGKEL (Disusun mengikut abjad A-Z).
+ * Integriti: Memastikan ejaan standard bagi tajuk bimbingan.
  */
 
 // Fungsi pembantu untuk menjana senarai tahun secara dinamik
@@ -50,13 +51,28 @@ export const DROPDOWN_DATA = {
     ],
 
     // Senarai Tahun (Dinamik)
-    TAHUN: generateYears()
+    TAHUN: generateYears(),
+
+    // --- BARU: TAJUK BENGKEL / BIMBINGAN (V1.4) ---
+    // Disusun mengikut urutan abjad A-Z
+    BENGKEL: [
+        { val: "BENGKEL / BIMBINGAN DRONE LITEBEE", txt: "BENGKEL / BIMBINGAN DRONE LITEBEE" },
+        { val: "BENGKEL / BIMBINGAN REKA CETAK 3D", txt: "BENGKEL / BIMBINGAN REKA CETAK 3D" },
+        { val: "BENGKEL / BIMBINGAN ROBOTIK AIROBOTIK", txt: "BENGKEL / BIMBINGAN ROBOTIK AIROBOTIK" },
+        { val: "BENGKEL / BIMBINGAN ROBOTIK MIKROBOTIK", txt: "BENGKEL / BIMBINGAN ROBOTIK MIKROBOTIK" },
+        { val: "BENGKEL / BIMBINGAN ROBOTIK REKAEDUKIT", txt: "BENGKEL / BIMBINGAN ROBOTIK REKAEDUKIT" },
+        { val: "BENGKEL / BIMBINGAN ROBOTIK RERO:MICRO", txt: "BENGKEL / BIMBINGAN ROBOTIK RERO:MICRO" },
+        { val: "BIMBINGAN ADMIN DELIMA (BAHARU)", txt: "BIMBINGAN ADMIN DELIMA (BAHARU)" },
+        { val: "BIMBINGAN PENYELARAS ICT (BAHARU)", txt: "BIMBINGAN PENYELARAS ICT (BAHARU)" },
+		{ val: "BENGKEL PENSIJILAN APPLE TEACHER", txt: "BENGKEL PENSIJILAN APPLE TEACHER" },
+		{ val: "BENGKEL PENSIJILAN GEMINI / GOOGLE", txt: "BENGKEL PENSIJILAN GEMINI / GOOGLE" }
+    ]
 };
 
 /**
  * Mengisi elemen <select> secara dinamik berdasarkan kategori data.
  * @param {string} elementId - ID elemen select dalam DOM.
- * @param {string} category - Kunci data (JAWATAN, PERINGKAT, PENYEDIA, atau TAHUN).
+ * @param {string} category - Kunci data (JAWATAN, PERINGKAT, PENYEDIA, TAHUN, atau BENGKEL).
  * @param {string} defaultValue - (Opsional) Nilai yang perlu dipilih secara automatik.
  */
 export function populateDropdown(elementId, category, defaultValue = null) {
@@ -75,7 +91,7 @@ export function populateDropdown(elementId, category, defaultValue = null) {
     // Bersihkan kandungan select sedia ada
     select.innerHTML = '';
 
-    // Tambah pilihan placeholder jika perlu (untuk kes selain TAHUN atau jika tiada default)
+    // Tambah pilihan placeholder jika perlu (kecuali untuk TAHUN)
     if (!defaultValue && category !== 'TAHUN') {
         const placeholder = document.createElement('option');
         placeholder.value = "";
@@ -91,7 +107,7 @@ export function populateDropdown(elementId, category, defaultValue = null) {
         opt.value = item.val;
         opt.innerText = item.txt;
         
-        // Logik pemilihan automatik (biasanya untuk modal Edit atau penetapan tahun semasa)
+        // Logik pemilihan automatik
         if (defaultValue && String(item.val) === String(defaultValue)) {
             opt.selected = true;
         }
@@ -102,5 +118,5 @@ export function populateDropdown(elementId, category, defaultValue = null) {
     console.log(`✅ [Dropdowns] Dropdown '${elementId}' berjaya diisi (${category}).`);
 }
 
-// Expose ke global window untuk kemudahan debug atau integrasi legacy jika perlu
+// Expose ke global window untuk kemudahan debug atau integrasi legacy
 window.populateDropdown = populateDropdown;
