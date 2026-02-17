@@ -1,10 +1,11 @@
 /**
  * BOOKING SERVICE (MODUL BIMBINGAN & BENGKEL - BB)
  * Fungsi: Menguruskan CRUD bagi tempahan bengkel dan kunci tarikh admin.
- * Refactored: Lazy DB Loading.
+ * Versi: 2.5 (Telegram Integration Enabled)
  */
 
 import { requireDb } from '../core/db.js';
+import { APP_CONFIG } from '../config/app.config.js';
 
 export const BookingService = {
     /**
@@ -13,7 +14,7 @@ export const BookingService = {
      * @param {number} month (0-11)
      */
     async getMonthlyData(year, month) {
-        const db = requireDb(); // Lazy Load
+        const db = requireDb();
         
         const pad = (n) => n.toString().padStart(2, '0');
         const startStr = `${year}-${pad(month + 1)}-01`;
@@ -56,10 +57,10 @@ export const BookingService = {
     },
 
     /**
-     * Menghantar tempahan baharu dengan validasi slot.
+     * Menghantar tempahan baharu dengan validasi slot dan notifikasi bot.
      */
     async createBooking(payload) {
-        const db = requireDb(); // Lazy Load
+        const db = requireDb();
         const { tarikh, masa, kod_sekolah } = payload;
 
         const day = new Date(tarikh).getDay();
@@ -68,14 +69,12 @@ export const BookingService = {
             throw new Error("Tempahan hanya dibenarkan pada hari Selasa, Rabu, Khamis dan Sabtu sahaja.");
         }
 
-        // --- NEW LOGIC: SEKATAN SABTU PETANG ---
-        // Jika hari Sabtu (6) dan masa Petang, tolak permintaan.
+        // Sekatan Sabtu Petang (Pro Web Caster Protocol V3.5)
         if (day === 6 && masa === 'Petang') {
             throw new Error("Maaf, sesi bimbingan hari Sabtu hanya dibuka untuk slot Pagi sahaja.");
         }
-        // ----------------------------------------
 
-        // Semak Kunci
+        // Semak Kunci Admin
         const { data: isLocked } = await db
             .from('smpid_bb_kunci')
             .select('id')
@@ -84,7 +83,7 @@ export const BookingService = {
         
         if (isLocked) throw new Error("Maaf, tarikh ini telah dikunci oleh pentadbir.");
 
-        // Semak Slot
+        // Semak Kekosongan Slot
         const { data: existing } = await db
             .from('smpid_bb_tempahan')
             .select('id')
@@ -95,11 +94,12 @@ export const BookingService = {
 
         if (existing) throw new Error(`Slot ${masa} pada tarikh tersebut telah ditempah.`);
 
-        // ID Tempahan
+        // Penjanaan ID Tempahan Unik
         const ymd = tarikh.replace(/-/g, '').substring(2); 
         const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
         const bookingId = `${ymd}-${kod_sekolah.slice(-3)}-${rand}`;
 
+        // 1. Simpan ke Pangkalan Data
         const { error } = await db
             .from('smpid_bb_tempahan')
             .insert([{
@@ -110,6 +110,24 @@ export const BookingService = {
             }]);
 
         if (error) throw error;
+
+        // 2. Notifikasi Optimistik ke Telegram (Deno API)
+        if (APP_CONFIG.API.DENO_URL) {
+            fetch(`${APP_CONFIG.API.DENO_URL}/notify-booking`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    kod: payload.kod_sekolah,
+                    nama: payload.nama_sekolah,
+                    tarikh: payload.tarikh,
+                    masa: payload.masa,
+                    tajuk: payload.tajuk_bengkel,
+                    pic_name: payload.nama_pic,
+                    pic_phone: payload.no_tel_pic
+                })
+            }).catch(err => console.warn("[BookingService] Notifikasi Bot Gagal:", err));
+        }
+
         return { success: true, bookingId };
     },
 

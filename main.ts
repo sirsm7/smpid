@@ -1,6 +1,6 @@
 /**
  * SMPID Telegram Bot & API (Deno Deploy)
- * Versi: Helpdesk Module Added
+ * Versi: 4.5 (Booking Notification & Cross-PIC Routing Added)
  * Host: tech4ag.my
  */
 
@@ -372,13 +372,71 @@ Deno.serve(async (req) => {
     }
   }
 
-  // --- NEW: Endpoint /notify-ticket (User Hantar Tiket -> Admin PPD) ---
+  // --- Endpoint /notify-booking (BARU: Notifikasi Tempahan) ---
+  if (req.method === "POST" && url.pathname === "/notify-booking") {
+      try {
+          const body = await req.json();
+          const { kod, nama, tarikh, masa, tajuk, pic_name, pic_phone } = body;
+
+          // A. Notifikasi ke Admin PPD
+          const { data: admins } = await supabase
+              .from("smpid_admin_users")
+              .select("telegram_id")
+              .not("telegram_id", "is", null);
+
+          if (admins && admins.length > 0) {
+              const waLink = `https://wa.me/${pic_phone.replace(/[^0-9]/g, '')}`;
+              const ppdText = 
+                  `📅 *TEMPAHAN BENGKEL BARU*\n\n` +
+                  `🏫 Sekolah: *${nama}* (${kod})\n` +
+                  `📌 Fokus: *${tajuk}*\n` +
+                  `🗓️ Tarikh: *${tarikh}* | *${masa}*\n` +
+                  `👤 PIC: *${pic_name}*\n` +
+                  `📞 Telefon: [${pic_phone}](${waLink})\n\n` +
+                  `_Sila semak kalendar bimbingan untuk pengesahan._`;
+
+              const ppdPromises = admins.map(admin => 
+                  bot.api.sendMessage(admin.telegram_id, ppdText, { parse_mode: "Markdown", disable_web_page_preview: true })
+                  .catch(err => console.error(err))
+              );
+              await Promise.all(ppdPromises);
+          }
+
+          // B. Notifikasi ke PIC Sekolah (Pendaftar Bot)
+          const { data: sekolah } = await supabase
+              .from("smpid_sekolah_data")
+              .select("telegram_id_gpict, telegram_id_admin")
+              .eq("kod_sekolah", kod)
+              .single();
+
+          if (sekolah) {
+              const schoolText = 
+                  `✅ *PENGESAHAN TEMPAHAN*\n\n` +
+                  `Sistem telah merekodkan permohonan bimbingan untuk sekolah anda.\n\n` +
+                  `📌 Fokus: *${tajuk}*\n` +
+                  `🗓️ Tarikh: *${tarikh}* (${masa})\n\n` +
+                  `_Sila tunggu maklum balas daripada pegawai USTP PPD Alor Gajah._`;
+
+              const schoolPicIds = [sekolah.telegram_id_gpict, sekolah.telegram_id_admin].filter(id => id);
+              const schoolPromises = schoolPicIds.map(id => 
+                  bot.api.sendMessage(id, schoolText, { parse_mode: "Markdown" })
+                  .catch(err => console.error(err))
+              );
+              await Promise.all(schoolPromises);
+          }
+
+          return new Response(JSON.stringify({ status: "success" }), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+      } catch (e) {
+          return new Response(JSON.stringify({ status: "error" }), { status: 500 });
+      }
+  }
+
+  // --- Endpoint /notify-ticket (User Hantar Tiket -> Admin PPD) ---
   if (req.method === "POST" && url.pathname === "/notify-ticket") {
       try {
           const body = await req.json();
           const { kod, peranan, tajuk, mesej } = body;
 
-          // Cari semua Admin PPD
           const { data: admins } = await supabase
               .from("smpid_admin_users")
               .select("telegram_id")
@@ -405,13 +463,12 @@ Deno.serve(async (req) => {
       }
   }
 
-  // --- NEW: Endpoint /reply-ticket (Admin Balas -> User Sekolah) ---
+  // --- Endpoint /reply-ticket (Admin Balas -> User Sekolah) ---
   if (req.method === "POST" && url.pathname === "/reply-ticket") {
       try {
           const body = await req.json();
           const { kod, peranan, tajuk, balasan } = body;
 
-          // Cari data sekolah untuk dapatkan ID Telegram PIC
           const { data: sekolah } = await supabase
               .from("smpid_sekolah_data")
               .select("telegram_id_gpict, telegram_id_admin")
@@ -420,7 +477,6 @@ Deno.serve(async (req) => {
 
           if (sekolah) {
               let targetId = null;
-              // Jika pengirim asal GPICT, hantar ke GPICT. Jika Admin, hantar ke Admin.
               if (peranan === 'GPICT') targetId = sekolah.telegram_id_gpict;
               else if (peranan === 'ADMIN') targetId = sekolah.telegram_id_admin;
 
