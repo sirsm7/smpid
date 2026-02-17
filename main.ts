@@ -1,25 +1,25 @@
 /**
  * SMPID Telegram Bot & API (Deno Deploy)
- * Versi: 5.2 (Ultra-Stable & Build-Safe Edition)
+ * Versi: 5.5 (Final Build-Safe & CORS Robust Edition)
  * Host: tech4ag.my
  * Author: CodeArchitect
- * Description: Pendaftaran bot, notifikasi tempahan (Double-DM), 
- * dan integrasi aduan dengan pengurusan CORS yang dioptimumkan.
+ * Description: Mengendalikan pendaftaran bot, notifikasi tempahan, 
+ * dan integrasi sistem aduan dengan pengoptimuman 'build artifact'.
  */
 
-import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.20.3/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8?target=deno";
 
-// 1. PENGURUSAN PERSEKITARAN (ENVIRONMENT VARIABLES)
+// 1. KONFIGURASI PERSEKITARAN
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_KEY = Deno.env.get("SUPABASE_KEY") || "";
 
 if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_KEY) {
-  console.error("KRITIKAL: Variabel persekitaran tidak lengkap.");
+  console.error("KRITIKAL: Variabel persekitaran (Environment Variables) tidak lengkap!");
 }
 
-// DEFINISI HEADER CORS GLOBAL
+// DEFINISI HEADER CORS (PENTING UNTUK KOMUNIKASI WEB)
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -30,10 +30,10 @@ const corsHeaders = {
 const bot = new Bot(BOT_TOKEN);
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 3. FUNGSI PEMBANTU UI (TELEGRAM LOGIC)
+// 3. FUNGSI UI HELPER TELEGRAM
 
 /**
- * Menjana antaramuka pendaftaran sekolah.
+ * Menjana antaramuka pendaftaran bagi pihak sekolah.
  */
 async function getSchoolUI(kodSekolah: string, telegramId: number) {
   const { data: sekolah, error } = await supabase
@@ -44,29 +44,29 @@ async function getSchoolUI(kodSekolah: string, telegramId: number) {
 
   if (error || !sekolah) return null;
 
-  const gpictId = sekolah.telegram_id_gpict;
-  const adminId = sekolah.telegram_id_admin;
+  const gpictOwner = sekolah.telegram_id_gpict;
+  const adminOwner = sekolah.telegram_id_admin;
 
-  const isGpictOk = !gpictId || gpictId === telegramId;
-  const isAdminOk = !adminId || adminId === telegramId;
+  const isGpictAvailable = !gpictOwner || gpictOwner === telegramId;
+  const isAdminAvailable = !adminOwner || adminOwner === telegramId;
 
-  const statusGpict = !gpictId ? "⚪ Kosong" : gpictId === telegramId ? "✅ Anda" : "⛔ Diisi";
-  const statusAdmin = !adminId ? "⚪ Kosong" : adminId === telegramId ? "✅ Anda" : "⛔ Diisi";
+  const statusGpict = !gpictOwner ? "⚪ Kosong" : gpictOwner === telegramId ? "✅ Anda" : "⛔ Diisi";
+  const statusAdmin = !adminOwner ? "⚪ Kosong" : adminOwner === telegramId ? "✅ Anda" : "⛔ Diisi";
 
   const msg = `🏫 *${sekolah.nama_sekolah}*\n` +
               `Kod: \`${sekolah.kod_sekolah}\`\n\n` +
               `📊 *Status Pendaftaran:*\n` +
               `• GPICT: ${statusGpict}\n` +
               `• Admin: ${statusAdmin}\n\n` +
-              `👇 Pilih jawatan anda:`;
+              `👇 Pilih peranan anda di bawah:`;
 
   const keyboard = new InlineKeyboard();
   
-  if (isGpictOk) keyboard.text("👨‍💻 Daftar GPICT", `role:gpict:${sekolah.kod_sekolah}`).row();
-  if (isAdminOk) keyboard.text("📂 Daftar Admin DELIMa", `role:admin:${sekolah.kod_sekolah}`).row();
-  if (isGpictOk && isAdminOk) keyboard.text("✅ Daftar Kedua-dua", `role:both:${sekolah.kod_sekolah}`).row();
+  if (isGpictAvailable) keyboard.text("👨‍💻 Daftar GPICT", `role:gpict:${sekolah.kod_sekolah}`).row();
+  if (isAdminAvailable) keyboard.text("📂 Daftar Admin DELIMa", `role:admin:${sekolah.kod_sekolah}`).row();
+  if (isGpictAvailable && isAdminAvailable) keyboard.text("✅ Daftar Kedua-dua", `role:both:${sekolah.kod_sekolah}`).row();
 
-  if (!isGpictOk || !isAdminOk) {
+  if (!isGpictAvailable || !isAdminAvailable) {
     keyboard.text("⚠️ Timpa Data (Overwrite)", `overwrite_menu:${sekolah.kod_sekolah}`).row();
   }
 
@@ -75,7 +75,7 @@ async function getSchoolUI(kodSekolah: string, telegramId: number) {
 }
 
 /**
- * Menjana antaramuka Pegawai PPD (M030).
+ * Menjana antaramuka khas bagi Pegawai PPD (M030).
  */
 async function getAdminUI(telegramId: number) {
   const { data: roles } = await supabase.from("smpid_admin_users").select("role, telegram_id");
@@ -88,7 +88,7 @@ async function getAdminUI(telegramId: number) {
   const statusD = !delima?.telegram_id ? "⚪ Kosong" : delima.telegram_id === telegramId ? "✅ Anda" : "⛔ Pegawai Lain";
 
   const msg = `🛡️ *PANEL PEGAWAI USTP (PPD)*\n` +
-              `Kod: \`M030\`\n\n` +
+              `Kod Akses: \`M030\`\n\n` +
               `📊 *Status Pegawai Meja:*\n` +
               `• PIC GPICT: ${statusG}\n` +
               `• PIC DELIMa: ${statusD}\n\n`;
@@ -101,24 +101,24 @@ async function getAdminUI(telegramId: number) {
   return { text: msg, keyboard };
 }
 
-// 4. PENGENDALI BOT (GRAMMY HANDLERS)
+// 4. PENGENDALI BOT UTAMA (GRAMMY)
 
-bot.command("start", (ctx) => ctx.reply("👋 *Selamat Datang*\nSila masukkan **Kod Sekolah** anda. (Contoh: MBA0001)", { parse_mode: "Markdown" }));
+bot.command("start", (ctx) => ctx.reply("👋 *Selamat Datang ke Bot SMPID*\nSila masukkan **Kod Sekolah** anda. (Cth: MBA0001)", { parse_mode: "Markdown" }));
 
 bot.on("message:text", async (ctx) => {
   if (!ctx.from) return;
-  const input = ctx.message.text.trim().toUpperCase();
-  const tId = ctx.from.id;
+  const inputKod = ctx.message.text.trim().toUpperCase();
+  const telegramId = ctx.from.id;
 
-  if (input === "M030") {
-    const ui = await getAdminUI(tId);
+  if (inputKod === "M030") {
+    const ui = await getAdminUI(telegramId);
     if (ui) return ctx.reply(ui.text, { reply_markup: ui.keyboard, parse_mode: "Markdown" });
   }
 
-  if (input.length < 5) return ctx.reply("⚠️ Sila masukkan kod sekolah yang sah.");
+  if (inputKod.length < 5) return ctx.reply("⚠️ Sila masukkan Kod Sekolah yang sah.");
 
-  const ui = await getSchoolUI(input, tId);
-  if (!ui) return ctx.reply(`❌ Rekod bagi *${input}* tidak ditemui.`, { parse_mode: "Markdown" });
+  const ui = await getSchoolUI(inputKod, telegramId);
+  if (!ui) return ctx.reply(`❌ Kod sekolah *${inputKod}* tiada dalam pangkalan data.`, { parse_mode: "Markdown" });
 
   await ctx.reply(ui.text, { reply_markup: ui.keyboard, parse_mode: "Markdown" });
 });
@@ -126,7 +126,7 @@ bot.on("message:text", async (ctx) => {
 bot.on("callback_query:data", async (ctx) => {
   const data = ctx.callbackQuery.data;
   if (!data || !ctx.from) return;
-  const tId = ctx.from.id;
+  const telegramId = ctx.from.id;
 
   if (data === "close") return ctx.deleteMessage().catch(() => {});
 
@@ -134,7 +134,7 @@ bot.on("callback_query:data", async (ctx) => {
   const action = parts[0];
 
   if (action === "back") {
-    const ui = await getSchoolUI(parts[1], tId);
+    const ui = await getSchoolUI(parts[1], telegramId);
     if (ui) await ctx.editMessageText(ui.text, { reply_markup: ui.keyboard, parse_mode: "Markdown" });
     return ctx.answerCallbackQuery();
   }
@@ -147,59 +147,58 @@ bot.on("callback_query:data", async (ctx) => {
        .text("⚠️ Timpa Kedua-dua", `force:both:${kod}`).row()
        .text("« Kembali", `back:${kod}`);
     
-    await ctx.editMessageText(`⚠️ **MOD TIMPA DATA** ⚠️\n\nPilih jawatan untuk diambil alih:`, { reply_markup: keyboard, parse_mode: "Markdown" });
+    await ctx.editMessageText(`⚠️ **MOD TIMPA DATA (OVERWRITE)** ⚠️\n\nPilih jawatan untuk diambil alih secara paksa:`, { reply_markup: keyboard, parse_mode: "Markdown" });
     return ctx.answerCallbackQuery();
   }
 
   if (action === "role" || action === "force" || data.startsWith("admin_act:register")) {
     const role = (action === "role" || action === "force") ? parts[1] : parts[2];
-    const targetKod = (action === "role" || action === "force") ? parts[2] : "M030";
+    const kod = (action === "role" || action === "force") ? parts[2] : "M030";
 
-    const updateMap: Record<string, number> = {};
-    if (role === "gpict" || role === "ppd_gpict") updateMap.telegram_id_gpict = tId;
-    if (role === "admin" || role === "ppd_delima") updateMap.telegram_id_admin = tId;
-    if (role === "both") { updateMap.telegram_id_gpict = tId; updateMap.telegram_id_admin = tId; }
+    const updateData: Record<string, number> = {};
+    if (role === "gpict" || role === "ppd_gpict") updateData.telegram_id_gpict = telegramId;
+    if (role === "admin" || role === "ppd_delima") updateData.telegram_id_admin = telegramId;
+    if (role === "both") { updateData.telegram_id_gpict = telegramId; updateData.telegram_id_admin = telegramId; }
 
     try {
-      if (targetKod === "M030") {
-        await supabase.from("smpid_admin_users").update({ telegram_id: tId }).eq("role", role);
+      if (kod === "M030") {
+        await supabase.from("smpid_admin_users").update({ telegram_id: telegramId }).eq("role", role);
       } else {
-        await supabase.from("smpid_sekolah_data").update(updateMap).eq("kod_sekolah", targetKod);
+        await supabase.from("smpid_sekolah_data").update(updateData).eq("kod_sekolah", kod);
       }
       await ctx.answerCallbackQuery({ text: "Berjaya!" });
-      await ctx.editMessageText("✅ **Berjaya!**\nID Telegram anda telah didaftarkan.", { parse_mode: "Markdown" });
+      await ctx.editMessageText("✅ **Pendaftaran Berjaya!**\nID Telegram anda kini telah dipautkan ke sistem SMPID.", { parse_mode: "Markdown" });
     } catch (e) {
-      console.error(e);
-      await ctx.answerCallbackQuery({ text: "Ralat sistem.", show_alert: true });
+      console.error("Database Error:", e);
+      await ctx.answerCallbackQuery({ text: "Ralat pangkalan data.", show_alert: true });
     }
   }
 });
 
-// 5. PELAYAN API HTTP (DENO SERVE INTEGRATION)
+// 5. PELAYAN API HTTP (DENO SERVE)
 
 const handleBotUpdate = webhookCallback(bot, "std/http");
 
 Deno.serve(async (req) => {
-  // A. PREFLIGHT HANDLER
+  // --- KAWALAN CORS (PRIORITI TINGGI) ---
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   const url = new URL(req.url);
 
-  // B. HEALTH CHECK
+  // Laluan Root (Health Check)
   if (url.pathname === "/" || url.pathname === "") {
-    return new Response(JSON.stringify({ status: "healthy", service: "SMPID-Bot", version: "5.2" }), {
+    return new Response(JSON.stringify({ status: "online", service: "SMPID Bot", version: "5.5" }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  // C. API ENDPOINTS
   try {
-    const headers = { ...corsHeaders, "Content-Type": "application/json" };
+    const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 
-    // 1. Notifikasi Profil
+    // 1. Endpoint: Notifikasi Kemaskini Profil
     if (req.method === "POST" && url.pathname === "/notify") {
       const { kod, nama, updated_by } = await req.json();
       const { data: admins } = await supabase.from("smpid_admin_users").select("telegram_id").not("telegram_id", "is", null);
@@ -207,43 +206,43 @@ Deno.serve(async (req) => {
         const text = `🔔 *KEMASKINI DATA*\n\n🏫 *${nama}* (${kod})\n👤 Oleh: ${updated_by}`;
         await Promise.all(admins.map(a => bot.api.sendMessage(a.telegram_id, text, { parse_mode: "Markdown" })));
       }
-      return new Response(JSON.stringify({ status: "ok" }), { headers });
+      return new Response(JSON.stringify({ status: "ok" }), { headers: jsonHeaders });
     }
 
-    // 2. Notifikasi Tempahan (Booking)
+    // 2. Endpoint: Notifikasi Tempahan (Double-DM Routing)
     if (req.method === "POST" && url.pathname === "/notify-booking") {
       const { kod, nama, tarikh, masa, tajuk, pic_name, pic_phone } = await req.json();
 
-      // PPD Admins
+      // Broadcast kepada PPD
       const { data: admins } = await supabase.from("smpid_admin_users").select("telegram_id").not("telegram_id", "is", null);
       if (admins) {
         const wa = `https://wa.me/${pic_phone.replace(/[^0-9]/g, '')}`;
-        const msg = `📅 *TEMPAHAN BENGKEL BARU*\n\n🏫 Sekolah: *${nama}*\n📌 Fokus: *${tajuk}*\n🗓️ Tarikh: *${tarikh}* | *${masa}*\n👤 PIC: *${pic_name}*\n📞 Hubungi: [${pic_phone}](${wa})`;
-        await Promise.all(admins.map(a => bot.api.sendMessage(a.telegram_id, msg, { parse_mode: "Markdown", disable_web_page_preview: true })));
+        const msgPpd = `📅 *TEMPAHAN BENGKEL BARU*\n\n🏫 Sekolah: *${nama}*\n📌 Fokus: *${tajuk}*\n🗓️ Tarikh: *${tarikh}* | *${masa}*\n👤 PIC: *${pic_name}*\n📞 Hubungi: [${pic_phone}](${wa})`;
+        await Promise.all(admins.map(a => bot.api.sendMessage(a.telegram_id, msgPpd, { parse_mode: "Markdown", disable_web_page_preview: true })));
       }
 
-      // PIC Sekolah
+      // DM Terus kepada PIC Sekolah (GPICT / Admin)
       const { data: sch } = await supabase.from("smpid_sekolah_data").select("telegram_id_gpict, telegram_id_admin").eq("kod_sekolah", kod).single();
       if (sch) {
-        const msgSch = `✅ *PENGESAHAN TEMPAHAN*\n\nPermohonan sekolah anda telah direkodkan.\n\n📌 Fokus: *${tajuk}*\n🗓️ Tarikh: *${tarikh}* (${masa})`;
-        const ids = [sch.telegram_id_gpict, sch.telegram_id_admin].filter(id => id);
+        const msgSch = `✅ *PENGESAHAN TEMPAHAN*\n\nSistem telah merekodkan permohonan bimbingan untuk sekolah anda.\n\n📌 Fokus: *${tajuk}*\n🗓️ Tarikh: *${tarikh}* (${masa})\n\n_Sila tunggu maklum balas daripada PPD._`;
+        const ids = [sch.telegram_id_gpict, sch.telegram_id_admin].filter(i => i);
         await Promise.all(ids.map(id => bot.api.sendMessage(id, msgSch, { parse_mode: "Markdown" })));
       }
-      return new Response(JSON.stringify({ status: "ok" }), { headers });
+      return new Response(JSON.stringify({ status: "ok" }), { headers: jsonHeaders });
     }
 
-    // 3. Notifikasi Tiket Baru
+    // 3. Endpoint: Notifikasi Aduan Baru
     if (req.method === "POST" && url.pathname === "/notify-ticket") {
       const { kod, peranan, tajuk, mesej } = await req.json();
       const { data: admins } = await supabase.from("smpid_admin_users").select("telegram_id").not("telegram_id", "is", null);
       if (admins) {
-        const text = `🆘 *TIKET ADUAN BARU*\n\n🏫 Sekolah: *${kod}*\n👤 Peranan: *${peranan}*\n📌 Tajuk: *${tajuk}*\n\n📝 Mesej: ${mesej}`;
+        const text = `🆘 *TIKET ADUAN BARU*\n\n🏫 *${kod}*\n👤 *${peranan}*\n📌 *${tajuk}*\n\n📝 "${mesej}"`;
         await Promise.all(admins.map(a => bot.api.sendMessage(a.telegram_id, text, { parse_mode: "Markdown" })));
       }
-      return new Response(JSON.stringify({ status: "ok" }), { headers });
+      return new Response(JSON.stringify({ status: "ok" }), { headers: jsonHeaders });
     }
 
-    // 4. Notifikasi Balasan Tiket
+    // 4. Endpoint: Notifikasi Balasan Tiket (Admin ke User)
     if (req.method === "POST" && url.pathname === "/reply-ticket") {
       const { kod, peranan, tajuk, balasan } = await req.json();
       const { data: sch } = await supabase.from("smpid_sekolah_data").select("telegram_id_gpict, telegram_id_admin").eq("kod_sekolah", kod).single();
@@ -254,14 +253,14 @@ Deno.serve(async (req) => {
           await bot.api.sendMessage(targetId, text, { parse_mode: "Markdown" });
         }
       }
-      return new Response(JSON.stringify({ status: "ok" }), { headers });
+      return new Response(JSON.stringify({ status: "ok" }), { headers: jsonHeaders });
     }
 
-    // D. TELEGRAM WEBHOOK HANDLER
+    // fallback untuk Telegram Webhook
     return await handleBotUpdate(req);
 
   } catch (err) {
-    console.error("Server Error:", err);
+    console.error("API Error:", err);
     return new Response(JSON.stringify({ status: "error", message: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
