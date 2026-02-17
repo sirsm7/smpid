@@ -1,6 +1,6 @@
 /**
  * SMPID Telegram Bot & API (Deno Deploy)
- * Versi: 4.9 (CORS Priority Fix)
+ * Versi: 4.9 (CORS Priority Fix & Full Integration)
  * Host: tech4ag.my
  */
 
@@ -16,7 +16,7 @@ if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_KEY) {
   throw new Error("Sila tetapkan BOT_TOKEN, SUPABASE_URL, dan SUPABASE_KEY.");
 }
 
-// DEFINISI HEADER CORS (PENTING UNTUK AKSES WEB)
+// DEFINISI HEADER CORS (WAJIB UNTUK AKSES DARI WEB)
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -336,8 +336,8 @@ async function alertTaken(ctx: any) {
 const handleBotUpdate = webhookCallback(bot, "std/http");
 
 Deno.serve(async (req) => {
-  // --- KAWALAN CORS UTAMA (PRIORITY HIGH) ---
-  // Diletakkan paling atas untuk memintas sebarang 'Preflight Request'
+  // CORS PREFLIGHT HANDLER (PRIORITY TOP)
+  // Menangani permintaan OPTIONS dari pelayar untuk mengesahkan sambungan selamat
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -381,11 +381,76 @@ Deno.serve(async (req) => {
       });
     } catch (e) {
       console.error(e);
+      // Ralat juga memulangkan header CORS supaya pelayar tidak menyekat mesej ralat
       return new Response(JSON.stringify({ status: "error", error: e.message }), { 
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
+  }
+
+  // Endpoint: /notify-booking (BARU - Tempahan Bimbingan)
+  if (req.method === "POST" && url.pathname === "/notify-booking") {
+      try {
+          const body = await req.json();
+          const { kod, nama, tarikh, masa, tajuk, pic_name, pic_phone } = body;
+
+          // A. Notifikasi ke Admin PPD
+          const { data: admins } = await supabase
+              .from("smpid_admin_users")
+              .select("telegram_id")
+              .not("telegram_id", "is", null);
+
+          if (admins && admins.length > 0) {
+              const waLink = `https://wa.me/${pic_phone.replace(/[^0-9]/g, '')}`;
+              const ppdText = 
+                  `📅 *TEMPAHAN BENGKEL BARU*\n\n` +
+                  `🏫 Sekolah: *${nama}* (${kod})\n` +
+                  `📌 Fokus: *${tajuk}*\n` +
+                  `🗓️ Tarikh: *${tarikh}* | *${masa}*\n` +
+                  `👤 PIC: *${pic_name}*\n` +
+                  `📞 Telefon: [${pic_phone}](${waLink})\n\n` +
+                  `_Sila semak kalendar bimbingan untuk pengesahan._`;
+
+              const ppdPromises = admins.map(admin => 
+                  bot.api.sendMessage(admin.telegram_id, ppdText, { parse_mode: "Markdown", disable_web_page_preview: true })
+                  .catch(err => console.error(err))
+              );
+              await Promise.all(ppdPromises);
+          }
+
+          // B. Notifikasi ke PIC Sekolah (Pendaftar Bot)
+          const { data: sekolah } = await supabase
+              .from("smpid_sekolah_data")
+              .select("telegram_id_gpict, telegram_id_admin")
+              .eq("kod_sekolah", kod)
+              .single();
+
+          if (sekolah) {
+              const schoolText = 
+                  `✅ *PENGESAHAN TEMPAHAN*\n\n` +
+                  `Sistem telah merekodkan permohonan bimbingan untuk sekolah anda.\n\n` +
+                  `📌 Fokus: *${tajuk}*\n` +
+                  `🗓️ Tarikh: *${tarikh}* (${masa})\n\n` +
+                  `_Sila tunggu maklum balas daripada pegawai USTP PPD Alor Gajah._`;
+
+              const schoolPicIds = [sekolah.telegram_id_gpict, sekolah.telegram_id_admin].filter(id => id);
+              const schoolPromises = schoolPicIds.map(id => 
+                  bot.api.sendMessage(id, schoolText, { parse_mode: "Markdown" })
+                  .catch(err => console.error(err))
+              );
+              await Promise.all(schoolPromises);
+          }
+
+          return new Response(JSON.stringify({ status: "success" }), { 
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+      } catch (e) {
+          return new Response(JSON.stringify({ status: "error", error: e.message }), { 
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+      }
   }
 
   // Endpoint: /notify-ticket (User Hantar Tiket -> Admin PPD)
@@ -464,70 +529,10 @@ Deno.serve(async (req) => {
       }
   }
 
-  // Endpoint: /notify-booking (BARU - Tempahan Bimbingan)
-  if (req.method === "POST" && url.pathname === "/notify-booking") {
-      try {
-          const body = await req.json();
-          const { kod, nama, tarikh, masa, tajuk, pic_name, pic_phone } = body;
-
-          // A. Notifikasi ke Admin PPD
-          const { data: admins } = await supabase
-              .from("smpid_admin_users")
-              .select("telegram_id")
-              .not("telegram_id", "is", null);
-
-          if (admins && admins.length > 0) {
-              const waLink = `https://wa.me/${pic_phone.replace(/[^0-9]/g, '')}`;
-              const ppdText = 
-                  `📅 *TEMPAHAN BENGKEL BARU*\n\n` +
-                  `🏫 Sekolah: *${nama}* (${kod})\n` +
-                  `📌 Fokus: *${tajuk}*\n` +
-                  `🗓️ Tarikh: *${tarikh}* | *${masa}*\n` +
-                  `👤 PIC: *${pic_name}*\n` +
-                  `📞 Telefon: [${pic_phone}](${waLink})\n\n` +
-                  `_Sila semak kalendar bimbingan untuk pengesahan._`;
-
-              const ppdPromises = admins.map(admin => 
-                  bot.api.sendMessage(admin.telegram_id, ppdText, { parse_mode: "Markdown", disable_web_page_preview: true })
-                  .catch(err => console.error(err))
-              );
-              await Promise.all(ppdPromises);
-          }
-
-          // B. Notifikasi ke PIC Sekolah (Pendaftar Bot)
-          const { data: sekolah } = await supabase
-              .from("smpid_sekolah_data")
-              .select("telegram_id_gpict, telegram_id_admin")
-              .eq("kod_sekolah", kod)
-              .single();
-
-          if (sekolah) {
-              const schoolText = 
-                  `✅ *PENGESAHAN TEMPAHAN*\n\n` +
-                  `Sistem telah merekodkan permohonan bimbingan untuk sekolah anda.\n\n` +
-                  `📌 Fokus: *${tajuk}*\n` +
-                  `🗓️ Tarikh: *${tarikh}* (${masa})\n\n` +
-                  `_Sila tunggu maklum balas daripada pegawai USTP PPD Alor Gajah._`;
-
-              const schoolPicIds = [sekolah.telegram_id_gpict, sekolah.telegram_id_admin].filter(id => id);
-              const schoolPromises = schoolPicIds.map(id => 
-                  bot.api.sendMessage(id, schoolText, { parse_mode: "Markdown" })
-                  .catch(err => console.error(err))
-              );
-              await Promise.all(schoolPromises);
-          }
-
-          return new Response(JSON.stringify({ status: "success" }), { 
-              headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
-      } catch (e) {
-          return new Response(JSON.stringify({ status: "error", error: e.message }), { 
-              status: 500,
-              headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
-      }
+  // Handle Telegram Webhook (Fallback)
+  if (req.method === "OPTIONS") {
+      return new Response(null, { headers: corsHeaders });
   }
 
-  // Fallback untuk Webhook Bot
   return await handleBotUpdate(req);
 });
