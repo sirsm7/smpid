@@ -1,9 +1,10 @@
 /**
- * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V3.5 SATURDAY LOGIC)
+ * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V5.1 INTEGRITY)
  * Fungsi: Menguruskan tempahan bimbingan bagi pihak PPD.
- * --- UPDATE V3.5 ---
- * 1. Business Logic: Sabtu dikira PENUH (FULL) jika 1 slot diambil.
- * 2. Visual: Menghapuskan status 'PARTIAL' untuk hari Sabtu.
+ * --- UPDATE V5.1 ---
+ * 1. Hard Delete Integration: Menggunakan logik pemadaman kekal tanpa audit.
+ * 2. Integrated List: Memaparkan rekod tempahan DAN tarikh dikunci dalam satu jadual.
+ * 3. Visual Consistency: Mengekalkan reka bentuk asal dengan penambahan elemen Indigo untuk kunci.
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -19,6 +20,7 @@ let adminCurrentYear = todayDate.getFullYear();
 let adminActiveWeek = Math.ceil(todayDate.getDate() / 7); 
 
 let activeBookings = [];
+let lockedDatesList = [];
 let adminSelectedDate = null; 
 
 const ALLOWED_DAYS = [2, 3, 4, 6]; // Selasa, Rabu, Khamis, Sabtu
@@ -83,8 +85,8 @@ window.initAdminBooking = async function() {
                                 <thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase border-b-2 border-slate-100">
                                     <tr>
                                         <th class="px-8 py-5">Tarikh & Masa</th>
-                                        <th class="px-8 py-5">Sekolah / Tajuk Bengkel</th>
-                                        <th class="px-8 py-5">PIC Hubungan</th>
+                                        <th class="px-8 py-5">Sekolah / Maklumat Kunci</th>
+                                        <th class="px-8 py-5">PIC / Admin</th>
                                         <th class="px-8 py-5 text-center">Tindakan</th>
                                     </tr>
                                 </thead>
@@ -128,7 +130,7 @@ window.switchAdminWeek = function(weekNum) {
 };
 
 /**
- * Membina Grid Kalendar (Admin Side) - STRATEGI INTERAKSI TEGAS
+ * Membina Grid Kalendar (Admin Side)
  */
 window.renderAdminBookingCalendar = async function() {
     const grid = document.getElementById('adminCalendarGrid');
@@ -175,8 +177,6 @@ window.renderAdminBookingCalendar = async function() {
             dateObj.setHours(0, 0, 0, 0);
 
             const dayOfWeek = dateObj.getDay(); 
-            
-            // LOGIK INTEGRITI: Hari Ahad(0) & Isnin(1) adalah TIADA SESI
             const isAllowedDay = ALLOWED_DAYS.includes(dayOfWeek);
             const isLocked = lockedDetails.hasOwnProperty(dateString);
             const slotsTaken = bookedSlots[dateString] || [];
@@ -185,35 +185,28 @@ window.renderAdminBookingCalendar = async function() {
             let status = 'open';
             let statusText = 'KOSONG';
             let statusIcon = 'fa-check-circle';
-            
-            // Tentukan Kapasiti Maksimum (Sabtu = 1, Lain = 2)
             const maxCapacity = (dayOfWeek === 6) ? 1 : 2;
 
-            // PRIORITI 1: Bukan Hari Dibenarkan (Ahad/Isnin/Jumaat)
             if (!isAllowedDay) {
                 status = 'closed';
                 statusText = 'TIADA SESI';
                 statusIcon = 'fa-ban';
             } 
-            // PRIORITI 2: Tarikh Lampau
             else if (isPast) {
                 status = 'closed';
                 statusText = 'LEPAS';
                 statusIcon = 'fa-history';
             } 
-            // PRIORITI 3: Dikunci Manual oleh Admin
             else if (isLocked) {
                 status = 'locked';
                 statusText = 'DIKUNCI';
                 statusIcon = 'fa-lock';
             } 
-            // PRIORITI 4: Penuh (Ikut Kapasiti Hari)
             else if (slotsTaken.length >= maxCapacity) {
                 status = 'full';
                 statusText = 'PENUH';
                 statusIcon = 'fa-users-slash';
             } 
-            // PRIORITI 5: Berbaki 1 Slot (Hanya untuk hari bukan Sabtu)
             else if (slotsTaken.length === 1) {
                 status = 'partial';
                 statusText = '1 SLOT BAKI';
@@ -251,7 +244,6 @@ window.renderAdminBookingCalendar = async function() {
                 </div>
             `;
 
-            // SEKATAN KLIK: Admin hanya boleh klik jika tarikh MASA DEPAN DAN (Dibenarkan ATAU Sudah Dikunci)
             if (!isPast && isAllowedDay) {
                 card.onclick = () => {
                     adminSelectedDate = dateString;
@@ -301,6 +293,7 @@ async function handleAdminDateAction(iso, currentlyLocked) {
                     toggleLoading(false);
                     adminSelectedDate = null;
                     window.renderAdminBookingCalendar();
+                    window.loadAdminBookingList(); 
                     Swal.fire({ icon: 'success', title: 'Dibuka', timer: 1000, showConfirmButton: false });
                 } catch (err) {
                     toggleLoading(false);
@@ -337,6 +330,7 @@ async function handleAdminDateAction(iso, currentlyLocked) {
                 toggleLoading(false);
                 adminSelectedDate = null;
                 window.renderAdminBookingCalendar();
+                window.loadAdminBookingList();
                 Swal.fire({ icon: 'success', title: 'Dikunci', timer: 1000, showConfirmButton: false });
             } catch (err) {
                 toggleLoading(false);
@@ -349,47 +343,92 @@ async function handleAdminDateAction(iso, currentlyLocked) {
     }
 }
 
+/**
+ * Memproses senarai bersepadu (Tempahan + Kunci) dalam satu jadual.
+ */
 window.loadAdminBookingList = async function() {
     const tbody = document.getElementById('adminBookingTableBody');
     if (!tbody) return;
 
     try {
-        const data = await BookingService.getAllActiveBookings();
-        activeBookings = data;
+        // Dual Fetch: Mengambil rekod tempahan dan tarikh dikunci secara serentak
+        const [bookings, locks] = await Promise.all([
+            BookingService.getAllActiveBookings(),
+            BookingService.getAllLocks()
+        ]);
 
-        if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="p-24 text-center text-slate-400 font-medium italic bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">Tiada permohonan tempahan buat masa ini.</td></tr>`;
+        // Gabungkan kedua-dua array dan berikan tagging jenis data
+        const masterList = [
+            ...bookings.map(b => ({ ...b, type: 'BOOKING' })),
+            ...locks.map(l => ({ ...l, type: 'LOCK' }))
+        ];
+
+        // Susun mengikut tarikh paling awal di atas
+        masterList.sort((a, b) => new Date(a.tarikh) - new Date(b.tarikh));
+
+        if (masterList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="p-24 text-center text-slate-400 font-medium italic bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">Tiada permohonan tempahan atau tarikh dikunci buat masa ini.</td></tr>`;
             return;
         }
 
-        tbody.innerHTML = data.map(b => {
-            const dateStr = new Date(b.tarikh).toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric' });
-            return `
-                <tr class="hover:bg-slate-50/80 transition-all group">
-                    <td class="px-8 py-6 align-top">
-                        <div class="font-black text-slate-800 text-sm tracking-tight uppercase">${dateStr}</div>
-                        <div class="flex items-center gap-2 mt-1.5">
-                            <span class="text-[9px] font-black px-2 py-0.5 rounded ${b.masa === 'Pagi' ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-orange-100 text-orange-700 border border-orange-200'} uppercase tracking-tighter">${b.masa}</span>
-                            <span class="text-[10px] text-slate-400 font-mono font-bold">${b.id_tempahan}</span>
-                        </div>
-                    </td>
-                    <td class="px-8 py-6 align-top">
-                        <div class="font-bold text-brand-600 text-sm leading-snug mb-1.5 wrap-safe max-w-xs group-hover:text-brand-700 transition-colors uppercase">${b.nama_sekolah}</div>
-                        <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest wrap-safe leading-relaxed">${b.tajuk_bengkel || 'TIADA TAJUK SPESIFIK'}</div>
-                    </td>
-                    <td class="px-8 py-6 align-top">
-                        <div class="font-bold text-slate-700 text-xs uppercase wrap-safe">${b.nama_pic}</div>
-                        <a href="https://wa.me/${b.no_tel_pic.replace(/[^0-9]/g, '')}" target="_blank" class="text-[10px] text-blue-500 font-black hover:underline inline-flex items-center gap-1.5 mt-1">
-                            <i class="fab fa-whatsapp"></i> ${b.no_tel_pic}
-                        </a>
-                    </td>
-                    <td class="px-8 py-6 text-center align-top">
-                        <button onclick="cancelBookingAdmin(${b.id}, '${b.id_tempahan}')" class="w-10 h-10 rounded-xl bg-slate-100 border-2 border-slate-200 text-slate-400 hover:bg-red-500 hover:border-red-500 hover:text-white transition-all shadow-sm flex items-center justify-center mx-auto group-active:scale-95" title="Batal Tempahan">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
+        tbody.innerHTML = masterList.map(item => {
+            const dateStr = new Date(item.tarikh).toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric' });
+            
+            if (item.type === 'BOOKING') {
+                return `
+                    <tr class="hover:bg-slate-50/80 transition-all group">
+                        <td class="px-8 py-6 align-top">
+                            <div class="font-black text-slate-800 text-sm tracking-tight uppercase">${dateStr}</div>
+                            <div class="flex items-center gap-2 mt-1.5">
+                                <span class="text-[9px] font-black px-2 py-0.5 rounded ${item.masa === 'Pagi' ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-orange-100 text-orange-700 border border-orange-200'} uppercase tracking-tighter">${item.masa}</span>
+                                <span class="text-[10px] text-slate-400 font-mono font-bold">${item.id_tempahan}</span>
+                            </div>
+                        </td>
+                        <td class="px-8 py-6 align-top">
+                            <div class="font-bold text-brand-600 text-sm leading-snug mb-1.5 wrap-safe max-w-xs group-hover:text-brand-700 transition-colors uppercase">${item.nama_sekolah}</div>
+                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest wrap-safe leading-relaxed">${item.tajuk_bengkel || 'TIADA TAJUK SPESIFIK'}</div>
+                        </td>
+                        <td class="px-8 py-6 align-top">
+                            <div class="font-bold text-slate-700 text-xs uppercase wrap-safe">${item.nama_pic}</div>
+                            <a href="https://wa.me/${item.no_tel_pic.replace(/[^0-9]/g, '')}" target="_blank" class="text-[10px] text-blue-500 font-black hover:underline inline-flex items-center gap-1.5 mt-1">
+                                <i class="fab fa-whatsapp"></i> ${item.no_tel_pic}
+                            </a>
+                        </td>
+                        <td class="px-8 py-6 text-center align-top">
+                            <button onclick="cancelBookingAdmin(${item.id}, '${item.id_tempahan}')" class="w-10 h-10 rounded-xl bg-slate-100 border-2 border-slate-200 text-slate-400 hover:bg-red-500 hover:border-red-500 hover:text-white transition-all shadow-sm flex items-center justify-center mx-auto group-active:scale-95" title="Padam Tempahan (Kekal)">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                // Reka bentuk baris bagi TARIKH DIKUNCI (LOCK)
+                return `
+                    <tr class="bg-indigo-50/40 hover:bg-indigo-50 transition-all border-l-4 border-l-indigo-500">
+                        <td class="px-8 py-6 align-top">
+                            <div class="font-black text-indigo-900 text-sm tracking-tight uppercase">${dateStr}</div>
+                            <div class="mt-1.5">
+                                <span class="text-[9px] font-black px-2 py-0.5 rounded bg-indigo-600 text-white border border-indigo-700 uppercase tracking-tighter shadow-sm">TARIKH DIKUNCI</span>
+                            </div>
+                        </td>
+                        <td class="px-8 py-6 align-top">
+                            <div class="font-bold text-indigo-700 text-sm leading-snug mb-1.5 wrap-safe max-w-xs uppercase">BIMBINGAN DISEKAT</div>
+                            <div class="text-[10px] font-bold text-indigo-400 uppercase tracking-wide wrap-safe leading-relaxed italic bg-white/50 p-1.5 rounded-lg border border-indigo-100">
+                                <i class="fas fa-info-circle mr-1"></i> "${item.komen || 'TIADA CATATAN'}"
+                            </div>
+                        </td>
+                        <td class="px-8 py-6 align-top">
+                            <div class="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1">OLEH PENTADBIR:</div>
+                            <div class="font-mono text-[10px] text-indigo-600 font-bold break-all">${item.admin_email || 'ADMIN PPD'}</div>
+                        </td>
+                        <td class="px-8 py-6 text-center align-top">
+                            <button onclick="handleAdminDateAction('${item.tarikh}', true)" class="w-10 h-10 rounded-xl bg-white border-2 border-indigo-200 text-indigo-400 hover:bg-indigo-600 hover:border-indigo-600 hover:text-white transition-all shadow-sm flex items-center justify-center mx-auto" title="Buka Kunci Melalui Kalendar">
+                                <i class="fas fa-unlock"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }
         }).join('');
     } catch (e) {
         console.error("[AdminBooking] List Load Error:", e);
@@ -397,39 +436,47 @@ window.loadAdminBookingList = async function() {
     }
 };
 
+/**
+ * Melaksanakan pemadaman kekal (Hard Delete) bagi tempahan.
+ */
 window.cancelBookingAdmin = async function(dbId, bookingId) {
-    const { value: reason } = await Swal.fire({
-        title: 'Batal Tempahan?',
+    const { isConfirmed } = await Swal.fire({
+        title: 'Padam Tempahan?',
         html: `<div class="text-center p-5 bg-red-50 rounded-2xl border-2 border-red-100 mb-4 shadow-inner">
                  <p class="text-xs text-red-400 font-bold uppercase tracking-widest mb-1">ID Permohonan:</p>
                  <p class="text-xl font-black text-red-600 font-mono">${bookingId}</p>
                </div>
-               <p class="text-sm text-slate-500 leading-relaxed px-4 font-medium">Tindakan ini kekal. Sila nyatakan sebab pembatalan bagi tujuan rekod sistem.</p>`,
+               <p class="text-sm text-slate-500 leading-relaxed px-4 font-medium">Tindakan ini adalah <b>PADAM KEKAL</b> dari pangkalan data. Tiada rekod audit akan disimpan.</p>`,
         icon: 'warning',
-        input: 'text',
-        inputPlaceholder: 'Taip sebab pembatalan...',
         showCancelButton: true,
         confirmButtonColor: '#ef4444',
-        confirmButtonText: 'YA, BATALKAN',
+        confirmButtonText: 'YA, PADAM KEKAL',
         cancelButtonText: 'TUTUP',
-        customClass: { popup: 'rounded-[2rem] border-4 border-red-50', input: 'rounded-xl font-bold uppercase mx-4 shadow-sm border-2 border-slate-200' },
-        preConfirm: (value) => {
-            if (!value) return Swal.showValidationMessage('Sila nyatakan sebab pembatalan.');
-            return value.toUpperCase();
-        }
+        customClass: { popup: 'rounded-[2rem] border-4 border-red-50' }
     });
 
-    if (reason) {
+    if (isConfirmed) {
         toggleLoading(true);
         try {
-            await BookingService.adminCancelBooking(dbId, reason);
+            // Panggil Service untuk Hard Delete
+            await BookingService.adminCancelBooking(dbId);
             toggleLoading(false);
-            Swal.fire({ icon: 'success', title: 'Berjaya Dibatalkan', text: 'Permohonan telah dimansuhkan.', timer: 1500, showConfirmButton: false, customClass: { popup: 'rounded-[2rem]' } });
+            
+            Swal.fire({ 
+                icon: 'success', 
+                title: 'Data Dihapuskan', 
+                text: 'Rekod telah dipadam secara fizikal dari sistem.', 
+                timer: 1500, 
+                showConfirmButton: false, 
+                customClass: { popup: 'rounded-[2rem]' } 
+            });
+
+            // Muat semula semua data berkaitan
             window.loadAdminBookingList();
             window.renderAdminBookingCalendar(); 
         } catch (e) {
             toggleLoading(false);
-            Swal.fire({ icon: 'error', title: 'Ralat Pembatalan', text: 'Gagal mengemaskini status tempahan.', customClass: { popup: 'rounded-[2rem]' } });
+            Swal.fire({ icon: 'error', title: 'Ralat Pemadaman', text: 'Gagal memadam data dari pangkalan data.', customClass: { popup: 'rounded-[2rem]' } });
         }
     }
 };
@@ -446,7 +493,6 @@ window.changeAdminMonth = function(offset) {
         adminCurrentYear--; 
     }
     
-    // Auto-calculate week only if it returns to the actual current real-time month
     const realToday = new Date();
     if (adminCurrentMonth === realToday.getMonth() && adminCurrentYear === realToday.getFullYear()) {
         adminActiveWeek = Math.ceil(realToday.getDate() / 7);

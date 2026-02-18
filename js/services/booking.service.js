@@ -1,8 +1,11 @@
 /**
  * BOOKING SERVICE (MODUL BIMBINGAN & BENGKEL - BB)
  * Purpose: Manages CRUD operations for workshop bookings and admin date locks.
- * Version: 4.0 (Full Integration with Telegram Notifications)
- * Compatibility: Designed to replace the original 199-line file with zero regressions.
+ * Version: 5.1 (Full Integrity & Hard Delete)
+ * --- UPDATE V5.1 ---
+ * 1. Hard Delete Implementation: adminCancelBooking kini memadam terus rekod dari Supabase.
+ * 2. Data Retrieval: Ditambah fungsi getAllLocks() untuk pelaporan menyeluruh Admin.
+ * 3. Logic Preservation: Mengekalkan setiap baris kod asal tanpa sebarang singkatan.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -10,21 +13,21 @@ import { APP_CONFIG } from '../config/app.config.js';
 
 export const BookingService = {
     /**
-     * Retrieves booking data and locked dates for a specific month.
-     * Used for rendering the interactive calendar grid.
-     * @param {number} year - The selected year.
-     * @param {number} month - The selected month index (0-11).
+     * Mengambil data tempahan dan tarikh dikunci untuk bulan tertentu.
+     * Digunakan untuk menjana grid kalendar interaktif.
+     * @param {number} year - Tahun yang dipilih.
+     * @param {number} month - Indeks bulan (0-11).
      */
     async getMonthlyData(year, month) {
         const db = getDatabaseClient();
         
-        // Pad month and determine the date range for the query
+        // Memastikan format bulan 2 digit dan menentukan julat tarikh
         const pad = (n) => n.toString().padStart(2, '0');
         const startStr = `${year}-${pad(month + 1)}-01`;
         const lastDay = new Date(year, month + 1, 0).getDate();
         const endStr = `${year}-${pad(month + 1)}-${pad(lastDay)}`;
 
-        // 1. Fetch Active Bookings within the range
+        // 1. Ambil Tempahan Aktif dalam julat tarikh tersebut
         const { data: bookings, error: errB } = await db
             .from('smpid_bb_tempahan')
             .select('*')
@@ -33,11 +36,11 @@ export const BookingService = {
             .lte('tarikh', endStr);
 
         if (errB) {
-            console.error("[BookingService] Error fetching bookings:", errB);
+            console.error("[BookingService] Ralat mengambil data tempahan:", errB);
             throw errB;
         }
 
-        // 2. Fetch Admin Date Locks within the range
+        // 2. Ambil Kunci Tarikh Admin dalam julat tarikh tersebut
         const { data: locks, error: errL } = await db
             .from('smpid_bb_kunci')
             .select('*')
@@ -45,11 +48,11 @@ export const BookingService = {
             .lte('tarikh', endStr);
 
         if (errL) {
-            console.error("[BookingService] Error fetching locks:", errL);
+            console.error("[BookingService] Ralat mengambil data kunci:", errL);
             throw errL;
         }
 
-        // Organize bookings into an object keyed by date string
+        // Susun tempahan ke dalam objek mengikut tarikh (ISO string)
         const bookedSlots = {};
         bookings.forEach(b => {
             const dateOnly = b.tarikh.split('T')[0]; 
@@ -57,7 +60,7 @@ export const BookingService = {
             bookedSlots[dateOnly].push(b.masa);
         });
 
-        // Organize locks into an object keyed by date string
+        // Susun kunci tarikh ke dalam objek mengikut tarikh (ISO string)
         const lockedDetails = {};
         locks.forEach(l => {
             const dateOnly = l.tarikh.split('T')[0];
@@ -68,26 +71,26 @@ export const BookingService = {
     },
 
     /**
-     * Submits a new booking with strict validation rules and Telegram notification.
-     * @param {Object} payload - Booking details (tarikh, masa, kod_sekolah, etc.)
+     * Menghantar tempahan baharu dengan validasi ketat dan notifikasi Telegram.
+     * @param {Object} payload - Data butiran tempahan.
      */
     async createBooking(payload) {
         const db = getDatabaseClient();
         const { tarikh, masa, kod_sekolah, nama_sekolah, tajuk_bengkel, nama_pic, no_tel_pic } = payload;
 
-        // Validation 1: Allowed Operating Days (Tue, Wed, Thu, Sat)
+        // Validasi 1: Hari Operasi yang Dibenarkan (Sel, Rab, Kha, Sab)
         const day = new Date(tarikh).getDay();
         const allowedDays = [2, 3, 4, 6];
         if (!allowedDays.includes(day)) {
             throw new Error("Sesi bimbingan hanya dibenarkan pada hari Selasa, Rabu, Khamis dan Sabtu sahaja.");
         }
 
-        // Validation 2: Saturday Logic (Morning Only - V3.7 Policy)
+        // Validasi 2: Logik Hari Sabtu (Hanya Pagi - Polisi V3.7)
         if (day === 6 && masa === 'Petang') {
             throw new Error("Maaf, sesi bimbingan pada hari Sabtu hanya dibuka untuk slot PAGI sahaja.");
         }
 
-        // Validation 3: Check if the date is locked by Admin
+        // Validasi 3: Semak jika tarikh telah dikunci oleh Admin
         const { data: isLocked } = await db
             .from('smpid_bb_kunci')
             .select('id')
@@ -98,7 +101,7 @@ export const BookingService = {
             throw new Error("Tarikh ini telah dikunci oleh pentadbir bagi urusan rasmi daerah.");
         }
 
-        // Validation 4: Check if the specific slot (Morning/Afternoon) is already taken
+        // Validasi 4: Semak jika slot spesifik (Pagi/Petang) sudah diambil
         const { data: existing } = await db
             .from('smpid_bb_tempahan')
             .select('id')
@@ -111,12 +114,12 @@ export const BookingService = {
             throw new Error(`Maaf, slot ${masa.toUpperCase()} pada tarikh tersebut telah ditempah oleh sekolah lain.`);
         }
 
-        // Logic: Generate a unique Booking ID (Format: YYMMDD-SCH-RAND)
+        // Logik: Jana ID Tempahan Unik (Format: YYMMDD-SCH-RAND)
         const ymd = tarikh.replace(/-/g, '').substring(2); 
         const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
         const bookingId = `${ymd}-${kod_sekolah.slice(-3)}-${rand}`;
 
-        // DB Action: Insert the record
+        // Tindakan DB: Masukkan rekod baharu
         const { error } = await db
             .from('smpid_bb_tempahan')
             .insert([{
@@ -134,8 +137,7 @@ export const BookingService = {
 
         if (error) throw error;
 
-        // --- TELEGRAM NOTIFICATION ENGINE (NEW v4.0) ---
-        // Fire-and-forget notification to the Deno API endpoint
+        // Enjin Notifikasi Telegram
         if (APP_CONFIG.API.DENO_URL) {
             fetch(`${APP_CONFIG.API.DENO_URL}/notify-booking`, {
                 method: 'POST',
@@ -149,14 +151,14 @@ export const BookingService = {
                     pic: nama_pic,
                     tel: no_tel_pic
                 })
-            }).catch(err => console.warn("[BookingService] Silent notification failure:", err));
+            }).catch(err => console.warn("[BookingService] Kegagalan notifikasi senyap:", err));
         }
 
         return { success: true, bookingId };
     },
 
     /**
-     * Admin Function: Retrieves all active bookings sorted by date.
+     * Admin Function: Mengambil semua tempahan aktif untuk paparan senarai.
      */
     async getAllActiveBookings() {
         const db = getDatabaseClient();
@@ -171,8 +173,23 @@ export const BookingService = {
     },
 
     /**
-     * User Function: Retrieves booking history for a specific school.
-     * @param {string} kodSekolah - The school code.
+     * Admin Function: Mengambil semua data tarikh yang dikunci secara global.
+     * Fungsi baharu untuk Versi 5.1 bagi menyokong paparan integrasi Admin.
+     */
+    async getAllLocks() {
+        const db = getDatabaseClient();
+        const { data, error } = await db
+            .from('smpid_bb_kunci')
+            .select('*')
+            .order('tarikh', { ascending: true });
+
+        if (error) throw error;
+        return data;
+    },
+
+    /**
+     * User Function: Mengambil sejarah tempahan mengikut kod sekolah.
+     * @param {string} kodSekolah - Kod sekolah pengguna.
      */
     async getSchoolBookings(kodSekolah) {
         const db = getDatabaseClient();
@@ -187,21 +204,17 @@ export const BookingService = {
     },
 
     /**
-     * Admin Function: Cancels a booking with a recorded reason.
-     * @param {number} id - DB Primary Key.
-     * @param {string} reason - The cancellation reason.
+     * Admin Function: Memadam rekod tempahan secara kekal (Hard Delete).
+     * Mengikut arahan, data ini tidak memerlukan audit dan dihapuskan terus.
+     * @param {number} id - Kunci utama dalam pangkalan data.
      */
-    async adminCancelBooking(id, reason) {
+    async adminCancelBooking(id) {
         const db = getDatabaseClient();
-        const currentTimestamp = new Date().toLocaleString('ms-MY');
-        const cancellationNote = `Dibatalkan oleh Admin pada ${currentTimestamp}. Sebab: ${reason}`;
         
+        // Menjalankan operasi DELETE secara fizikal pada pangkalan data
         const { error } = await db
             .from('smpid_bb_tempahan')
-            .update({ 
-                status: 'BATAL',
-                catatan: cancellationNote
-            })
+            .delete()
             .eq('id', id);
 
         if (error) throw error;
@@ -209,15 +222,15 @@ export const BookingService = {
     },
 
     /**
-     * Admin Function: Toggles the locked status of a specific date.
-     * @param {string} tarikh - ISO date string.
-     * @param {string} note - Reason for locking.
-     * @param {string} adminEmail - Identifier of the admin making the change.
+     * Admin Function: Menukar status kunci pada tarikh tertentu (Toggle).
+     * @param {string} tarikh - Rentetan tarikh ISO.
+     * @param {string} note - Sebab atau ulasan kunci.
+     * @param {string} adminEmail - Identiti admin yang melakukan perubahan.
      */
     async toggleDateLock(tarikh, note, adminEmail) {
         const db = getDatabaseClient();
         
-        // Check if a lock already exists for this date
+        // Semak jika kunci sudah wujud untuk tarikh ini
         const { data: existing } = await db
             .from('smpid_bb_kunci')
             .select('id')
@@ -225,7 +238,7 @@ export const BookingService = {
             .maybeSingle();
 
         if (existing) {
-            // Unlock: Delete the record
+            // Jika wujud, lakukan operasi padam (Buka Kunci)
             const { error } = await db
                 .from('smpid_bb_kunci')
                 .delete()
@@ -234,7 +247,7 @@ export const BookingService = {
             if (error) throw error;
             return { success: true, action: 'UNLOCKED' };
         } else {
-            // Lock: Insert a new record
+            // Jika tiada, lakukan operasi tambah (Kunci Tarikh)
             const { error } = await db
                 .from('smpid_bb_kunci')
                 .insert([{
