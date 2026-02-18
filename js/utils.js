@@ -1,31 +1,38 @@
 /**
  * SMPID CORE UTILITIES (js/utils.js)
- * Versi: 2.2 (Global Window Fix)
- * Fungsi: Konfigurasi Supabase, Helper Global & Keselamatan
+ * Versi: 2.3 (Full Production & Cross-Tab Support)
+ * Fungsi: Konfigurasi Supabase, Helper Global & Keselamatan Sesi
+ * * UPDATE V2.3:
+ * 1. Migrasi DENO_API_URL ke domain utama (smpid.ppdag.deno.net).
+ * 2. Penukaran sessionStorage ke localStorage bagi menyokong integriti silang tab.
+ * 3. Pembaikan logik pembersihan sesi semasa log keluar.
  */
 
 // ==========================================
-// 1. KONFIGURASI PUSAT (Guna window untuk elak konflik)
+// 1. KONFIGURASI PUSAT (Global Window)
 // ==========================================
-// Kita lekatkan variable ini ke window supaya boleh diakses oleh user.js dan admin.js
-// tanpa perlu mengisytiharkan semula (yang menyebabkan error).
 window.SUPABASE_URL = 'https://app.tech4ag.my';
 window.SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY';
-window.DENO_API_URL = 'https://smpid-40.ppdag.deno.net';
+
+// Domain baharu untuk integrasi Bot Telegram & API Deno
+window.DENO_API_URL = 'https://smpid.ppdag.deno.net';
 
 // ==========================================
 // 2. INISIALISASI SUPABASE
 // ==========================================
 let supabaseClient;
 if (window.supabase) {
-    // Gunakan window config yang baru didefinisikan di atas
-    supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
-    console.log("✅ Supabase Client Ready (Utils v2.2)");
+    try {
+        supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
+        console.log("✅ Supabase Client Ready (Utils v2.3)");
+    } catch (e) {
+        console.error("❌ Gagal memulakan Supabase Client:", e);
+    }
 } else {
-    console.error("❌ Ralat: Library Supabase tidak dimuatkan. Pastikan CDN diletakkan di <head>.");
+    console.error("❌ Ralat: Library Supabase tidak dikesan. Pastikan CDN diletakkan di <head>.");
 }
 
-// Expose client ke window supaya modul lain boleh guna (window.supabaseClient)
+// Akses global untuk modul legasi
 window.supabaseClient = supabaseClient;
 
 // ==========================================
@@ -33,8 +40,8 @@ window.supabaseClient = supabaseClient;
 // ==========================================
 
 /**
- * Papar/Sembunyi Overlay Loading
- * @param {boolean} show - True untuk papar, False untuk sembunyi
+ * Mengawal paparan overlay pemuatan (loading)
+ * @param {boolean} show - Papar jika true
  */
 function toggleLoading(show) {
     const el = document.getElementById('loadingOverlay');
@@ -45,7 +52,8 @@ function toggleLoading(show) {
 }
 
 /**
- * Bersihkan format nombor telefon (Buang sengkang, tambah 6)
+ * Membersihkan format nombor telefon kepada standard +60
+ * @param {string} phone 
  */
 function cleanPhone(phone) {
     if (!phone) return "";
@@ -56,38 +64,38 @@ function cleanPhone(phone) {
 }
 
 /**
- * Format input telefon secara automatik semasa menaip
- * @param {HTMLInputElement} input - Element input
+ * Format input telefon secara masa-nyata (Real-time)
+ * @param {HTMLInputElement} input 
  */
 function autoFormatPhone(input) {
+    if (!input) return;
     let val = input.value.replace(/[^0-9]/g, '');
     if (val.length < 5) return;
     
-    // Pastikan format +60...
     if (val.startsWith('60')) input.value = '+' + val;
     else if (val.startsWith('0')) input.value = '+6' + val;
     else input.value = '+6' + val;
 }
 
 /**
- * Semak domain emel (moe-dl.edu.my sahaja)
+ * Pengesahan domain emel rasmi DELIMa
  */
 function checkEmailDomain(email) {
-    return email && email.includes("@moe-dl.edu.my");
+    return email && email.toLowerCase().includes("@moe-dl.edu.my");
 }
 
 /**
- * Tukar teks jadi Sentence Case (Huruf besar selepas titik)
+ * Menukar teks kepada format Ayat (Sentence Case)
  */
 function formatSentenceCase(str) {
     if (!str) return "";
-    return str.replace(/(?:^|[\.\!\?]\s+)([a-z])/g, function(match) {
+    return str.toLowerCase().replace(/(?:^|[\.\!\?]\s+)([a-z])/g, function(match) {
         return match.toUpperCase();
     });
 }
 
 /**
- * Jana pautan WhatsApp (Raw atau dengan Template Mesej)
+ * Menjana pautan pantas ke WhatsApp Web/App
  */
 function generateWhatsAppLink(nama, noTel, isRaw = false) {
     const cleanNum = cleanPhone(noTel);
@@ -100,64 +108,72 @@ function generateWhatsAppLink(nama, noTel, isRaw = false) {
 }
 
 // ==========================================
-// 4. KESELAMATAN & SESI (SECURITY)
+// 4. KESELAMATAN & PENGURUSAN SESI
 // ==========================================
 
 /**
- * Semak Sesi Pengguna
- * Dijalankan automatik pada 'DOMContentLoaded' & 'pageshow'
+ * Menyemak kebenaran akses halaman berdasarkan status log masuk
+ * Menggunakan localStorage untuk memastikan sesi kekal dalam tab baharu
  */
 function runSecurityCheck() {
     const bodyId = document.body.id;
-    const isAuth = sessionStorage.getItem('smpid_auth') === 'true';
-    const userKod = sessionStorage.getItem('smpid_user_kod');
+    
+    // Ambil data dari localStorage (Migration dari sessionStorage)
+    const isAuth = localStorage.getItem('smpid_auth') === 'true';
+    const userKod = localStorage.getItem('smpid_user_kod');
 
-    // Jika di halaman User/Admin tapi tiada sesi, tendang keluar
-    if ((bodyId === 'page-user' || bodyId === 'page-admin') && !isAuth && !userKod) {
-        console.warn("🔒 Akses Tanpa Izin dikesan. Mengalih ke Login...");
-        window.location.replace('index.html');
+    // Senarai halaman yang memerlukan perlindungan akses
+    const protectedPages = ['page-user', 'page-admin'];
+
+    if (protectedPages.includes(bodyId)) {
+        if (!isAuth && (!userKod || userKod === 'null')) {
+            console.warn("🔒 Akses Tanpa Izin: Sesi tidak dikesan. Mengalih ke Portal...");
+            window.location.replace('index.html');
+        } else {
+            console.log(`✅ Sesi Sah: ${userKod || 'PENTADBIR'}`);
+        }
     }
 }
 
 /**
- * Fungsi Log Keluar Global
+ * Menghapuskan semua data sesi dan kembali ke halaman utama
  */
 function keluarSistem() {
     Swal.fire({
         title: 'Log Keluar?', 
+        text: 'Anda perlu log masuk semula untuk mengakses sistem.',
         icon: 'warning', 
         showCancelButton: true, 
-        confirmButtonColor: '#d33', 
-        confirmButtonText: 'Ya, Keluar',
-        cancelButtonText: 'Batal'
+        confirmButtonColor: '#ef4444', 
+        confirmButtonText: 'Ya, Log Keluar',
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-3xl' }
     }).then((result) => {
         if (result.isConfirmed) {
+            // Bersihkan kedua-dua storan untuk keselamatan
+            localStorage.clear();
             sessionStorage.clear();
-            sessionStorage.removeItem('smpid_user_kod');
-            sessionStorage.removeItem('smpid_auth');
             window.location.replace('index.html');
         }
     });
 }
 
 // ==========================================
-// 5. GLOBAL EVENT LISTENERS & EXPORTS
+// 5. GLOBAL INITIALIZATION & EXPORTS
 // ==========================================
 
-// Jalankan semakan keselamatan sebaik sahaja DOM sedia
 document.addEventListener('DOMContentLoaded', () => {
     runSecurityCheck();
 });
 
-// Jalankan semakan jika pengguna tekan butang 'Back' browser (BFCache)
+// Menangani isu navigasi butang 'Back' pelayar
 window.addEventListener('pageshow', function(event) {
     if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
         runSecurityCheck();
     }
 });
 
-// PENTING: Bind semua fungsi ke objek window supaya boleh dipanggil dalam HTML (onclick)
-// Ini menyelesaikan masalah "function is not defined"
+// Mengeksport fungsi ke skop global window (Kritikal untuk onclick HTML)
 window.toggleLoading = toggleLoading;
 window.cleanPhone = cleanPhone;
 window.autoFormatPhone = autoFormatPhone;
@@ -165,3 +181,4 @@ window.checkEmailDomain = checkEmailDomain;
 window.formatSentenceCase = formatSentenceCase;
 window.generateWhatsAppLink = generateWhatsAppLink;
 window.keluarSistem = keluarSistem;
+window.runSecurityCheck = runSecurityCheck;

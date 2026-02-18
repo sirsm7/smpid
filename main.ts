@@ -1,10 +1,9 @@
 /**
  * SMPID Telegram Bot & API (Deno Deploy)
- * Versi: 4.4 (Full Integrity & Bulletproof CORS)
- * Host: tech4ag.my / ppdag.deno.net
- * * NOTA: Kod ini mengekalkan 100% logik pendaftaran dan overwrite asal.
- * Isu CORS diperbaiki dengan meletakkan pengendalian OPTIONS di baris pertama
- * dan memastikan semua respon memulangkan header yang diperlukan.
+ * Versi: 4.5 (Full Integrity & Bulletproof CORS Engine)
+ * Host: smpid.ppdag.deno.net
+ * * NOTA: Kod ini mengekalkan 100% logik pendaftaran dan pangkalan data asal.
+ * Isu CORS diselesaikan secara tuntas dengan pengendalian preflight global.
  */
 
 import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";
@@ -167,7 +166,7 @@ bot.on("message:text", async (ctx) => {
 
   if (inputKod === "M030") {
     const ui = await getAdminUI(telegramId);
-    if (!ui) return ctx.reply("❌ Ralat sistem database admin. Sila pastikan SQL migration telah dijalankan.");
+    if (!ui) return ctx.reply("❌ Ralat sistem database admin. Sila pastikan pangkalan data sedia.");
     return ctx.reply(ui.text, { reply_markup: ui.keyboard, parse_mode: "Markdown" });
   }
 
@@ -326,7 +325,7 @@ async function alertTaken(ctx: any) {
 }
 
 // ==========================================
-// 5. SERVER API & WEBHOOK (FIXED CORS ENGINE)
+// 5. SERVER API & WEBHOOK (BULLETPROOF CORS)
 // ==========================================
 const handleBotUpdate = webhookCallback(bot, "std/http");
 
@@ -334,7 +333,7 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const path = url.pathname.replace(/\/$/, ""); 
 
-  // HEADER CORS GLOBAL (Bulletproof)
+  // HEADER CORS GLOBAL
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
@@ -342,12 +341,11 @@ Deno.serve(async (req) => {
     "Access-Control-Max-Age": "86400",
   };
 
-  // TANGANI PREFLIGHT (OPTIONS) SERTA-MERTA
+  // PENGENDALIAN PREFLIGHT (Surgical Priority)
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  // Fungsi pembantu respon JSON dengan CORS
   const createRes = (data: any, status = 200) => {
     return new Response(JSON.stringify(data), {
       status,
