@@ -1,24 +1,22 @@
 /**
  * SMPID CONFIGURATION MODULE
  * Pusat kawalan untuk pembolehubah persekitaran dan tetapan global.
- * Versi: 1.2 (URL API Dikemaskini)
  */
 
 export const APP_CONFIG = {
-    // Supabase Credentials (Production)
+    // Supabase Credentials
     SUPABASE: {
         URL: 'https://app.tech4ag.my',
-        // Kunci awam (anon key)
+        // Kunci awam (anon key) seperti yang terdapat dalam fail asal
         KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY'
     },
 
-    // External Services (Deno Deploy)
+    // External Services
     API: {
-        // DIKEMASKINI: URL baharu untuk bot Telegram & API servis
         DENO_URL: 'https://smpid.ppdag.deno.net'
     },
 
-    // Session Keys (LocalStorage)
+    // Session Keys (Untuk konsistensi nama item dalam sessionStorage)
     SESSION: {
         USER_KOD: 'smpid_user_kod',
         USER_ROLE: 'smpid_user_role',
