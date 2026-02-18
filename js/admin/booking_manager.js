@@ -1,10 +1,10 @@
 /**
- * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V5.1 INTEGRITY)
+ * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V5.1 INTEGRITY & FIX)
  * Fungsi: Menguruskan tempahan bimbingan bagi pihak PPD.
  * --- UPDATE V5.1 ---
  * 1. Hard Delete Integration: Menggunakan logik pemadaman kekal tanpa audit.
  * 2. Integrated List: Memaparkan rekod tempahan DAN tarikh dikunci dalam satu jadual.
- * 3. Visual Consistency: Mengekalkan reka bentuk asal dengan penambahan elemen Indigo untuk kunci.
+ * 3. Scope Fix: Mendedahkan handleAdminDateAction ke global window untuk akses onclick HTML.
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -248,13 +248,13 @@ window.renderAdminBookingCalendar = async function() {
                 card.onclick = () => {
                     adminSelectedDate = dateString;
                     window.renderAdminBookingCalendar(); 
-                    handleAdminDateAction(dateString, isLocked);
+                    window.handleAdminDateAction(dateString, isLocked);
                 };
             } else if (!isPast && isLocked) {
                 card.onclick = () => {
                     adminSelectedDate = dateString;
                     window.renderAdminBookingCalendar(); 
-                    handleAdminDateAction(dateString, true);
+                    window.handleAdminDateAction(dateString, true);
                 };
             }
 
@@ -272,7 +272,11 @@ window.renderAdminBookingCalendar = async function() {
     }
 };
 
-async function handleAdminDateAction(iso, currentlyLocked) {
+/**
+ * Mengawal tindakan kunci/buka tarikh. 
+ * Fungsi ini didedahkan ke global window untuk kegunaan onclick HTML.
+ */
+window.handleAdminDateAction = async function(iso, currentlyLocked) {
     if (currentlyLocked) {
         Swal.fire({
             title: 'Buka Kunci Tarikh?',
@@ -341,7 +345,7 @@ async function handleAdminDateAction(iso, currentlyLocked) {
             window.renderAdminBookingCalendar();
         }
     }
-}
+};
 
 /**
  * Memproses senarai bersepadu (Tempahan + Kunci) dalam satu jadual.
@@ -481,6 +485,9 @@ window.cancelBookingAdmin = async function(dbId, bookingId) {
     }
 };
 
+/**
+ * Menukar bulan paparan kalendar.
+ */
 window.changeAdminMonth = function(offset) {
     adminCurrentMonth += offset;
     adminSelectedDate = null; 
