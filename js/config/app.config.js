@@ -13,7 +13,7 @@ export const APP_CONFIG = {
 
     // External Services
     API: {
-        DENO_URL: 'https://smpid.ppdag.deno.net'
+        DENO_URL: 'https://smpid-40.ppdag.deno.net'
     },
 
     // Session Keys (Untuk konsistensi nama item dalam sessionStorage)

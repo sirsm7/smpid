@@ -1,9 +1,9 @@
 /**
- * ADMIN MODULE: MAIN CONTROLLER & ROUTER (BUG FIX V2.2)
+ * ADMIN MODULE: MAIN CONTROLLER & ROUTER (V2.3 - BB INTEGRATION)
  * Fungsi: Menguruskan navigasi tab, keselamatan, dan peranan (RBAC).
- * --- UPDATE V2.2 (CROSS-TAB SYNC) ---
- * Integrasi penuh dengan sistem localStorage untuk memastikan konsistensi
- * apabila membuka tab baru (Admin View User).
+ * --- UPDATE V2.3 ---
+ * Integrasi Modul Tempahan: Menambah tab 'tempahan' ke dalam sistem navigasi
+ * dan kawalan akses Unit PPD.
  */
 
 import { AuthService } from '../services/auth.service.js';
@@ -79,7 +79,7 @@ async function initAdminPanel() {
 /**
  * Fungsi Navigasi Tab Utama
  * Menguruskan pertukaran paparan dan lazy-loading modul.
- * @param {string} tabId - ID Tab (contoh: 'dashboard', 'analisa')
+ * @param {string} tabId - ID Tab (contoh: 'dashboard', 'analisa', 'tempahan')
  * @param {Event} event - (Opsional) Event klik
  */
 function switchAdminTab(tabId, event) {
@@ -92,7 +92,7 @@ function switchAdminTab(tabId, event) {
     // SEMAKAN KESELAMATAN (GATEKEEPER)
     // Pastikan Unit PPD tidak boleh akses tab dilarang walaupun tukar hash manual
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
-    const forbiddenForUnit = ['dashboard', 'analisa', 'gallery', 'email', 'helpdesk'];
+    const forbiddenForUnit = ['dashboard', 'analisa', 'gallery', 'tempahan', 'email', 'helpdesk'];
 
     if (userRole === 'PPD_UNIT' && forbiddenForUnit.includes(tabId)) {
         // Redirect senyap ke pencapaian
@@ -144,6 +144,9 @@ function loadModuleData(tabId) {
         case 'gallery':
             if (window.initAdminGallery) window.initAdminGallery();
             break;
+        case 'tempahan':
+            if (window.initAdminBooking) window.initAdminBooking();
+            break;
         case 'email':
             if (window.generateList) window.generateList();
             break;
@@ -166,7 +169,8 @@ function setupUnitView() {
     const hideButtons = [
         'dashboard-tab', 
         'analisa-tab', 
-        'gallery-tab', 
+        'gallery-tab',
+        'tempahan-tab',
         'email-tab', 
         'helpdesk-tab'
     ];
