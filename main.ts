@@ -1,26 +1,32 @@
 /**
  * SMPID Telegram Bot & API (Deno Deploy)
- * Versi: Helpdesk Module Added
- * Host: tech4ag.my
+ * Versi: CORS Fixed & Full Integration
+ * Host: tech4ag.my / ppdag.deno.net
  */
 
 import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
-// 1. KONFIGURASI ENV
+// ==========================================
+// 1. KONFIGURASI PERSEKITARAN (ENV)
+// ==========================================
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_KEY = Deno.env.get("SUPABASE_KEY");
 
 if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_KEY) {
-  throw new Error("Sila tetapkan BOT_TOKEN, SUPABASE_URL, dan SUPABASE_KEY.");
+  throw new Error("CRITICAL: Sila tetapkan BOT_TOKEN, SUPABASE_URL, dan SUPABASE_KEY di Deno Deploy.");
 }
 
-// 2. INISIALISASI
+// ==========================================
+// 2. INISIALISASI KLIENT
+// ==========================================
 const bot = new Bot(BOT_TOKEN);
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 3. FUNGSI UI HELPER
+// ==========================================
+// 3. FUNGSI UI HELPER (INTERFACE BOT)
+// ==========================================
 
 // A. UI SEKOLAH (Kod: MBAxxxx)
 async function getSchoolUI(kodSekolah: string, telegramId: number) {
@@ -140,7 +146,9 @@ async function getAdminUI(telegramId: number) {
     return { text: msg, keyboard };
 }
 
-// 4. LOGIK BOT UTAMA
+// ==========================================
+// 4. LOGIK BOT TELEGRAM (HANDLERS)
+// ==========================================
 
 // A. COMMAND /START
 bot.command("start", async (ctx) => {
@@ -152,7 +160,7 @@ bot.command("start", async (ctx) => {
   );
 });
 
-// B. PENGENDALI TEKS
+// B. PENGENDALI TEKS (Kod Sekolah)
 bot.on("message:text", async (ctx) => {
   const inputTeks = ctx.message.text.trim();
   const inputKod = inputTeks.toUpperCase();
@@ -182,7 +190,7 @@ bot.on("message:text", async (ctx) => {
   });
 });
 
-// C. PENGENDALI BUTANG
+// C. PENGENDALI BUTANG (CALLBACK QUERIES)
 bot.on("callback_query:data", async (ctx) => {
   const dataString = ctx.callbackQuery.data;
   const telegramId = ctx.from.id;
@@ -325,13 +333,32 @@ async function alertTaken(ctx: any) {
   await ctx.deleteMessage(); 
 }
 
-// 5. API SERVER & WEBHOOK HANDLER
+// ==========================================
+// 5. SERVER API & WEBHOOK (DENGAN CORS FIX)
+// ==========================================
 const handleBotUpdate = webhookCallback(bot, "std/http");
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
 
-  // Endpoint: /notify (Data Profil Dikemaskini)
+  // --- [1] DEFINISI HEADER CORS GLOBAL ---
+  // Membenarkan semua origin (*) untuk akses POST dan OPTIONS
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+
+  // --- [2] TANGANI PREFLIGHT (OPTIONS) DI ATAS SEKALI ---
+  // Wajib untuk membenarkan browser memulakan komunikasi
+  if (req.method === "OPTIONS") {
+    return new Response(null, { 
+        status: 204, // No Content
+        headers: corsHeaders 
+    });
+  }
+
+  // --- [3] ENDPOINT: /notify (Update Profil Sekolah) ---
   if (req.method === "POST" && url.pathname === "/notify") {
     try {
       const body = await req.json();
@@ -363,22 +390,26 @@ Deno.serve(async (req) => {
         );
         await Promise.all(sendPromises);
       }
+      
       return new Response(JSON.stringify({ status: "success" }), {
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       });
+
     } catch (e) {
       console.error(e);
-      return new Response(JSON.stringify({ status: "error" }), { status: 500 });
+      return new Response(JSON.stringify({ status: "error", message: String(e) }), { 
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders }
+      });
     }
   }
 
-  // --- NEW: Endpoint /notify-ticket (User Hantar Tiket -> Admin PPD) ---
+  // --- [4] ENDPOINT: /notify-ticket (Tiket Aduan Baru) ---
   if (req.method === "POST" && url.pathname === "/notify-ticket") {
       try {
           const body = await req.json();
           const { kod, peranan, tajuk, mesej } = body;
 
-          // Cari semua Admin PPD
           const { data: admins } = await supabase
               .from("smpid_admin_users")
               .select("telegram_id")
@@ -399,19 +430,23 @@ Deno.serve(async (req) => {
               );
               await Promise.all(sendPromises);
           }
-          return new Response(JSON.stringify({ status: "success" }), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+          return new Response(JSON.stringify({ status: "success" }), { 
+              headers: { "Content-Type": "application/json", ...corsHeaders } 
+          });
       } catch (e) {
-          return new Response(JSON.stringify({ status: "error" }), { status: 500 });
+          return new Response(JSON.stringify({ status: "error", message: String(e) }), { 
+              status: 500,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
       }
   }
 
-  // --- NEW: Endpoint /reply-ticket (Admin Balas -> User Sekolah) ---
+  // --- [5] ENDPOINT: /reply-ticket (Admin Balas Tiket) ---
   if (req.method === "POST" && url.pathname === "/reply-ticket") {
       try {
           const body = await req.json();
           const { kod, peranan, tajuk, balasan } = body;
 
-          // Cari data sekolah untuk dapatkan ID Telegram PIC
           const { data: sekolah } = await supabase
               .from("smpid_sekolah_data")
               .select("telegram_id_gpict, telegram_id_admin")
@@ -420,7 +455,6 @@ Deno.serve(async (req) => {
 
           if (sekolah) {
               let targetId = null;
-              // Jika pengirim asal GPICT, hantar ke GPICT. Jika Admin, hantar ke Admin.
               if (peranan === 'GPICT') targetId = sekolah.telegram_id_gpict;
               else if (peranan === 'ADMIN') targetId = sekolah.telegram_id_admin;
 
@@ -435,18 +469,19 @@ Deno.serve(async (req) => {
                   await bot.api.sendMessage(targetId, text, { parse_mode: "Markdown" });
               }
           }
-          return new Response(JSON.stringify({ status: "success" }), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+          return new Response(JSON.stringify({ status: "success" }), { 
+              headers: { "Content-Type": "application/json", ...corsHeaders } 
+          });
       } catch (e) {
-          return new Response(JSON.stringify({ status: "error" }), { status: 500 });
+          return new Response(JSON.stringify({ status: "error", message: String(e) }), { 
+              status: 500,
+              headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
       }
   }
 
-  // Handle Telegram Webhook
-  if (req.method === "OPTIONS") {
-      return new Response(null, {
-          headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "POST", "Access-Control-Allow-Headers": "Content-Type" }
-      });
-  }
-
+  // --- [6] FALLBACK KE TELEGRAM BOT WEBHOOK ---
+  // Jika request bukan untuk API di atas, serahkan kepada Grammy
+  // Webhook Telegram tidak perlukan CORS kerana ia bukan dari browser
   return await handleBotUpdate(req);
 });
