@@ -251,22 +251,38 @@
                                 </div>
                             </div>
 
-                            <!-- Slot Selector (Hidden until date selected) -->
+                            <!-- Slot Selector (Updated V6.0: 3 Columns) -->
                             <div id="slotWrapper" class="hidden animate-fade-in bg-slate-50 p-4 rounded-2xl border-2 border-slate-200 border-dashed">
                                 <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 text-center">Pilih Sesi</label>
-                                <div class="grid grid-cols-2 gap-3">
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    
+                                    <!-- PAGI -->
                                     <label id="labelPagi" class="cursor-pointer group relative">
                                         <input type="radio" name="inputMasa" value="Pagi" class="peer hidden">
-                                        <div class="py-3 px-2 text-center rounded-xl border-2 border-slate-200 bg-white text-slate-400 font-bold text-xs uppercase transition-all peer-checked:border-brand-500 peer-checked:bg-brand-500 peer-checked:text-white peer-checked:shadow-lg peer-checked:scale-105">
-                                            <i class="fas fa-sun mr-1"></i> PAGI
+                                        <div class="py-3 px-2 text-center rounded-xl border-2 border-slate-200 bg-white text-slate-400 font-bold text-xs uppercase transition-all peer-checked:border-brand-500 peer-checked:bg-brand-500 peer-checked:text-white peer-checked:shadow-lg peer-checked:scale-105 h-full flex flex-col justify-center">
+                                            <div><i class="fas fa-sun mr-1"></i> PAGI</div>
+                                            <span class="block text-[9px] mt-1 opacity-70 font-medium leading-tight">8:45 AM<br>11:00 AM</span>
                                         </div>
                                     </label>
+
+                                    <!-- PETANG -->
                                     <label id="labelPetang" class="cursor-pointer group relative">
                                         <input type="radio" name="inputMasa" value="Petang" class="peer hidden">
-                                        <div class="py-3 px-2 text-center rounded-xl border-2 border-slate-200 bg-white text-slate-400 font-bold text-xs uppercase transition-all peer-checked:border-orange-500 peer-checked:bg-orange-500 peer-checked:text-white peer-checked:shadow-lg peer-checked:scale-105">
-                                            <i class="fas fa-moon mr-1"></i> PETANG
+                                        <div class="py-3 px-2 text-center rounded-xl border-2 border-slate-200 bg-white text-slate-400 font-bold text-xs uppercase transition-all peer-checked:border-orange-500 peer-checked:bg-orange-500 peer-checked:text-white peer-checked:shadow-lg peer-checked:scale-105 h-full flex flex-col justify-center">
+                                            <div><i class="fas fa-moon mr-1"></i> PTG</div>
+                                            <span class="block text-[9px] mt-1 opacity-70 font-medium leading-tight">2:30 PM<br>5:00 PM</span>
                                         </div>
                                     </label>
+
+                                    <!-- 1 HARI -->
+                                    <label id="labelSehari" class="cursor-pointer group relative">
+                                        <input type="radio" name="inputMasa" value="1 HARI" class="peer hidden">
+                                        <div class="py-3 px-2 text-center rounded-xl border-2 border-slate-200 bg-white text-slate-400 font-bold text-xs uppercase transition-all peer-checked:border-purple-600 peer-checked:bg-purple-600 peer-checked:text-white peer-checked:shadow-lg peer-checked:scale-105 h-full flex flex-col justify-center">
+                                            <div><i class="fas fa-clock mr-1"></i> 1 HARI</div>
+                                            <span class="block text-[9px] mt-1 opacity-70 font-medium leading-tight">8:45 AM<br>4:30 PM</span>
+                                        </div>
+                                    </label>
+
                                 </div>
                             </div>
 

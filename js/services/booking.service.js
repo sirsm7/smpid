@@ -1,11 +1,11 @@
 /**
  * BOOKING SERVICE (MODUL BIMBINGAN & BENGKEL - BB)
  * Purpose: Manages CRUD operations for workshop bookings and admin date locks.
- * Version: 5.1 (Full Integrity & Hard Delete)
- * --- UPDATE V5.1 ---
- * 1. Hard Delete Implementation: adminCancelBooking kini memadam terus rekod dari Supabase.
- * 2. Data Retrieval: Ditambah fungsi getAllLocks() untuk pelaporan menyeluruh Admin.
- * 3. Logic Preservation: Mengekalkan setiap baris kod asal tanpa sebarang singkatan.
+ * Version: 6.0 (Full Day Logic Integration)
+ * --- UPDATE V6.0 ---
+ * 1. Full Day Logic: Menambah validasi untuk slot '1 HARI'.
+ * 2. Overlap Protection: Sistem menyekat '1 HARI' jika Pagi/Petang wujud, dan sebaliknya.
+ * 3. Day Rules: '1 HARI' hanya valid untuk Selasa, Rabu, Khamis.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -57,6 +57,7 @@ export const BookingService = {
         bookings.forEach(b => {
             const dateOnly = b.tarikh.split('T')[0]; 
             if (!bookedSlots[dateOnly]) bookedSlots[dateOnly] = [];
+            // Masukkan nilai slot ('Pagi', 'Petang', atau '1 HARI')
             bookedSlots[dateOnly].push(b.masa);
         });
 
@@ -81,13 +82,19 @@ export const BookingService = {
         // Validasi 1: Hari Operasi yang Dibenarkan (Sel, Rab, Kha, Sab)
         const day = new Date(tarikh).getDay();
         const allowedDays = [2, 3, 4, 6];
+        
         if (!allowedDays.includes(day)) {
             throw new Error("Sesi bimbingan hanya dibenarkan pada hari Selasa, Rabu, Khamis dan Sabtu sahaja.");
         }
 
-        // Validasi 2: Logik Hari Sabtu (Hanya Pagi - Polisi V3.7)
-        if (day === 6 && masa === 'Petang') {
+        // Validasi 2: Logik Spesifik Hari & Masa
+        // Sabtu: Hanya Pagi
+        if (day === 6 && masa !== 'Pagi') {
             throw new Error("Maaf, sesi bimbingan pada hari Sabtu hanya dibuka untuk slot PAGI sahaja.");
+        }
+        // '1 HARI': Hanya Selasa (2), Rabu (3), Khamis (4)
+        if (masa === '1 HARI' && ![2, 3, 4].includes(day)) {
+            throw new Error("Opsyen '1 HARI' hanya tersedia untuk hari Selasa, Rabu, dan Khamis sahaja.");
         }
 
         // Validasi 3: Semak jika tarikh telah dikunci oleh Admin
@@ -101,17 +108,47 @@ export const BookingService = {
             throw new Error("Tarikh ini telah dikunci oleh pentadbir bagi urusan rasmi daerah.");
         }
 
-        // Validasi 4: Semak jika slot spesifik (Pagi/Petang) sudah diambil
-        const { data: existing } = await db
-            .from('smpid_bb_tempahan')
-            .select('id')
-            .eq('tarikh', tarikh)
-            .eq('masa', masa)
-            .eq('status', 'AKTIF')
-            .maybeSingle();
+        // Validasi 4: Konflik Masa & Kapasiti (LOGIK OVERLAP BARU)
+        if (masa === '1 HARI') {
+            // Jika user minta 1 HARI, pastikan TIADA sebarang tempahan lain (Pagi atau Petang)
+            const { data: anyBooking } = await db
+                .from('smpid_bb_tempahan')
+                .select('id')
+                .eq('tarikh', tarikh)
+                .eq('status', 'AKTIF')
+                .maybeSingle();
+            
+            if (anyBooking) {
+                throw new Error("Permohonan '1 HARI' gagal kerana terdapat sesi lain (Pagi/Petang) yang telah ditempah pada tarikh ini.");
+            }
+        } else {
+            // Jika user minta Pagi atau Petang
+            
+            // A. Cek konflik langsung (Slot sama diambil)
+            const { data: sameSlot } = await db
+                .from('smpid_bb_tempahan')
+                .select('id')
+                .eq('tarikh', tarikh)
+                .eq('masa', masa)
+                .eq('status', 'AKTIF')
+                .maybeSingle();
 
-        if (existing) {
-            throw new Error(`Maaf, slot ${masa.toUpperCase()} pada tarikh tersebut telah ditempah oleh sekolah lain.`);
+            if (sameSlot) {
+                throw new Error(`Maaf, slot ${masa.toUpperCase()} pada tarikh tersebut telah ditempah.`);
+            }
+
+            // B. Cek konflik dengan '1 HARI' (Slot Full Day diambil oleh orang lain)
+            const { data: fullDayBooking } = await db
+                .from('smpid_bb_tempahan')
+                .select('id')
+                .eq('tarikh', tarikh)
+                .eq('masa', '1 HARI')
+                .eq('status', 'AKTIF')
+                .maybeSingle();
+            
+            if (fullDayBooking) {
+                throw new Error("Tarikh ini telah ditempah PENUH (1 HARI) oleh sekolah lain.");
+            }
         }
 
         // Logik: Jana ID Tempahan Unik (Format: YYMMDD-SCH-RAND)
@@ -174,7 +211,6 @@ export const BookingService = {
 
     /**
      * Admin Function: Mengambil semua data tarikh yang dikunci secara global.
-     * Fungsi baharu untuk Versi 5.1 bagi menyokong paparan integrasi Admin.
      */
     async getAllLocks() {
         const db = getDatabaseClient();
@@ -205,7 +241,6 @@ export const BookingService = {
 
     /**
      * Admin Function: Memadam rekod tempahan secara kekal (Hard Delete).
-     * Mengikut arahan, data ini tidak memerlukan audit dan dihapuskan terus.
      * @param {number} id - Kunci utama dalam pangkalan data.
      */
     async adminCancelBooking(id) {

@@ -1,9 +1,10 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 3.7 (SATURDAY LOGIC UPDATE)
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 6.0 (FULL DAY LOGIC)
  * Fungsi: Menguruskan logik tempahan dengan paparan Grid Kad Interaktif.
- * --- UPDATE V3.7 ---
- * 1. Business Logic: Sabtu hanya benarkan slot PAGI. Slot PETANG dibuang secara automatik.
- * 2. Visual Logic: Kad Sabtu akan terus jadi 'PENUH' (Merah) jika Pagi diambil.
+ * --- UPDATE V6.0 ---
+ * 1. Logic '1 HARI': Hanya aktif jika Selasa-Khamis DAN tiada slot lain diambil.
+ * 2. Logic Sabtu: Kekal hanya Pagi. Petang & 1 Hari disekat.
+ * 3. Visual Grid: Mengesan slot '1 HARI' sebagai status PENUH (Merah).
  */
 
 import { BookingService } from '../../js/services/booking.service.js';
@@ -87,9 +88,16 @@ async function loadBookingHistory(kod) {
             const dateStr = dateObj.toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric' });
             
             // Session Visual Logic
-            const isPagi = item.masa === 'Pagi';
-            const sessionIcon = isPagi ? 'fa-sun text-amber-500' : 'fa-moon text-indigo-400';
-            const sessionBg = isPagi ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-indigo-50 text-indigo-700 border-indigo-100';
+            let sessionIcon = 'fa-sun text-amber-500';
+            let sessionBg = 'bg-amber-50 text-amber-700 border-amber-100';
+            
+            if (item.masa === 'Petang') {
+                sessionIcon = 'fa-moon text-indigo-400';
+                sessionBg = 'bg-indigo-50 text-indigo-700 border-indigo-100';
+            } else if (item.masa === '1 HARI') {
+                sessionIcon = 'fa-clock text-purple-500';
+                sessionBg = 'bg-purple-50 text-purple-700 border-purple-100';
+            }
 
             let statusBadge = `<span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black border bg-emerald-50 text-emerald-600 border-emerald-200 min-w-[80px] justify-center shadow-sm">AKTIF</span>`;
             if (item.status !== 'AKTIF') {
@@ -194,22 +202,19 @@ window.renderCalendar = async function() {
             let status = 'open';
             let statusText = 'KOSONG';
             let statusIcon = 'fa-check-circle';
-            let availableSlots = ['Pagi', 'Petang'];
+            
+            // --- LOGIK STATUS VISUAL ---
+            
+            const isSaturday = (dayOfWeek === 6);
+            const isFullDayTaken = slotsTaken.includes('1 HARI');
+            
+            // Kira kapasiti semasa
+            // Jika '1 HARI' diambil, ia dikira sebagai 2 slot (Penuh)
+            let filledCount = slotsTaken.length;
+            if (isFullDayTaken) filledCount = 2; 
 
-            // --- LOGIK KHAS HARI SABTU ---
-            // Jika Sabtu (6), buang slot Petang dari senarai
-            if (dayOfWeek === 6) {
-                availableSlots = ['Pagi']; 
-                // Jika slot Pagi sudah diambil, availableSlots akan jadi kosong selepas filter di bawah
-            }
-            // -----------------------------
-
-            // Tapis slot yang sudah ditempah
-            availableSlots = availableSlots.filter(s => !slotsTaken.includes(s));
-
-            // Tentukan Status Visual Berdasarkan Baki Slot
-            const remainingCapacity = availableSlots.length;
-            const maxCapacity = (dayOfWeek === 6) ? 1 : 2; // Sabtu max 1, lain-lain max 2
+            // Kapasiti Maksimum: Sabtu = 1, Hari Lain = 2
+            const maxCapacity = isSaturday ? 1 : 2;
 
             if (isPast) {
                 status = 'closed';
@@ -227,16 +232,17 @@ window.renderCalendar = async function() {
                 status = 'locked';
                 statusText = 'DIKUNCI'; 
                 statusIcon = 'fa-lock';
-            } else if (remainingCapacity === 0) {
+            } else if (filledCount >= maxCapacity) {
                 status = 'full';
                 statusText = 'PENUH';
                 statusIcon = 'fa-users-slash';
-            } else if (remainingCapacity < maxCapacity) {
+            } else if (filledCount > 0) {
+                // Ada baki (belum penuh)
                 status = 'partial';
-                statusText = 'TERHAD'; // Baki 1 slot (Sama ada Pagi/Petang)
+                statusText = 'TERHAD'; 
                 statusIcon = 'fa-exclamation-circle';
             } else {
-                // Kekal 'open' jika semua slot available
+                // Kosong sepenuhnya
                 status = 'open';
                 statusText = 'KOSONG';
                 statusIcon = 'fa-check-circle';
@@ -275,7 +281,8 @@ window.renderCalendar = async function() {
 
             // Only allow interaction for active states
             if (status === 'open' || status === 'partial') {
-                card.onclick = () => handleCardSelection(dateString, availableSlots, card);
+                // Pass slotsTaken to handleCardSelection for precise logic
+                card.onclick = () => handleCardSelection(dateString, slotsTaken, card);
             }
 
             container.appendChild(card);
@@ -294,13 +301,15 @@ window.renderCalendar = async function() {
 
 /**
  * Handle Card Selection UI and state.
+ * Updated V6.0 to handle 3-option logic.
  */
-function handleCardSelection(dateStr, availableSlots, element) {
+function handleCardSelection(dateStr, slotsTaken, element) {
     selectedDateString = dateStr;
     document.querySelectorAll('.day-card').forEach(r => r.classList.remove('card-active'));
     element.classList.add('card-active');
 
     const dateObj = new Date(dateStr);
+    const dayOfWeek = dateObj.getDay(); // 0-6
     const dateReadable = dateObj.toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     
     const displayInput = document.getElementById('displayDate');
@@ -311,31 +320,47 @@ function handleCardSelection(dateStr, availableSlots, element) {
     document.getElementById('rawDate').value = dateStr;
     document.getElementById('slotWrapper').classList.remove('hidden');
 
+    // Get Elements
     const radioPagi = document.querySelector('input[name="inputMasa"][value="Pagi"]');
     const radioPetang = document.querySelector('input[name="inputMasa"][value="Petang"]');
+    const radioSehari = document.querySelector('input[name="inputMasa"][value="1 HARI"]');
+    
     const labelPagi = document.getElementById('labelPagi');
     const labelPetang = document.getElementById('labelPetang');
+    const labelSehari = document.getElementById('labelSehari');
 
-    // Reset State
-    radioPagi.disabled = true; radioPetang.disabled = true;
-    labelPagi.classList.add('opacity-40', 'pointer-events-none', 'grayscale');
-    labelPetang.classList.add('opacity-40', 'pointer-events-none', 'grayscale');
-    radioPagi.checked = false; radioPetang.checked = false;
+    // 1. RESET STATE (Disable All First)
+    [radioPagi, radioPetang, radioSehari].forEach(r => { 
+        r.disabled = true; r.checked = false; 
+    });
+    [labelPagi, labelPetang, labelSehari].forEach(l => {
+        l.classList.add('opacity-40', 'pointer-events-none', 'grayscale');
+        l.classList.remove('opacity-100', 'pointer-events-auto', 'grayscale-0');
+    });
 
-    // Enable based on availability
-    if (availableSlots.includes('Pagi')) {
+    // 2. LOGIC ENABLE MENGIKUT KEKOSONGAN & HARI
+
+    // --- PAGI ---
+    // Aktif jika: Hari dibenarkan (2,3,4,6) DAN Slot Pagi belum diambil DAN Slot 1 Hari belum diambil
+    if (ALLOWED_DAYS.includes(dayOfWeek) && !slotsTaken.includes('Pagi') && !slotsTaken.includes('1 HARI')) {
         radioPagi.disabled = false;
         labelPagi.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
     }
-    if (availableSlots.includes('Petang')) {
+
+    // --- PETANG ---
+    // Aktif jika: Hari dibenarkan (2,3,4 sahaja - Sabtu TAK BOLEH) DAN Slot Petang belum diambil DAN Slot 1 Hari belum diambil
+    const isNormalDay = [2, 3, 4].includes(dayOfWeek);
+    if (isNormalDay && !slotsTaken.includes('Petang') && !slotsTaken.includes('1 HARI')) {
         radioPetang.disabled = false;
         labelPetang.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
     }
-    
-    // Auto-select logic
-    if (availableSlots.length === 1) {
-        if (availableSlots[0] === 'Pagi') radioPagi.checked = true;
-        else radioPetang.checked = true;
+
+    // --- 1 HARI (SEHARI) ---
+    // Aktif jika: Hari Normal (2,3,4) DAN TIADA SEBARANG SLOT DIAMBIL
+    // Jika Pagi dah ambil, tak boleh pilih Sehari. Jika Petang dah ambil, tak boleh pilih Sehari.
+    if (isNormalDay && slotsTaken.length === 0) {
+        radioSehari.disabled = false;
+        labelSehari.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
     }
 
     checkFormValidity();
@@ -419,7 +444,7 @@ window.handleBookingSubmit = async function() {
 
     const payload = {
         tarikh: date,
-        masa: masaInp.value,
+        masa: masaInp.value, // Will send 'Pagi', 'Petang', or '1 HARI'
         tajuk_bengkel: tajukBengkel,
         nama_pic: picName.toUpperCase(),
         no_tel_pic: picPhone,
