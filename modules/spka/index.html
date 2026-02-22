@@ -48,9 +48,9 @@
             </div>
 
             <!-- BUTANG KEMBALI KE PORTAL -->
-            <a href="../../user.html" class="inline-flex items-center gap-2 bg-slate-800 text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-slate-900 transition shadow-lg border border-slate-700">
+            <button onclick="kembaliKePortal()" class="inline-flex items-center gap-2 bg-slate-800 text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-slate-900 transition shadow-lg border border-slate-700">
                 <i class="fa-solid fa-arrow-left"></i> Portal Utama
-            </a>
+            </button>
         </div>
     </nav>
 
@@ -139,5 +139,13 @@
     
     <script src="js/data.js"></script>
     <script src="js/app.js"></script>
+
+    <script>
+        // Logik Pintar Navigasi
+        function kembaliKePortal() {
+            const isAdmin = localStorage.getItem('smpid_auth') === 'true';
+            window.location.href = isAdmin ? '../../admin.html' : '../../user.html';
+        }
+    </script>
 </body>
 </html>

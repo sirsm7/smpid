@@ -36,9 +36,9 @@
                     <button onclick="switchView('dashboard')" id="nav-dashboard" class="px-3 py-2 rounded-md text-sm font-medium text-blue-600 bg-blue-50 transition-colors">Utama</button>
                     <button onclick="switchView('study')" id="nav-study" class="px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-50 transition-colors">Bank Soalan</button>
                     <!-- Butang Kembali ke SMPID -->
-                    <a href="../../user.html" class="px-3 py-2 rounded-md text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 transition-colors shadow-sm">
+                    <button onclick="kembaliKePortal()" class="px-3 py-2 rounded-md text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 transition-colors shadow-sm">
                         &larr; Portal
-                    </a>
+                    </button>
                 </div>
             </div>
         </div>
@@ -183,5 +183,13 @@
     <!-- External JS (ORDER SANGAT PENTING: Data Dahulu, Kemudian Logic) -->
     <script src="questions.js"></script>
     <script src="script.js"></script>
+
+    <script>
+        // Logik Pintar Navigasi
+        function kembaliKePortal() {
+            const isAdmin = localStorage.getItem('smpid_auth') === 'true';
+            window.location.href = isAdmin ? '../../admin.html' : '../../user.html';
+        }
+    </script>
 </body>
 </html>
