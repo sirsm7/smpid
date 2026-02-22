@@ -1,8 +1,8 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V1.8)
+ * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V1.9)
  * Menguruskan rekod pencapaian dengan kawalan integriti data penuh.
- * --- UPDATE V1.8 ---
- * 1. Bug Fix: Memperbaiki isu Dropdown Kategori yang tidak berfungsi (Overwrite State).
+ * --- UPDATE V1.9 ---
+ * 1. Bug Fix: Memperbaiki isu Dropdown Tahun tidak di-reset apabila butang RESET ditekan.
  * 2. Sync Fix: Menyelaraskan kad statistik (Kategori) dengan dropdown secara dua hala.
  */
 
@@ -458,6 +458,10 @@ window.resetPencapaianFilters = function() {
     
     const elJenis = document.getElementById('filterJenisPencapaian');
     if(elJenis) elJenis.value = 'ALL';
+
+    // FIX V1.9: Reset dropdown tahun kepada default
+    const elTahun = document.getElementById('filterTahunPencapaian');
+    if(elTahun) elTahun.value = 'ALL';
     
     window.loadMasterPencapaian();
     Swal.fire({ icon: 'success', title: 'Tapis Direset', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000 });
