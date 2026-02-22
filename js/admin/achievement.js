@@ -1,11 +1,11 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V1.6)
+ * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V1.7)
  * Menguruskan rekod pencapaian dengan kawalan integriti data penuh.
- * --- UPDATE V1.6 ---
- * 1. Visual Fix: Membaiki kontras warna pada kad 'SEKOLAH' (Hijau) - Teks lebih gelap & jelas.
- * 2. Logic Enhancement: Sistem Toggle Reset pada semua kad statistik & Jawatan Cloud.
- * 3. Bug Fix: Membaiki ralat classList.add() yang menyebabkan sistem terhenti.
- * 4. Integrity: Kod penuh 100% tanpa singkatan (Pro Web Caster Protocol).
+ * --- UPDATE V1.7 ---
+ * 1. UI Fix: Membaiki isu perkataan terpotong pada lencana kolum 'Kategori'. 
+ * (Pembuangan had w-24 & penambahan whitespace-nowrap).
+ * 2. Visual Fix: Membaiki kontras warna pada kad 'SEKOLAH' (Hijau).
+ * 3. Logic Enhancement: Sistem Toggle Reset pada semua kad statistik.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -205,7 +205,7 @@ window.renderPencapaianTable = function() {
         return `<tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
             <td class="px-6 py-4 font-mono text-xs font-bold text-slate-400 w-24">${i.kod_sekolah}</td>
             <td class="px-6 py-4 text-xs font-semibold text-slate-700 leading-snug w-64 whitespace-normal">${namaSekolah}</td>
-            <td class="px-6 py-4 text-center w-24"><span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}">${i.kategori}</span></td>
+            <td class="px-6 py-4 text-center"><span class="inline-block whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}">${i.kategori}</span></td>
             <td class="px-6 py-4 whitespace-normal">
                 <div class="font-bold text-slate-800 text-sm mb-0.5">${i.nama_peserta}</div>
                 ${i.jawatan ? `<span class="text-[10px] text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">${i.jawatan}</span>` : ''}
