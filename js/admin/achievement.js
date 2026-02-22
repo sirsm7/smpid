@@ -1,11 +1,9 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V1.7)
+ * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V1.8)
  * Menguruskan rekod pencapaian dengan kawalan integriti data penuh.
- * --- UPDATE V1.7 ---
- * 1. UI Fix: Membaiki isu perkataan terpotong pada lencana kolum 'Kategori'. 
- * (Pembuangan had w-24 & penambahan whitespace-nowrap).
- * 2. Visual Fix: Membaiki kontras warna pada kad 'SEKOLAH' (Hijau).
- * 3. Logic Enhancement: Sistem Toggle Reset pada semua kad statistik.
+ * --- UPDATE V1.8 ---
+ * 1. Bug Fix: Memperbaiki isu Dropdown Kategori yang tidak berfungsi (Overwrite State).
+ * 2. Sync Fix: Menyelaraskan kad statistik (Kategori) dengan dropdown secara dua hala.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -125,9 +123,11 @@ window.renderPencapaianTable = function() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
     if(!tbody) return;
     
-    // Pastikan UI dropdown selari dengan state (untuk kes toggle dari kad)
+    // FIX V1.8: Baca nilai dari dropdown UI untuk update state. Membenarkan carian/filter berfungsi.
     const elKat = document.getElementById('filterKategoriPencapaian');
-    if(elKat) elKat.value = currentKategoriFilter;
+    if(elKat) {
+        currentKategoriFilter = elKat.value;
+    }
 
     const katFilter = currentKategoriFilter;
     const sekFilter = document.getElementById('filterSekolahPencapaian').value;
@@ -404,6 +404,11 @@ window.filterByKategori = function(k) {
     // TOGGLE LOGIC: Klik semula untuk reset ke 'ALL'
     currentKategoriFilter = (currentKategoriFilter === k) ? 'ALL' : k;
     currentJawatanFilter = 'ALL'; 
+
+    // FIX V1.8: Sinkronisasi dropdown secara manual apabila klik dari kad
+    const elKat = document.getElementById('filterKategoriPencapaian');
+    if(elKat) elKat.value = currentKategoriFilter;
+
     window.renderPencapaianTable(); 
 };
 
@@ -437,7 +442,7 @@ window.filterBySchoolFromTop5 = function(kod) {
 };
 
 /**
- * Reset semua tapisankepada keadaan asal.
+ * Reset semua tapisan kepada keadaan asal.
  */
 window.resetPencapaianFilters = function() { 
     currentCardFilter = 'ALL'; 
@@ -447,6 +452,9 @@ window.resetPencapaianFilters = function() {
     
     const elSek = document.getElementById('filterSekolahPencapaian');
     if(elSek) elSek.value = 'ALL';
+
+    const elKat = document.getElementById('filterKategoriPencapaian');
+    if(elKat) elKat.value = 'ALL'; // FIX V1.8
     
     const elJenis = document.getElementById('filterJenisPencapaian');
     if(elJenis) elJenis.value = 'ALL';
