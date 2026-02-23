@@ -1,6 +1,7 @@
 /**
- * ADMIN MODULE: ANALYSIS (TAILWIND EDITION)
+ * ADMIN MODULE: ANALYSIS (TAILWIND EDITION - SORTING ENABLED)
  * Menguruskan laporan DCS dan DELIMa dengan UI Tailwind.
+ * Menambah fungsi pengisihan dinamik (Dynamic Sorting) pada jadual terperinci.
  */
 
 import { DcsService } from '../services/dcs.service.js';
@@ -9,6 +10,9 @@ import { toggleLoading } from '../core/helpers.js';
 let dcsDataList = [];
 let currentFilteredDcs = []; 
 let charts = { donut: null, bar: null };
+
+// State untuk pengisihan jadual (Sorting State)
+let analisaSortState = { column: '', direction: 'desc' };
 
 /**
  * Memuatkan data DCS utama
@@ -203,17 +207,89 @@ function processActivePanel(field) {
 }
 
 /**
+ * Logik Mengurus Penukaran Arah Susunan (Sort)
+ */
+window.sortAnalisa = function(col) {
+    if (analisaSortState.column === col) {
+        // Tukar arah jika klik lajur yang sama
+        analisaSortState.direction = analisaSortState.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        // Set lajur baharu, default: desc untuk nombor, asc untuk teks
+        analisaSortState.column = col;
+        analisaSortState.direction = (col === 'kod' || col === 'nama') ? 'asc' : 'desc';
+    }
+    
+    // Panggil fungsi render semula (akan baca status sort ini)
+    const currYear = parseInt(document.getElementById('pilihTahunAnalisa').value);
+    window.filterAnalisaTable(currYear, currYear - 1);
+};
+
+/**
  * Filter & Render Main Table
  */
 window.filterAnalisaTable = function(currYear, prevYear) {
     if(!currYear) currYear = parseInt(document.getElementById('pilihTahunAnalisa').value);
     if(!prevYear) prevYear = currYear - 1;
 
-    const keyword = document.getElementById('searchAnalisa').value.toUpperCase();
-    const list = keyword ? dcsDataList.filter(d => d.nama_sekolah.includes(keyword) || d.kod_sekolah.includes(keyword)) : dcsDataList;
+    const keyword = document.getElementById('searchAnalisa')?.value.toUpperCase() || '';
     
+    // Asingkan PPD dari senarai untuk manipulasi data
+    const listWithoutPPD = dcsDataList.filter(d => d.kod_sekolah !== 'M030');
+    
+    // 1. Tapis carian
+    let list = keyword 
+        ? listWithoutPPD.filter(d => d.nama_sekolah.includes(keyword) || d.kod_sekolah.includes(keyword)) 
+        : [...listWithoutPPD];
+    
+    // 2. Laksana logik susunan (Sorting) yang dibaiki integriti datanya
+    if (analisaSortState.column) {
+        list.sort((a, b) => {
+            let valA, valB;
+            
+            if (analisaSortState.column === 'kod') {
+                // Menormalkan kepada huruf besar bagi teks
+                valA = String(a.kod_sekolah || '').toUpperCase(); 
+                valB = String(b.kod_sekolah || '').toUpperCase();
+            } else if (analisaSortState.column === 'nama') {
+                valA = String(a.nama_sekolah || '').toUpperCase(); 
+                valB = String(b.nama_sekolah || '').toUpperCase();
+            } else if (analisaSortState.column === 'dcs') {
+                // Menukarkan string kepada nilai mutlak (nombor apung) untuk perbandingan logik
+                valA = parseFloat(a[`dcs_${currYear}`]) || 0; 
+                valB = parseFloat(b[`dcs_${currYear}`]) || 0;
+            } else if (analisaSortState.column === 'aktif') {
+                valA = parseFloat(a[`peratus_aktif_${currYear}`]) || 0; 
+                valB = parseFloat(b[`peratus_aktif_${currYear}`]) || 0;
+            }
+
+            if (valA < valB) return analisaSortState.direction === 'asc' ? -1 : 1;
+            if (valA > valB) return analisaSortState.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+
     currentFilteredDcs = list;
 
+    // 3. Kemaskini UI Ikon (Anak Panah Sort)
+    const columns = ['kod', 'nama', 'dcs', 'aktif'];
+    columns.forEach(c => {
+        const th = document.getElementById(`th-analisa-${c}`);
+        if(th) {
+            const icon = th.querySelector('i.fas');
+            if(icon) {
+                // Reset semua ke default
+                icon.className = 'fas fa-sort ml-1 opacity-50';
+                
+                // Set aktif jika ia lajur semasa
+                if (analisaSortState.column === c) {
+                    const arrowDir = analisaSortState.direction === 'asc' ? 'up' : 'down';
+                    icon.className = `fas fa-sort-${arrowDir} ml-1 text-brand-600 opacity-100`;
+                }
+            }
+        }
+    });
+
+    // 4. Render ke jadual
     const wrapper = document.getElementById('tableAnalisaBody');
     if(list.length === 0) return wrapper.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400">Tiada rekod sekolah dijumpai.</td></tr>`;
 
