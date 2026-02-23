@@ -39,12 +39,8 @@
             @apply bg-white text-slate-600 hover:bg-slate-50 hover:text-brand-600 border-2 border-slate-200; 
         }
         
-        /* Global Table Wrapping Fix - Memastikan tiada teks terpotong dalam jadual */
+        /* Global Table Wrapping Fix - Diubahsuai supaya Tailwind utilities berfungsi dengan baik */
         table td, table th {
-            white-space: normal !important;
-            word-wrap: break-word !important;
-            overflow-wrap: break-word !important;
-            word-break: break-word !important;
             vertical-align: middle;
         }
 
@@ -449,14 +445,14 @@
                 <table class="w-full text-sm text-left">
                     <thead class="text-xs text-white uppercase bg-slate-800 sticky top-0 z-10">
                         <tr>
-                            <th class="px-6 py-3 cursor-pointer hover:bg-slate-700" onclick="handleSort('kod_sekolah')">Kod</th>
-                            <th class="px-6 py-3 cursor-pointer hover:bg-slate-700" onclick="handleSort('nama_sekolah')">Nama Sekolah</th>
-                            <th class="px-6 py-3 text-center">Kategori</th>
-                            <th class="px-6 py-3 cursor-pointer hover:bg-slate-700" onclick="handleSort('nama_peserta')">Peserta</th>
-                            <th class="px-6 py-3 cursor-pointer hover:bg-slate-700" onclick="handleSort('nama_pertandingan')">Program</th>
-                            <th class="px-6 py-3 text-center">Skor</th>
-                            <th class="px-6 py-3 text-center">Bukti</th>
-                            <th class="px-6 py-3 text-center">Tindakan</th>
+                            <th class="px-4 py-3 cursor-pointer hover:bg-slate-700 whitespace-nowrap" onclick="handleSort('kod_sekolah')">Kod</th>
+                            <th class="px-4 py-3 cursor-pointer hover:bg-slate-700 min-w-[200px]" onclick="handleSort('nama_sekolah')">Nama Sekolah</th>
+                            <th class="px-4 py-3 text-center whitespace-nowrap">Kategori</th>
+                            <th class="px-4 py-3 cursor-pointer hover:bg-slate-700 min-w-[150px]" onclick="handleSort('nama_peserta')">Peserta</th>
+                            <th class="px-4 py-3 cursor-pointer hover:bg-slate-700 min-w-[200px]" onclick="handleSort('nama_pertandingan')">Program</th>
+                            <th class="px-4 py-3 text-center whitespace-nowrap">Skor</th>
+                            <th class="px-4 py-3 text-center whitespace-nowrap">Bukti</th>
+                            <th class="px-4 py-3 text-center whitespace-nowrap">Tindakan</th>
                         </tr>
                     </thead>
                     <tbody id="tbodyPencapaianMaster" class="divide-y divide-slate-100"></tbody>

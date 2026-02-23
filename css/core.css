@@ -1,0 +1,73 @@
+/* --- CORE STYLES (ASAS & PEMBOLEHUBAH) --- */
+/* Mengandungi: Variables, Reset, Typography, Utility Classes */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+:root {
+    /* Bootstrap Overrides & Brand Colors */
+    --bs-primary: #0d6efd;
+    --bs-success: #198754;
+    --bs-warning: #ffc107;
+    --bs-danger: #dc3545;
+    
+    /* Custom Palette (PPDAG Theme) */
+    --color-purple: #6f42c1;
+    --color-indigo: #4b0082;
+    --color-orange: #fd7e14;
+    --color-teal: #008080;
+    
+    /* Tech Branding (Untuk Modul Pencapaian) */
+    --brand-google: #DB4437;
+    --brand-apple: #2c2c2c;
+    --brand-microsoft: #00a4ef;
+}
+
+body { 
+    background-color: #f0f2f5; 
+    font-family: 'Inter', sans-serif; 
+    min-height: 100vh; 
+    color: #212529;
+}
+
+/* --- UTILITIES (GLOBAL) --- */
+.hidden { display: none !important; }
+.cursor-pointer { cursor: pointer; }
+.uppercase-input { text-transform: uppercase; }
+.fw-black { font-weight: 900; }
+
+/* WARNA TEMA KHAS (Backgrounds & Texts) */
+.bg-purple { background-color: var(--color-purple) !important; color: white; }
+.text-purple { color: var(--color-purple) !important; }
+.border-purple { border-color: var(--color-purple) !important; }
+
+.bg-indigo { background-color: var(--color-indigo) !important; color: white; }
+.text-indigo { color: var(--color-indigo) !important; }
+
+.bg-orange { background-color: var(--color-orange) !important; color: white; }
+.text-orange { color: var(--color-orange) !important; }
+
+.bg-teal { background-color: var(--color-teal) !important; color: white; }
+.text-teal { color: var(--color-teal) !important; }
+
+/* BRANDING UTILS (Google/Apple/Microsoft) */
+.bg-google { background-color: var(--brand-google) !important; color: white; }
+.text-google { color: var(--brand-google) !important; }
+.border-google { border-color: var(--brand-google) !important; }
+.bg-google-sub { background-color: rgba(219, 68, 55, 0.1) !important; color: var(--brand-google) !important; }
+
+.bg-apple { background-color: var(--brand-apple) !important; color: white; }
+.text-apple { color: var(--brand-apple) !important; }
+.border-apple { border-color: var(--brand-apple) !important; }
+.bg-apple-sub { background-color: rgba(44, 44, 44, 0.1) !important; color: var(--brand-apple) !important; }
+
+.bg-microsoft { background-color: var(--brand-microsoft) !important; color: white; }
+.text-microsoft { color: var(--brand-microsoft) !important; }
+.border-microsoft { border-color: var(--brand-microsoft) !important; }
+.bg-microsoft-sub { background-color: rgba(0, 164, 239, 0.1) !important; color: var(--brand-microsoft) !important; }
+
+/* ANIMASI GLOBAL */
+.fade-up { animation: fadeInUp 0.5s ease-out forwards; opacity: 0; transform: translateY(20px); }
+@keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+
+.hover-scale { transition: transform 0.2s; }
+.hover-scale:hover { transform: scale(1.02); }
