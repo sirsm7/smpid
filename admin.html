@@ -182,7 +182,6 @@
   <div class="container mx-auto px-4 -mt-16 pb-20 relative z-20 max-w-[90rem]">
     
     <!-- NAVIGATION TABS -->
-    <!-- FIX: Ditukar kepada overflow-visible relative z-30 untuk w-full bagi memuatkan semua tab sebaris -->
     <div class="flex flex-wrap justify-center gap-1.5 mb-6 bg-white p-2 rounded-2xl shadow-lg border-2 border-slate-100 w-full mx-auto overflow-visible relative z-30">
         <a href="#dashboard" class="tab-active px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="dashboard-tab" onclick="switchAdminTab('dashboard', event)"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
         <a href="#analisa" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="analisa-tab" onclick="switchAdminTab('analisa', event)"><i class="fas fa-chart-pie"></i> Analisa</a>
@@ -441,16 +440,22 @@
                 <div id="jawatanCloudContainer" class="p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl flex flex-wrap justify-center"></div>
             </div>
 
+            <!-- ADDED TITLE HERE -->
+            <div class="flex items-center gap-2 mb-3 px-1">
+                <i class="fas fa-list-ul text-indigo-500"></i>
+                <h3 class="text-sm font-bold text-slate-700 uppercase tracking-widest">Senarai Rekod Pencapaian</h3>
+            </div>
+
             <div class="overflow-auto border-2 border-slate-200 rounded-xl max-h-[600px]">
                 <table class="w-full text-sm text-left">
                     <thead class="text-xs text-white uppercase bg-slate-800 sticky top-0 z-10">
                         <tr>
                             <th class="px-4 py-3 cursor-pointer hover:bg-slate-700 whitespace-nowrap" onclick="handleSort('kod_sekolah')">Kod</th>
                             <th class="px-4 py-3 cursor-pointer hover:bg-slate-700 min-w-[200px]" onclick="handleSort('nama_sekolah')">Nama Sekolah</th>
-                            <th class="px-4 py-3 text-center whitespace-nowrap">Kategori</th>
-                            <th class="px-4 py-3 cursor-pointer hover:bg-slate-700 min-w-[150px]" onclick="handleSort('nama_peserta')">Peserta</th>
+                            <th class="px-4 py-3 text-center cursor-pointer hover:bg-slate-700 whitespace-nowrap" onclick="handleSort('kategori')">Kategori</th>
+                            <th class="px-4 py-3 cursor-pointer hover:bg-slate-700 min-w-[150px]" onclick="handleSort('nama_peserta')">Nama Peserta</th>
                             <th class="px-4 py-3 cursor-pointer hover:bg-slate-700 min-w-[200px]" onclick="handleSort('nama_pertandingan')">Program</th>
-                            <th class="px-4 py-3 text-center whitespace-nowrap">Skor</th>
+                            <th class="px-4 py-3 text-center cursor-pointer hover:bg-slate-700 whitespace-nowrap" onclick="handleSort('pencapaian')">Skor</th>
                             <th class="px-4 py-3 text-center whitespace-nowrap">Bukti</th>
                             <th class="px-4 py-3 text-center whitespace-nowrap">Tindakan</th>
                         </tr>
