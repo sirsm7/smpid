@@ -203,20 +203,20 @@ window.renderPencapaianTable = function() {
         }
 
         return `<tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
-            <td class="px-4 py-4 font-mono text-xs font-bold text-slate-400 whitespace-nowrap">${i.kod_sekolah}</td>
-            <td class="px-4 py-4 text-xs font-semibold text-slate-700 leading-snug whitespace-normal break-words">${namaSekolah}</td>
-            <td class="px-4 py-4 text-center whitespace-nowrap"><span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}">${i.kategori}</span></td>
-            <td class="px-4 py-4 whitespace-normal break-words">
+            <td class="px-6 py-4 font-mono text-xs font-bold text-slate-400 w-24">${i.kod_sekolah}</td>
+            <td class="px-6 py-4 text-xs font-semibold text-slate-700 leading-snug w-64 whitespace-normal">${namaSekolah}</td>
+            <td class="px-6 py-4 text-center"><span class="inline-block whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}">${i.kategori}</span></td>
+            <td class="px-6 py-4 whitespace-normal">
                 <div class="font-bold text-slate-800 text-sm mb-0.5">${i.nama_peserta}</div>
                 ${i.jawatan ? `<span class="text-[10px] text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">${i.jawatan}</span>` : ''}
             </td>
-            <td class="px-4 py-4 whitespace-normal break-words">
+            <td class="px-6 py-4 whitespace-normal">
                 <div class="mb-1">${jenisBadge}</div>
                 <div class="text-brand-600 text-xs font-bold leading-tight">${i.nama_pertandingan}</div>
             </td>
-            <td class="px-4 py-4 text-center font-black text-slate-700 text-xs whitespace-nowrap bg-slate-50/50">${i.pencapaian}</td>
-            <td class="px-4 py-4 text-center whitespace-nowrap"><a href="${i.pautan_bukti}" target="_blank" class="p-2 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition" title="Lihat Bukti"><i class="fas fa-link"></i></a></td>
-            <td class="px-4 py-4 text-center whitespace-nowrap">
+            <td class="px-6 py-4 text-center font-black text-slate-700 text-xs w-32 whitespace-normal bg-slate-50/50">${i.pencapaian}</td>
+            <td class="px-6 py-4 text-center w-24"><a href="${i.pautan_bukti}" target="_blank" class="p-2 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition" title="Lihat Bukti"><i class="fas fa-link"></i></a></td>
+            <td class="px-6 py-4 text-center w-32">
                 <div class="flex items-center justify-center gap-1">
                     <button onclick="openEditPencapaian(${i.id})" class="p-2 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition" title="Edit"><i class="fas fa-edit"></i></button>
                     <button onclick="hapusPencapaianAdmin(${i.id})" class="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition" title="Padam"><i class="fas fa-trash-alt"></i></button>

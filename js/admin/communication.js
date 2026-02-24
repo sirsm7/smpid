@@ -1,5 +1,6 @@
 import { SupportService } from '../services/support.service.js';
 import { toggleLoading } from '../core/helpers.js';
+import { APP_CONFIG } from '../config/app.config.js';
 
 let quill;
 
@@ -26,7 +27,7 @@ window.initEmailEditor = function() {
 
     // Tetapkan kandungan default (Format HTML)
     const defaultContent = `
-        <p>Salam Sejahtera Tuan/Puan,</p>
+        <p>Assalamualaikum & Salam Sejahtera Tuan/Puan,</p>
         <p><br></p>
         <p>Mohon kerjasama Tuan/Puan selaku GPICT/Admin DELIMa sekolah untuk mengesahkan peranan anda dalam sistem SMPID melalui Bot Telegram rasmi kami.</p>
         <p><br></p>
@@ -46,11 +47,6 @@ window.initEmailEditor = function() {
     
     // Masukkan ke dalam editor
     quill.clipboard.dangerouslyPasteHTML(defaultContent);
-
-    // Tambah listener untuk update mailto link secara realtime
-    quill.on('text-change', function() {
-        updateMailtoLink();
-    });
 };
 
 window.generateList = function() {
@@ -83,22 +79,25 @@ window.generateList = function() {
     const arr = Array.from(uniqueEmails);
     document.getElementById('countEmail').innerText = arr.length;
     document.getElementById('emailOutput').value = arr.join(', ');
-    
-    updateMailtoLink();
 };
 
-function updateMailtoLink() {
-    if (!quill) return;
+/**
+ * Kemaskini lencana jumlah emel secara automatik apabila pengguna
+ * menaip, menampal (paste), atau memadam emel secara manual di dalam kotak teks.
+ */
+window.kemaskiniKiraanEmel = function() {
+    const emailStr = document.getElementById('emailOutput').value.trim();
+    const countEl = document.getElementById('countEmail');
     
-    const arr = document.getElementById('emailOutput').value.split(', ');
-    const subject = encodeURIComponent(document.getElementById('msgSubject').value);
-    
-    // PENTING: Mailto hanya support plain text. Kita ambil text dari Quill.
-    const plainTextBody = quill.getText(); 
-    const body = encodeURIComponent(plainTextBody);
-    
-    document.getElementById('mailtoLink').href = `mailto:?bcc=${arr.join(',')}&subject=${subject}&body=${body}`;
-}
+    if (!emailStr) {
+        if (countEl) countEl.innerText = '0';
+        return;
+    }
+
+    // Pisahkan mengikut koma, bersihkan ruang kosong, dan tapis rentetan kosong
+    const emailArray = emailStr.split(',').map(e => e.trim()).filter(e => e);
+    if (countEl) countEl.innerText = emailArray.length;
+};
 
 window.copyEmails = function() {
     const el = document.getElementById("emailOutput");
@@ -115,35 +114,128 @@ window.copyEmails = function() {
     }
 };
 
-window.copyTemplate = function() {
-    // Salin Rich Text (HTML) ke Clipboard untuk Paste dalam Gmail/Outlook
+/**
+ * API PENGHANTARAN EMEL SISTEM (GAS) - BATCH PROCESSING EDITION
+ * Memecahkan senarai kepada kumpulan kecil (Chunks) untuk memintas 
+ * had pelayan Google "Limit Exceeded: Email Recipients Per Message".
+ */
+window.hantarEmelSistem = async function() {
     if (!quill) return;
 
-    const htmlContent = quill.root.innerHTML;
-    const textContent = quill.getText();
+    const emailList = document.getElementById('emailOutput').value.trim();
+    const subject = document.getElementById('msgSubject').value.trim();
+    const senderName = document.getElementById('msgSenderName') ? document.getElementById('msgSenderName').value.trim() : "Admin SMPID";
+    const htmlBody = quill.root.innerHTML;
 
-    // Gunakan Clipboard API moden untuk menyokong 'text/html'
-    const blobHtml = new Blob([htmlContent], { type: "text/html" });
-    const blobText = new Blob([textContent], { type: "text/plain" });
-    const data = [new ClipboardItem({ 
-        "text/html": blobHtml, 
-        "text/plain": blobText 
-    })];
+    if (!emailList) {
+        return Swal.fire('Senarai Kosong', 'Sila jana atau taip senarai emel terlebih dahulu.', 'warning');
+    }
 
-    navigator.clipboard.write(data).then(() => {
-        Swal.fire({
-            icon: 'success',
-            title: 'Teks Kaya Disalin!',
-            html: 'Format (Bold/Italic) telah disalin.<br>Sila <b>Paste (Ctrl+V)</b> dalam tetingkap emel anda.',
-            timer: 2000,
-            showConfirmButton: false
-        });
-    }).catch(err => {
-        console.error('Gagal salin rich text:', err);
-        // Fallback ke teks biasa jika browser tidak sokong
-        navigator.clipboard.writeText(textContent).then(() => {
-            Swal.fire('Disalin (Teks Biasa)', 'Format tidak disokong pelayar ini.', 'info');
-        });
+    if (!subject || !quill.getText().trim()) {
+        return Swal.fire('Mesej Kosong', 'Sila isi tajuk dan kandungan mesej.', 'warning');
+    }
+
+    const bccArray = emailList.split(',').map(e => e.trim()).filter(e => e);
+    
+    if (bccArray.length === 0) {
+        return Swal.fire('Format Tidak Sah', 'Pastikan emel dipisahkan dengan tanda koma (,).', 'warning');
+    }
+
+    // PEMPROSESAN KELOMPOK (BATCH CHUNKING)
+    // Had selamat Google biasanya 50-100. Kita gunakan 50 sebagai sandaran mutlak.
+    const CHUNK_SIZE = 50;
+    const chunks = [];
+    for (let i = 0; i < bccArray.length; i += CHUNK_SIZE) {
+        chunks.push(bccArray.slice(i, i + CHUNK_SIZE));
+    }
+    
+    Swal.fire({
+        title: 'Sahkan Penghantaran Pukal',
+        html: `Sistem akan menghantar emel ini kepada <b>${bccArray.length}</b> penerima dalam <b>${chunks.length}</b> fasa untuk memastikan kelancaran pelayan. Teruskan?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#16a34a',
+        confirmButtonText: 'Ya, Hantar Sekarang',
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-3xl' }
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            const btn = document.getElementById('btnSendSystemEmail');
+            if (btn) btn.disabled = true;
+
+            let successCount = 0;
+            let failCount = 0;
+
+            // Paparkan Notifikasi Loading Boleh-Kemas-Kini
+            Swal.fire({
+                title: 'Sedang Memproses...',
+                html: `Menghantar kumpulan 1 daripada ${chunks.length}...`,
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // Laksanakan Fetch API mengikut susunan (Sequential Async Loop)
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+                
+                // Kemaskini teks notifikasi UI
+                Swal.update({ 
+                    html: `Menghantar kumpulan <b>${i + 1}</b> daripada <b>${chunks.length}</b>...<br><br><small class="text-slate-500">Sila jangan tutup tetingkap pelayar ini.</small>` 
+                });
+
+                const payload = {
+                    bcc: chunk.join(','),
+                    subject: subject,
+                    htmlBody: htmlBody,
+                    name: senderName || "Admin SMPID"
+                };
+
+                try {
+                    const response = await fetch(APP_CONFIG.API.GAS_EMAIL_URL, {
+                        method: 'POST',
+                        // Gunakan text/plain untuk bypass Preflight CORS (OPTIONS)
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8',
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const resultData = await response.json();
+
+                    if (resultData.status === 'success') {
+                        successCount += chunk.length;
+                    } else {
+                        failCount += chunk.length;
+                        console.error("Batch API Error:", resultData.message);
+                    }
+                } catch (error) {
+                    failCount += chunk.length;
+                    console.error("Batch Network Error:", error);
+                }
+            }
+
+            if (btn) btn.disabled = false;
+
+            // Berikan Laporan Akhir Kepada Pentadbir
+            if (failCount === 0) {
+                Swal.fire({
+                    icon: 'success', 
+                    title: 'Penghantaran Selesai', 
+                    html: `Kesemua <b>${successCount}</b> emel telah berjaya diproses oleh pelayan Google.`,
+                    customClass: { popup: 'rounded-3xl' }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'warning', 
+                    title: 'Selesai Dengan Ralat', 
+                    html: `Berjaya: <b>${successCount}</b> emel<br>Gagal: <b>${failCount}</b> emel<br><br><span class="text-xs text-slate-500">Ralat "Limit Exceeded" atau kerosakan rangkaian mungkin berlaku pada kumpulan tertentu.</span>`,
+                    customClass: { popup: 'rounded-3xl' }
+                });
+            }
+        }
     });
 };
 
