@@ -68,6 +68,11 @@
     <!-- Decorative Circle -->
     <div class="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl pointer-events-none"></div>
     
+    <!-- Pautan Dokumentasi (Top Right) -->
+    <a href="about.html" class="absolute top-4 right-4 md:top-6 md:right-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all text-xs font-bold border border-white/20 backdrop-blur-sm z-20">
+        <i class="fas fa-info-circle"></i> Mengenai Sistem
+    </a>
+    
     <div class="relative z-10 max-w-4xl mx-auto text-center">
         <!-- Logo PPD: Memperbesarkan saiz kepada w-48 (Optimum Prominent Size V11.0) -->
         <img src="icoppdag.png" alt="Logo PPD" class="mx-auto mb-6 w-48 h-auto drop-shadow-lg transform hover:scale-105 transition duration-500">
@@ -112,9 +117,14 @@
                 Sila taip kod sekolah atau nama sekolah di ruang carian di atas untuk mengakses menu serahan data, galeri, dan log masuk.
             </p>
             
-            <a href="login.html?kod=M030" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-slate-800 text-white font-bold text-sm hover:bg-slate-900 hover:shadow-lg transition transform hover:-translate-y-1">
-                <i class="fas fa-user-shield"></i> Log Masuk PPD / Admin
-            </a>
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                <a href="login.html?kod=M030" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-slate-800 text-white font-bold text-sm hover:bg-slate-900 hover:shadow-lg transition transform hover:-translate-y-1 w-full sm:w-auto">
+                    <i class="fas fa-user-shield"></i> Log Masuk PPD / Admin
+                </a>
+                <a href="about.html" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-white border-2 border-slate-200 text-slate-600 font-bold text-sm hover:border-brand-500 hover:text-brand-600 hover:shadow-lg transition transform hover:-translate-y-1 w-full sm:w-auto">
+                    <i class="fas fa-book-open"></i> Mengenai Sistem
+                </a>
+            </div>
         </div>
 
     </div>
