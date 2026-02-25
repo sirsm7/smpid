@@ -252,71 +252,107 @@ window.loadTiketAdmin = async function() {
         wrapper.innerHTML = "";
         
         if (data.length === 0) {
-            wrapper.innerHTML = `<div class="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-400 font-medium">Tiada tiket dalam kategori ini.</div>`;
+            wrapper.innerHTML = `<div class="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-400 font-medium">Tiada tiket aduan dalam kategori ini.</div>`;
             return;
         }
 
         data.forEach(t => {
-            const dateStr = new Date(t.created_at).toLocaleString('ms-MY');
-            let actionArea = "";
+            const dateStr = new Date(t.created_at).toLocaleString('ms-MY', {
+                day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
 
+            // 1. Pengecaman Sekolah Lengkap (Tarik nama dari dashboard global jika ada)
+            let schoolName = t.kod_sekolah;
+            if (window.globalDashboardData) {
+                const schoolMatch = window.globalDashboardData.find(s => s.kod_sekolah === t.kod_sekolah);
+                if (schoolMatch) schoolName = schoolMatch.nama_sekolah;
+            }
+
+            // 2. Ikon dan Warna Peranan
+            let roleIcon = '<i class="fas fa-user"></i>';
+            let roleColor = 'bg-slate-100 text-slate-600 border-slate-200';
+            
+            if (t.peranan_pengirim === 'GPICT') {
+                roleIcon = '<i class="fas fa-laptop-code"></i>';
+                roleColor = 'bg-blue-50 text-blue-700 border-blue-200';
+            } else if (t.peranan_pengirim === 'ADMIN') {
+                roleIcon = '<i class="fas fa-user-shield"></i>';
+                roleColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            }
+
+            // 3. Menjana Ruangan Aksi/Footer
+            let actionArea = "";
             if (t.status !== 'SELESAI') {
                 actionArea = `
-                <div class="mt-4 pt-4 border-t border-red-100 bg-red-50 p-3 rounded-lg">
-                    <label class="block text-xs font-bold text-red-600 uppercase mb-2">Balasan Admin:</label>
-                    <textarea id="reply-${t.id}" class="w-full p-2 rounded border border-red-200 text-sm focus:border-red-400 outline-none mb-3" rows="2" placeholder="Tulis balasan..."></textarea>
-                    <div class="flex justify-end gap-2">
-                        <button onclick="padamTiket(${t.id})" class="px-3 py-1.5 rounded border border-red-200 text-red-500 hover:bg-white text-xs font-bold transition">Padam</button>
-                        <button onclick="submitBalasanAdmin(${t.id})" class="px-3 py-1.5 rounded bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-sm">Hantar & Tutup</button>
+                <div class="bg-slate-50 p-5 border-t border-slate-100">
+                    <label class="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-3"><i class="fas fa-reply text-indigo-400 mr-2"></i>Tindakan Maklum Balas</label>
+                    <textarea id="reply-${t.id}" class="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none mb-3 transition-shadow placeholder-slate-400" rows="2" placeholder="Taip cadangan penyelesaian kepada sekolah di sini..."></textarea>
+                    <div class="flex justify-end gap-3">
+                        <button onclick="padamTiket(${t.id})" class="px-4 py-2 rounded-xl border-2 border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200 text-xs font-bold transition flex items-center gap-2"><i class="fas fa-trash-alt"></i> Padam</button>
+                        <button onclick="submitBalasanAdmin(${t.id})" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-md shadow-indigo-500/30 flex items-center gap-2"><i class="fas fa-paper-plane"></i> Hantar & Tutup Tiket</button>
                     </div>
                 </div>`;
             } else {
                 actionArea = `
-                <div class="mt-3 text-green-700 text-sm border-t border-green-100 pt-3 bg-green-50 p-3 rounded-lg">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <i class="fas fa-check-circle mr-1"></i> <span class="font-bold">Respon:</span> ${t.balasan_admin}
-                        </div>
-                        <button onclick="padamTiket(${t.id})" class="text-red-400 hover:text-red-600 text-xs ml-2" title="Padam Tiket"><i class="fas fa-trash"></i></button>
+                <div class="bg-emerald-50/50 p-5 border-t border-emerald-100 flex flex-col sm:flex-row justify-between items-start gap-4">
+                    <div class="flex-1">
+                        <div class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fas fa-check-double text-emerald-500"></i> Respon Dihantar:</div>
+                        <p class="text-sm text-slate-700 font-medium leading-relaxed bg-white/60 p-3 rounded-lg border border-emerald-100/50">${t.balasan_admin}</p>
                     </div>
+                    <button onclick="padamTiket(${t.id})" class="shrink-0 p-2.5 rounded-xl border-2 border-transparent text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-500 transition mt-1 sm:mt-0" title="Padam Tiket"><i class="fas fa-trash-alt"></i></button>
                 </div>`;
             }
 
-            const borderClass = t.status === 'SELESAI' ? 'border-l-4 border-l-green-500 opacity-80' : 'border-l-4 border-l-red-500';
-            const statusBadge = t.status === 'SELESAI' 
-                ? `<span class="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase">SELESAI</span>`
-                : `<span class="bg-red-100 text-red-700 text-[10px] px-2 py-0.5 rounded font-bold uppercase animate-pulse">DALAM PROSES</span>`;
+            // 4. Reka Letak Utama & Status Lencana
+            const isSelesai = t.status === 'SELESAI';
+            const borderClass = isSelesai ? 'border-l-4 border-l-emerald-500' : 'border-l-4 border-l-amber-500 ring-1 ring-slate-200 hover:ring-slate-300';
+            const statusBadge = isSelesai 
+                ? `<span class="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest border border-emerald-200 shadow-sm"><i class="fas fa-check"></i> SELESAI</span>`
+                : `<span class="inline-flex items-center gap-1.5 bg-amber-100 text-amber-700 text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest border border-amber-200 shadow-sm animate-pulse"><i class="fas fa-clock"></i> DALAM PROSES</span>`;
 
             wrapper.innerHTML += `
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden ${borderClass} mb-4">
-                <div class="p-5">
-                    <div class="flex justify-between items-start mb-3">
-                        <div class="flex items-center gap-2">
-                            <span class="bg-slate-800 text-white text-[10px] px-2 py-0.5 rounded font-bold">${t.kod_sekolah}</span>
-                            <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded font-bold border border-slate-200">${t.peranan_pengirim}</span>
+            <div class="bg-white rounded-2xl shadow-sm overflow-hidden ${borderClass} mb-5 transition-all duration-300">
+                <!-- Header Segment -->
+                <div class="p-5 bg-slate-50/70 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div class="flex flex-col">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="bg-slate-800 text-white text-[10px] px-2.5 py-1 rounded-lg font-bold tracking-widest shadow-sm">${t.kod_sekolah}</span>
+                            <span class="text-sm font-bold text-slate-800 truncate max-w-[200px] sm:max-w-xs md:max-w-md" title="${schoolName}">${schoolName}</span>
                         </div>
-                        <div class="flex flex-col items-end">
-                            ${statusBadge}
-                            <span class="text-[10px] text-slate-400 font-medium mt-1">${dateStr}</span>
+                        <div class="flex items-center gap-3">
+                            <span class="${roleColor} text-[9px] px-2.5 py-1 rounded-lg font-bold uppercase tracking-widest flex items-center gap-1.5 border shadow-sm">
+                                ${roleIcon} ${t.peranan_pengirim}
+                            </span>
+                            <span class="text-[10px] text-slate-400 font-bold flex items-center gap-1.5"><i class="far fa-calendar-alt"></i> ${dateStr}</span>
                         </div>
                     </div>
-                    <h6 class="font-bold text-slate-800 text-sm mb-2">${t.tajuk}</h6>
-                    <div class="bg-slate-50 p-3 rounded border border-slate-100 text-slate-600 text-xs leading-relaxed">
-                        ${t.butiran_masalah}
+                    <div class="shrink-0 self-start md:self-auto">
+                        ${statusBadge}
                     </div>
-                    ${actionArea}
                 </div>
+                
+                <!-- Body Segment -->
+                <div class="p-6">
+                    <h4 class="font-black text-slate-800 text-base md:text-lg mb-4 leading-tight uppercase tracking-tight">${t.tajuk}</h4>
+                    <div class="bg-amber-50/40 p-4 md:p-5 rounded-2xl border border-amber-100/60 text-slate-700 text-sm leading-relaxed relative">
+                        <i class="fas fa-quote-left absolute top-4 left-4 text-amber-200/50 text-3xl"></i>
+                        <div class="relative z-10 pl-8 wrap-safe whitespace-pre-wrap">${t.butiran_masalah}</div>
+                    </div>
+                </div>
+                
+                <!-- Footer/Action Segment -->
+                ${actionArea}
             </div>`;
         });
     } catch (e) { 
         console.error(e);
-        wrapper.innerHTML = `<div class="text-center text-red-500 font-bold py-10">Ralat memuatkan tiket.</div>`; 
+        wrapper.innerHTML = `<div class="text-center text-red-500 font-bold py-10 bg-red-50 rounded-2xl border border-red-100"><i class="fas fa-exclamation-triangle mr-2"></i> Ralat memuatkan tiket aduan dari pangkalan data.</div>`; 
     }
 };
 
 window.submitBalasanAdmin = async function(id) {
-    const reply = document.getElementById(`reply-${id}`).value;
-    if(!reply) return Swal.fire('Kosong', 'Sila tulis balasan.', 'warning');
+    const reply = document.getElementById(`reply-${id}`).value.trim();
+    if(!reply) return Swal.fire('Tindakan Kosong', 'Sila tulis maklum balas atau penyelesaian sebelum menutup tiket.', 'warning');
     
     toggleLoading(true);
     try {
@@ -330,26 +366,27 @@ window.submitBalasanAdmin = async function(id) {
         Swal.fire({
             icon: 'success',
             title: 'Selesai',
-            text: 'Tiket ditutup dan notifikasi dihantar.',
-            timer: 1500,
+            text: 'Tiket ditutup dan notifikasi telegram (jika ada) telah dihantar kepada pengirim.',
+            timer: 2000,
             showConfirmButton: false,
             confirmButtonColor: '#22c55e'
         }).then(() => window.loadTiketAdmin());
     } catch (e) {
         toggleLoading(false);
-        Swal.fire('Ralat', 'Gagal mengemaskini tiket.', 'error');
+        Swal.fire('Ralat Sistem', 'Gagal mengemaskini status tiket ke pangkalan data.', 'error');
     }
 };
 
 window.padamTiket = async function(id) {
     Swal.fire({ 
-        title: 'Padam Tiket?', 
+        title: 'Padam Tiket Ini?', 
         text: "Tindakan ini tidak boleh dikembalikan.",
         icon: 'warning', 
         showCancelButton: true, 
         confirmButtonColor: '#ef4444',
         confirmButtonText: 'Ya, Padam',
-        cancelButtonText: 'Batal'
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-3xl' }
     }).then(async (r) => {
         if(r.isConfirmed) {
             toggleLoading(true);
@@ -364,7 +401,7 @@ window.padamTiket = async function(id) {
                 }).then(() => window.loadTiketAdmin());
             } catch (e) {
                 toggleLoading(false);
-                Swal.fire('Ralat', 'Gagal memadam.', 'error');
+                Swal.fire('Ralat Pangkalan Data', 'Gagal memadam tiket.', 'error');
             }
         }
     });
