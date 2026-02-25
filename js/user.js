@@ -2,7 +2,8 @@
  * SMPID USER PORTAL MODULE (FULL PRODUCTION VERSION)
  * Menguruskan profil sekolah, analisa digital, helpdesk, 
  * dan modul pencapaian kemenjadian sekolah.
- * * --- UPDATE V1.3 ---
+ * * --- UPDATE V1.4 ---
+ * Penambahan Data PGB & GPK Pentadbiran ke dalam Profil Sekolah.
  * Integration: DROPDOWN_DATA standardisation for JAWATAN, PERINGKAT, PENYEDIA.
  * Penambahan: Dropdown TAHUN (Dinamik 2020 - Semasa).
  * Migration: Migrasi dari sessionStorage ke localStorage untuk sokongan cross-tab.
@@ -133,7 +134,10 @@ async function loadProfil(kod) {
         document.getElementById('dispKodDaerah').innerText = `KOD: ${data.kod_sekolah} | DAERAH: ${data.daerah || '-'}`;
         document.getElementById('hiddenKodSekolah').value = data.kod_sekolah;
         
+        // Peta data DB ke input HTML termasuk PGB dan GPK
         const fields = {
+            'pgbNama': data.nama_pgb, 'pgbTel': data.no_telefon_pgb, 'pgbEmel': data.emel_delima_pgb,
+            'gpkNama': data.nama_gpk, 'gpkTel': data.no_telefon_gpk, 'gpkEmel': data.emel_delima_gpk,
             'gpictNama': data.nama_gpict, 'gpictTel': data.no_telefon_gpict, 'gpictEmel': data.emel_delima_gpict,
             'adminNama': data.nama_admin_delima, 'adminTel': data.no_telefon_admin_delima, 'adminEmel': data.emel_delima_admin_delima
         };
@@ -149,10 +153,30 @@ async function loadProfil(kod) {
 
 window.simpanProfil = async function() {
     const kod = document.getElementById('hiddenKodSekolah').value;
+    const emelPgb = document.getElementById('pgbEmel').value;
+    const emelGpk = document.getElementById('gpkEmel').value;
     const emelG = document.getElementById('gpictEmel').value;
     const btnSubmit = document.querySelector('#dataForm button[type="submit"]');
     
-    // Validasi domain emel
+    // Validasi domain emel hanya jika ia telah diisi
+    if (emelPgb && !checkEmailDomain(emelPgb)) {
+        return Swal.fire({
+            icon: 'warning',
+            title: 'Format Emel PGB Salah',
+            text: 'Sila gunakan emel rasmi domain @moe-dl.edu.my',
+            confirmButtonColor: '#f59e0b'
+        });
+    }
+
+    if (emelGpk && !checkEmailDomain(emelGpk)) {
+        return Swal.fire({
+            icon: 'warning',
+            title: 'Format Emel GPK Salah',
+            text: 'Sila gunakan emel rasmi domain @moe-dl.edu.my',
+            confirmButtonColor: '#f59e0b'
+        });
+    }
+
     if (!checkEmailDomain(emelG)) {
         return Swal.fire({
             icon: 'warning',
@@ -166,6 +190,12 @@ window.simpanProfil = async function() {
     toggleLoading(true);
 
     const payload = {
+        nama_pgb: document.getElementById('pgbNama').value.toUpperCase(),
+        no_telefon_pgb: document.getElementById('pgbTel').value,
+        emel_delima_pgb: emelPgb,
+        nama_gpk: document.getElementById('gpkNama').value.toUpperCase(),
+        no_telefon_gpk: document.getElementById('gpkTel').value,
+        emel_delima_gpk: emelGpk,
         nama_gpict: document.getElementById('gpictNama').value.toUpperCase(),
         no_telefon_gpict: document.getElementById('gpictTel').value,
         emel_delima_gpict: emelG,
@@ -763,7 +793,7 @@ window.resetDataSekolah = async function() {
     if (password === 'pkgag') { 
          Swal.fire({
             title: 'Sahkan Padam Semua Data?',
-            text: "Data profil GPICT dan Admin DELIMa akan dipadamkan (NULL). Kod sekolah akan kekal wujud.",
+            text: "Data profil PGB, GPK, GPICT dan Admin DELIMa akan dipadamkan (NULL). Kod sekolah akan kekal wujud.",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',

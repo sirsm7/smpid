@@ -1,9 +1,10 @@
 /**
- * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - BUG FIX V2.2)
+ * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPREHENSIVE V3.0)
  * Menguruskan senarai sekolah, filter berwarna, dan status data.
- * --- UPDATE V2.2 ---
- * Fix Critical: Menukarkan sessionStorage kepada localStorage pada fungsi viewSchoolProfile.
- * Ini memastikan modul 'User View' mengambil kod sekolah yang betul mengikut standard v1.3.
+ * --- UPDATE V3.0 ---
+ * 1. UI: Kad profil dinaik taraf kepada grid 4 lajur (PGB | GPK | ICT | ADM) beserta pautan WhatsApp.
+ * 2. Carian: Menyokong carian terus menggunakan nama PGB dan GPK.
+ * 3. Eksport: Format CSV diperluas untuk memasukkan profil pengurusan tertinggi sekolah.
  */
 
 import { SchoolService } from '../services/school.service.js';
@@ -96,7 +97,14 @@ window.runFilter = function() {
                           (activeStatus === 'SAMA' && i.is_sama) ||
                           (activeStatus === 'BERBEZA' && i.is_berbeza); 
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
-        const searchMatch = !searchTerm || i.kod_sekolah.includes(searchTerm) || i.nama_sekolah.includes(searchTerm);
+        
+        // Carian Super: Merangkumi Nama Sekolah, Kod, PGB dan GPK
+        const searchMatch = !searchTerm || 
+                            i.kod_sekolah.includes(searchTerm) || 
+                            i.nama_sekolah.includes(searchTerm) ||
+                            (i.nama_pgb && i.nama_pgb.includes(searchTerm)) ||
+                            (i.nama_gpk && i.nama_gpk.includes(searchTerm));
+                            
         return statMatch && typeMatch && searchMatch;
     });
 
@@ -133,7 +141,11 @@ function updateBadgeCounts() {
     
     const context = dashboardData.filter(i => {
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
-        const searchMatch = !searchTerm || i.kod_sekolah.includes(searchTerm) || i.nama_sekolah.includes(searchTerm);
+        const searchMatch = !searchTerm || 
+                            i.kod_sekolah.includes(searchTerm) || 
+                            i.nama_sekolah.includes(searchTerm) ||
+                            (i.nama_pgb && i.nama_pgb.includes(searchTerm)) ||
+                            (i.nama_gpk && i.nama_gpk.includes(searchTerm));
         return typeMatch && searchMatch;
     });
     
@@ -167,15 +179,23 @@ function renderGrid(data) {
                 ? `<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-full border border-emerald-200"><i class="fas fa-check"></i> LENGKAP</span>` 
                 : `<span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-1 rounded-full border border-red-200"><i class="fas fa-times"></i> BELUM</span>`;
             
+            // Jana Pautan WhatsApp untuk ke-4 profil (Suntikan Parameter)
+            const linkPGB = generateWhatsAppLink(s.nama_pgb, s.no_telefon_pgb, true);
+            const linkGPK = generateWhatsAppLink(s.nama_gpk, s.no_telefon_gpk, true);
             const linkG = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, true);
             const linkA = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, true);
 
+            // Logik Komponen Butang WhatsApp Padat
             const renderActions = (linkRaw, hasTele) => {
-                let btns = '<div class="flex items-center gap-2 justify-end">';
-                if(hasTele) btns += `<span class="text-blue-500 text-xs" title="Berdaftar"><i class="fas fa-check-circle"></i></span>`;
-                else btns += `<span class="text-slate-300 text-xs" title="Belum"><i class="fas fa-circle"></i></span>`;
+                let btns = '<div class="flex items-center gap-1.5 justify-center">';
+                if(hasTele) btns += `<span class="text-blue-500 text-[10px]" title="Bot: Berdaftar"><i class="fas fa-check-circle"></i></span>`;
+                else btns += `<span class="text-slate-300 text-[10px]" title="Bot: Belum"><i class="fas fa-circle"></i></span>`;
                 
-                if(linkRaw) btns += `<a href="${linkRaw}" target="_blank" onclick="event.stopPropagation()" class="w-6 h-6 rounded bg-slate-100 hover:bg-green-100 hover:text-green-600 text-slate-400 flex items-center justify-center transition"><i class="fab fa-whatsapp text-xs"></i></a>`;
+                if(linkRaw) {
+                    btns += `<a href="${linkRaw}" target="_blank" onclick="event.stopPropagation()" class="w-5 h-5 rounded bg-slate-200 hover:bg-green-100 hover:text-green-600 text-slate-500 flex items-center justify-center transition" title="WhatsApp Terus"><i class="fab fa-whatsapp text-[10px]"></i></a>`;
+                } else {
+                    btns += `<span class="w-5 h-5 rounded bg-slate-100 text-slate-300 flex items-center justify-center cursor-not-allowed" title="Tiada Nombor"><i class="fab fa-whatsapp text-[10px]"></i></span>`;
+                }
                 btns += '</div>';
                 return btns;
             };
@@ -196,13 +216,22 @@ function renderGrid(data) {
                     </button>
                 </div>
                 
-                <div class="bg-slate-50 border-t border-slate-100 p-3 grid grid-cols-2 divide-x divide-slate-200 mt-auto">
-                    <div class="px-2 flex justify-between items-center">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase">GPICT</span>
+                <!-- Grid Bawah (Footer) - Naik Taraf 4 Lajur -->
+                <div class="bg-slate-50 border-t border-slate-100 p-2 grid grid-cols-4 divide-x divide-slate-200 mt-auto">
+                    <div class="px-1 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition rounded">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter" title="${s.nama_pgb || 'PGB'}">PGB</span>
+                        ${renderActions(linkPGB, s.telegram_id_pgb)}
+                    </div>
+                    <div class="px-1 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition rounded">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter" title="${s.nama_gpk || 'GPK'}">GPK</span>
+                        ${renderActions(linkGPK, s.telegram_id_gpk)}
+                    </div>
+                    <div class="px-1 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition rounded">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter" title="${s.nama_gpict || 'GPICT'}">ICT</span>
                         ${renderActions(linkG, s.telegram_id_gpict)}
                     </div>
-                    <div class="px-2 flex justify-between items-center">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase">Admin</span>
+                    <div class="px-1 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition rounded">
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter" title="${s.nama_admin_delima || 'ADMIN'}">ADM</span>
                         ${renderActions(linkA, s.telegram_id_admin)}
                     </div>
                 </div>
@@ -226,19 +255,25 @@ window.viewSchoolProfile = function(kod) {
 
 window.eksportDataTapis = function() {
     if (!currentFilteredList || currentFilteredList.length === 0) return Swal.fire('Tiada Data', '', 'info'); 
-    let csvContent = "BIL,KOD,NAMA,JENIS,GPICT,TEL GPICT,ADMIN,TEL ADMIN,STATUS\n";
+    
+    // Kemas kini tajuk CSV untuk merangkumi profil PGB dan GPK
+    let csvContent = "BIL,KOD,NAMA,JENIS,NAMA PGB,TEL PGB,NAMA GPK,TEL GPK,NAMA GPICT,TEL GPICT,NAMA ADMIN,TEL ADMIN,STATUS PENGISIAN\n";
+    
     currentFilteredList.forEach((s, index) => {
         const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
         let row = [
             index + 1, clean(s.kod_sekolah), clean(s.nama_sekolah), clean(s.jenis),
-            clean(s.nama_gpict), clean(s.no_telefon_gpict), clean(s.nama_admin_delima), clean(s.no_telefon_admin_delima),
+            clean(s.nama_pgb), clean(s.no_telefon_pgb),
+            clean(s.nama_gpk), clean(s.no_telefon_gpk),
+            clean(s.nama_gpict), clean(s.no_telefon_gpict), 
+            clean(s.nama_admin_delima), clean(s.no_telefon_admin_delima),
             s.is_lengkap ? 'LENGKAP' : 'BELUM'
         ];
         csvContent += row.join(",") + "\n";
     });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }));
-    link.download = `SMPID_Eksport_${activeStatus}.csv`;
+    link.download = `Profil_Penuh_Sekolah_${activeStatus}_${new Date().toISOString().slice(0,10)}.csv`;
     link.click();
 };
 
