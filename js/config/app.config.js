@@ -17,7 +17,7 @@ export const APP_CONFIG = {
         // CHANGED: smpid-40.ppdag.deno.net -> smpid.ppdag.deno.net
         DENO_URL: 'https://smpid.ppdag.deno.net',
         // BARU: Integrasi Google Apps Script untuk Email Blaster
-        GAS_EMAIL_URL: 'https://script.google.com/macros/s/AKfycbxGWS7aa1pH8A_8KZjhqz9wCv8xcOsTQekc_H3zriwNWYl4P1N-BlWlPQagPYEwS4HX/exec'
+        GAS_EMAIL_URL: 'https://script.google.com/macros/s/AKfycbwdL1zE_vJmMiA8XRDj1BaC4dIaesxpEXJbp9qW47PO3N-umSDek9SAcxhCv4-Jde2i/exec'
     },
 
     // Session Keys (Kekunci storan lokal untuk konsistensi data)
