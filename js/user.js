@@ -2,6 +2,8 @@
  * SMPID USER PORTAL MODULE (FULL PRODUCTION VERSION)
  * Menguruskan profil sekolah, analisa digital, helpdesk, 
  * dan modul pencapaian kemenjadian sekolah.
+ * * --- UPDATE V1.4.1 (SURGICAL FIX) ---
+ * Memperbaiki parameter payload auto-sync jawatan guru semasa kemaskini.
  * * --- UPDATE V1.4 ---
  * Penambahan Data PGB & GPK Pentadbiran ke dalam Profil Sekolah.
  * Integration: DROPDOWN_DATA standardisation for JAWATAN, PERINGKAT, PENYEDIA.
@@ -600,8 +602,10 @@ window.updatePencapaianUser = async function() {
             jenis_rekod: jenis
         };
 
+        // FIX PENTING: Suntik 'kategori' supaya sistem Backend dapat detect dan jalankan syncTeacherPosition()
         if (!document.getElementById('editUserDivJawatan').classList.contains('hidden')) {
             payload.jawatan = document.getElementById('editUserJawatan').value;
+            payload.kategori = 'GURU';
         }
 
         if (jenis === 'PENSIJILAN') {

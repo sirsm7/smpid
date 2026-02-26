@@ -1,6 +1,9 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V1.9)
+ * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V1.9.1 FIX)
  * Menguruskan rekod pencapaian dengan kawalan integriti data penuh.
+ * --- UPDATE V1.9.1 (SURGICAL FIX) ---
+ * 1. Bug Fix: Memperbaiki isu Auto-Sync jawatan Guru yang tidak berfungsi 
+ * disebabkan keciciran parameter payload.kategori semasa kemaskini.
  * --- UPDATE V1.9 ---
  * 1. Bug Fix: Memperbaiki isu Dropdown Tahun tidak di-reset apabila butang RESET ditekan.
  * 2. Sync Fix: Menyelaraskan kad statistik (Kategori) dengan dropdown secara dua hala.
@@ -545,8 +548,10 @@ window.simpanEditPencapaian = async function() {
         jenis_rekod: jenis
     };
     
+    // FIX PENTING: Suntik 'kategori' supaya sistem Backend dapat detect dan jalankan syncTeacherPosition()
     if(!document.getElementById('divEditJawatan').classList.contains('hidden')) {
         payload.jawatan = document.getElementById('editInputJawatan').value;
+        payload.kategori = 'GURU'; 
     }
 
     if (jenis === 'PENSIJILAN') {
