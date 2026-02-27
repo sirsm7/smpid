@@ -1,15 +1,17 @@
 /**
- * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPREHENSIVE V3.0)
+ * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPACT TABLE VIEW V3.2)
  * Menguruskan senarai sekolah, filter berwarna, dan status data.
- * --- UPDATE V3.0 ---
- * 1. UI: Kad profil dinaik taraf kepada grid 4 lajur (PGB | GPK | ICT | ADM) beserta pautan WhatsApp.
- * 2. Carian: Menyokong carian terus menggunakan nama PGB dan GPK.
- * 3. Eksport: Format CSV diperluas untuk memasukkan profil pengurusan tertinggi sekolah.
+ * --- UPDATE V3.2 (COMPACT TABLE REWRITE) ---
+ * 1. UI: Jadual dipadatkan secara ekstrem (Compact Mode) untuk muat tanpa scroll mendatar.
+ * 2. Teks: Menggunakan whitespace-normal, leading-tight, dan text-[10px].
+ * 3. Logik: 4 butang reset dihapuskan, digantikan dengan 1 butang RESET KOD per baris.
+ * 4. Tambahan (Baru): Butang Reset Filter untuk mengembalikan carian dan saringan ke keadaan asal.
  */
 
 import { SchoolService } from '../services/school.service.js';
 import { toggleLoading, generateWhatsAppLink } from '../core/helpers.js';
 import { APP_CONFIG } from '../config/app.config.js';
+import { getDatabaseClient } from '../core/db.js'; // Disuntik untuk direct DB query
 
 let dashboardData = [];
 let currentFilteredList = [];
@@ -78,8 +80,11 @@ function renderFilters() {
             </button>
 
           </div>
-          <div class="w-full md:w-auto">
-            <select class="w-full md:w-48 px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold outline-none focus:border-brand-500 bg-slate-50" onchange="setType(this.value)">${opts}</select>
+          <div class="flex gap-2 w-full md:w-auto">
+            <select id="filterTypeSelect" class="w-full md:w-48 px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold outline-none focus:border-brand-500 bg-slate-50" onchange="setType(this.value)">${opts}</select>
+            <button onclick="resetDashboardFilters()" class="bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 px-3 py-2 rounded-lg border border-slate-200 hover:border-red-200 transition-colors shadow-sm" title="Reset Semua Filter">
+                <i class="fas fa-sync-alt"></i>
+            </button>
           </div>
         </div>`;
     }
@@ -88,6 +93,33 @@ function renderFilters() {
 window.setFilter = function(s) { activeStatus = s; window.runFilter(); }
 window.setType = function(t) { activeType = t; window.runFilter(); }
 window.handleSearch = function(val) { searchTerm = val.toUpperCase().trim(); window.runFilter(); }
+
+// --- FUNGSI RESET FILTER ---
+window.resetDashboardFilters = function() {
+    activeStatus = 'ALL';
+    activeType = 'ALL';
+    searchTerm = '';
+    
+    // Kosongkan kotak carian jika wujud
+    const searchInput = document.getElementById('adminSearchInput');
+    if (searchInput) searchInput.value = '';
+    
+    // Kembalikan pilihan dropdown ke 'ALL'
+    const typeSelect = document.getElementById('filterTypeSelect');
+    if (typeSelect) typeSelect.value = 'ALL';
+    
+    window.runFilter();
+    
+    // Notifikasi senyap kecil
+    Swal.fire({
+        icon: 'success',
+        title: 'Filter Direset',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 1000
+    });
+};
 
 window.runFilter = function() {
     const filtered = dashboardData.filter(i => {
@@ -157,6 +189,16 @@ function updateBadgeCounts() {
     setTxt('cntBerbeza', context.filter(i => i.is_berbeza).length);
 }
 
+// --- RENDERING TABLE (ULTRA COMPACT VIEW INJECTION) ---
+function renderWaBtn(nama, tel, label) {
+    const link = generateWhatsAppLink(nama, tel, true);
+    if (link) {
+        return `<a href="${link}" target="_blank" onclick="event.stopPropagation()" class="px-1 py-1 bg-green-50 text-green-700 hover:bg-green-500 hover:text-white rounded text-[8px] font-black border border-green-200 transition-colors flex items-center justify-center gap-1 shadow-sm w-full uppercase"><i class="fab fa-whatsapp"></i> ${label}</a>`;
+    } else {
+        return `<span class="px-1 py-1 bg-slate-50 text-slate-400 rounded text-[8px] font-bold border border-slate-200 cursor-not-allowed flex items-center justify-center gap-1 w-full uppercase"><i class="fab fa-whatsapp"></i> ${label} (X)</span>`;
+    }
+}
+
 function renderGrid(data) {
     const wrapper = document.getElementById('schoolGridWrapper');
     if (!wrapper) return;
@@ -167,78 +209,96 @@ function renderGrid(data) {
         return; 
     }
 
-    const groups = data.reduce((acc, i) => { (acc[i.jenis] = acc[i.jenis] || []).push(i); return acc; }, {});
+    // Pembungkus dengan overflow fallback, whitespace-normal untuk paksa muat
+    let tableHTML = `
+    <div class="col-span-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-x-auto relative">
+        <table class="w-full text-[10px] text-left whitespace-normal break-words table-fixed min-w-[1000px]">
+            <thead class="text-[9px] text-slate-500 uppercase bg-slate-100 border-b-2 border-slate-200 sticky top-0 z-10 font-black tracking-widest">
+                <tr>
+                    <th class="px-2 py-3 text-center border-r border-slate-200 w-[3%]">BIL</th>
+                    <th class="px-2 py-3 border-r border-slate-200 w-[5%]">JENIS</th>
+                    <th class="px-2 py-3 border-r border-slate-200 text-brand-600 w-[6%]">KOD</th>
+                    <th class="px-2 py-3 border-r border-slate-200 w-[15%]">NAMA SEKOLAH</th>
+                    <th class="px-2 py-3 border-r border-slate-200 text-center w-[5%]">DAERAH</th>
+                    <th class="px-2 py-3 border-r border-slate-200 w-[12%]">NAMA PGB</th>
+                    <th class="px-2 py-3 border-r border-slate-200 w-[12%]">NAMA GPK</th>
+                    <th class="px-2 py-3 border-r border-slate-200 w-[11%]">NAMA GPICT</th>
+                    <th class="px-2 py-3 border-r border-slate-200 w-[11%]">NAMA ADMIN</th>
+                    <th class="px-2 py-3 text-center border-r border-slate-200 w-[7%]">RESET</th>
+                    <th class="px-2 py-3 text-center border-r border-slate-200 w-[7%]">WHATSAPP</th>
+                    <th class="px-2 py-3 text-center w-[6%]">EDIT</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+    `;
 
-    Object.keys(groups).sort().forEach(jenis => {
-        const items = groups[jenis];
-        
-        let html = `<div class="col-span-full mt-6 mb-2 border-b border-slate-200 pb-2"><h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-brand-500"></div> ${jenis} (${items.length})</h3></div>`;
-        
-        items.forEach(s => {
-            const statusBadge = s.is_lengkap 
-                ? `<span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded-full border border-emerald-200"><i class="fas fa-check"></i> LENGKAP</span>` 
-                : `<span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-1 rounded-full border border-red-200"><i class="fas fa-times"></i> BELUM</span>`;
+    data.forEach((s, index) => {
+        // Jana butang WhatsApp mikro
+        const btnWaPGB = renderWaBtn(s.nama_pgb, s.no_telefon_pgb, 'PGB');
+        const btnWaGPK = renderWaBtn(s.nama_gpk, s.no_telefon_gpk, 'GPK');
+        const btnWaICT = renderWaBtn(s.nama_gpict, s.no_telefon_gpict, 'ICT');
+        const btnWaADM = renderWaBtn(s.nama_admin_delima, s.no_telefon_admin_delima, 'ADM');
+
+        const rowClass = s.is_lengkap ? "bg-white hover:bg-emerald-50/30" : "bg-red-50/10 hover:bg-red-50/50";
+
+        tableHTML += `
+        <tr class="${rowClass} transition-colors group">
+            <td class="px-2 py-3 text-center font-mono font-bold text-slate-400 border-r border-slate-100 align-top">${index + 1}</td>
             
-            // Jana Pautan WhatsApp untuk ke-4 profil (Suntikan Parameter)
-            const linkPGB = generateWhatsAppLink(s.nama_pgb, s.no_telefon_pgb, true);
-            const linkGPK = generateWhatsAppLink(s.nama_gpk, s.no_telefon_gpk, true);
-            const linkG = generateWhatsAppLink(s.nama_gpict, s.no_telefon_gpict, true);
-            const linkA = generateWhatsAppLink(s.nama_admin_delima, s.no_telefon_admin_delima, true);
+            <td class="px-2 py-3 font-black text-slate-600 border-r border-slate-100 align-top leading-tight">${s.jenis || '-'}</td>
+            
+            <td class="px-2 py-3 border-r border-slate-100 align-top">
+                <span class="inline-block bg-brand-50 text-brand-700 font-mono font-black px-1.5 py-0.5 rounded border border-brand-200 shadow-sm">${s.kod_sekolah}</span>
+            </td>
+            
+            <td class="px-2 py-3 font-bold text-slate-800 leading-tight border-r border-slate-100 align-top">${s.nama_sekolah}</td>
+            
+            <td class="px-2 py-3 font-bold text-slate-500 border-r border-slate-100 align-top text-center uppercase tracking-wider">${s.daerah || 'AG'}</td>
+            
+            <td class="px-2 py-3 border-r border-slate-100 align-top">
+                <div class="font-bold text-slate-700 leading-tight">${s.nama_pgb || '<span class="text-slate-300 italic">Tiada Rekod</span>'}</div>
+            </td>
+            <td class="px-2 py-3 border-r border-slate-100 align-top">
+                <div class="font-bold text-slate-700 leading-tight">${s.nama_gpk || '<span class="text-slate-300 italic">Tiada Rekod</span>'}</div>
+            </td>
+            <td class="px-2 py-3 border-r border-slate-100 align-top">
+                <div class="font-bold text-slate-700 leading-tight">${s.nama_gpict || '<span class="text-slate-300 italic">Tiada Rekod</span>'}</div>
+            </td>
+            <td class="px-2 py-3 border-r border-slate-100 align-top">
+                <div class="font-bold text-slate-700 leading-tight">${s.nama_admin_delima || '<span class="text-slate-300 italic">Tiada Rekod</span>'}</div>
+            </td>
 
-            // Logik Komponen Butang WhatsApp Padat
-            const renderActions = (linkRaw, hasTele) => {
-                let btns = '<div class="flex items-center gap-1.5 justify-center">';
-                if(hasTele) btns += `<span class="text-blue-500 text-[10px]" title="Bot: Berdaftar"><i class="fas fa-check-circle"></i></span>`;
-                else btns += `<span class="text-slate-300 text-[10px]" title="Bot: Belum"><i class="fas fa-circle"></i></span>`;
-                
-                if(linkRaw) {
-                    btns += `<a href="${linkRaw}" target="_blank" onclick="event.stopPropagation()" class="w-5 h-5 rounded bg-slate-200 hover:bg-green-100 hover:text-green-600 text-slate-500 flex items-center justify-center transition" title="WhatsApp Terus"><i class="fab fa-whatsapp text-[10px]"></i></a>`;
-                } else {
-                    btns += `<span class="w-5 h-5 rounded bg-slate-100 text-slate-300 flex items-center justify-center cursor-not-allowed" title="Tiada Nombor"><i class="fab fa-whatsapp text-[10px]"></i></span>`;
-                }
-                btns += '</div>';
-                return btns;
-            };
+            <td class="px-2 py-3 border-r border-slate-100 align-top bg-slate-50/50 text-center">
+                <button onclick="event.stopPropagation(); window.resetPasswordSekolah('${s.kod_sekolah}')" class="px-2 py-2 bg-amber-50 text-amber-700 hover:bg-amber-500 hover:text-white rounded text-[8px] font-black border border-amber-200 transition-colors shadow-sm w-full uppercase tracking-wider flex flex-col items-center justify-center">
+                    <i class="fas fa-key mb-1 text-xs"></i> RESET
+                </button>
+            </td>
 
-            html += `
-            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col h-full" onclick="viewSchoolProfile('${s.kod_sekolah}')">
-                <div class="p-5 flex-grow">
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
-                            <span class="text-xs font-black text-brand-600 bg-brand-50 px-2 py-0.5 rounded border border-brand-100">${s.kod_sekolah}</span>
-                        </div>
-                        ${statusBadge}
-                    </div>
-                    <h4 class="font-bold text-slate-800 text-sm leading-snug group-hover:text-brand-600 transition mb-1 whitespace-normal">${s.nama_sekolah}</h4>
-                    
-                    <button onclick="event.stopPropagation(); window.resetPasswordSekolah('${s.kod_sekolah}')" class="text-[10px] font-bold text-amber-500 hover:text-amber-600 flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition">
-                        <i class="fas fa-key"></i> Reset Password
-                    </button>
+            <td class="px-1.5 py-1.5 border-r border-slate-100 align-top bg-slate-50/50">
+                <div class="flex flex-col gap-1 w-full">
+                    ${btnWaPGB}
+                    ${btnWaGPK}
+                    ${btnWaICT}
+                    ${btnWaADM}
                 </div>
-                
-                <!-- Grid Bawah (Footer) - Naik Taraf 4 Lajur -->
-                <div class="bg-slate-50 border-t border-slate-100 p-2 grid grid-cols-4 divide-x divide-slate-200 mt-auto">
-                    <div class="px-1 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition rounded">
-                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter" title="${s.nama_pgb || 'PGB'}">PGB</span>
-                        ${renderActions(linkPGB, s.telegram_id_pgb)}
-                    </div>
-                    <div class="px-1 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition rounded">
-                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter" title="${s.nama_gpk || 'GPK'}">GPK</span>
-                        ${renderActions(linkGPK, s.telegram_id_gpk)}
-                    </div>
-                    <div class="px-1 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition rounded">
-                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter" title="${s.nama_gpict || 'GPICT'}">ICT</span>
-                        ${renderActions(linkG, s.telegram_id_gpict)}
-                    </div>
-                    <div class="px-1 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition rounded">
-                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter" title="${s.nama_admin_delima || 'ADMIN'}">ADM</span>
-                        ${renderActions(linkA, s.telegram_id_admin)}
-                    </div>
-                </div>
-            </div>`;
-        });
-        wrapper.innerHTML += html;
+            </td>
+
+            <td class="px-2 py-3 text-center align-top">
+                <button onclick="viewSchoolProfile('${s.kod_sekolah}')" class="px-2 py-2 bg-slate-800 hover:bg-brand-600 text-white rounded text-[8px] font-black uppercase tracking-widest transition-all shadow-lg flex flex-col items-center justify-center w-full transform active:scale-95">
+                    <i class="fas fa-edit mb-1 text-xs"></i> EDIT
+                </button>
+            </td>
+        </tr>
+        `;
     });
+
+    tableHTML += `
+            </tbody>
+        </table>
+    </div>
+    `;
+
+    wrapper.innerHTML = tableHTML;
 }
 
 // --- UTILS & EXPORTS ---
@@ -248,7 +308,6 @@ function renderGrid(data) {
  * Menggunakan localStorage untuk integriti data silang modul.
  */
 window.viewSchoolProfile = function(kod) {
-    // SULAM (Surgical Injection): Tukar sessionStorage -> localStorage
     localStorage.setItem(APP_CONFIG.SESSION.USER_KOD, kod);
     window.location.href = 'user.html'; 
 };
