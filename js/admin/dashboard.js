@@ -1,11 +1,10 @@
 /**
- * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPACT TABLE VIEW V3.2)
+ * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPACT TABLE VIEW V3.3)
  * Menguruskan senarai sekolah, filter berwarna, dan status data.
- * --- UPDATE V3.2 (COMPACT TABLE REWRITE) ---
- * 1. UI: Jadual dipadatkan secara ekstrem (Compact Mode) untuk muat tanpa scroll mendatar.
- * 2. Teks: Menggunakan whitespace-normal, leading-tight, dan text-[10px].
- * 3. Logik: 4 butang reset dihapuskan, digantikan dengan 1 butang RESET KOD per baris.
- * 4. Tambahan (Baru): Butang Reset Filter untuk mengembalikan carian dan saringan ke keadaan asal.
+ * --- UPDATE V3.3 (PGB & GPK EXTRACTION FEATURE) ---
+ * 1. Filter Baharu: Menambah lencana saringan 'Tiada PGB/GPK' (Rose/Pink)
+ * 2. Logik Salinan: Memperbaiki butang 'Copy List' untuk menyokong saringan baharu
+ * tanpa merosakkan logik 'Lengkap/Belum Lengkap' asal.
  */
 
 import { SchoolService } from '../services/school.service.js';
@@ -79,6 +78,11 @@ function renderFilters() {
                 Berbeza <span id="cntBerbeza" class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px]">0</span>
             </button>
 
+            <!-- Butang TIADA PGB/GPK (Rose/Pink) - Ciri Tambahan V3.3 -->
+            <button onclick="setFilter('TIADA_PENGURUSAN')" id="badgeTiadaPengurusan" class="filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-rose-200 text-rose-600 hover:bg-rose-50">
+                Tiada PGB/GPK <span id="cntTiadaPengurusan" class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full text-[10px]">0</span>
+            </button>
+
           </div>
           <div class="flex gap-2 w-full md:w-auto">
             <select id="filterTypeSelect" class="w-full md:w-48 px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold outline-none focus:border-brand-500 bg-slate-50" onchange="setType(this.value)">${opts}</select>
@@ -127,7 +131,9 @@ window.runFilter = function() {
                           (activeStatus === 'LENGKAP' && i.is_lengkap) || 
                           (activeStatus === 'BELUM' && !i.is_lengkap) ||
                           (activeStatus === 'SAMA' && i.is_sama) ||
-                          (activeStatus === 'BERBEZA' && i.is_berbeza); 
+                          (activeStatus === 'BERBEZA' && i.is_berbeza) ||
+                          (activeStatus === 'TIADA_PENGURUSAN' && (!i.nama_pgb || !i.nama_gpk)); 
+                          
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
         
         // Carian Super: Merangkumi Nama Sekolah, Kod, PGB dan GPK
@@ -153,9 +159,17 @@ function updateBadgeCounts() {
         if(btn.id === 'badgeBelum') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-red-200 text-red-600 hover:bg-red-50";
         if(btn.id === 'badgeSama') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-purple-200 text-purple-600 hover:bg-purple-50";
         if(btn.id === 'badgeBerbeza') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-amber-200 text-amber-600 hover:bg-amber-50";
+        if(btn.id === 'badgeTiadaPengurusan') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-rose-200 text-rose-600 hover:bg-rose-50";
     });
 
-    const map = { 'ALL': 'badgeAll', 'LENGKAP': 'badgeLengkap', 'BELUM': 'badgeBelum', 'SAMA': 'badgeSama', 'BERBEZA': 'badgeBerbeza' };
+    const map = { 
+        'ALL': 'badgeAll', 
+        'LENGKAP': 'badgeLengkap', 
+        'BELUM': 'badgeBelum', 
+        'SAMA': 'badgeSama', 
+        'BERBEZA': 'badgeBerbeza',
+        'TIADA_PENGURUSAN': 'badgeTiadaPengurusan'
+    };
     const activeId = map[activeStatus];
     if (activeId) {
         const btn = document.getElementById(activeId);
@@ -165,6 +179,7 @@ function updateBadgeCounts() {
             if(activeStatus === 'BELUM') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-red-500 text-white border-red-500 shadow-md scale-105";
             if(activeStatus === 'SAMA') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-purple-500 text-white border-purple-500 shadow-md scale-105";
             if(activeStatus === 'BERBEZA') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-amber-500 text-white border-amber-500 shadow-md scale-105";
+            if(activeStatus === 'TIADA_PENGURUSAN') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-rose-500 text-white border-rose-500 shadow-md scale-105";
             
             const span = btn.querySelector('span');
             if(span) span.className = "bg-white/20 text-white px-2 py-0.5 rounded-full text-[10px]";
@@ -187,6 +202,7 @@ function updateBadgeCounts() {
     setTxt('cntBelum', context.filter(i => !i.is_lengkap).length);
     setTxt('cntSama', context.filter(i => i.is_sama).length);
     setTxt('cntBerbeza', context.filter(i => i.is_berbeza).length);
+    setTxt('cntTiadaPengurusan', context.filter(i => !i.nama_pgb || !i.nama_gpk).length);
 }
 
 // --- RENDERING TABLE (ULTRA COMPACT VIEW INJECTION) ---
@@ -338,8 +354,17 @@ window.eksportDataTapis = function() {
 
 window.janaSenaraiTelegram = function() {
     let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
-    let txt = `**STATUS PENGISIAN SMPID (${activeType})**\n\n`;
-    const pending = list.filter(i => !i.is_lengkap);
+    let txt = '';
+    let pending = [];
+
+    // Sokongan dinamik untuk menjana senarai berbeza mengikut butang penapis yang ditekan
+    if (activeStatus === 'TIADA_PENGURUSAN') {
+        txt = `**SENARAI TIADA PGB/GPK (${activeType})**\n\n`;
+        pending = list.filter(i => !i.nama_pgb || !i.nama_gpk);
+    } else {
+        txt = `**STATUS PENGISIAN SMPID (${activeType})**\n\n`;
+        pending = list.filter(i => !i.is_lengkap);
+    }
     
     if(pending.length === 0) return Swal.fire('Hebat', 'Semua lengkap!', 'success'); 
     
