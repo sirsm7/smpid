@@ -1,8 +1,10 @@
 /**
  * SMPID HELPER UTILITIES
  * Fungsi bantuan umum untuk manipulasi data dan UI.
- * * UPDATE V1.1: Migrasi log keluar ke localStorage.
+ * * UPDATE V1.2: Menambah sokongan fungsi muat naik fail ke Google Drive (Base64).
  */
+
+import { APP_CONFIG } from '../config/app.config.js';
 
 /**
  * Papar atau Sembunyi Overlay Loading
@@ -103,6 +105,57 @@ export function keluarSistem() {
     });
 }
 
+/**
+ * BARU: Enjin Muat Naik Fail ke Google Drive melalui GAS
+ * @param {File} file - Objek fail yang dipilih oleh pengguna
+ * @returns {Promise<string>} - Mengembalikan URL Google Drive fail tersebut
+ */
+export async function uploadFileToDrive(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = async () => {
+            // Memisahkan metadata 'data:image/jpeg;base64,' untuk mendapatkan rentetan Base64 sahaja
+            const base64Data = reader.result.split(',')[1];
+            
+            const payload = {
+                fileName: file.name,
+                mimeType: file.type,
+                base64Data: base64Data
+            };
+
+            try {
+                // Menghantar ke Google Apps Script
+                const response = await fetch(APP_CONFIG.API.GAS_UPLOAD_URL, {
+                    method: 'POST',
+                    // Menggunakan text/plain untuk memintas halangan CORS (Preflight OPTIONS)
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    resolve(result.url);
+                } else {
+                    reject(new Error(result.message || "Ralat semasa proses muat naik."));
+                }
+            } catch (error) {
+                reject(new Error("Gagal menyambung ke pelayan muat naik. Sila semak capaian internet anda."));
+            }
+        };
+
+        reader.onerror = () => {
+            reject(new Error("Gagal membaca fail yang dimuat naik."));
+        };
+
+        // Mulakan proses bacaan fail kepada format Base64
+        reader.readAsDataURL(file);
+    });
+}
+
 // Expose ke global window untuk keserasian HTML `onclick="..."` legacy
 window.toggleLoading = toggleLoading;
 window.autoFormatPhone = autoFormatPhone;
@@ -110,3 +163,4 @@ window.cleanPhone = cleanPhone;
 window.generateWhatsAppLink = generateWhatsAppLink;
 window.formatSentenceCase = formatSentenceCase;
 window.keluarSistem = keluarSistem;
+window.uploadFileToDrive = uploadFileToDrive;

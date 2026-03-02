@@ -413,9 +413,14 @@
                     <input type="text" id="pInputPencapaian" class="w-full p-3 rounded-xl border border-slate-300 focus:border-teal-500 outline-none uppercase-input" required oninput="this.value = this.value.toUpperCase()">
                 </div>
 
+                <!-- MUAT NAIK FAIL BAHARU -->
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PAUTAN BUKTI (GOOGLE DRIVE)</label>
-                    <input type="url" id="pInputLink" class="w-full p-3 rounded-xl border border-slate-300 focus:border-teal-500 outline-none text-blue-600" required placeholder="https://drive.google.com/...">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">MUAT NAIK BUKTI (PDF/GAMBAR)</label>
+                    <div class="relative">
+                        <i class="fas fa-upload absolute left-4 top-1/2 -translate-y-1/2 text-teal-400 z-10 pointer-events-none"></i>
+                        <input type="file" id="pInputFile" accept=".pdf, image/jpeg, image/png" class="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-300 focus:border-teal-500 outline-none text-teal-700 font-medium bg-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 transition-all cursor-pointer shadow-sm" required>
+                    </div>
+                    <p class="text-[9px] text-teal-600 mt-2 font-bold uppercase tracking-wider ml-1">Maksimum saiz fail: 5MB</p>
                 </div>
 
                 <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
@@ -560,10 +565,17 @@
                       <input type="text" id="editUserPencapaian" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()" required>
                   </div>
 
-                  <!-- Link -->
+                  <!-- EDIT: RUANG FAIL HIBRID -->
                   <div>
-                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PAUTAN BUKTI (GOOGLE DRIVE)</label>
-                      <input type="url" id="editUserLink" class="w-full p-3 border border-slate-300 rounded-lg text-sm text-blue-600" required>
+                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1">MUAT NAIK BUKTI BAHARU (PILIHAN)</label>
+                      <div class="relative mb-2">
+                          <i class="fas fa-upload absolute left-4 top-1/2 -translate-y-1/2 text-teal-400 z-10 pointer-events-none"></i>
+                          <input type="file" id="editUserFile" accept=".pdf, image/jpeg, image/png" class="w-full pl-12 pr-4 py-3 border border-slate-300 rounded-lg text-sm text-teal-700 font-medium file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 transition-all cursor-pointer bg-white">
+                      </div>
+                      <div class="flex items-center justify-between">
+                          <p class="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Biarkan kosong untuk kekalkan fail semasa.</p>
+                          <a id="currentProofLink" href="#" target="_blank" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded border border-blue-200 transition"><i class="fas fa-external-link-alt"></i> Lihat Fail Semasa</a>
+                      </div>
                   </div>
 
                   <button type="submit" class="w-full mt-4 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl shadow transition">SIMPAN PERUBAHAN</button>

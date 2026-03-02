@@ -16,8 +16,10 @@ export const APP_CONFIG = {
     API: {
         // CHANGED: smpid-40.ppdag.deno.net -> smpid.ppdag.deno.net
         DENO_URL: 'https://smpid.ppdag.deno.net',
-        // BARU: Integrasi Google Apps Script untuk Email Blaster
-        GAS_EMAIL_URL: 'https://script.google.com/macros/s/AKfycbxGWS7aa1pH8A_8KZjhqz9wCv8xcOsTQekc_H3zriwNWYl4P1N-BlWlPQagPYEwS4HX/exec'
+        // Integrasi Google Apps Script untuk Email Blaster
+        GAS_EMAIL_URL: 'https://script.google.com/macros/s/AKfycbxGWS7aa1pH8A_8KZjhqz9wCv8xcOsTQekc_H3zriwNWYl4P1N-BlWlPQagPYEwS4HX/exec',
+        // BARU: Integrasi Google Apps Script untuk Upload Fail Bukti
+        GAS_UPLOAD_URL: 'https://script.google.com/macros/s/AKfycbw1gV5IniPgCY69RafvNTKe6ZOF2eP9twIQT1Fidj84wmCPD4d-iUyjkVQDsDap6aTP/exec'
     },
 
     // Session Keys (Kekunci storan lokal untuk konsistensi data)

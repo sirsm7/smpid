@@ -2,14 +2,13 @@
  * PUBLIC FORM MODULE (FULL PRODUCTION VERSION)
  * Menguruskan logik borang serahan data awam, pengesahan sekolah,
  * penapisan kategori, dan integrasi mod PPD (M030).
- * --- UPDATE V1.3 ---
- * Integration: DROPDOWN_DATA standardisation for JAWATAN, PERINGKAT, PENYEDIA.
- * Penambahan: Dropdown TAHUN (Dinamik 2020 - Semasa).
+ * --- UPDATE V2.0 ---
+ * Integration: Modul Upload Fail Base64 menggantikan input URL manual.
  */
 
 import { SchoolService } from './services/school.service.js';
 import { AchievementService } from './services/achievement.service.js';
-import { toggleLoading, formatSentenceCase } from './core/helpers.js';
+import { toggleLoading, formatSentenceCase, uploadFileToDrive } from './core/helpers.js';
 import { populateDropdown } from './config/dropdowns.js';
 
 // --- GLOBAL STATE ---
@@ -291,10 +290,10 @@ window.togglePubJenis = function() {
     }
 };
 
-// --- 3. SUBMISSION LOGIC ---
+// --- 3. SUBMISSION LOGIC WITH FILE UPLOAD ---
 
 /**
- * Menghantar borang serahan data awam.
+ * Menghantar borang serahan data awam berserta muat naik fail.
  */
 window.hantarBorangAwam = async function() {
     const kod = document.getElementById('finalKodSekolah').value;
@@ -315,7 +314,8 @@ window.hantarBorangAwam = async function() {
     const nama = document.getElementById('pubNama').value.trim().toUpperCase();
     const program = document.getElementById('pubProgram').value.trim().toUpperCase();
     const pencapaian = document.getElementById('pubPencapaian').value.trim().toUpperCase();
-    const link = document.getElementById('pubLink').value.trim();
+    const fileInput = document.getElementById('pubFile');
+    const file = fileInput.files[0];
     const tahun = document.getElementById('pubTahun').value;
 
     let peringkat = 'KEBANGSAAN';
@@ -335,23 +335,39 @@ window.hantarBorangAwam = async function() {
     }
 
     // Validasi Asas
-    if (!nama || !program || !pencapaian || !link || !tahun) {
+    if (!nama || !program || !pencapaian || !file || !tahun) {
         return Swal.fire({
             icon: 'warning',
             title: 'Data Tidak Lengkap',
-            text: 'Sila pastikan semua ruangan bertanda telah diisi.',
+            text: 'Sila pastikan semua ruangan bertanda (termasuk fail) telah diisi.',
             confirmButtonColor: '#fbbf24'
         });
     }
 
-    // UI Feedback
+    // Validasi Saiz Fail (Max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        return Swal.fire({
+            icon: 'warning',
+            title: 'Fail Terlalu Besar',
+            text: 'Maksimum saiz fail adalah 5MB. Sila mampatkan fail anda.',
+            confirmButtonColor: '#fbbf24'
+        });
+    }
+
+    // UI Feedback (Loading Upload)
     if(btn) { 
         btn.disabled = true; 
-        btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MENGHANTAR...`;
+        btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MEMUAT NAIK FAIL BUKTI...`;
         btn.classList.add('opacity-75', 'cursor-not-allowed');
     }
 
     try {
+        // 1. Muat naik fail dahulu ke Google Drive melalui GAS
+        const uploadedUrl = await uploadFileToDrive(file);
+
+        // 2. Tukar status UI
+        if(btn) btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MENYIMPAN REKOD PANGKALAN DATA...`;
+
         const payload = {
             kod_sekolah: kod,
             kategori, 
@@ -360,18 +376,19 @@ window.hantarBorangAwam = async function() {
             peringkat, 
             tahun: parseInt(tahun), 
             pencapaian,
-            pautan_bukti: link, 
+            pautan_bukti: uploadedUrl, 
             jenis_rekod: jenisRekod, 
             penyedia, 
             jawatan
         };
 
+        // 3. Simpan ke Supabase
         await AchievementService.create(payload);
 
         Swal.fire({
             icon: 'success',
             title: 'Berjaya Disimpan!',
-            text: 'Rekod pencapaian telah berjaya direkodkan.',
+            text: 'Rekod pencapaian dan bukti telah berjaya direkodkan.',
             confirmButtonText: 'Terima Kasih',
             confirmButtonColor: '#16a34a'
         }).then(() => {
@@ -383,7 +400,7 @@ window.hantarBorangAwam = async function() {
         Swal.fire({
             icon: 'error',
             title: 'Gagal Menghantar',
-            text: 'Sistem mengalami gangguan. Sila cuba sebentar lagi.',
+            text: err.message || 'Sistem mengalami gangguan. Sila cuba sebentar lagi.',
             confirmButtonColor: '#ef4444'
         });
     } finally {
@@ -400,7 +417,7 @@ window.resetBorang = function(fullReset = true) {
     if(form) {
         document.getElementById('pubProgram').value = "";
         document.getElementById('pubPencapaian').value = "";
-        document.getElementById('pubLink').value = "";
+        document.getElementById('pubFile').value = ""; // Reset file input
         
         const cat = document.getElementById('pubKategori').value;
         if (cat !== 'SEKOLAH') {
@@ -491,7 +508,8 @@ window.hantarBorangPPD = async function() {
     const nama = document.getElementById('ppdNama').value.trim().toUpperCase();
     const program = document.getElementById('ppdProgram').value.trim().toUpperCase();
     const pencapaian = document.getElementById('ppdPencapaian').value.trim().toUpperCase();
-    const link = document.getElementById('ppdLink').value.trim();
+    const fileInput = document.getElementById('ppdFile');
+    const file = fileInput.files[0];
     const tahun = document.getElementById('ppdTahun').value;
 
     let peringkat = 'KEBANGSAAN';
@@ -504,22 +522,37 @@ window.hantarBorangPPD = async function() {
         peringkat = document.getElementById('ppdPeringkat').value;
     }
 
-    if (!nama || !program || !pencapaian || !link || !tahun) {
+    if (!nama || !program || !pencapaian || !file || !tahun) {
         return Swal.fire({
             icon: 'warning',
             title: 'Tidak Lengkap',
-            text: 'Sila isi semua maklumat bagi rekod PPD.',
+            text: 'Sila isi semua maklumat bagi rekod PPD dan muat naik fail bukti.',
+            confirmButtonColor: '#7e22ce'
+        });
+    }
+
+    // Validasi Saiz Fail
+    if (file.size > 5 * 1024 * 1024) {
+        return Swal.fire({
+            icon: 'warning',
+            title: 'Fail Terlalu Besar',
+            text: 'Maksimum saiz fail adalah 5MB.',
             confirmButtonColor: '#7e22ce'
         });
     }
 
     if(btn) { 
         btn.disabled = true; 
-        btn.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>MENGHANTAR...`;
+        btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MEMUAT NAIK FAIL...`;
         btn.classList.add('opacity-75');
     }
 
     try {
+        // 1. Muat naik fail
+        const uploadedUrl = await uploadFileToDrive(file);
+        
+        if(btn) btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MENYIMPAN REKOD...`;
+
         const payload = {
             kod_sekolah: 'M030',
             kategori, 
@@ -528,17 +561,18 @@ window.hantarBorangPPD = async function() {
             peringkat, 
             tahun: parseInt(tahun), 
             pencapaian,
-            pautan_bukti: link, 
+            pautan_bukti: uploadedUrl, 
             jenis_rekod: jenisRekod, 
             penyedia
         };
 
+        // 2. Simpan DB
         await AchievementService.create(payload);
 
         Swal.fire({
             icon: 'success',
             title: 'Rekod PPD Disimpan',
-            text: 'Data pegawai/unit telah berjaya direkodkan.',
+            text: 'Data pegawai/unit beserta fail bukti telah berjaya direkodkan.',
             confirmButtonText: 'OK',
             confirmButtonColor: '#7e22ce'
         }).then(() => {
@@ -547,7 +581,7 @@ window.hantarBorangPPD = async function() {
 
     } catch (err) {
         console.error("[PPD] Submit Error:", err);
-        Swal.fire('Ralat Sistem', 'Gagal menghantar data PPD.', 'error');
+        Swal.fire('Ralat Sistem', err.message || 'Gagal menghantar data PPD.', 'error');
     } finally {
         if(btn) { 
             btn.disabled = false; 
@@ -563,7 +597,7 @@ window.resetBorangPPD = function() {
         document.getElementById('ppdNama').value = "";
         document.getElementById('ppdProgram').value = "";
         document.getElementById('ppdPencapaian').value = "";
-        document.getElementById('ppdLink').value = "";
+        document.getElementById('ppdFile').value = ""; // Reset fail
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };

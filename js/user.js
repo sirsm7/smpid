@@ -2,16 +2,12 @@
  * SMPID USER PORTAL MODULE (FULL PRODUCTION VERSION)
  * Menguruskan profil sekolah, analisa digital, helpdesk, 
  * dan modul pencapaian kemenjadian sekolah.
- * * --- UPDATE V1.4.1 (SURGICAL FIX) ---
- * Memperbaiki parameter payload auto-sync jawatan guru semasa kemaskini.
- * * --- UPDATE V1.4 ---
- * Penambahan Data PGB & GPK Pentadbiran ke dalam Profil Sekolah.
- * Integration: DROPDOWN_DATA standardisation for JAWATAN, PERINGKAT, PENYEDIA.
- * Penambahan: Dropdown TAHUN (Dinamik 2020 - Semasa).
- * Migration: Migrasi dari sessionStorage ke localStorage untuk sokongan cross-tab.
+ * * --- UPDATE V2.0 (FILE UPLOAD ENGINE) ---
+ * Memindahkan logik input URL manual kepada muat naik fail
+ * melalui Google Apps Script & Google Drive (Base64).
  */
 
-import { toggleLoading, checkEmailDomain, autoFormatPhone, keluarSistem, formatSentenceCase } from './core/helpers.js';
+import { toggleLoading, checkEmailDomain, autoFormatPhone, keluarSistem, formatSentenceCase, uploadFileToDrive } from './core/helpers.js';
 import { SchoolService } from './services/school.service.js';
 import { AuthService } from './services/auth.service.js';
 import { DcsService } from './services/dcs.service.js';
@@ -332,7 +328,7 @@ function renderDcsChart(data) {
     });
 }
 
-// --- 4. ACHIEVEMENT (KEMENJADIAN) MODULE ---
+// --- 4. ACHIEVEMENT (KEMENJADIAN) MODULE WITH FILE UPLOAD ---
 
 /**
  * Menukar UI borang mengikut kategori (Murid, Guru, Sekolah).
@@ -404,7 +400,6 @@ window.toggleJenisPencapaian = function() {
  * Memuatkan senarai rekod pencapaian sekolah dari database.
  */
 window.loadPencapaianSekolah = async function() {
-    // UPDATE: Ambil dari localStorage
     const kod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     const tbody = document.getElementById('tbodyRekodPencapaian');
     if(!tbody) return;
@@ -459,10 +454,9 @@ window.loadPencapaianSekolah = async function() {
 };
 
 /**
- * Menyimpan rekod pencapaian baharu.
+ * Menyimpan rekod pencapaian baharu berserta fail.
  */
 window.simpanPencapaian = async function() {
-    // UPDATE: Ambil dari localStorage
     const kod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD); 
     const btn = document.querySelector('#formPencapaian button[type="submit"]');
     const kategori = document.getElementById('pencapaianKategori').value;
@@ -481,17 +475,29 @@ window.simpanPencapaian = async function() {
     const nama = document.getElementById('pInputNama').value.trim().toUpperCase();
     const program = document.getElementById('pInputProgram').value.trim().toUpperCase();
     const pencapaian = document.getElementById('pInputPencapaian').value.trim().toUpperCase();
-    const link = document.getElementById('pInputLink').value.trim();
+    const fileInput = document.getElementById('pInputFile');
+    const file = fileInput.files[0];
     const tahun = parseInt(document.getElementById('pInputTahun').value);
 
-    if(!nama || !program || !pencapaian || !link || !tahun) {
-        return Swal.fire('Maklumat Tidak Lengkap', 'Sila isi semua ruangan bertanda.', 'warning');
+    // Validasi Asas
+    if(!nama || !program || !pencapaian || !file || !tahun) {
+        return Swal.fire('Maklumat Tidak Lengkap', 'Sila isi semua ruangan bertanda termasuk muat naik fail.', 'warning');
     }
 
-    if(btn) { btn.disabled = true; btn.classList.add('opacity-75'); }
+    // Validasi Saiz Fail
+    if (file.size > 5 * 1024 * 1024) {
+        return Swal.fire('Fail Terlalu Besar', 'Maksimum saiz fail adalah 5MB.', 'warning');
+    }
+
+    if(btn) { btn.disabled = true; btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MEMUAT NAIK FAIL...`; btn.classList.add('opacity-75'); }
     toggleLoading(true);
 
     try {
+        // 1. Muat naik fail
+        const uploadedUrl = await uploadFileToDrive(file);
+
+        if(btn) btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MENYIMPAN REKOD...`;
+
         const payload = {
             kod_sekolah: kod,
             kategori, 
@@ -500,46 +506,47 @@ window.simpanPencapaian = async function() {
             peringkat,
             tahun,
             pencapaian,
-            pautan_bukti: link,
+            pautan_bukti: uploadedUrl,
             jenis_rekod: jenisRekod,
             penyedia,
             jawatan
         };
 
+        // 2. Simpan pangkalan data
         await AchievementService.create(payload);
         toggleLoading(false);
-        if(btn) { btn.disabled = false; btn.classList.remove('opacity-75'); }
+        if(btn) { btn.disabled = false; btn.innerHTML = `<i class="fas fa-save me-2"></i> SIMPAN REKOD`; btn.classList.remove('opacity-75'); }
         
         Swal.fire({
             icon: 'success',
             title: 'Berjaya Direkod',
-            text: 'Maklumat telah disimpan ke pangkalan data.',
+            text: 'Maklumat dan fail bukti telah disimpan ke sistem.',
             confirmButtonColor: '#22c55e'
         }).then(() => {
             document.getElementById('formPencapaian').reset();
-            // Reset dropdown tahun ke semasa
+            document.getElementById('pInputFile').value = ""; // Pastikan input fail dikosongkan
             const currentYear = new Date().getFullYear().toString();
             document.getElementById('pInputTahun').value = currentYear;
             window.loadPencapaianSekolah();
         });
     } catch (err) {
         toggleLoading(false); 
-        if(btn) { btn.disabled = false; btn.classList.remove('opacity-75'); }
-        Swal.fire('Ralat Sistem', 'Gagal menyimpan rekod. Sila cuba lagi.', 'error');
+        if(btn) { btn.disabled = false; btn.innerHTML = `<i class="fas fa-save me-2"></i> SIMPAN REKOD`; btn.classList.remove('opacity-75'); }
+        Swal.fire('Ralat Sistem', err.message || 'Gagal menyimpan rekod. Sila cuba lagi.', 'error');
     }
 };
 
-// --- 5. EDIT MODAL OPERATIONS ---
+// --- 5. EDIT MODAL OPERATIONS (HYBRID FILE LOGIC) ---
 
 window.openEditPencapaianUser = function(id) {
     const item = userPencapaianList.find(i => String(i.id) === String(id));
     if (!item) return;
 
-    // Standardisasi Dropdown Modal Edit (Surgical Injection)
+    // Standardisasi Dropdown Modal Edit
     populateDropdown('editUserJawatan', 'JAWATAN', item.jawatan);
     populateDropdown('editUserPeringkat', 'PERINGKAT', item.peringkat);
     populateDropdown('editUserPenyedia', 'PENYEDIA', item.penyedia);
-    populateDropdown('editUserTahun', 'TAHUN', item.tahun); // Suntikan Dropdown Tahun Edit
+    populateDropdown('editUserTahun', 'TAHUN', item.tahun); 
 
     document.getElementById('editUserId').value = item.id;
     if (item.jenis_rekod === 'PENSIJILAN') document.getElementById('editRadioPensijilanUser').checked = true;
@@ -548,8 +555,13 @@ window.openEditPencapaianUser = function(id) {
     document.getElementById('editUserNama').value = item.nama_peserta;
     document.getElementById('editUserProgram').value = item.nama_pertandingan;
     document.getElementById('editUserPencapaian').value = item.pencapaian;
-    document.getElementById('editUserLink').value = item.pautan_bukti;
-    // Nilai tahun di-set oleh populateDropdown di atas
+    
+    // Logik Hibrid Fail
+    document.getElementById('editUserFile').value = ""; // Kosongkan input fail untuk persediaan awal
+    const currentProofLink = document.getElementById('currentProofLink');
+    if (currentProofLink) {
+        currentProofLink.href = item.pautan_bukti || "#";
+    }
 
     window.toggleEditUserJenis(); 
 
@@ -588,21 +600,43 @@ window.updatePencapaianUser = async function() {
     const id = document.getElementById('editUserId').value;
     const btn = document.querySelector('#formEditPencapaianUser button[type="submit"]');
     const jenis = document.querySelector('input[name="editRadioJenisUser"]:checked').value;
+    const fileInput = document.getElementById('editUserFile');
+    const file = fileInput.files[0];
 
     if(btn) { btn.disabled = true; btn.classList.add('opacity-75'); }
     toggleLoading(true);
 
     try {
+        let finalUrl = "";
+
+        // Tentukan URL Fail: Guna fail baru atau fail lama
+        if (file) {
+            // Validasi fail baru jika dimasukkan
+            if (file.size > 5 * 1024 * 1024) {
+                toggleLoading(false);
+                if(btn) { btn.disabled = false; btn.classList.remove('opacity-75'); }
+                return Swal.fire('Ralat Saiz', 'Maksimum saiz fail adalah 5MB', 'warning');
+            }
+            if(btn) btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MEMUAT NAIK FAIL...`;
+            finalUrl = await uploadFileToDrive(file);
+        } else {
+            // Ambil URL lama dari cache data
+            const item = userPencapaianList.find(i => String(i.id) === String(id));
+            finalUrl = item.pautan_bukti;
+        }
+
+        if(btn) btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MENYIMPAN KEMASKINI...`;
+
         const payload = {
             nama_peserta: document.getElementById('editUserNama').value.toUpperCase(),
             nama_pertandingan: document.getElementById('editUserProgram').value.toUpperCase(),
             pencapaian: document.getElementById('editUserPencapaian').value.toUpperCase(),
-            pautan_bukti: document.getElementById('editUserLink').value,
+            pautan_bukti: finalUrl,
             tahun: parseInt(document.getElementById('editUserTahun').value),
             jenis_rekod: jenis
         };
 
-        // FIX PENTING: Suntik 'kategori' supaya sistem Backend dapat detect dan jalankan syncTeacherPosition()
+        // Suntik 'kategori' supaya sistem Backend dapat detect dan jalankan syncTeacherPosition()
         if (!document.getElementById('editUserDivJawatan').classList.contains('hidden')) {
             payload.jawatan = document.getElementById('editUserJawatan').value;
             payload.kategori = 'GURU';
@@ -617,7 +651,7 @@ window.updatePencapaianUser = async function() {
 
         await AchievementService.update(id, payload);
         toggleLoading(false);
-        if(btn) { btn.disabled = false; btn.classList.remove('opacity-75'); }
+        if(btn) { btn.disabled = false; btn.innerHTML = "SIMPAN PERUBAHAN"; btn.classList.remove('opacity-75'); }
         
         document.getElementById('modalEditPencapaianUser').classList.add('hidden');
         Swal.fire({
@@ -627,8 +661,9 @@ window.updatePencapaianUser = async function() {
             showConfirmButton: false
         }).then(() => window.loadPencapaianSekolah());
     } catch (e) {
-        toggleLoading(false); if(btn) { btn.disabled = false; btn.classList.remove('opacity-75'); }
-        Swal.fire('Gagal', 'Sistem tidak dapat mengemaskini rekod.', 'error');
+        toggleLoading(false); 
+        if(btn) { btn.disabled = false; btn.innerHTML = "SIMPAN PERUBAHAN"; btn.classList.remove('opacity-75'); }
+        Swal.fire('Gagal', e.message || 'Sistem tidak dapat mengemaskini rekod.', 'error');
     }
 };
 
