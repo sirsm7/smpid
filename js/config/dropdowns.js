@@ -23,7 +23,7 @@ export const DROPDOWN_DATA = {
     // Senarai Jawatan Guru Standard KPM/PPDAG
     JAWATAN: [
         { val: "GURU AKADEMIK BIASA", txt: "GURU AKADEMIK BIASA" },
-        { val: "PENGARAH KV / PGB", txt: "PENGETUA / GURU BESAR" },
+        { val: "PENGARAH KV / PGB", txt: "PENGARAH KV / PENGETUA / GURU BESAR" },
         { val: "GPK PENTADBIRAN", txt: "GPK PENTADBIRAN" },
         { val: "GPK HAL EHWAL MURID", txt: "GPK HAL EHWAL MURID" },
         { val: "GPK KO-KURIKULUM", txt: "GPK KO-KURIKULUM" },
