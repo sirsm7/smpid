@@ -98,7 +98,7 @@
         </div>
 
         <!-- ========================================== -->
-        <!-- TAB 1: TIKET ADUAN ICT (Dipindahkan dari user.html) -->
+        <!-- TAB 1: TIKET ADUAN ICT -->
         <!-- ========================================== -->
         <div id="tab-content-aduan" class="animate-fade-in space-y-8">
             <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
@@ -161,7 +161,7 @@
                         <div class="w-10 h-10 bg-delima-100 text-delima-600 rounded-full flex items-center justify-center shadow-sm text-lg"><i class="fas fa-file-signature"></i></div>
                         <div>
                             <h3 class="font-bold text-delima-900 uppercase tracking-widest text-sm">Borang Perubahan Status Guru</h3>
-                            <p class="text-xs text-delima-600 font-medium">Sila lengkapkan maklumat bagi guru yang berpindah, bersara atau berubah status.</p>
+                            <p class="text-xs text-delima-600 font-medium">Rekodkan kemasukan guru baharu ke sekolah anda, persaraan, atau kematian.</p>
                         </div>
                     </div>
 
@@ -173,44 +173,25 @@
                             </div>
                             <div>
                                 <label class="form-label text-delima-700">ID DELIMa</label>
-                                <input type="text" id="guruIdDelima" class="form-input lowercase" required placeholder="g-xxxxxxxx@moe-dl.edu.my" oninput="this.value = this.value.toLowerCase()">
-                            </div>
-                            <div>
-                                <label class="form-label text-delima-700">Unit Organisasi Asal (Kod Sekolah)</label>
-                                <input type="text" id="guruUnitAsal" class="form-input lowercase" required placeholder="sekolah-mba0001" oninput="this.value = this.value.toLowerCase()">
-                            </div>
-                            <div>
-                                <label class="form-label text-delima-700">Kategori Catatan</label>
-                                <div class="relative">
-                                    <select id="guruCatatan" class="form-input appearance-none pr-10" required onchange="toggleOrganisasiBaharu('guru')">
-                                        <option value="" disabled selected>- Pilih Catatan -</option>
-                                        <option value="Berpindah Organisasi">Berpindah Organisasi (Sekolah/PPD/JPN)</option>
-                                        <option value="Bersara">Bersara</option>
-                                        <option value="Meninggal Dunia">Meninggal Dunia</option>
-                                        <option value="Berhenti / Lain-lain">Berhenti / Lain-lain</option>
-                                    </select>
-                                    <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
-                                </div>
+                                <input type="email" id="guruIdDelima" class="form-input lowercase" required pattern=".*@moe-dl\.edu\.my$" title="Sila pastikan ID mengandungi @moe-dl.edu.my" placeholder="g-xxxxxxxx@moe-dl.edu.my" oninput="this.value = this.value.toLowerCase()">
                             </div>
                         </div>
-
-                        <!-- Ruangan Dinamik: Hanya muncul jika Berpindah -->
-                        <div id="guruSeksyenBaharu" class="hidden bg-white p-5 rounded-2xl border-2 border-dashed border-delima-200 mt-4 animate-slide-down">
-                            <h4 class="text-xs font-bold text-delima-600 uppercase mb-3"><i class="fas fa-info-circle mr-1"></i> Maklumat Organisasi Baharu</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div>
-                                    <label class="form-label text-slate-500">Unit Organisasi Baharu</label>
-                                    <input type="text" id="guruUnitBaharu" class="form-input lowercase" placeholder="Contoh: sekolah-mbb0002" oninput="this.value = this.value.toLowerCase()">
-                                </div>
-                                <div>
-                                    <label class="form-label text-slate-500">Nama Sekolah / PPD / JPN Baharu</label>
-                                    <input type="text" id="guruNamaBaharu" class="form-input uppercase" placeholder="Nama penuh institusi baharu" oninput="this.value = this.value.toUpperCase()">
-                                </div>
+                        <div>
+                            <label class="form-label text-delima-700">Kategori Catatan</label>
+                            <div class="relative">
+                                <select id="guruCatatan" class="form-input appearance-none pr-10" required>
+                                    <option value="" disabled selected>- Pilih Catatan -</option>
+                                    <option value="Berpindah MASUK ke sekolah ini">Berpindah MASUK ke sekolah ini</option>
+                                    <option value="Bersara">Bersara</option>
+                                    <option value="Meninggal Dunia">Meninggal Dunia</option>
+                                    <option value="Berhenti / Lain-lain">Berhenti / Lain-lain</option>
+                                </select>
+                                <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                             </div>
                         </div>
 
                         <button type="submit" class="w-full bg-delima-600 hover:bg-delima-700 text-white font-black py-4 rounded-xl shadow-lg shadow-delima-500/30 transition-all flex items-center justify-center gap-2 uppercase tracking-widest mt-6">
-                            <i class="fas fa-save"></i> Hantar Rekod Guru
+                            <i class="fas fa-save"></i> Hantar Permohonan
                         </button>
                     </form>
                 </div>
@@ -227,14 +208,13 @@
                         <thead class="text-[10px] text-slate-400 uppercase bg-white border-b-2 border-slate-100 sticky top-0 z-10 font-black tracking-widest">
                             <tr>
                                 <th class="px-6 py-4 w-12 text-center">Bil</th>
-                                <th class="px-6 py-4 w-1/4">Maklumat Guru</th>
-                                <th class="px-6 py-4 w-1/4">Organisasi Asal</th>
-                                <th class="px-6 py-4 w-1/4">Catatan & Destinasi</th>
-                                <th class="px-6 py-4 text-center w-24">Status</th>
+                                <th class="px-6 py-4 w-2/5">Maklumat Guru</th>
+                                <th class="px-6 py-4 w-2/5">Catatan & Destinasi</th>
+                                <th class="px-6 py-4 text-center w-32">Status</th>
                             </tr>
                         </thead>
                         <tbody id="senaraiGuruContainer" class="divide-y divide-slate-100 text-xs">
-                            <tr><td colspan="5" class="p-8 text-center text-slate-400 font-medium">Memuatkan data...</td></tr>
+                            <tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium">Memuatkan data...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -253,7 +233,7 @@
                         <div class="w-10 h-10 bg-cyan-100 text-cyan-600 rounded-full flex items-center justify-center shadow-sm text-lg"><i class="fas fa-user-edit"></i></div>
                         <div>
                             <h3 class="font-bold text-cyan-900 uppercase tracking-widest text-sm">Borang Perubahan Status Murid</h3>
-                            <p class="text-xs text-cyan-600 font-medium">Rekodkan pelajar yang berpindah, tamat persekolahan atau masalah akaun.</p>
+                            <p class="text-xs text-cyan-600 font-medium">Rekodkan kemasukan murid baharu ke sekolah anda, tamat persekolahan, atau masalah akaun.</p>
                         </div>
                     </div>
 
@@ -265,20 +245,25 @@
                             </div>
                             <div>
                                 <label class="form-label text-cyan-700">ID DELIMa</label>
-                                <input type="text" id="muridIdDelima" class="form-input lowercase focus:border-cyan-500" required placeholder="m-xxxxxxxx@moe-dl.edu.my" oninput="this.value = this.value.toLowerCase()">
+                                <input type="email" id="muridIdDelima" class="form-input lowercase focus:border-cyan-500" required pattern=".*@moe-dl\.edu\.my$" title="Sila pastikan ID mengandungi @moe-dl.edu.my" placeholder="m-xxxxxxxx@moe-dl.edu.my" oninput="this.value = this.value.toLowerCase()">
                             </div>
-                            <div>
-                                <label class="form-label text-cyan-700">Unit Organisasi Semasa</label>
-                                <input type="text" id="muridUnitAsal" class="form-input lowercase focus:border-cyan-500" required placeholder="sekolah-mba0001" oninput="this.value = this.value.toLowerCase()">
-                            </div>
-                            <div>
-                                <label class="form-label text-cyan-700">Catatan Tindakan</label>
-                                <input type="text" id="muridCatatan" class="form-input uppercase focus:border-cyan-500" required placeholder="Contoh: Berpindah ke SK Contoh / Tamat Tahun 6" oninput="this.value = this.value.toUpperCase()">
+                        </div>
+                        <div>
+                            <label class="form-label text-cyan-700">Kategori Catatan</label>
+                            <div class="relative">
+                                <select id="muridCatatan" class="form-input appearance-none pr-10 focus:border-cyan-500" required>
+                                    <option value="" disabled selected>- Pilih Catatan -</option>
+                                    <option value="Berpindah MASUK ke sekolah ini">Berpindah MASUK ke sekolah ini</option>
+                                    <option value="Tamat Persekolahan">Tamat Persekolahan</option>
+                                    <option value="Meninggal Dunia">Meninggal Dunia</option>
+                                    <option value="Berhenti / Lain-lain">Berhenti / Lain-lain</option>
+                                </select>
+                                <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                             </div>
                         </div>
 
                         <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-black py-4 rounded-xl shadow-lg shadow-cyan-500/30 transition-all flex items-center justify-center gap-2 uppercase tracking-widest mt-6">
-                            <i class="fas fa-save"></i> Hantar Rekod Murid
+                            <i class="fas fa-save"></i> Hantar Permohonan
                         </button>
                     </form>
                 </div>
@@ -295,14 +280,13 @@
                         <thead class="text-[10px] text-slate-400 uppercase bg-white border-b-2 border-slate-100 sticky top-0 z-10 font-black tracking-widest">
                             <tr>
                                 <th class="px-6 py-4 w-12 text-center">Bil</th>
-                                <th class="px-6 py-4 w-1/3">Maklumat Murid</th>
-                                <th class="px-6 py-4 w-1/4">Unit Organisasi</th>
-                                <th class="px-6 py-4 w-1/3">Catatan</th>
-                                <th class="px-6 py-4 text-center w-24">Status</th>
+                                <th class="px-6 py-4 w-2/5">Maklumat Murid</th>
+                                <th class="px-6 py-4 w-2/5">Catatan</th>
+                                <th class="px-6 py-4 text-center w-32">Status</th>
                             </tr>
                         </thead>
                         <tbody id="senaraiMuridContainer" class="divide-y divide-slate-100 text-xs">
-                            <tr><td colspan="5" class="p-8 text-center text-slate-400 font-medium">Memuatkan data...</td></tr>
+                            <tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium">Memuatkan data...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -346,28 +330,6 @@
                 activeBtn.className = "flex-1 py-3 px-4 rounded-xl text-xs font-black transition-all bg-delima-600 text-white shadow-md transform scale-[1.02] flex items-center justify-center gap-2 uppercase tracking-wider";
             } else if (tabId === 'murid') {
                 activeBtn.className = "flex-1 py-3 px-4 rounded-xl text-xs font-black transition-all bg-cyan-600 text-white shadow-md transform scale-[1.02] flex items-center justify-center gap-2 uppercase tracking-wider";
-            }
-        }
-
-        // Fungsi UI untuk papar/sembunyi input Organisasi Baharu bagi Guru
-        function toggleOrganisasiBaharu(type) {
-            if (type === 'guru') {
-                const select = document.getElementById('guruCatatan');
-                const section = document.getElementById('guruSeksyenBaharu');
-                const unitInput = document.getElementById('guruUnitBaharu');
-                const namaInput = document.getElementById('guruNamaBaharu');
-
-                if (select.value === 'Berpindah Organisasi') {
-                    section.classList.remove('hidden');
-                    unitInput.setAttribute('required', 'true');
-                    namaInput.setAttribute('required', 'true');
-                } else {
-                    section.classList.add('hidden');
-                    unitInput.removeAttribute('required');
-                    namaInput.removeAttribute('required');
-                    unitInput.value = '';
-                    namaInput.value = '';
-                }
             }
         }
     </script>

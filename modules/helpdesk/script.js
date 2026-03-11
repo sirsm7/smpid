@@ -132,30 +132,31 @@ window.hantarStatusDelima = async function(kategori) {
     let payload = {
         kod_sekolah: kod,
         kategori: kategori,
-        status_proses: 'DALAM PROSES'
+        status_proses: 'DALAM PROSES',
+        unit_organisasi_asal: 'TIDAK DINYATAKAN' // Nilai hardcode menggantikan input yang dibuang
     };
 
     // Logik Pengekstrakan Data Borang Guru
     if (kategori === 'GURU') {
         payload.nama = document.getElementById('guruNama').value.trim().toUpperCase();
         payload.id_delima = document.getElementById('guruIdDelima').value.trim().toLowerCase();
-        payload.unit_organisasi_asal = document.getElementById('guruUnitAsal').value.trim().toLowerCase();
         payload.catatan = document.getElementById('guruCatatan').value;
         
-        // Logik Khusus: Jika berpindah organisasi, paksa pengisian maklumat destinasi
-        if (payload.catatan === 'Berpindah Organisasi') {
-            payload.unit_organisasi_baharu = document.getElementById('guruUnitBaharu').value.trim().toLowerCase();
-            payload.nama_organisasi_baharu = document.getElementById('guruNamaBaharu').value.trim().toUpperCase();
-            
-            if (!payload.unit_organisasi_baharu || !payload.nama_organisasi_baharu) {
-                return Swal.fire('Data Destinasi Tidak Lengkap', 'Sila isi Unit Organisasi dan Nama Sekolah/PPD/JPN yang baharu.', 'warning');
-            }
+        // Logik Khusus: Jika berpindah masuk, set OU baharu kepada kod sekolah pemohon secara automatik
+        if (payload.catatan === 'Berpindah MASUK ke sekolah ini') {
+            payload.unit_organisasi_baharu = kod.toLowerCase();
+            payload.nama_organisasi_baharu = null; 
         } else {
             payload.unit_organisasi_baharu = null;
             payload.nama_organisasi_baharu = null;
         }
+
+        // Validasi Ekstra untuk ID DELIMa
+        if (payload.id_delima && !payload.id_delima.endsWith('@moe-dl.edu.my')) {
+            return Swal.fire('Format Tidak Sah', 'ID DELIMa Guru mestilah berakhir dengan @moe-dl.edu.my', 'error');
+        }
         
-        if (!payload.nama || !payload.id_delima || !payload.unit_organisasi_asal || !payload.catatan) {
+        if (!payload.nama || !payload.id_delima || !payload.catatan) {
             return Swal.fire('Tidak Lengkap', 'Sila pastikan semua ruangan wajib diisi.', 'warning');
         }
     } 
@@ -163,13 +164,23 @@ window.hantarStatusDelima = async function(kategori) {
     else {
         payload.nama = document.getElementById('muridNama').value.trim().toUpperCase();
         payload.id_delima = document.getElementById('muridIdDelima').value.trim().toLowerCase();
-        payload.unit_organisasi_asal = document.getElementById('muridUnitAsal').value.trim().toLowerCase();
-        payload.catatan = document.getElementById('muridCatatan').value.trim().toUpperCase();
+        payload.catatan = document.getElementById('muridCatatan').value;
         
-        payload.unit_organisasi_baharu = null;
-        payload.nama_organisasi_baharu = null;
+        // Auto-set OU jika tarik masuk
+        if (payload.catatan === 'Berpindah MASUK ke sekolah ini') {
+            payload.unit_organisasi_baharu = kod.toLowerCase();
+            payload.nama_organisasi_baharu = null; 
+        } else {
+            payload.unit_organisasi_baharu = null;
+            payload.nama_organisasi_baharu = null;
+        }
 
-        if (!payload.nama || !payload.id_delima || !payload.unit_organisasi_asal || !payload.catatan) {
+        // Validasi Ekstra untuk ID DELIMa
+        if (payload.id_delima && !payload.id_delima.endsWith('@moe-dl.edu.my')) {
+            return Swal.fire('Format Tidak Sah', 'ID DELIMa Murid mestilah berakhir dengan @moe-dl.edu.my', 'error');
+        }
+
+        if (!payload.nama || !payload.id_delima || !payload.catatan) {
             return Swal.fire('Tidak Lengkap', 'Sila pastikan semua ruangan wajib diisi.', 'warning');
         }
     }
@@ -183,13 +194,12 @@ window.hantarStatusDelima = async function(kategori) {
         Swal.fire({
             icon: 'success',
             title: 'Berjaya Direkodkan',
-            text: `Status ID DELIMa bagi ${kategori.toLowerCase()} telah dihantar ke PPD untuk proses selanjutnya.`,
+            text: `Status permohonan ID DELIMa bagi ${kategori.toLowerCase()} telah dihantar ke PPD untuk proses selanjutnya.`,
             confirmButtonColor: kategori === 'GURU' ? '#2563eb' : '#0891b2' // Warna ikut tema
         }).then(() => {
             // Reset UI selepas berjaya
             if (kategori === 'GURU') {
                 document.getElementById('formStatusGuru').reset();
-                document.getElementById('guruSeksyenBaharu').classList.add('hidden');
                 window.muatSenaraiDelima('GURU');
             } else {
                 document.getElementById('formStatusMurid').reset();
@@ -209,13 +219,13 @@ window.muatSenaraiDelima = async function(kategori) {
     
     if (!tbody) return;
     
-    tbody.innerHTML = `<tr><td colspan="5" class="p-12 text-center text-slate-400 font-medium animate-pulse"><i class="fas fa-sync fa-spin text-xl mb-2 block text-slate-300"></i> Menyemak senarai pangkalan data...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" class="p-12 text-center text-slate-400 font-medium animate-pulse"><i class="fas fa-sync fa-spin text-xl mb-2 block text-slate-300"></i> Menyemak senarai pangkalan data...</td></tr>`;
 
     try {
         const data = await DelimaService.getBySchool(kod, kategori);
         
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-slate-400 italic bg-slate-50/50">Tiada rekod serahan perubahan status bagi kategori ${kategori.toLowerCase()} dijumpai.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-400 italic bg-slate-50/50">Tiada rekod serahan perubahan status bagi kategori ${kategori.toLowerCase()} dijumpai.</td></tr>`;
             return;
         }
 
@@ -226,34 +236,34 @@ window.muatSenaraiDelima = async function(kategori) {
             
             let detailsHtml = '';
             
-            if (kategori === 'GURU') {
-                const destinasi = item.catatan === 'Berpindah Organisasi' 
-                    ? `<br><span class="text-delima-700 font-bold mt-2 block text-xs bg-delima-50 p-2.5 rounded-lg border border-delima-100 shadow-sm"><i class="fas fa-building mr-1.5 text-delima-500"></i> ${item.nama_organisasi_baharu || '-'} <br><span class="text-[10px] text-slate-500 font-mono mt-1 block tracking-wider bg-white px-2 py-1 rounded inline-block">ID: ${item.unit_organisasi_baharu || '-'}</span></span>` 
-                    : '';
-                detailsHtml = `
-                    <div class="font-bold text-slate-700 text-xs mb-1 uppercase bg-slate-100 inline-block px-2.5 py-1 rounded-md border border-slate-200 shadow-sm">${item.catatan}</div>
-                    ${destinasi}
-                `;
-            } else {
-                detailsHtml = `<div class="font-bold text-slate-700 text-xs leading-relaxed uppercase bg-slate-50 p-2 rounded-lg border border-slate-100">${item.catatan}</div>`;
-            }
+            // Paparan Lencana "Mohon Tarik" untuk Guru dan Murid
+            const isTarikMasuk = item.catatan === 'Berpindah MASUK ke sekolah ini';
+            const colorTheme = kategori === 'GURU' ? 'blue' : 'cyan';
+            
+            const destinasiBadge = isTarikMasuk 
+                ? `<br><span class="text-${colorTheme}-700 font-bold mt-2 block text-xs bg-${colorTheme}-50 p-2.5 rounded-lg border border-${colorTheme}-100 shadow-sm"><i class="fas fa-download mr-1.5 text-${colorTheme}-500"></i> Mohon Tarik Ke: <br><span class="text-[10px] text-slate-500 font-mono mt-1 block tracking-wider bg-white px-2 py-1 rounded inline-block">OU: ${item.unit_organisasi_baharu || kod}</span></span>` 
+                : '';
+            
+            detailsHtml = `
+                <div class="font-bold text-slate-700 text-xs mb-1 uppercase bg-slate-100 inline-block px-2.5 py-1 rounded-md border border-slate-200 shadow-sm">${item.catatan}</div>
+                ${destinasiBadge}
+            `;
 
             return `
             <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-0 group">
                 <td class="px-6 py-5 text-center font-mono font-bold text-slate-400 text-xs align-top pt-6">${index + 1}</td>
                 <td class="px-6 py-5 align-top">
-                    <div class="font-bold text-slate-800 text-sm leading-snug mb-2 uppercase group-hover:text-delima-600 transition-colors">${item.nama}</div>
+                    <div class="font-bold text-slate-800 text-sm leading-snug mb-2 uppercase group-hover:text-${colorTheme}-600 transition-colors">${item.nama}</div>
                     <div class="text-[10px] text-slate-500 font-mono font-bold bg-white px-2 py-1 rounded-md inline-block border border-slate-200 shadow-sm">${item.id_delima}</div>
                     <div class="text-[9px] text-slate-400 mt-2.5 font-semibold tracking-wider"><i class="far fa-calendar-alt mr-1"></i> ${new Date(item.created_at).toLocaleDateString('ms-MY')}</div>
                 </td>
-                <td class="px-6 py-5 font-mono text-[10px] font-bold text-slate-500 align-top pt-6">${item.unit_organisasi_asal}</td>
-                <td class="px-6 py-5 align-top">${detailsHtml}</td>
+                <td class="px-6 py-5 align-top pt-6">${detailsHtml}</td>
                 <td class="px-6 py-5 text-center align-top pt-6">${statusBadge}</td>
             </tr>`;
         }).join('');
         
     } catch (e) {
         console.error("[Helpdesk] Senarai DELIMa error:", e);
-        tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500 font-bold bg-red-50 border border-red-100 rounded-xl"><i class="fas fa-wifi text-lg mb-2 block"></i> Gagal menyambung ke pangkalan data.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-red-500 font-bold bg-red-50 border border-red-100 rounded-xl"><i class="fas fa-wifi text-lg mb-2 block"></i> Gagal menyambung ke pangkalan data.</td></tr>`;
     }
 };
