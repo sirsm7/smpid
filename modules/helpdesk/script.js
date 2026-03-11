@@ -129,11 +129,11 @@ window.muatSenaraiTiket = async function() {
 window.hantarStatusDelima = async function(kategori) {
     const kod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     
+    // PEMBUANGAN DATA LAPUK: unit_organisasi_asal dan nama_organisasi_baharu dibuang dari payload
     let payload = {
         kod_sekolah: kod,
         kategori: kategori,
-        status_proses: 'DALAM PROSES',
-        unit_organisasi_asal: 'TIDAK DINYATAKAN' // Nilai hardcode menggantikan input yang dibuang
+        status_proses: 'DALAM PROSES'
     };
 
     // Logik Pengekstrakan Data Borang Guru
@@ -142,13 +142,11 @@ window.hantarStatusDelima = async function(kategori) {
         payload.id_delima = document.getElementById('guruIdDelima').value.trim().toLowerCase();
         payload.catatan = document.getElementById('guruCatatan').value;
         
-        // Logik Khusus: Jika berpindah masuk, set OU baharu kepada kod sekolah pemohon secara automatik
+        // Auto-set OU jika tarik masuk
         if (payload.catatan === 'Berpindah MASUK ke sekolah ini') {
             payload.unit_organisasi_baharu = kod.toLowerCase();
-            payload.nama_organisasi_baharu = null; 
         } else {
             payload.unit_organisasi_baharu = null;
-            payload.nama_organisasi_baharu = null;
         }
 
         // Validasi Ekstra untuk ID DELIMa
@@ -169,10 +167,8 @@ window.hantarStatusDelima = async function(kategori) {
         // Auto-set OU jika tarik masuk
         if (payload.catatan === 'Berpindah MASUK ke sekolah ini') {
             payload.unit_organisasi_baharu = kod.toLowerCase();
-            payload.nama_organisasi_baharu = null; 
         } else {
             payload.unit_organisasi_baharu = null;
-            payload.nama_organisasi_baharu = null;
         }
 
         // Validasi Ekstra untuk ID DELIMa
@@ -187,7 +183,6 @@ window.hantarStatusDelima = async function(kategori) {
 
     toggleLoadingLocal(true);
     try {
-        // Memanggil API Service yang dikhususkan (DelimaService)
         await DelimaService.createStatus(payload);
         
         toggleLoadingLocal(false);
@@ -195,7 +190,7 @@ window.hantarStatusDelima = async function(kategori) {
             icon: 'success',
             title: 'Berjaya Direkodkan',
             text: `Status permohonan ID DELIMa bagi ${kategori.toLowerCase()} telah dihantar ke PPD untuk proses selanjutnya.`,
-            confirmButtonColor: kategori === 'GURU' ? '#2563eb' : '#0891b2' // Warna ikut tema
+            confirmButtonColor: kategori === 'GURU' ? '#2563eb' : '#0891b2'
         }).then(() => {
             // Reset UI selepas berjaya
             if (kategori === 'GURU') {
