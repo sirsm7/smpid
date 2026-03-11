@@ -1,9 +1,10 @@
 /**
  * SMPID Telegram Bot & API (Deno Deploy)
- * Versi: 4.5 (Full Integrity & Bulletproof CORS Engine)
+ * Versi: 4.6 (Full Integrity & Bulletproof CORS Engine + DELIMa Integration)
  * Host: smpid.ppdag.deno.net
  * * NOTA: Kod ini mengekalkan 100% logik pendaftaran dan pangkalan data asal.
  * Isu CORS diselesaikan secara tuntas dengan pengendalian preflight global.
+ * Penambahan V4.6: Endpoint notifikasi Helpdesk DELIMa.
  */
 
 import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";
@@ -401,6 +402,32 @@ Deno.serve(async (req) => {
         const dt = new Date(tarikh).toLocaleDateString('ms-MY', { day: '2-digit', month: 'long', year: 'numeric' });
         const text = `📅 *TEMPAHAN BIMBINGAN BARU*\n\n🏫 *${nama}* (${kod})\n📌 *${tajuk}*\n🗓️ *${dt}* (${masa.toUpperCase()})\n👤 PIC: *${pic}*\n📞 [${tel}](https://wa.me/${tel.replace(/[^0-9]/g, '')})`;
         admins.forEach(a => bot.api.sendMessage(a.telegram_id, text, { parse_mode: "Markdown" }).catch(() => {}));
+      }
+      return createRes({ status: "success" });
+    }
+
+    // --- [5] ENDPOINT: /notify-delima ---
+    if (path === "/notify-delima" && req.method === "POST") {
+      const { kod, kategori, nama, catatan } = await req.json();
+      const { data: admins } = await supabase.from("smpid_admin_users").select("telegram_id").not("telegram_id", "is", null);
+      if (admins && admins.length > 0) {
+        const text = `🔄 *STATUS ID DELIMA BAHARU*\n\n🏫 Sekolah: *${kod}*\n👥 Kategori: *${kategori}*\n👤 Nama: *${nama}*\n📝 Catatan: ${catatan}`;
+        admins.forEach(a => bot.api.sendMessage(a.telegram_id, text, { parse_mode: "Markdown" }).catch(() => {}));
+      }
+      return createRes({ status: "success" });
+    }
+
+    // --- [6] ENDPOINT: /reply-delima ---
+    if (path === "/reply-delima" && req.method === "POST") {
+      const { kod, kategori, nama, status } = await req.json();
+      const { data: sek } = await supabase.from("smpid_sekolah_data").select("telegram_id_gpict, telegram_id_admin").eq("kod_sekolah", kod).single();
+      if (sek) {
+        // Hantar kepada Admin DELIMa, jika tiada, hantar kepada GPICT
+        const targetId = sek.telegram_id_admin || sek.telegram_id_gpict;
+        if (targetId) {
+          const text = `✅ *STATUS DELIMA: ${status}*\n\n🏫 Sekolah: *${kod}*\n👥 Kategori: *${kategori}*\n👤 Nama: *${nama}*\n💬 Tindakan PPD telah selesai.`;
+          await bot.api.sendMessage(targetId, text, { parse_mode: "Markdown" });
+        }
       }
       return createRes({ status: "success" });
     }

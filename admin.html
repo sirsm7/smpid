@@ -39,7 +39,7 @@
             @apply bg-white text-slate-600 hover:bg-slate-50 hover:text-brand-600 border-2 border-slate-200; 
         }
         
-        /* Global Table Wrapping Fix - Diubahsuai supaya Tailwind utilities berfungsi dengan baik */
+        /* Global Table Wrapping Fix */
         table td, table th {
             vertical-align: middle;
         }
@@ -52,12 +52,11 @@
             @apply bg-brand-600 text-white border-brand-700 shadow-md transform scale-105; 
         }
 
-        /* Calendar Tile Styles (Booking Module Integration) - Visual Lebih Jelas & Border Tegas */
+        /* Calendar Tile Styles */
         .day-card { 
             @apply relative flex flex-col justify-between p-4 rounded-2xl border-2 border-slate-300 transition-all duration-300 bg-white hover:shadow-lg hover:-translate-y-1 shadow-sm; 
             min-height: 140px; 
         }
-        /* FIX: Buang 'group' daripada @apply untuk elak CssSyntaxError */
         .card-open { 
             @apply border-slate-300 hover:border-brand-500 hover:bg-brand-50/10 cursor-pointer; 
         }
@@ -77,7 +76,7 @@
             @apply !border-brand-600 ring-4 ring-brand-100 bg-brand-50/30 transform scale-[1.03] shadow-xl z-20; 
         }
         
-        /* Text Wrapping Helper - Digunakan untuk mematikan truncation */
+        /* Text Wrapping Helper */
         .wrap-safe { 
             white-space: normal !important; 
             word-wrap: break-word !important; 
@@ -189,7 +188,7 @@
         <a href="#gallery" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="gallery-tab" onclick="switchAdminTab('gallery', event)"><i class="fas fa-images"></i> Galeri</a>
         <a href="#tempahan" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="tempahan-tab" onclick="switchAdminTab('tempahan', event)"><i class="fas fa-calendar-check"></i> Tempahan</a>
         <a href="#email" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="email-tab" onclick="switchAdminTab('email', event)"><i class="fas fa-paper-plane"></i> Blaster</a>
-        <a href="#helpdesk" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="helpdesk-tab" onclick="switchAdminTab('helpdesk', event)"><i class="fas fa-headset"></i> Aduan</a>
+        <a href="#helpdesk" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="helpdesk-tab" onclick="switchAdminTab('helpdesk', event)"><i class="fas fa-headset"></i> Sokongan</a>
         <a href="#admin-users" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="admin-users-tab" onclick="switchAdminTab('admin-users', event)"><i class="fas fa-users-cog"></i> Akses</a>
         
         <!-- DROPDOWN PAUTAN MODULE -->
@@ -299,7 +298,6 @@
                 <table class="w-full text-sm text-left">
                     <thead class="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0 z-10">
                         <tr>
-                            <!-- Penambahan ID dan Fungsi Sort -->
                             <th id="th-analisa-kod" class="px-6 py-3 font-bold cursor-pointer hover:bg-slate-200 transition" onclick="sortAnalisa('kod')">Kod <i class="fas fa-sort ml-1 opacity-50"></i></th>
                             <th id="th-analisa-nama" class="px-6 py-3 font-bold cursor-pointer hover:bg-slate-200 transition" onclick="sortAnalisa('nama')">Nama Sekolah <i class="fas fa-sort ml-1 opacity-50"></i></th>
                             <th id="th-analisa-dcs" class="px-6 py-3 text-center bg-blue-50 text-blue-700 cursor-pointer hover:bg-blue-100 transition" onclick="sortAnalisa('dcs')">DCS <span id="lblYearDcs" class="text-[10px] ml-1 opacity-70">-</span> <i class="fas fa-sort ml-1 opacity-50"></i></th>
@@ -441,7 +439,6 @@
                 <div id="jawatanCloudContainer" class="p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl flex flex-wrap justify-center"></div>
             </div>
 
-            <!-- ADDED TITLE HERE -->
             <div class="flex items-center gap-2 mb-3 px-1">
                 <i class="fas fa-list-ul text-indigo-500"></i>
                 <h3 class="text-sm font-bold text-slate-700 uppercase tracking-widest">Senarai Rekod Pencapaian</h3>
@@ -549,17 +546,89 @@
             </div>
         </div>
 
-        <!-- TAB 7: HELPDESK -->
+        <!-- TAB 7: HELPDESK & DELIMA (PUSAT SOKONGAN TERKUMPUL) -->
         <div id="tab-helpdesk" class="hidden p-6 md:p-8">
-            <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-                <h2 class="text-xl font-bold text-red-600">Pusat Aduan</h2>
-                <select id="filterTiketAdmin" class="px-3 py-1.5 rounded-lg border-2 border-red-100 bg-red-50 text-red-700 text-xs font-bold outline-none" onchange="loadTiketAdmin()">
-                    <option value="ALL">Semua Tiket</option>
-                    <option value="DALAM PROSES" selected>Dalam Proses</option>
-                    <option value="SELESAI">Selesai</option>
-                </select>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-slate-100 pb-4 gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-red-600">Pusat Sokongan Terkumpul</h2>
+                    <p class="text-xs font-medium text-slate-500 mt-1">Urus tiket aduan ICT dan permohonan status ID DELIMa sekolah.</p>
+                </div>
+                <div class="flex bg-slate-100 p-1.5 rounded-xl shadow-inner border border-slate-200">
+                    <button onclick="switchAdminHelpdeskTab('aduan')" id="btnAdminTabAduan" class="px-4 py-2 rounded-lg text-xs font-black bg-white text-red-600 shadow-sm border border-slate-100 transition-all transform scale-105 uppercase tracking-wider">Aduan ICT</button>
+                    <button onclick="switchAdminHelpdeskTab('delima-guru')" id="btnAdminTabGuru" class="px-4 py-2 rounded-lg text-xs font-bold text-slate-500 hover:text-blue-600 border border-transparent transition-all uppercase tracking-wider">ID Guru</button>
+                    <button onclick="switchAdminHelpdeskTab('delima-murid')" id="btnAdminTabMurid" class="px-4 py-2 rounded-lg text-xs font-bold text-slate-500 hover:text-cyan-600 border border-transparent transition-all uppercase tracking-wider">ID Murid</button>
+                </div>
             </div>
-            <div id="adminTiketWrapper" class="space-y-4"></div>
+
+            <!-- Panel Aduan ICT (Asal) -->
+            <div id="panelAdminAduan">
+                <div class="flex justify-end mb-4">
+                    <select id="filterTiketAdmin" class="px-3 py-1.5 rounded-lg border-2 border-red-100 bg-red-50 text-red-700 text-xs font-bold outline-none" onchange="loadTiketAdmin()">
+                        <option value="ALL">Semua Tiket</option>
+                        <option value="DALAM PROSES" selected>Dalam Proses</option>
+                        <option value="SELESAI">Selesai</option>
+                    </select>
+                </div>
+                <div id="adminTiketWrapper" class="space-y-4"></div>
+            </div>
+
+            <!-- Panel Status ID Guru -->
+            <div id="panelAdminGuru" class="hidden">
+                <div class="flex justify-end mb-4">
+                    <select id="filterDelimaGuruAdmin" class="px-3 py-1.5 rounded-lg border-2 border-blue-100 bg-blue-50 text-blue-700 text-xs font-bold outline-none" onchange="loadSenaraiDelimaAdmin('GURU')">
+                        <option value="ALL">Semua Status</option>
+                        <option value="DALAM PROSES" selected>Dalam Proses</option>
+                        <option value="SELESAI">Selesai</option>
+                    </select>
+                </div>
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto max-h-[600px]">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-[10px] text-slate-500 uppercase bg-slate-50 border-b border-slate-100 sticky top-0 z-10 font-black tracking-widest">
+                                <tr>
+                                    <th class="px-6 py-4 w-12 text-center">Bil</th>
+                                    <th class="px-6 py-4 w-1/4">Sekolah & Guru</th>
+                                    <th class="px-6 py-4 w-1/4">Organisasi Asal</th>
+                                    <th class="px-6 py-4 w-1/4">Catatan & Destinasi</th>
+                                    <th class="px-6 py-4 text-center w-32">Status / Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyAdminGuru" class="divide-y divide-slate-100 text-xs">
+                                <tr><td colspan="5" class="p-8 text-center text-slate-400 font-medium">Memuatkan data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Status ID Murid -->
+            <div id="panelAdminMurid" class="hidden">
+                <div class="flex justify-end mb-4">
+                    <select id="filterDelimaMuridAdmin" class="px-3 py-1.5 rounded-lg border-2 border-cyan-100 bg-cyan-50 text-cyan-700 text-xs font-bold outline-none" onchange="loadSenaraiDelimaAdmin('MURID')">
+                        <option value="ALL">Semua Status</option>
+                        <option value="DALAM PROSES" selected>Dalam Proses</option>
+                        <option value="SELESAI">Selesai</option>
+                    </select>
+                </div>
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto max-h-[600px]">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-[10px] text-slate-500 uppercase bg-slate-50 border-b border-slate-100 sticky top-0 z-10 font-black tracking-widest">
+                                <tr>
+                                    <th class="px-6 py-4 w-12 text-center">Bil</th>
+                                    <th class="px-6 py-4 w-1/4">Sekolah & Murid</th>
+                                    <th class="px-6 py-4 w-1/4">Unit Asal</th>
+                                    <th class="px-6 py-4 w-1/4">Catatan</th>
+                                    <th class="px-6 py-4 text-center w-32">Status / Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyAdminMurid" class="divide-y divide-slate-100 text-xs">
+                                <tr><td colspan="5" class="p-8 text-center text-slate-400 font-medium">Memuatkan data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- TAB 8: ADMIN USERS -->
@@ -620,7 +689,7 @@
       </div>
   </div>
 
-  <!-- MODAL EDIT PENCAPAIAN ADMIN (HIBRID FAIL UPLOAD V2.0) -->
+  <!-- MODAL EDIT PENCAPAIAN ADMIN -->
   <div id="modalEditPencapaian" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
       <div class="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
           <div class="bg-amber-400 p-4 flex justify-between items-center text-slate-900 sticky top-0 z-10">
@@ -710,7 +779,7 @@
       </div>
   </div>
 
-  <!-- MODAL REKOD PPD ADMIN (FAIL UPLOAD V2.0) -->
+  <!-- MODAL REKOD PPD ADMIN -->
   <div id="modalRekodPPD" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
       <div class="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl flex flex-col">
           <div class="bg-indigo-600 p-4 flex justify-between items-center text-white shrink-0">
@@ -803,7 +872,7 @@
       </div>
   </div>
 
-  <!-- MODAL STANDARDIZE KEKAL SAMA -->
+  <!-- MODAL STANDARDIZE -->
   <div id="modalStandardize" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
       <div class="bg-white w-full max-w-4xl h-[80vh] rounded-2xl overflow-hidden shadow-2xl flex flex-col">
           <div class="bg-slate-800 p-4 flex justify-between items-center text-white shrink-0">
@@ -848,6 +917,41 @@
   <script type="module" src="js/admin/gallery_manager.js"></script>
   <script type="module" src="js/admin/booking_manager.js"></script>
   <script type="module" src="js/admin/settings.js"></script>
+  <script type="module" src="js/admin/delima_manager.js"></script>
 
+  <script>
+      function switchAdminHelpdeskTab(type) {
+          const btnAduan = document.getElementById('btnAdminTabAduan');
+          const btnGuru = document.getElementById('btnAdminTabGuru');
+          const btnMurid = document.getElementById('btnAdminTabMurid');
+          
+          const panelAduan = document.getElementById('panelAdminAduan');
+          const panelGuru = document.getElementById('panelAdminGuru');
+          const panelMurid = document.getElementById('panelAdminMurid');
+
+          // Reset semua butang
+          [btnAduan, btnGuru, btnMurid].forEach(btn => {
+              btn.className = "px-4 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 border border-transparent transition-all uppercase tracking-wider";
+          });
+          
+          // Sembunyikan semua panel
+          [panelAduan, panelGuru, panelMurid].forEach(panel => panel.classList.add('hidden'));
+
+          // Aktifkan pilihan
+          if (type === 'aduan') {
+              btnAduan.className = "px-4 py-2 rounded-lg text-xs font-black bg-white text-red-600 shadow-sm border border-slate-100 transition-all transform scale-105 uppercase tracking-wider";
+              panelAduan.classList.remove('hidden');
+              if(window.loadTiketAdmin) window.loadTiketAdmin();
+          } else if (type === 'delima-guru') {
+              btnGuru.className = "px-4 py-2 rounded-lg text-xs font-black bg-white text-blue-600 shadow-sm border border-slate-100 transition-all transform scale-105 uppercase tracking-wider";
+              panelGuru.classList.remove('hidden');
+              if(window.loadSenaraiDelimaAdmin) window.loadSenaraiDelimaAdmin('GURU');
+          } else if (type === 'delima-murid') {
+              btnMurid.className = "px-4 py-2 rounded-lg text-xs font-black bg-white text-cyan-600 shadow-sm border border-slate-100 transition-all transform scale-105 uppercase tracking-wider";
+              panelMurid.classList.remove('hidden');
+              if(window.loadSenaraiDelimaAdmin) window.loadSenaraiDelimaAdmin('MURID');
+          }
+      }
+  </script>
 </body>
 </html>

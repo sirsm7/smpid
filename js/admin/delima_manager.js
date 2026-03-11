@@ -1,0 +1,135 @@
+/**
+ * ADMIN MODULE: DELIMA MANAGER
+ * Menguruskan paparan dan tindakan admin terhadap rekod status ID DELIMa sekolah.
+ * Fungsi ini dipanggil dari panel 'Pusat Sokongan Terkumpul' (admin.html).
+ */
+
+import { DelimaService } from '../../modules/helpdesk/delima.service.js';
+import { toggleLoading } from '../core/helpers.js';
+
+window.loadSenaraiDelimaAdmin = async function(kategori) {
+    const tbodyId = kategori === 'GURU' ? 'tbodyAdminGuru' : 'tbodyAdminMurid';
+    const filterId = kategori === 'GURU' ? 'filterDelimaGuruAdmin' : 'filterDelimaMuridAdmin';
+    const tbody = document.getElementById(tbodyId);
+    const filter = document.getElementById(filterId).value;
+
+    if (!tbody) return;
+
+    tbody.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-slate-400 font-medium animate-pulse"><i class="fas fa-circle-notch fa-spin text-xl mb-3 block text-slate-300"></i>Memuatkan senarai...</td></tr>`;
+
+    try {
+        const data = await DelimaService.getAll(kategori, filter);
+
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="p-10 text-center text-slate-400 italic bg-slate-50/50">Tiada rekod ditemui untuk saringan ini.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = data.map((item, index) => {
+            // Memadankan kod sekolah dengan nama penuh dari memori Dashboard
+            let schoolName = item.kod_sekolah;
+            if (window.globalDashboardData) {
+                const schoolMatch = window.globalDashboardData.find(s => s.kod_sekolah === item.kod_sekolah);
+                if (schoolMatch) schoolName = schoolMatch.nama_sekolah;
+            }
+
+            // Penetapan Butang Status & Aksi
+            let actionArea = '';
+            if (item.status_proses === 'SELESAI') {
+                actionArea = `<span class="inline-flex items-center justify-center bg-green-100 text-green-700 text-[10px] px-3 py-1.5 rounded-full font-black border border-green-200 shadow-sm w-full uppercase tracking-widest"><i class="fas fa-check mr-1.5"></i> SELESAI</span>
+                              <button onclick="hapusDelimaAdmin(${item.id}, '${kategori}')" class="mt-2 text-[10px] font-bold text-slate-400 hover:text-red-500 transition uppercase tracking-wider"><i class="fas fa-trash-alt"></i> Padam</button>`;
+            } else {
+                actionArea = `<button onclick="kemaskiniStatusDelimaAdmin(${item.id}, 'SELESAI', '${kategori}')" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black px-3 py-2 rounded-lg shadow-md transition-all flex items-center justify-center gap-1.5 uppercase tracking-widest transform active:scale-95"><i class="fas fa-check-double"></i> Tanda Selesai</button>`;
+            }
+
+            // Penetapan Visual Susun Atur Destinasi Guru vs Murid
+            let detailsHtml = '';
+            if (kategori === 'GURU') {
+                const destinasi = item.catatan === 'Berpindah Organisasi' 
+                    ? `<br><span class="text-blue-700 font-bold mt-2 block text-xs bg-blue-50 p-2.5 rounded-lg border border-blue-100 shadow-sm"><i class="fas fa-building mr-1.5 text-blue-500"></i> ${item.nama_organisasi_baharu || '-'} <br><span class="text-[10px] text-slate-500 font-mono mt-1 block tracking-wider bg-white px-2 py-1 rounded inline-block">ID: ${item.unit_organisasi_baharu || '-'}</span></span>` 
+                    : '';
+                detailsHtml = `
+                    <div class="font-bold text-slate-700 text-xs mb-1 uppercase bg-slate-100 inline-block px-2.5 py-1 rounded-md border border-slate-200 shadow-sm">${item.catatan}</div>
+                    ${destinasi}
+                `;
+            } else {
+                detailsHtml = `<div class="font-bold text-slate-700 text-xs leading-relaxed uppercase bg-slate-50 p-2 rounded-lg border border-slate-100">${item.catatan}</div>`;
+            }
+
+            return `
+            <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-0 group">
+                <td class="px-6 py-4 w-12 text-center font-mono font-bold text-slate-400 text-xs align-top pt-6">${index + 1}</td>
+                <td class="px-6 py-4 w-1/4 align-top pt-6">
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <span class="bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded font-bold tracking-widest shadow-sm">${item.kod_sekolah}</span>
+                    </div>
+                    <div class="font-bold text-slate-800 text-sm leading-snug mb-2 uppercase break-words">${item.nama}</div>
+                    <div class="text-[10px] text-slate-500 font-mono font-bold bg-white px-2 py-1 rounded-md inline-block border border-slate-200 shadow-sm">${item.id_delima}</div>
+                    <div class="text-[9px] text-slate-400 mt-2 font-semibold tracking-wider"><i class="far fa-calendar-alt mr-1"></i> Dihantar: ${new Date(item.created_at).toLocaleDateString('ms-MY')}</div>
+                </td>
+                <td class="px-6 py-4 w-1/4 align-top pt-6">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 line-clamp-2">${schoolName}</div>
+                    <div class="font-mono text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200 inline-block">${item.unit_organisasi_asal}</div>
+                </td>
+                <td class="px-6 py-4 w-1/4 align-top pt-6">${detailsHtml}</td>
+                <td class="px-6 py-4 text-center w-32 align-top pt-6">${actionArea}</td>
+            </tr>`;
+        }).join('');
+        
+    } catch (e) {
+        console.error("[AdminDelima] Error loading list:", e);
+        tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500 font-bold bg-red-50 border border-red-100 rounded-xl"><i class="fas fa-exclamation-triangle text-lg mb-2 block"></i> Gagal memuatkan data pangkalan data.</td></tr>`;
+    }
+};
+
+window.kemaskiniStatusDelimaAdmin = async function(id, status, kategori) {
+    Swal.fire({
+        title: 'Sahkan Tindakan',
+        text: 'Adakah permohonan ini telah diselesaikan (diproses dalam konsol admin)?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        confirmButtonText: 'Ya, Selesai!',
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-3xl' }
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            toggleLoading(true);
+            try {
+                await DelimaService.updateStatus(id, status);
+                toggleLoading(false);
+                Swal.fire({ icon: 'success', title: 'Status Dikemaskini', timer: 1500, showConfirmButton: false });
+                window.loadSenaraiDelimaAdmin(kategori);
+            } catch (e) {
+                toggleLoading(false);
+                Swal.fire('Ralat', 'Gagal mengemaskini status.', 'error');
+            }
+        }
+    });
+};
+
+window.hapusDelimaAdmin = async function(id, kategori) {
+    Swal.fire({
+        title: 'Padam Rekod?',
+        text: 'Rekod ini akan dipadam secara kekal dari pangkalan data.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Ya, Padam',
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-3xl' }
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            toggleLoading(true);
+            try {
+                await DelimaService.deleteStatus(id);
+                toggleLoading(false);
+                Swal.fire({ icon: 'success', title: 'Dipadam', timer: 1500, showConfirmButton: false });
+                window.loadSenaraiDelimaAdmin(kategori);
+            } catch (e) {
+                toggleLoading(false);
+                Swal.fire('Ralat', 'Gagal memadam rekod.', 'error');
+            }
+        }
+    });
+};

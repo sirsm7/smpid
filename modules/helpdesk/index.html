@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMPID - Pusat Sokongan & Pengurusan DELIMa</title>
+    
+    <!-- AUTH GUARD -->
+    <script type="module" src="../../js/core/auth.guard.js"></script>
+
+    <meta name="theme-color" content="#ef4444">
+    <link rel="icon" href="../../icoppdag.png">
+    
+    <!-- TAILWIND CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FONTS & ICONS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- LIBRARIES -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: { 50: '#f0fdf4', 100: '#dcfce7', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 900: '#14532d' },
+                        helpdesk: { 50: '#fef2f2', 100: '#fee2e2', 500: '#ef4444', 600: '#dc2626', 700: '#b91c1c', 900: '#7f1d1d' },
+                        delima: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.4s ease-out forwards',
+                        'slide-down': 'slideDown 0.3s ease-out forwards'
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                        slideDown: { '0%': { opacity: '0', transform: 'translateY(-10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer components {
+            .hidden { display: none !important; }
+            .form-input { @apply w-full p-3 rounded-xl border-2 border-slate-200 bg-slate-50 font-semibold text-slate-700 outline-none focus:border-delima-500 focus:bg-white transition-all text-sm; }
+            .form-label { @apply block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1; }
+            table td, table th { @apply whitespace-normal break-words leading-relaxed align-top; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col selection:bg-delima-200 selection:text-delima-900">
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm transition-opacity duration-300">
+        <div class="text-center text-white">
+            <div class="w-16 h-16 border-4 border-helpdesk-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="font-bold tracking-widest animate-pulse text-sm uppercase">Sistem Sedang Memproses...</p>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-helpdesk-600 rounded-xl flex items-center justify-center shadow-lg shadow-helpdesk-500/30 text-white">
+                    <i class="fas fa-headset text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-black text-slate-900 text-lg md:text-xl tracking-tight uppercase leading-none">Pusat Sokongan</h1>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Aduan ICT & Pengurusan DELIMa</p>
+                </div>
+            </div>
+            <button onclick="kembaliKePortal()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-full text-xs font-bold text-slate-600 transition flex items-center gap-2 group border border-slate-200 shadow-sm">
+                <i class="fas fa-arrow-left group-hover:-translate-x-1 transition-transform"></i> <span class="hidden sm:inline">Kembali</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto px-4 py-8 max-w-5xl">
+        
+        <!-- Tab Navigasi Utama -->
+        <div class="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 mb-8 flex flex-col md:flex-row gap-1.5 sticky top-24 z-30">
+            <button onclick="switchTab('aduan')" id="tab-btn-aduan" class="flex-1 py-3 px-4 rounded-xl text-xs font-black transition-all bg-helpdesk-600 text-white shadow-md transform scale-[1.02] flex items-center justify-center gap-2 uppercase tracking-wider">
+                <i class="fas fa-tools"></i> Tiket Aduan ICT
+            </button>
+            <button onclick="switchTab('guru')" id="tab-btn-guru" class="flex-1 py-3 px-4 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 hover:text-delima-600 transition-all flex items-center justify-center gap-2 uppercase tracking-wider">
+                <i class="fas fa-chalkboard-teacher"></i> Status ID Guru
+            </button>
+            <button onclick="switchTab('murid')" id="tab-btn-murid" class="flex-1 py-3 px-4 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 hover:text-delima-600 transition-all flex items-center justify-center gap-2 uppercase tracking-wider">
+                <i class="fas fa-user-graduate"></i> Status ID Murid
+            </button>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 1: TIKET ADUAN ICT (Dipindahkan dari user.html) -->
+        <!-- ========================================== -->
+        <div id="tab-content-aduan" class="animate-fade-in space-y-8">
+            <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+                <div class="bg-helpdesk-50 p-6 border-b border-helpdesk-100 flex items-center gap-4">
+                    <div class="w-10 h-10 bg-helpdesk-600 text-white rounded-full flex items-center justify-center shadow-md"><i class="fas fa-plus"></i></div>
+                    <div>
+                        <h3 class="font-bold text-helpdesk-900 uppercase tracking-widest text-sm">Hantar Tiket Aduan Baharu</h3>
+                        <p class="text-xs text-helpdesk-600 font-medium">Laporan kerosakan atau isu teknikal peralatan ICT sekolah.</p>
+                    </div>
+                </div>
+                <div class="p-6 md:p-8">
+                    <form id="formTiket" onsubmit="event.preventDefault(); hantarTiketAduan();" class="space-y-5">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="form-label text-helpdesk-700">Peranan Anda</label>
+                                <select id="tiketPeranan" class="form-input focus:border-helpdesk-500" required>
+                                    <option value="" disabled selected>- Sila Pilih -</option>
+                                    <option value="GPICT">Guru Penyelaras ICT</option>
+                                    <option value="ADMIN">Pentadbir DELIMa</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label text-helpdesk-700">Tajuk Masalah</label>
+                                <input type="text" id="tiketTajuk" class="form-input uppercase focus:border-helpdesk-500" required oninput="this.value = this.value.toUpperCase()" placeholder="CONTOH: KEROSAKAN CHROMEBOOK">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="form-label text-helpdesk-700">Butiran Masalah Secara Terperinci</label>
+                            <textarea id="tiketMesej" class="form-input focus:border-helpdesk-500 h-32 resize-none" required placeholder="Nyatakan jenama, model, dan simptom kerosakan..."></textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-helpdesk-600 hover:bg-helpdesk-700 text-white font-black py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-widest">
+                            <i class="fas fa-paper-plane"></i> Hantar Tiket
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Senarai Tiket Aduan -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-5 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-600 uppercase text-xs tracking-widest"><i class="fas fa-history mr-2"></i> Sejarah Tiket Aduan</h3>
+                    <button onclick="muatSenaraiTiket()" class="text-slate-400 hover:text-helpdesk-600 transition bg-white p-2 rounded-lg border border-slate-200 shadow-sm"><i class="fas fa-sync-alt"></i></button>
+                </div>
+                <div class="p-6">
+                    <div id="senaraiTiketContainer" class="space-y-4">
+                        <div class="text-center py-10 text-slate-400 font-medium">Memuatkan rekod...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 2: PENGURUSAN STATUS ID GURU -->
+        <!-- ========================================== -->
+        <div id="tab-content-guru" class="hidden animate-fade-in space-y-8">
+            
+            <div class="bg-gradient-to-r from-delima-50 to-white rounded-3xl shadow-xl border border-delima-100 overflow-hidden border-t-4 border-t-delima-500">
+                <div class="p-6 md:p-8">
+                    <div class="flex items-center gap-4 mb-6 pb-4 border-b border-delima-100">
+                        <div class="w-10 h-10 bg-delima-100 text-delima-600 rounded-full flex items-center justify-center shadow-sm text-lg"><i class="fas fa-file-signature"></i></div>
+                        <div>
+                            <h3 class="font-bold text-delima-900 uppercase tracking-widest text-sm">Borang Perubahan Status Guru</h3>
+                            <p class="text-xs text-delima-600 font-medium">Sila lengkapkan maklumat bagi guru yang berpindah, bersara atau berubah status.</p>
+                        </div>
+                    </div>
+
+                    <form id="formStatusGuru" onsubmit="event.preventDefault(); hantarStatusDelima('GURU');" class="space-y-5">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="form-label text-delima-700">Nama Penuh Guru</label>
+                                <input type="text" id="guruNama" class="form-input uppercase" required placeholder="NAMA SEPERTI DALAM K/P" oninput="this.value = this.value.toUpperCase()">
+                            </div>
+                            <div>
+                                <label class="form-label text-delima-700">ID DELIMa</label>
+                                <input type="text" id="guruIdDelima" class="form-input lowercase" required placeholder="g-xxxxxxxx@moe-dl.edu.my" oninput="this.value = this.value.toLowerCase()">
+                            </div>
+                            <div>
+                                <label class="form-label text-delima-700">Unit Organisasi Asal (Kod Sekolah)</label>
+                                <input type="text" id="guruUnitAsal" class="form-input lowercase" required placeholder="sekolah-mba0001" oninput="this.value = this.value.toLowerCase()">
+                            </div>
+                            <div>
+                                <label class="form-label text-delima-700">Kategori Catatan</label>
+                                <div class="relative">
+                                    <select id="guruCatatan" class="form-input appearance-none pr-10" required onchange="toggleOrganisasiBaharu('guru')">
+                                        <option value="" disabled selected>- Pilih Catatan -</option>
+                                        <option value="Berpindah Organisasi">Berpindah Organisasi (Sekolah/PPD/JPN)</option>
+                                        <option value="Bersara">Bersara</option>
+                                        <option value="Meninggal Dunia">Meninggal Dunia</option>
+                                        <option value="Berhenti / Lain-lain">Berhenti / Lain-lain</option>
+                                    </select>
+                                    <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ruangan Dinamik: Hanya muncul jika Berpindah -->
+                        <div id="guruSeksyenBaharu" class="hidden bg-white p-5 rounded-2xl border-2 border-dashed border-delima-200 mt-4 animate-slide-down">
+                            <h4 class="text-xs font-bold text-delima-600 uppercase mb-3"><i class="fas fa-info-circle mr-1"></i> Maklumat Organisasi Baharu</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div>
+                                    <label class="form-label text-slate-500">Unit Organisasi Baharu</label>
+                                    <input type="text" id="guruUnitBaharu" class="form-input lowercase" placeholder="Contoh: sekolah-mbb0002" oninput="this.value = this.value.toLowerCase()">
+                                </div>
+                                <div>
+                                    <label class="form-label text-slate-500">Nama Sekolah / PPD / JPN Baharu</label>
+                                    <input type="text" id="guruNamaBaharu" class="form-input uppercase" placeholder="Nama penuh institusi baharu" oninput="this.value = this.value.toUpperCase()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-delima-600 hover:bg-delima-700 text-white font-black py-4 rounded-xl shadow-lg shadow-delima-500/30 transition-all flex items-center justify-center gap-2 uppercase tracking-widest mt-6">
+                            <i class="fas fa-save"></i> Hantar Rekod Guru
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Senarai Rekod Guru -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-5 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-600 uppercase text-xs tracking-widest"><i class="fas fa-list-ul mr-2"></i> Rekod Serahan Status Guru</h3>
+                    <button onclick="muatSenaraiDelima('GURU')" class="text-slate-400 hover:text-delima-600 transition bg-white p-2 rounded-lg border border-slate-200 shadow-sm"><i class="fas fa-sync-alt"></i></button>
+                </div>
+                <div class="overflow-x-auto max-h-[400px]">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-[10px] text-slate-400 uppercase bg-white border-b-2 border-slate-100 sticky top-0 z-10 font-black tracking-widest">
+                            <tr>
+                                <th class="px-6 py-4 w-12 text-center">Bil</th>
+                                <th class="px-6 py-4 w-1/4">Maklumat Guru</th>
+                                <th class="px-6 py-4 w-1/4">Organisasi Asal</th>
+                                <th class="px-6 py-4 w-1/4">Catatan & Destinasi</th>
+                                <th class="px-6 py-4 text-center w-24">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="senaraiGuruContainer" class="divide-y divide-slate-100 text-xs">
+                            <tr><td colspan="5" class="p-8 text-center text-slate-400 font-medium">Memuatkan data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 3: PENGURUSAN STATUS ID MURID -->
+        <!-- ========================================== -->
+        <div id="tab-content-murid" class="hidden animate-fade-in space-y-8">
+            
+            <div class="bg-gradient-to-r from-cyan-50 to-white rounded-3xl shadow-xl border border-cyan-100 overflow-hidden border-t-4 border-t-cyan-500">
+                <div class="p-6 md:p-8">
+                    <div class="flex items-center gap-4 mb-6 pb-4 border-b border-cyan-100">
+                        <div class="w-10 h-10 bg-cyan-100 text-cyan-600 rounded-full flex items-center justify-center shadow-sm text-lg"><i class="fas fa-user-edit"></i></div>
+                        <div>
+                            <h3 class="font-bold text-cyan-900 uppercase tracking-widest text-sm">Borang Perubahan Status Murid</h3>
+                            <p class="text-xs text-cyan-600 font-medium">Rekodkan pelajar yang berpindah, tamat persekolahan atau masalah akaun.</p>
+                        </div>
+                    </div>
+
+                    <form id="formStatusMurid" onsubmit="event.preventDefault(); hantarStatusDelima('MURID');" class="space-y-5">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="form-label text-cyan-700">Nama Penuh Murid</label>
+                                <input type="text" id="muridNama" class="form-input uppercase focus:border-cyan-500" required placeholder="NAMA SEPERTI DALAM K/P" oninput="this.value = this.value.toUpperCase()">
+                            </div>
+                            <div>
+                                <label class="form-label text-cyan-700">ID DELIMa</label>
+                                <input type="text" id="muridIdDelima" class="form-input lowercase focus:border-cyan-500" required placeholder="m-xxxxxxxx@moe-dl.edu.my" oninput="this.value = this.value.toLowerCase()">
+                            </div>
+                            <div>
+                                <label class="form-label text-cyan-700">Unit Organisasi Semasa</label>
+                                <input type="text" id="muridUnitAsal" class="form-input lowercase focus:border-cyan-500" required placeholder="sekolah-mba0001" oninput="this.value = this.value.toLowerCase()">
+                            </div>
+                            <div>
+                                <label class="form-label text-cyan-700">Catatan Tindakan</label>
+                                <input type="text" id="muridCatatan" class="form-input uppercase focus:border-cyan-500" required placeholder="Contoh: Berpindah ke SK Contoh / Tamat Tahun 6" oninput="this.value = this.value.toUpperCase()">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-black py-4 rounded-xl shadow-lg shadow-cyan-500/30 transition-all flex items-center justify-center gap-2 uppercase tracking-widest mt-6">
+                            <i class="fas fa-save"></i> Hantar Rekod Murid
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Senarai Rekod Murid -->
+            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-5 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="font-bold text-slate-600 uppercase text-xs tracking-widest"><i class="fas fa-list-ul mr-2"></i> Rekod Serahan Status Murid</h3>
+                    <button onclick="muatSenaraiDelima('MURID')" class="text-slate-400 hover:text-cyan-600 transition bg-white p-2 rounded-lg border border-slate-200 shadow-sm"><i class="fas fa-sync-alt"></i></button>
+                </div>
+                <div class="overflow-x-auto max-h-[400px]">
+                    <table class="w-full text-sm text-left">
+                        <thead class="text-[10px] text-slate-400 uppercase bg-white border-b-2 border-slate-100 sticky top-0 z-10 font-black tracking-widest">
+                            <tr>
+                                <th class="px-6 py-4 w-12 text-center">Bil</th>
+                                <th class="px-6 py-4 w-1/3">Maklumat Murid</th>
+                                <th class="px-6 py-4 w-1/4">Unit Organisasi</th>
+                                <th class="px-6 py-4 w-1/3">Catatan</th>
+                                <th class="px-6 py-4 text-center w-24">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="senaraiMuridContainer" class="divide-y divide-slate-100 text-xs">
+                            <tr><td colspan="5" class="p-8 text-center text-slate-400 font-medium">Memuatkan data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-8 mt-auto">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">&copy; 2026 Pusat Sokongan PPDAG</p>
+        </div>
+    </footer>
+
+    <!-- Inline Script untuk UI Tab Switching -->
+    <script>
+        function kembaliKePortal() {
+            const isAdmin = localStorage.getItem('smpid_auth') === 'true';
+            window.location.href = isAdmin ? '../../admin.html' : '../../user.html';
+        }
+
+        function switchTab(tabId) {
+            // Sembunyikan semua content
+            ['aduan', 'guru', 'murid'].forEach(id => {
+                document.getElementById(`tab-content-${id}`).classList.add('hidden');
+                
+                // Reset butang style
+                const btn = document.getElementById(`tab-btn-${id}`);
+                btn.className = "flex-1 py-3 px-4 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-50 hover:text-delima-600 transition-all flex items-center justify-center gap-2 uppercase tracking-wider border border-transparent";
+            });
+
+            // Papar content aktif
+            document.getElementById(`tab-content-${tabId}`).classList.remove('hidden');
+            
+            // Set style butang aktif mengikut tema
+            const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+            if (tabId === 'aduan') {
+                activeBtn.className = "flex-1 py-3 px-4 rounded-xl text-xs font-black transition-all bg-helpdesk-600 text-white shadow-md transform scale-[1.02] flex items-center justify-center gap-2 uppercase tracking-wider";
+            } else if (tabId === 'guru') {
+                activeBtn.className = "flex-1 py-3 px-4 rounded-xl text-xs font-black transition-all bg-delima-600 text-white shadow-md transform scale-[1.02] flex items-center justify-center gap-2 uppercase tracking-wider";
+            } else if (tabId === 'murid') {
+                activeBtn.className = "flex-1 py-3 px-4 rounded-xl text-xs font-black transition-all bg-cyan-600 text-white shadow-md transform scale-[1.02] flex items-center justify-center gap-2 uppercase tracking-wider";
+            }
+        }
+
+        // Fungsi UI untuk papar/sembunyi input Organisasi Baharu bagi Guru
+        function toggleOrganisasiBaharu(type) {
+            if (type === 'guru') {
+                const select = document.getElementById('guruCatatan');
+                const section = document.getElementById('guruSeksyenBaharu');
+                const unitInput = document.getElementById('guruUnitBaharu');
+                const namaInput = document.getElementById('guruNamaBaharu');
+
+                if (select.value === 'Berpindah Organisasi') {
+                    section.classList.remove('hidden');
+                    unitInput.setAttribute('required', 'true');
+                    namaInput.setAttribute('required', 'true');
+                } else {
+                    section.classList.add('hidden');
+                    unitInput.removeAttribute('required');
+                    namaInput.removeAttribute('required');
+                    unitInput.value = '';
+                    namaInput.value = '';
+                }
+            }
+        }
+    </script>
+
+    <!-- Memanggil Script Logik Pusat Sokongan -->
+    <script type="module" src="script.js"></script>
+
+</body>
+</html>
