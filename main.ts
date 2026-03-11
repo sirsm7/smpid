@@ -1,10 +1,10 @@
 /**
  * SMPID Telegram Bot & API (Deno Deploy)
- * Versi: 4.7 (Full Integrity & Bulletproof CORS Engine + DELIMa Group Integration)
+ * Versi: 4.8 (Full Integrity & PIC Broadcast for DELIMa)
  * Host: smpid.ppdag.deno.net
  * * NOTA: Kod ini mengekalkan 100% logik pendaftaran dan pangkalan data asal.
  * Isu CORS diselesaikan secara tuntas dengan pengendalian preflight global.
- * Penambahan V4.7: Endpoint notifikasi Helpdesk DELIMa kini dihalakan terus ke Group Telegram khusus.
+ * Penambahan V4.8: Endpoint /notify-delima kini menghantar makluman ke Group Khas DAN kepada PIC berdaftar di jadual admin.
  */
 
 import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";
@@ -412,8 +412,14 @@ Deno.serve(async (req) => {
       
       const text = `🔄 *STATUS ID DELIMA BAHARU*\n\n🏫 Sekolah: *${kod}*\n👥 Kategori: *${kategori}*\n👤 Nama: *${nama}*\n📝 Catatan: ${catatan}`;
       
-      // Hantar terus ke Telegram Group Khas DELIMa
+      // 1. Hantar terus ke Telegram Group Khas DELIMa
       await bot.api.sendMessage("-1003371951236", text, { parse_mode: "Markdown" }).catch(e => console.error("Ralat hantar ke group:", e));
+      
+      // 2. Suntikan Baharu: Hantar juga kepada PIC berdaftar di jadual smpid_admin_users
+      const { data: admins } = await supabase.from("smpid_admin_users").select("telegram_id").not("telegram_id", "is", null);
+      if (admins && admins.length > 0) {
+        admins.forEach(a => bot.api.sendMessage(a.telegram_id, text, { parse_mode: "Markdown" }).catch(() => {}));
+      }
       
       return createRes({ status: "success" });
     }
