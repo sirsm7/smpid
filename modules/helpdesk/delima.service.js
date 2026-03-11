@@ -5,6 +5,7 @@
  */
 
 import { getDatabaseClient } from '../../js/core/db.js';
+import { APP_CONFIG } from '../../js/config/app.config.js'; // Ditambah untuk capaian Deno API
 
 const db = getDatabaseClient();
 
@@ -19,6 +20,21 @@ export const DelimaService = {
             .insert([payload]);
 
         if (error) throw error;
+
+        // Suntikan Notifikasi Telegram via Deno API (Webhooks)
+        if (APP_CONFIG.API.DENO_URL) {
+            fetch(`${APP_CONFIG.API.DENO_URL}/notify-delima`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    kod: payload.kod_sekolah, 
+                    kategori: payload.kategori, 
+                    nama: payload.nama, 
+                    catatan: payload.catatan 
+                })
+            }).catch(e => console.warn("[DelimaService] Bot offline:", e));
+        }
+
         return { success: true };
     },
 
