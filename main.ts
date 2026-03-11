@@ -408,9 +408,16 @@ Deno.serve(async (req) => {
 
     // --- [5] ENDPOINT: /notify-delima ---
     if (path === "/notify-delima" && req.method === "POST") {
-      const { kod, kategori, nama, catatan } = await req.json();
+      const { kod, kategori, nama, id_delima, catatan } = await req.json();
       
-      const text = `🔄 *STATUS ID DELIMA BAHARU*\n\n🏫 Sekolah: *${kod}*\n👥 Kategori: *${kategori}*\n👤 Nama: *${nama}*\n📝 Catatan: ${catatan}`;
+      // Logik Tajuk Dinamik untuk mengelakkan kekeliruan
+      let title = "KEMASKINI STATUS ID";
+      if (catatan === 'Berpindah MASUK ke sekolah ini') {
+          title = "MOHON PINDAH MASUK ID";
+      }
+
+      // Format Mesej Baharu mengikut permintaan (dengan id_delima)
+      const text = `🔄 *${title}*\n\n🏫 Sekolah: *${kod}*\n👥 Kategori: *${kategori}*\n👤 Nama: *${nama}*\n📧 Alamat emel: ${id_delima || '-'}\n📝 Catatan: ${catatan}`;
       
       // 1. Hantar terus ke Telegram Group Khas DELIMa
       await bot.api.sendMessage("-1003371951236", text, { parse_mode: "Markdown" }).catch(e => console.error("Ralat hantar ke group:", e));

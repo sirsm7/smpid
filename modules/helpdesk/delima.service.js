@@ -22,6 +22,7 @@ export const DelimaService = {
         if (error) throw error;
 
         // Suntikan Notifikasi Telegram via Deno API (Webhooks)
+        // UPDATE: Menambah hantaran 'id_delima' ke backend
         if (APP_CONFIG.API.DENO_URL) {
             fetch(`${APP_CONFIG.API.DENO_URL}/notify-delima`, {
                 method: 'POST',
@@ -30,6 +31,7 @@ export const DelimaService = {
                     kod: payload.kod_sekolah, 
                     kategori: payload.kategori, 
                     nama: payload.nama, 
+                    id_delima: payload.id_delima,
                     catatan: payload.catatan 
                 })
             }).catch(e => console.warn("[DelimaService] Bot offline:", e));
