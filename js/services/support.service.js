@@ -2,6 +2,7 @@
  * SUPPORT SERVICE
  * Menguruskan tiket aduan dan helpdesk.
  * Kemaskini: Tambah fungsi update (balas) dan delete.
+ * Fix: Penukaran Content-Type ke text/plain untuk bypass CORS Preflight.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -24,7 +25,7 @@ export const SupportService = {
         if (APP_CONFIG.API.DENO_URL) {
             fetch(`${APP_CONFIG.API.DENO_URL}/notify-ticket`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({ 
                     kod: payload.kod_sekolah, 
                     peranan: payload.peranan_pengirim, 
@@ -59,7 +60,7 @@ export const SupportService = {
             if (ticket) {
                 fetch(`${APP_CONFIG.API.DENO_URL}/reply-ticket`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ 
                         kod: ticket.kod_sekolah, 
                         peranan: ticket.peranan_pengirim, 

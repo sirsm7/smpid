@@ -5,6 +5,7 @@
  * * NOTA: Kod ini mengekalkan 100% logik pendaftaran dan pangkalan data asal.
  * Isu CORS diselesaikan secara tuntas dengan pengendalian preflight global.
  * Penambahan V4.8: Endpoint /notify-delima kini menghantar makluman ke Group Khas DAN kepada PIC berdaftar di jadual admin.
+ * Pembaikan V4.9: Migrasi parse_mode dari Markdown ke HTML untuk Webhook API bagi mengelakkan Telegram API Crash.
  */
 
 import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";
@@ -326,7 +327,7 @@ async function alertTaken(ctx: any) {
 }
 
 // ==========================================
-// 5. SERVER API & WEBHOOK (BULLETPROOF CORS)
+// 5. SERVER API & WEBHOOK (BULLETPROOF CORS & HTML PARSING)
 // ==========================================
 const handleBotUpdate = webhookCallback(bot, "std/http");
 
@@ -363,8 +364,10 @@ Deno.serve(async (req) => {
         let icon = "🔔";
         let act = "dikemaskini oleh pihak sekolah.";
         if (updated_by === 'PENTADBIR PPD') { icon = "🛡️"; act = "dikemaskini oleh PENTADBIR PPD."; }
-        const msg = `${icon} *KEMASKINI DATA SEKOLAH*\n\n🏫 *${nama}*\nKod: \`${kod}\`\n\nStatus: Maklumat sekolah ini baru sahaja ${act}`;
-        admins.forEach(a => bot.api.sendMessage(a.telegram_id, msg, { parse_mode: "Markdown" }).catch(() => {}));
+        
+        // FIX: Migrasi ke HTML untuk elak parsing error
+        const msg = `${icon} <b>KEMASKINI DATA SEKOLAH</b>\n\n🏫 <b>${nama}</b>\nKod: <code>${kod}</code>\n\nStatus: Maklumat sekolah ini baru sahaja ${act}`;
+        admins.forEach(a => bot.api.sendMessage(a.telegram_id, msg, { parse_mode: "HTML" }).catch(() => {}));
       }
       return createRes({ status: "success" });
     }
@@ -374,8 +377,9 @@ Deno.serve(async (req) => {
       const { kod, peranan, tajuk, mesej } = await req.json();
       const { data: admins } = await supabase.from("smpid_admin_users").select("telegram_id").not("telegram_id", "is", null);
       if (admins && admins.length > 0) {
-        const text = `🆘 *TIKET ADUAN BARU*\n\n🏫 Sekolah: *${kod}*\n👤 Pengirim: *${peranan}*\n📌 Tajuk: *${tajuk}*\n\n📝 Mesej: ${mesej}`;
-        admins.forEach(a => bot.api.sendMessage(a.telegram_id, text, { parse_mode: "Markdown" }).catch(() => {}));
+        // FIX: Tukar ke HTML untuk elak API Telegram crash jika pengguna hantar simbol (*, _) secara rawak
+        const text = `🆘 <b>TIKET ADUAN BARU</b>\n\n🏫 Sekolah: <b>${kod}</b>\n👤 Pengirim: <b>${peranan}</b>\n📌 Tajuk: <b>${tajuk}</b>\n\n📝 Mesej: ${mesej}`;
+        admins.forEach(a => bot.api.sendMessage(a.telegram_id, text, { parse_mode: "HTML" }).catch(() => {}));
       }
       return createRes({ status: "success" });
     }
@@ -387,8 +391,9 @@ Deno.serve(async (req) => {
       if (sek) {
         const targetId = (peranan === 'GPICT') ? sek.telegram_id_gpict : sek.telegram_id_admin;
         if (targetId) {
-          const text = `✅ *STATUS TIKET: SELESAI*\n\n📌 Tajuk: *${tajuk}*\n💬 Respon: ${balasan}`;
-          await bot.api.sendMessage(targetId, text, { parse_mode: "Markdown" });
+          // FIX: Tukar ke HTML
+          const text = `✅ <b>STATUS TIKET: SELESAI</b>\n\n📌 Tajuk: <b>${tajuk}</b>\n💬 Respon: ${balasan}`;
+          await bot.api.sendMessage(targetId, text, { parse_mode: "HTML" }).catch(() => {});
         }
       }
       return createRes({ status: "success" });
@@ -400,8 +405,9 @@ Deno.serve(async (req) => {
       const { data: admins } = await supabase.from("smpid_admin_users").select("telegram_id").not("telegram_id", "is", null);
       if (admins && admins.length > 0) {
         const dt = new Date(tarikh).toLocaleDateString('ms-MY', { day: '2-digit', month: 'long', year: 'numeric' });
-        const text = `📅 *TEMPAHAN BIMBINGAN BARU*\n\n🏫 *${nama}* (${kod})\n📌 *${tajuk}*\n🗓️ *${dt}* (${masa.toUpperCase()})\n👤 PIC: *${pic}*\n📞 [${tel}](https://wa.me/${tel.replace(/[^0-9]/g, '')})`;
-        admins.forEach(a => bot.api.sendMessage(a.telegram_id, text, { parse_mode: "Markdown" }).catch(() => {}));
+        // FIX: Tukar ke HTML
+        const text = `📅 <b>TEMPAHAN BIMBINGAN BARU</b>\n\n🏫 <b>${nama}</b> (${kod})\n📌 <b>${tajuk}</b>\n🗓️ <b>${dt}</b> (${masa.toUpperCase()})\n👤 PIC: <b>${pic}</b>\n📞 <a href="https://wa.me/${tel.replace(/[^0-9]/g, '')}">${tel}</a>`;
+        admins.forEach(a => bot.api.sendMessage(a.telegram_id, text, { parse_mode: "HTML" }).catch(() => {}));
       }
       return createRes({ status: "success" });
     }
@@ -416,16 +422,16 @@ Deno.serve(async (req) => {
           title = "MOHON PINDAH MASUK ID";
       }
 
-      // Format Mesej Baharu mengikut permintaan (dengan id_delima)
-      const text = `🔄 *${title}*\n\n🏫 Sekolah: *${kod}*\n👥 Kategori: *${kategori}*\n👤 Nama: *${nama}*\n📧 Alamat emel: ${id_delima || '-'}\n📝 Catatan: ${catatan}`;
+      // FIX: Format Mesej Baharu dengan HTML
+      const text = `🔄 <b>${title}</b>\n\n🏫 Sekolah: <b>${kod}</b>\n👥 Kategori: <b>${kategori}</b>\n👤 Nama: <b>${nama}</b>\n📧 Alamat emel: ${id_delima || '-'}\n📝 Catatan: ${catatan}`;
       
       // 1. Hantar terus ke Telegram Group Khas DELIMa
-      await bot.api.sendMessage("-1003371951236", text, { parse_mode: "Markdown" }).catch(e => console.error("Ralat hantar ke group:", e));
+      await bot.api.sendMessage("-1003371951236", text, { parse_mode: "HTML" }).catch(e => console.error("Ralat hantar ke group:", e));
       
-      // 2. Suntikan Baharu: Hantar juga kepada PIC berdaftar di jadual smpid_admin_users
+      // 2. Hantar juga kepada PIC berdaftar di jadual smpid_admin_users
       const { data: admins } = await supabase.from("smpid_admin_users").select("telegram_id").not("telegram_id", "is", null);
       if (admins && admins.length > 0) {
-        admins.forEach(a => bot.api.sendMessage(a.telegram_id, text, { parse_mode: "Markdown" }).catch(() => {}));
+        admins.forEach(a => bot.api.sendMessage(a.telegram_id, text, { parse_mode: "HTML" }).catch(() => {}));
       }
       
       return createRes({ status: "success" });
@@ -439,8 +445,9 @@ Deno.serve(async (req) => {
         // Hantar kepada Admin DELIMa, jika tiada, hantar kepada GPICT
         const targetId = sek.telegram_id_admin || sek.telegram_id_gpict;
         if (targetId) {
-          const text = `✅ *STATUS DELIMA: ${status}*\n\n🏫 Sekolah: *${kod}*\n👥 Kategori: *${kategori}*\n👤 Nama: *${nama}*\n💬 Tindakan PPD telah selesai.`;
-          await bot.api.sendMessage(targetId, text, { parse_mode: "Markdown" });
+          // FIX: Tukar ke HTML
+          const text = `✅ <b>STATUS DELIMA: ${status}</b>\n\n🏫 Sekolah: <b>${kod}</b>\n👥 Kategori: <b>${kategori}</b>\n👤 Nama: <b>${nama}</b>\n💬 Tindakan PPD telah selesai.`;
+          await bot.api.sendMessage(targetId, text, { parse_mode: "HTML" }).catch(() => {});
         }
       }
       return createRes({ status: "success" });
