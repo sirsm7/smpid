@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMPID - Penataran Sekolah Digital</title>
+    
+    <!-- AUTH GUARD -->
+    <script type="module" src="../../js/core/auth.guard.js"></script>
+
+    <meta name="theme-color" content="#1e40af">
+    <link rel="icon" href="../../icoppdag.png">
+    
+    <!-- TAILWIND CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FONTS & ICONS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- LIBRARIES -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="console.warn('CDN Supabase Utama Disekat. Mencuba Unpkg...'); this.onerror=null; this.src='https://unpkg.com/@supabase/supabase-js@2';"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #f3f4f6; }
+        .hidden-section { display: none !important; }
+        .info-icon { color: #94a3b8; cursor: pointer; margin-left: 8px; transition: color 0.2s; }
+        .info-icon:hover { color: #3b82f6; }
+        .score-btn-content { transition: all 0.2s ease-in-out; }
+        .score-btn-content:active { transform: scale(0.95); }
+        .nav-item { cursor: pointer; }
+        .nav-item.active { background-color: #dbeafe; color: #1e40af; border-right: 4px solid #1e40af; font-weight: 600; }
+        
+        .tab-content { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .input-field {
+            width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.375rem;
+            font-size: 0.875rem; transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        .input-field:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
+        .input-field[readonly] { background-color: #f3f4f6; color: #6b7280; font-weight: 600; }
+        .label-text { display: block; font-size: 0.75rem; font-weight: 700; color: #4b5563; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em; }
+
+        /* PDF TEMPLATE STYLES */
+        #pdf-template {
+            font-family: 'Times New Roman', serif;
+            color: #000;
+            background: #fff;
+            padding: 40px;
+            display: none; 
+        }
+        .pdf-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+        .pdf-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 12px; }
+        .pdf-table th, .pdf-table td { border: 1px solid #000; padding: 6px; }
+        .pdf-table th { background-color: #f0f0f0; font-weight: bold; text-align: left; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased flex flex-col h-screen overflow-hidden">
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm transition-opacity duration-300">
+        <div class="text-center text-white">
+            <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="font-bold tracking-widest animate-pulse text-sm uppercase">Menyegerak Data...</p>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-blue-900 text-white p-4 shadow-lg z-40 flex-none">
+        <div class="flex justify-between items-center max-w-7xl mx-auto px-2">
+            <div class="flex items-center space-x-3">
+                <button id="mobileMenuBtn" class="md:hidden text-white focus:outline-none mr-2 p-2 hover:bg-blue-800 rounded-lg transition">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-inner text-blue-900">
+                    <i class="fas fa-award text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-base md:text-xl font-black uppercase tracking-tight leading-none">Penataran Sekolah Digital</h1>
+                    <p class="text-[10px] font-bold text-blue-300 uppercase tracking-widest mt-1">PPD Alor Gajah</p>
+                </div>
+            </div>
+            <button onclick="kembaliKePortal()" class="bg-blue-800 hover:bg-blue-700 border border-blue-700 px-4 py-2 rounded-lg text-xs font-bold transition shadow flex items-center gap-2">
+                <i class="fas fa-arrow-left"></i> <span class="hidden sm:inline">Kembali</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden max-w-7xl mx-auto w-full relative">
+        
+        <!-- SIDEBAR MENU -->
+        <aside id="sidebar" class="w-64 bg-white shadow-xl flex-none h-full overflow-y-auto absolute md:relative z-30 transform -translate-x-full md:translate-x-0 transition-transform duration-300 border-r border-slate-200">
+            <div class="p-4">
+                <nav class="space-y-1">
+                    <div onclick="switchTab('tab-maklumat', this)" class="nav-item active flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 rounded-lg group transition-colors">
+                        <i class="fas fa-school w-6 text-blue-600"></i>
+                        <span class="text-sm font-bold">1. Maklumat Asas</span>
+                    </div>
+                    
+                    <div class="pt-6 pb-2">
+                        <p class="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">2. Penilaian Kendiri</p>
+                    </div>
+                    
+                    <div onclick="switchTab('tab-d1', this)" class="nav-item flex items-center px-4 py-2.5 text-slate-600 hover:bg-blue-50 rounded-lg ml-2 border-l-2 border-transparent hover:border-blue-300 transition"><span class="text-xs font-bold">a. Pengurusan</span></div>
+                    <div onclick="switchTab('tab-d2', this)" class="nav-item flex items-center px-4 py-2.5 text-slate-600 hover:bg-blue-50 rounded-lg ml-2 border-l-2 border-transparent hover:border-blue-300 transition"><span class="text-xs font-bold">b. Penggunaan DELIMa</span></div>
+                    <div onclick="switchTab('tab-d3', this)" class="nav-item flex items-center px-4 py-2.5 text-slate-600 hover:bg-blue-50 rounded-lg ml-2 border-l-2 border-transparent hover:border-blue-300 transition"><span class="text-xs font-bold">c. Program Pembudayaan</span></div>
+                    <div onclick="switchTab('tab-d4', this)" class="nav-item flex items-center px-4 py-2.5 text-slate-600 hover:bg-blue-50 rounded-lg ml-2 border-l-2 border-transparent hover:border-blue-300 transition"><span class="text-xs font-bold">d. Pengurusan DELIMa</span></div>
+                    <div onclick="switchTab('tab-d5', this)" class="nav-item flex items-center px-4 py-2.5 text-slate-600 hover:bg-blue-50 rounded-lg ml-2 border-l-2 border-transparent hover:border-blue-300 transition"><span class="text-xs font-bold">e. Pensijilan</span></div>
+                    <div onclick="switchTab('tab-d6', this)" class="nav-item flex items-center px-4 py-2.5 text-slate-600 hover:bg-blue-50 rounded-lg ml-2 border-l-2 border-transparent hover:border-blue-300 transition"><span class="text-xs font-bold">f. Keistimewaan Sekolah</span></div>
+                    
+                    <div class="pt-6 border-t border-slate-100 mt-4">
+                        <div onclick="switchTab('tab-analisis', this); updateAnalysisView();" class="nav-item flex items-center px-4 py-3 text-slate-700 hover:bg-blue-50 rounded-lg group transition-colors">
+                            <i class="fas fa-chart-pie w-6 text-emerald-600"></i>
+                            <span class="text-sm font-bold">3. Semak & Selesai</span>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Overlay for mobile sidebar -->
+        <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/50 z-20 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50 relative">
+            <form id="digitalForm" onsubmit="event.preventDefault(); submitForm();" class="max-w-4xl mx-auto pb-20">
+                
+                <!-- STATUS BAR: Auto-Save Active Info -->
+                <div id="statusBar" class="hidden mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+                    <i class="fas fa-save text-blue-500 text-2xl"></i>
+                    <div>
+                        <p class="text-xs font-bold text-blue-800 uppercase tracking-wide">Sistem Auto-Simpan Aktif</p>
+                        <p class="text-sm text-blue-600 font-medium">Data anda disimpan secara automatik. Kemas kini terakhir pada <span id="statusLastUpdate" class="font-bold text-blue-800">...</span>.</p>
+                    </div>
+                </div>
+
+                <!-- 1. Maklumat Asas -->
+                <div id="tab-maklumat" class="tab-content">
+                    <section class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200 border-t-4 border-t-blue-600 mb-6">
+                        <h3 class="text-lg font-black text-slate-800 mb-6 flex items-center border-b border-slate-100 pb-4 uppercase tracking-tight">
+                            <span class="bg-blue-100 text-blue-800 text-xs font-black mr-3 px-3 py-1 rounded-lg">BAHAGIAN 1</span>
+                            Maklumat Asas & Personel
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+                            <div><label class="label-text">Nama Sekolah</label><input type="text" id="namaSekolah" class="input-field" readonly></div>
+                            <div><label class="label-text">Kod Sekolah</label><input type="text" id="kodSekolah" class="input-field font-mono" readonly></div>
+                            <div><label class="label-text">Daerah / PKG</label><input type="text" id="pkgDisplay" class="input-field" readonly value="PPD ALOR GAJAH"></div>
+                            
+                            <div class="grid grid-cols-2 gap-3">
+                                <div><label class="label-text">Bilangan Guru</label><input type="number" id="bilGuru" class="input-field bg-white focus:ring-2 focus:ring-blue-500/20" required placeholder="0"></div>
+                                <div><label class="label-text">Bilangan Murid</label><input type="number" id="bilMurid" class="input-field bg-white focus:ring-2 focus:ring-blue-500/20" required placeholder="0"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="pt-6 border-t border-slate-100">
+                            <h4 class="font-black text-slate-400 mb-4 text-xs uppercase tracking-widest"><i class="fas fa-users mr-2"></i>Maklumat Personel Berkaitan</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                    <p class="font-bold mb-3 text-slate-700 text-xs uppercase tracking-wide border-b border-slate-200 pb-2">Pengarah / Pengetua / Guru Besar</p>
+                                    <input type="text" id="pgbNama" placeholder="Nama PGB" class="input-field mb-2" readonly>
+                                    <input type="text" id="pgbId" placeholder="ID DELIMa PGB" class="input-field mb-2" readonly>
+                                    <input type="text" id="pgbTel" placeholder="No Telefon" class="input-field" readonly>
+                                </div>
+                                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                    <p class="font-bold mb-3 text-slate-700 text-xs uppercase tracking-wide border-b border-slate-200 pb-2">Guru Penyelaras ICT</p>
+                                    <input type="text" id="gpictNama" placeholder="Nama GPICT" class="input-field mb-2" readonly>
+                                    <input type="text" id="gpictId" placeholder="ID DELIMa GPICT" class="input-field mb-2" readonly>
+                                    <input type="text" id="gpictTel" placeholder="No Telefon" class="input-field" readonly>
+                                </div>
+                                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                    <p class="font-bold mb-3 text-slate-700 text-xs uppercase tracking-wide border-b border-slate-200 pb-2">Admin DELIMa</p>
+                                    <input type="text" id="gpdelimaNama" placeholder="Nama Admin" class="input-field mb-2" readonly>
+                                    <input type="text" id="gpdelimaId" placeholder="ID DELIMa Admin" class="input-field mb-2" readonly>
+                                    <input type="text" id="gpdelimaTel" placeholder="No Telefon" class="input-field" readonly>
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-4 font-bold uppercase tracking-wider text-center bg-white border border-slate-200 p-2 rounded-lg"><i class="fas fa-info-circle text-blue-400 mr-1"></i> Sila kemaskini Profil Sekolah di menu utama jika data di atas tidak tepat.</p>
+                        </div>
+                    </section>
+                    <div class="flex justify-end">
+                        <button type="button" onclick="switchTab('tab-d1', document.querySelectorAll('.nav-item')[1])" class="bg-slate-800 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-900 transition flex items-center gap-2 shadow-md">Seterusnya <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- Dimensi 1 - 6 (Rubrik Generik Akan Diisi Oleh JS) -->
+                <div id="tab-d1" class="tab-content hidden-section">
+                    <section class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200 border-l-8 border-l-emerald-500 mb-6">
+                        <h4 class="text-lg font-black text-slate-800 mb-6 border-b border-slate-100 pb-3 uppercase tracking-tight">a. Pengurusan Dasar & Perancangan</h4>
+                        <div id="container-d1" class="grid gap-3"></div>
+                    </section>
+                    <div class="flex justify-between">
+                        <button type="button" onclick="switchTab('tab-maklumat', document.querySelectorAll('.nav-item')[0])" class="bg-white border-2 border-slate-200 text-slate-600 px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-50 transition"><i class="fas fa-arrow-left"></i></button>
+                        <button type="button" onclick="switchTab('tab-d2', document.querySelectorAll('.nav-item')[2])" class="bg-slate-800 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-900 transition flex items-center gap-2 shadow-md">Seterusnya <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+                
+                <div id="tab-d2" class="tab-content hidden-section">
+                    <section class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200 border-l-8 border-l-purple-500 mb-6">
+                        <h4 class="text-lg font-black text-slate-800 mb-6 border-b border-slate-100 pb-3 uppercase tracking-tight">b. Penggunaan DELIMa</h4>
+                        <div id="container-d2" class="grid gap-3"></div>
+                    </section>
+                    <div class="flex justify-between">
+                        <button type="button" onclick="switchTab('tab-d1', document.querySelectorAll('.nav-item')[1])" class="bg-white border-2 border-slate-200 text-slate-600 px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-50 transition"><i class="fas fa-arrow-left"></i></button>
+                        <button type="button" onclick="switchTab('tab-d3', document.querySelectorAll('.nav-item')[3])" class="bg-slate-800 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-900 transition flex items-center gap-2 shadow-md">Seterusnya <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <div id="tab-d3" class="tab-content hidden-section">
+                    <section class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200 border-l-8 border-l-amber-500 mb-6">
+                        <h4 class="text-lg font-black text-slate-800 mb-6 border-b border-slate-100 pb-3 uppercase tracking-tight">c. Program Pembudayaan Digital</h4>
+                        <div id="container-d3" class="grid gap-3"></div>
+                    </section>
+                    <div class="flex justify-between">
+                        <button type="button" onclick="switchTab('tab-d2', document.querySelectorAll('.nav-item')[2])" class="bg-white border-2 border-slate-200 text-slate-600 px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-50 transition"><i class="fas fa-arrow-left"></i></button>
+                        <button type="button" onclick="switchTab('tab-d4', document.querySelectorAll('.nav-item')[4])" class="bg-slate-800 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-900 transition flex items-center gap-2 shadow-md">Seterusnya <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <div id="tab-d4" class="tab-content hidden-section">
+                    <section class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200 border-l-8 border-l-red-500 mb-6">
+                        <h4 class="text-lg font-black text-slate-800 mb-6 border-b border-slate-100 pb-3 uppercase tracking-tight">d. Pengurusan Melalui DELIMa</h4>
+                        <div id="container-d4" class="grid gap-3"></div>
+                    </section>
+                    <div class="flex justify-between">
+                        <button type="button" onclick="switchTab('tab-d3', document.querySelectorAll('.nav-item')[3])" class="bg-white border-2 border-slate-200 text-slate-600 px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-50 transition"><i class="fas fa-arrow-left"></i></button>
+                        <button type="button" onclick="switchTab('tab-d5', document.querySelectorAll('.nav-item')[5])" class="bg-slate-800 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-900 transition flex items-center gap-2 shadow-md">Seterusnya <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <div id="tab-d5" class="tab-content hidden-section">
+                    <section class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200 border-l-8 border-l-indigo-500 mb-6">
+                        <h4 class="text-lg font-black text-slate-800 mb-6 border-b border-slate-100 pb-3 uppercase tracking-tight">e. Pensijilan Profesional Digital</h4>
+                        <div id="container-d5" class="grid gap-3"></div>
+                    </section>
+                    <div class="flex justify-between">
+                        <button type="button" onclick="switchTab('tab-d4', document.querySelectorAll('.nav-item')[4])" class="bg-white border-2 border-slate-200 text-slate-600 px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-50 transition"><i class="fas fa-arrow-left"></i></button>
+                        <button type="button" onclick="switchTab('tab-d6', document.querySelectorAll('.nav-item')[6])" class="bg-slate-800 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-900 transition flex items-center gap-2 shadow-md">Seterusnya <i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+
+                <div id="tab-d6" class="tab-content hidden-section">
+                    <section class="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200 border-l-8 border-l-pink-500 mb-6">
+                        <h4 class="text-lg font-black text-slate-800 mb-6 border-b border-slate-100 pb-3 uppercase tracking-tight">f. Keistimewaan Sekolah (Bintang)</h4>
+                        <div id="container-d6" class="grid gap-3"></div>
+                    </section>
+                    <div class="flex justify-between">
+                        <button type="button" onclick="switchTab('tab-d5', document.querySelectorAll('.nav-item')[5])" class="bg-white border-2 border-slate-200 text-slate-600 px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-50 transition"><i class="fas fa-arrow-left"></i></button>
+                        <button type="button" onclick="switchTab('tab-analisis', document.querySelectorAll('.nav-item')[7]); updateAnalysisView();" class="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-emerald-700 transition flex items-center gap-2 shadow-lg shadow-emerald-600/30">Semak Analisis <i class="fas fa-chart-pie"></i></button>
+                    </div>
+                </div>
+
+                <!-- 3. Analisis -->
+                <div id="tab-analisis" class="tab-content hidden-section">
+                    <section class="bg-white p-6 md:p-8 rounded-3xl shadow-lg border border-slate-200 border-t-8 border-t-amber-500 mb-6 relative overflow-hidden">
+                        
+                        <h3 class="text-xl font-black text-slate-800 mb-6 flex items-center border-b border-slate-100 pb-4 uppercase tracking-tight relative z-10">
+                            <span class="bg-amber-100 text-amber-800 text-xs font-black mr-3 px-3 py-1 rounded-lg">BAHAGIAN 3</span>
+                            Analisis Kendiri & Laporan
+                        </h3>
+                        
+                        <div class="flex flex-col md:flex-row justify-between items-center mb-8 bg-slate-900 p-6 rounded-2xl relative z-10 shadow-inner">
+                            <div class="text-center md:text-left mb-6 md:mb-0 w-full md:w-1/3">
+                                <p class="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Skor Diperoleh</p>
+                                <h2 class="text-4xl md:text-5xl font-black text-white" id="displayScore">0 / 120</h2>
+                            </div>
+                            <div class="text-center md:text-left mb-6 md:mb-0 w-full md:w-1/3 border-t md:border-t-0 md:border-l border-slate-700 pt-4 md:pt-0 md:pl-8">
+                                <p class="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Pencapaian</p>
+                                <h2 class="text-4xl md:text-5xl font-black text-emerald-400" id="displayPercent">0%</h2>
+                            </div>
+                            <div class="text-center md:text-right w-full md:w-1/3 border-t md:border-t-0 md:border-l border-slate-700 pt-4 md:pt-0">
+                                <p class="text-slate-400 text-xs font-black uppercase tracking-widest mb-2">Penarafan Digital</p>
+                                <div id="displayRating" class="text-3xl text-amber-400 drop-shadow-md">
+                                    <i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-10 p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                            <h4 class="font-black text-slate-600 mb-6 text-center uppercase tracking-widest text-xs">Taburan Analisis Kekuatan Dimensi (Radar)</h4>
+                            <div class="w-full max-w-md mx-auto aspect-square">
+                                <canvas id="radarChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-10">
+                            <h4 class="font-black text-slate-800 mb-4 uppercase tracking-tight border-l-4 border-slate-800 pl-3">Perincian Skor Penilaian Kendiri</h4>
+                            <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="text-[10px] text-slate-500 uppercase bg-slate-100 font-black tracking-widest border-b border-slate-200">
+                                        <tr>
+                                            <th class="px-6 py-4 border-r border-slate-200 w-3/5">Indikator Item</th>
+                                            <th class="px-6 py-4 border-r border-slate-200 text-center w-1/5">Skor (1-4)</th>
+                                            <th class="px-6 py-4 text-center w-1/5">Tahap Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="analysisTableBody" class="divide-y divide-slate-100 bg-white text-xs font-semibold text-slate-700"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- BUTANG TINDAKAN (Auto-Save Edition) -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
+                            <button type="button" onclick="generatePDF()" class="w-full bg-slate-800 text-white font-black py-5 rounded-2xl hover:bg-slate-900 transition shadow-xl flex justify-center items-center gap-3 uppercase tracking-widest text-xs transform active:scale-95">
+                                <i class="fas fa-file-pdf text-red-400 text-lg"></i> Eksport PDF Laporan
+                            </button>
+                            <button type="button" onclick="submitForm()" id="submitBtn" class="w-full bg-emerald-600 text-white font-black py-5 rounded-2xl hover:bg-emerald-700 transition shadow-xl shadow-emerald-500/30 flex justify-center items-center gap-3 uppercase tracking-widest text-xs transform active:scale-95">
+                                <span id="btnText">Selesai & Keluar</span>
+                                <i class="fas fa-check-circle text-emerald-200 text-lg" id="btnIcon"></i>
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            </form>
+        </main>
+    </div>
+
+    <!-- Hidden PDF Template -->
+    <div id="pdf-template">
+        <div class="pdf-header">
+            <img src="../../icoppdag.png" style="height: 60px; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto;">
+            <h3 style="font-size: 14px; font-weight: bold; margin: 0; padding: 0;">PEJABAT PENDIDIKAN DAERAH ALOR GAJAH</h3>
+            <h2 style="font-size: 18px; font-weight: bold; margin: 5px 0 0 0; padding: 0;">LAPORAN PENATARAN SEKOLAH DIGITAL</h2>
+        </div>
+        <div style="margin-bottom: 20px; font-size: 14px;">
+            <p style="margin: 2px 0;"><strong>Nama Sekolah:</strong> <span id="pdf-namaSekolah"></span></p>
+            <p style="margin: 2px 0;"><strong>Kod Sekolah:</strong> <span id="pdf-kodSekolah"></span></p>
+            <p style="margin: 2px 0;"><strong>Tarikh Laporan:</strong> <span id="pdf-tarikh"></span></p>
+        </div>
+        <div style="margin-bottom: 20px; border: 1px solid #000; padding: 15px; background-color: #f9fafb;">
+            <h4 style="margin-top: 0; border-bottom: 1px solid #ccc; padding-bottom: 5px;">RUMUSAN KEPUTUSAN KESELURUHAN</h4>
+            <p style="margin: 5px 0; font-size: 14px;">Jumlah Skor Terkumpul: <strong id="pdf-skor" style="font-size: 16px;"></strong> / 120</p>
+            <p style="margin: 5px 0; font-size: 14px;">Peratus Pencapaian: <strong id="pdf-peratus"></strong></p>
+            <p style="margin: 5px 0; font-size: 14px;">Taraf Penarafan Digital: <strong id="pdf-penarafan"></strong></p>
+        </div>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h4 style="margin-bottom: 10px;">CARTA KEKUATAN DIMENSI</h4>
+            <img id="pdf-chart-img" style="max-width: 450px; border: 1px solid #eee; padding: 10px;">
+        </div>
+        <h4 style="margin-bottom: 10px;">PERINCIAN SKOR PENILAIAN KENDIRI</h4>
+        <table class="pdf-table">
+            <thead>
+                <tr>
+                    <th>Dimensi / Item Rubrik (1-4)</th>
+                    <th width="15%" style="text-align: center;">Skor Diperoleh</th>
+                </tr>
+            </thead>
+            <tbody id="pdf-table-body"></tbody>
+        </table>
+        <br><br>
+        <div style="display: flex; justify-content: space-between; margin-top: 50px; font-size: 14px;">
+            <div style="text-align: center; width: 45%;">
+                <p>_______________________</p>
+                <p style="margin: 2px 0;">Tandatangan Pengesahan</p>
+                <p style="margin: 2px 0; font-weight: bold;" id="pdf-namaPGB">Pengetua / Guru Besar</p>
+                <p style="margin: 2px 0;">(Cop Rasmi Jabatan)</p>
+            </div>
+            <div style="text-align: center; width: 45%;">
+                <p>_______________________</p>
+                <p style="margin: 2px 0;">Tandatangan Semakan</p>
+                <p style="margin: 2px 0; font-weight: bold;">Pegawai PPD</p>
+                <p style="margin: 2px 0;">Tarikh: .......................</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Integrasi Skrip Logik Utama -->
+    <script type="module" src="../../js/core/db.js"></script>
+    <script type="module" src="../../js/services/school.service.js"></script>
+    <script type="module" src="../../js/services/penataran.service.js"></script>
+    <script type="module" src="script.js"></script>
+
+    <!-- UI Interaction Helper -->
+    <script>
+        function kembaliKePortal() {
+            window.location.href = '../../user.html';
+        }
+        
+        document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        });
+
+        document.getElementById('sidebarOverlay').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.add('-translate-x-full');
+            document.getElementById('sidebarOverlay').classList.add('hidden');
+        });
+    </script>
+</body>
+</html>

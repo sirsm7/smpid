@@ -59,7 +59,7 @@
   </style>
 
   <!-- Library JS -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="console.warn('JSDelivr disekat. Mencuba Unpkg...'); this.onerror=null; this.src='https://unpkg.com/@supabase/supabase-js@2';"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -101,7 +101,8 @@
                 </div>
 
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-                    <!-- PROFIL SEKOLAH -->
+                    
+                    <!-- 1. PROFIL SEKOLAH -->
                     <a href="#profil" onclick="showSection('profil', event)" class="group p-4 bg-blue-50 hover:bg-blue-600 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-blue-100 hover:shadow-lg hover:shadow-blue-500/30">
                         <div class="w-12 h-12 bg-white text-blue-500 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-blue-600">
                             <i class="fas fa-user-edit"></i>
@@ -109,23 +110,31 @@
                         <span class="text-xs font-bold text-blue-800 group-hover:text-white uppercase">PROFIL SEKOLAH</span>
                     </a>
 
-                    <!-- PUSAT SOKONGAN DELIMA (HELPDESK & ADUAN) -->
-                    <a href="modules/helpdesk/index.html" class="group p-4 bg-red-50 hover:bg-red-500 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-red-100 hover:shadow-lg hover:shadow-red-500/30">
+                    <!-- 2. PUSAT SOKONGAN DELIMA (HELPDESK & ADUAN) -->
+                    <a href="modules/helpdesk/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="group p-4 bg-red-50 hover:bg-red-500 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-red-100 hover:shadow-lg hover:shadow-red-500/30">
                         <div class="w-12 h-12 bg-white text-red-500 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-red-600">
                             <i class="fas fa-headset"></i>
                         </div>
                         <span class="text-xs font-bold text-red-800 group-hover:text-white uppercase">PUSAT SOKONGAN</span>
                     </a>
 
-                    <!-- LAPORAN PPPDM -->
-                    <a href="modules/pppdm/index.html" class="group p-4 bg-emerald-50 hover:bg-emerald-600 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-emerald-100 hover:shadow-lg hover:shadow-emerald-500/30">
-                        <div class="w-12 h-12 bg-white text-emerald-500 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-emerald-600">
-                            <i class="fas fa-chart-line"></i>
+                    <!-- 3. PENILAIAN KENDIRI -->
+                    <a href="modules/penataran/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="group p-4 bg-sky-50 hover:bg-sky-600 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-sky-100 hover:shadow-lg hover:shadow-sky-500/30">
+                        <div class="w-12 h-12 bg-white text-sky-500 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-sky-600">
+                            <i class="fas fa-clipboard-check"></i>
                         </div>
-                        <span class="text-xs font-bold text-emerald-800 group-hover:text-white uppercase">LAPORAN PPPDM</span>
+                        <span class="text-xs font-bold text-sky-800 group-hover:text-white uppercase">PENILAIAN KENDIRI</span>
                     </a>
 
-                    <!-- HUB KOMPETENSI DIGITAL (Merged Card) -->
+                    <!-- 4. TEMPAHAN BIMBINGAN -->
+                    <a href="modules/booking/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="group p-4 bg-lime-50 hover:bg-lime-600 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-lime-100 hover:shadow-lg hover:shadow-lime-500/30">
+                        <div class="w-12 h-12 bg-white text-lime-600 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-lime-700">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <span class="text-xs font-bold text-lime-900 group-hover:text-white uppercase">TEMPAHAN BIMBINGAN</span>
+                    </a>
+
+                    <!-- 5. HAB KOMPETENSI DIGITAL (Merged Card) -->
                     <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between col-span-2 md:col-span-1">
                         <div class="text-center mb-3">
                             <div class="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center text-lg mb-2 mx-auto shadow-md">
@@ -134,32 +143,37 @@
                             <h6 class="text-[10px] font-black text-indigo-900 uppercase tracking-widest leading-tight">HAB KOMPETENSI DIGITAL</h6>
                         </div>
                         <div class="grid grid-cols-1 gap-2">
-                            <a href="modules/spka/index.html" class="py-2.5 px-3 bg-white hover:bg-indigo-50 border border-slate-200 rounded-xl text-[9px] font-black text-indigo-600 transition flex items-center justify-between group">
+                            <a href="modules/spka/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="py-2.5 px-3 bg-white hover:bg-indigo-50 border border-slate-200 rounded-xl text-[9px] font-black text-indigo-600 transition flex items-center justify-between group">
                                 <span>MODUL BELAJAR AI</span>
                                 <i class="fas fa-chevron-right text-slate-300 group-hover:text-indigo-500"></i>
                             </a>
-                            <a href="modules/bankgemini/index.html" class="py-2.5 px-3 bg-white hover:bg-purple-50 border border-slate-200 rounded-xl text-[9px] font-black text-purple-600 transition flex items-center justify-between group">
+                            <a href="modules/bankgemini/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="py-2.5 px-3 bg-white hover:bg-purple-50 border border-slate-200 rounded-xl text-[9px] font-black text-purple-600 transition flex items-center justify-between group">
                                 <span>PENSIJILAN GOOGLE</span>
                                 <i class="fas fa-chevron-right text-slate-300 group-hover:text-purple-500"></i>
                             </a>
                         </div>
                     </div>
 
-                    <!-- ANALISA DIGITAL -->
-                    <a href="#analisa" onclick="showSection('analisa', event)" class="group p-4 bg-amber-50 hover:bg-amber-500 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-amber-100 hover:shadow-lg hover:shadow-amber-500/30">
-                        <div class="w-12 h-12 bg-white text-amber-500 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-amber-600">
-                            <i class="fas fa-chart-pie"></i>
+                    <!-- 6. HAB PELAPORAN DIGITAL (Merged Card) -->
+                    <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between col-span-2 md:col-span-1">
+                        <div class="text-center mb-3">
+                            <div class="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center text-lg mb-2 mx-auto shadow-md">
+                                <i class="fas fa-chart-pie"></i>
+                            </div>
+                            <h6 class="text-[10px] font-black text-emerald-900 uppercase tracking-widest leading-tight">HAB PELAPORAN DIGITAL</h6>
                         </div>
-                        <span class="text-xs font-bold text-amber-800 group-hover:text-white uppercase">ANALISA DIGITAL</span>
-                    </a>
+                        <div class="grid grid-cols-1 gap-2">
+                            <a href="modules/pppdm/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="py-2.5 px-3 bg-white hover:bg-emerald-50 border border-slate-200 rounded-xl text-[9px] font-black text-emerald-600 transition flex items-center justify-between group">
+                                <span>LAPORAN PPPDM</span>
+                                <i class="fas fa-chevron-right text-slate-300 group-hover:text-emerald-500"></i>
+                            </a>
+                            <a href="#analisa" onclick="showSection('analisa', event)" class="py-2.5 px-3 bg-white hover:bg-amber-50 border border-slate-200 rounded-xl text-[9px] font-black text-amber-600 transition flex items-center justify-between group">
+                                <span>ANALISA DIGITAL</span>
+                                <i class="fas fa-chevron-right text-slate-300 group-hover:text-amber-500"></i>
+                            </a>
+                        </div>
+                    </div>
 
-                    <!-- TEMPAHAN BIMBINGAN (NEW MODULE) -->
-                    <a href="modules/booking/index.html" class="group p-4 bg-lime-50 hover:bg-lime-600 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-lime-100 hover:shadow-lg hover:shadow-lime-500/30">
-                        <div class="w-12 h-12 bg-white text-lime-600 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-lime-700">
-                            <i class="fas fa-calendar-check"></i>
-                        </div>
-                        <span class="text-xs font-bold text-lime-900 group-hover:text-white uppercase">TEMPAHAN BIMBINGAN</span>
-                    </a>
                 </div>
 
                 <div class="space-y-3">

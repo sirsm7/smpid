@@ -185,10 +185,23 @@
     <script src="script.js"></script>
 
     <script>
+        // Simpan portal asal jika masuk dari navigasi terus
+        const referrer = document.referrer || '';
+        if (referrer.includes('user.html')) {
+            sessionStorage.setItem('smpid_entry_portal', '../../user.html');
+        } else if (referrer.includes('admin.html')) {
+            sessionStorage.setItem('smpid_entry_portal', '../../admin.html');
+        }
+
         // Logik Pintar Navigasi
         function kembaliKePortal() {
-            const isAdmin = localStorage.getItem('smpid_auth') === 'true';
-            window.location.href = isAdmin ? '../../admin.html' : '../../user.html';
+            const entryPortal = sessionStorage.getItem('smpid_entry_portal');
+            if (entryPortal) {
+                window.location.href = entryPortal;
+            } else {
+                const isAdmin = localStorage.getItem('smpid_auth') === 'true';
+                window.location.href = isAdmin ? '../../admin.html' : '../../user.html';
+            }
         }
     </script>
 </body>

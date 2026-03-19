@@ -305,8 +305,9 @@
     <!-- Inline Script untuk UI Tab Switching -->
     <script>
         function kembaliKePortal() {
-            const isAdmin = localStorage.getItem('smpid_auth') === 'true';
-            window.location.href = isAdmin ? '../../admin.html' : '../../user.html';
+            // Memandangkan modul ini hanya diakses daripada portal pengguna,
+            // kita kunci arah navigasinya ke user.html
+            window.location.href = '../../user.html';
         }
 
         function switchTab(tabId) {

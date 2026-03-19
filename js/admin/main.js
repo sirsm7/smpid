@@ -135,6 +135,9 @@ function switchAdminTab(tabId, event) {
  */
 function loadModuleData(tabId) {
     switch (tabId) {
+        case 'penataran':
+            if (window.muatSenaraiPenataran) window.muatSenaraiPenataran();
+            break;
         case 'analisa':
             if (window.loadDcsAdmin) window.loadDcsAdmin();
             break;
