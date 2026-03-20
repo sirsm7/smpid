@@ -1,6 +1,7 @@
 /**
  * PENATARAN DIGITAL CONTROLLER (V2.0 - AUTO-SAVE EDITION)
  * Logik pemarkahan dinamik, janaan UI rubrik, carta radar, dan enjin auto-simpan.
+ * KEMASKINI: Input Bil. Guru dan Bil. Murid kini disimpan terus ke jadual Penataran.
  */
 
 import { PenataranService } from '../../js/services/penataran.service.js';
@@ -48,8 +49,8 @@ async function initPenataran() {
         if (schoolData) {
             document.getElementById('namaSekolah').value = schoolData.nama_sekolah || '';
             document.getElementById('kodSekolah').value = schoolData.kod_sekolah || '';
-            document.getElementById('bilGuru').value = schoolData.bil_guru || '';
-            document.getElementById('bilMurid').value = schoolData.bil_murid || '';
+            document.getElementById('bilGuru').value = schoolData.bil_guru || ''; // Fallback data lama jika masih ada
+            document.getElementById('bilMurid').value = schoolData.bil_murid || ''; // Fallback data lama jika masih ada
             document.getElementById('pgbNama').value = schoolData.nama_pgb || '';
             document.getElementById('pgbId').value = schoolData.emel_delima_pgb || '';
             document.getElementById('pgbTel').value = schoolData.no_telefon_pgb || '';
@@ -64,6 +65,10 @@ async function initPenataran() {
             if (pdfNamaPGB) pdfNamaPGB.innerText = schoolData.nama_pgb || "Pengetua / Guru Besar";
         }
 
+        // Event listener: Trigger Auto-Save apabila bil_guru / bil_murid dikemaskini
+        document.getElementById('bilGuru').addEventListener('input', () => calculateScore());
+        document.getElementById('bilMurid').addEventListener('input', () => calculateScore());
+
         // 2. Semak Jika Pernah Mempunyai Laporan/Deraf Terkini
         const existingReport = await PenataranService.getBySchool(kodSekolah);
         if (existingReport) {
@@ -71,6 +76,14 @@ async function initPenataran() {
             const slu = document.getElementById('statusLastUpdate');
             if (sb) sb.classList.remove('hidden');
             if (slu) slu.innerText = new Date(existingReport.updated_at).toLocaleString('ms-MY');
+
+            // Timpa input dengan data bil_guru dan bil_murid dari jadual penataran yang sah
+            if (existingReport.bil_guru !== null && existingReport.bil_guru !== undefined) {
+                document.getElementById('bilGuru').value = existingReport.bil_guru;
+            }
+            if (existingReport.bil_murid !== null && existingReport.bil_murid !== undefined) {
+                document.getElementById('bilMurid').value = existingReport.bil_murid;
+            }
 
             // Set semula radio buttons berdasarkan data JSON sedia ada
             const dimData = existingReport.skor_dimensi;
@@ -198,7 +211,8 @@ window.calculateScore = function(isSilentInit = false) {
     const calcResult = { total, percent, ratingText, dimensionScores, detailScores, dynamicMaxScore };
 
     // PENYIMPANAN AUTO (DEBOUNCE)
-    if (!isSilentInit && answeredCount > 0) {
+    // Berjalan bagi apa-apa input form waima radio atau jumlah guru/murid
+    if (!isSilentInit) {
         clearTimeout(autoSaveTimeout);
         autoSaveTimeout = setTimeout(() => {
             triggerAutoSave(calcResult);
@@ -216,6 +230,9 @@ async function triggerAutoSave(calcResult) {
 
     showAutoSaveIndicator(true);
 
+    const bilGuru = parseInt(document.getElementById('bilGuru').value) || 0;
+    const bilMurid = parseInt(document.getElementById('bilMurid').value) || 0;
+
     const skorJSON = {
         d1: calcResult.dimensionScores.d1, d2: calcResult.dimensionScores.d2, d3: calcResult.dimensionScores.d3,
         d4: calcResult.dimensionScores.d4, d5: calcResult.dimensionScores.d5, d6: calcResult.dimensionScores.d6,
@@ -225,6 +242,8 @@ async function triggerAutoSave(calcResult) {
     const payload = {
         kod_sekolah: kodSekolah,
         nama_sekolah: namaSekolah,
+        bil_guru: bilGuru,
+        bil_murid: bilMurid,
         jumlah_skor: calcResult.total,
         peratus: calcResult.percent.toFixed(2) + "%",
         penarafan: calcResult.ratingText,
@@ -324,12 +343,9 @@ window.switchTab = function(tabId, navElement) {
         document.getElementById('sidebarOverlay').classList.add('hidden');
     }
     
-    // Paksa auto-save jika menukar tab
-    const checkedRadios = document.querySelectorAll('input[type="radio"]:checked');
-    if (checkedRadios.length > 0) {
-        clearTimeout(autoSaveTimeout);
-        triggerAutoSave(calculateScore(true));
-    }
+    // Paksa auto-save jika menukar tab (bagi memastikan mana-mana data yang diedit disimpan)
+    clearTimeout(autoSaveTimeout);
+    triggerAutoSave(calculateScore(true));
 }
 
 window.updateAnalysisView = function() {
@@ -451,6 +467,9 @@ window.generatePDF = function() {
 window.submitForm = async function() {
     const checkedCount = document.querySelectorAll('input[type="radio"]:checked').length;
     
+    // Pastikan simpanan paksa data yang terkini (merangkumi bil_guru/murid jika ia baru diubah)
+    await triggerAutoSave(calculateScore(true));
+
     if (checkedCount < 30) {
         Swal.fire({
             title: 'Selesai Lebih Awal?',

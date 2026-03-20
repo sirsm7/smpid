@@ -111,6 +111,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+  <!-- Tambahan PapaParse untuk Batch Import -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
 <body id="page-admin" class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
 
@@ -191,6 +193,9 @@
         <a href="#email" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="email-tab" onclick="switchAdminTab('email', event)"><i class="fas fa-paper-plane"></i> Blaster</a>
         <a href="#helpdesk" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="helpdesk-tab" onclick="switchAdminTab('helpdesk', event)"><i class="fas fa-headset"></i> Sokongan</a>
         <a href="#admin-users" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="admin-users-tab" onclick="switchAdminTab('admin-users', event)"><i class="fas fa-users-cog"></i> Akses</a>
+        
+        <!-- TAB IMPORT (Super Admin Sahaja) -->
+        <a href="#import-data" class="hidden tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="import-data-tab" onclick="switchAdminTab('import-data', event)"><i class="fas fa-file-import text-emerald-600"></i> Import</a>
         
         <!-- DROPDOWN PAUTAN MODULE -->
         <div class="relative group cursor-pointer">
@@ -715,6 +720,53 @@
                 </div>
             </div>
             <div id="adminListWrapper"></div>
+        </div>
+
+        <!-- TAB 9: IMPORT DATA (SUPER ADMIN) -->
+        <div id="tab-import-data" class="hidden p-6 md:p-8">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-6">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                        <i class="fas fa-file-import text-emerald-600"></i> Import Data Pukal
+                    </h2>
+                    <p class="text-slate-500 text-sm font-medium mt-1">Muat naik fail CSV untuk mendaftar atau mengemas kini profil sekolah secara berkelompok.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="muatTurunTemplatCSV()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition shadow-lg flex items-center gap-2">
+                        <i class="fas fa-download"></i> Muat Turun Templat CSV
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-emerald-50 border-2 border-emerald-100 rounded-2xl p-6 md:p-8 text-center max-w-2xl mx-auto mt-8">
+                <i class="fas fa-cloud-upload-alt text-5xl text-emerald-400 mb-4"></i>
+                <h3 class="text-lg font-bold text-emerald-800 mb-2">Muat Naik Fail CSV</h3>
+                <p class="text-xs text-emerald-600 mb-6 leading-relaxed">Sistem menggunakan kaedah "Upsert". Jika kod sekolah wujud, data akan dikemas kini. Jika tidak, sekolah baharu akan didaftarkan.</p>
+                
+                <input type="file" id="csvFileInput" accept=".csv" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer bg-white border border-emerald-200 rounded-full shadow-sm mb-4">
+                
+                <button onclick="mulaImportCSV()" id="btnMulaImport" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-widest mt-4">
+                    <i class="fas fa-play"></i> Mulakan Proses Import
+                </button>
+            </div>
+
+            <!-- Log Import -->
+            <div id="importLogContainer" class="hidden mt-8 max-w-3xl mx-auto bg-slate-900 rounded-2xl overflow-hidden shadow-xl border border-slate-800">
+                <div class="bg-slate-800 px-4 py-3 flex justify-between items-center border-b border-slate-700">
+                    <span class="text-xs font-bold text-white uppercase tracking-widest flex items-center gap-2"><i class="fas fa-terminal text-emerald-400"></i> Log Pemprosesan</span>
+                    <span id="importProgressText" class="text-xs font-mono text-slate-400">0 / 0 Baris</span>
+                </div>
+                <div class="p-4">
+                    <div class="w-full bg-slate-800 rounded-full h-2.5 mb-4">
+                        <div id="importProgressBar" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div id="importTerminal" class="h-48 overflow-y-auto font-mono text-[10px] text-slate-300 space-y-1 custom-scrollbar flex flex-col-reverse">
+                        <div id="importTerminalInner" class="space-y-1">
+                            <!-- Logs appended here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
     </div>

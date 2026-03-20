@@ -1,9 +1,9 @@
 /**
- * ADMIN MODULE: MAIN CONTROLLER & ROUTER (V2.3 - BB INTEGRATION)
+ * ADMIN MODULE: MAIN CONTROLLER & ROUTER (V2.4 - BATCH IMPORT GATEKEEPER)
  * Fungsi: Menguruskan navigasi tab, keselamatan, dan peranan (RBAC).
- * --- UPDATE V2.3 ---
- * Integrasi Modul Tempahan: Menambah tab 'tempahan' ke dalam sistem navigasi
- * dan kawalan akses Unit PPD.
+ * --- UPDATE V2.4 ---
+ * Integrasi Modul Import Data Pukal: Menambah sekatan tab 'import-data'
+ * khusus untuk Super Admin sahaja melalui Gatekeeper RBAC.
  */
 
 import { AuthService } from '../services/auth.service.js';
@@ -79,7 +79,7 @@ async function initAdminPanel() {
 /**
  * Fungsi Navigasi Tab Utama
  * Menguruskan pertukaran paparan dan lazy-loading modul.
- * @param {string} tabId - ID Tab (contoh: 'dashboard', 'analisa', 'tempahan')
+ * @param {string} tabId - ID Tab (contoh: 'dashboard', 'analisa', 'tempahan', 'import-data')
  * @param {Event} event - (Opsional) Event klik
  */
 function switchAdminTab(tabId, event) {
@@ -92,12 +92,17 @@ function switchAdminTab(tabId, event) {
     // SEMAKAN KESELAMATAN (GATEKEEPER)
     // Pastikan Unit PPD tidak boleh akses tab dilarang walaupun tukar hash manual
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
-    const forbiddenForUnit = ['dashboard', 'analisa', 'gallery', 'tempahan', 'email', 'helpdesk'];
+    const forbiddenForUnit = ['dashboard', 'analisa', 'gallery', 'tempahan', 'email', 'helpdesk', 'import-data'];
+    const forbiddenForMod = ['import-data']; // Hanya Super Admin boleh Import
 
     if (userRole === 'PPD_UNIT' && forbiddenForUnit.includes(tabId)) {
         // Redirect senyap ke pencapaian
         tabId = 'pencapaian'; 
         history.replaceState(null, null, '#pencapaian');
+    } else if (userRole === 'ADMIN' && forbiddenForMod.includes(tabId)) {
+        // Redirect senyap ke dashboard jika Mod Admin cuba buka tab import
+        tabId = 'dashboard';
+        history.replaceState(null, null, '#dashboard');
     }
 
     // 1. Sembunyikan semua konten tab
@@ -159,6 +164,7 @@ function loadModuleData(tabId) {
         case 'admin-users':
             if (window.loadAdminList) window.loadAdminList();
             break;
+        // Tab import-data tidak mempunyai init automatik kerana ia adalah interaktif form manual
     }
 }
 
@@ -175,7 +181,8 @@ function setupUnitView() {
         'gallery-tab',
         'tempahan-tab',
         'email-tab', 
-        'helpdesk-tab'
+        'helpdesk-tab',
+        'import-data-tab'
     ];
 
     hideButtons.forEach(btnId => {

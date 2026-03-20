@@ -1,14 +1,16 @@
 /**
- * ADMIN MODULE: SETTINGS (STRICT RBAC EDITION)
- * Menguruskan pangkalan data pengguna pentadbir dan kawalan akses sistem.
- * --- UPDATE V1.3 (SUPER ADMIN ONLY ADD) ---
- * Logic: Hanya SUPER ADMIN boleh melihat borang tambah pengguna dan mendaftar admin baharu.
- * UI: Kawalan paparan 'addUserFormContainer' berdasarkan peranan pengguna.
+ * ADMIN MODULE: SETTINGS (STRICT RBAC & BATCH IMPORT EDITION)
+ * Menguruskan pangkalan data pengguna pentadbir, kawalan akses sistem,
+ * dan modul Import Data Pukal (Super Admin).
+ * --- UPDATE V2.0 (BATCH IMPORT) ---
+ * Logic: Menambah pemprosesan fail CSV di pihak klien menggunakan PapaParse,
+ * diselaraskan dengan fungsi Supabase Upsert untuk sekolah dan pendaftaran pengguna baharu.
  */
 
 import { AuthService } from '../services/auth.service.js';
 import { toggleLoading, keluarSistem } from '../core/helpers.js';
 import { APP_CONFIG } from '../config/app.config.js';
+import { getDatabaseClient } from '../core/db.js'; // Disuntik untuk operasi Import Pukal
 
 // --- 1. PENGURUSAN PENGGUNA (ADMIN LIST) ---
 
@@ -36,6 +38,16 @@ window.loadAdminList = async function() {
             addUserForm.classList.remove('hidden'); // Papar jika Super Admin
         } else {
             addUserForm.classList.add('hidden'); // Sembunyi jika Admin/Unit PPD
+        }
+    }
+
+    // Kawalan Paparan Tab Import Data
+    const importTabBtn = document.getElementById('import-data-tab');
+    if (importTabBtn) {
+        if (currentUserRole === 'SUPER_ADMIN') {
+            importTabBtn.classList.remove('hidden');
+        } else {
+            importTabBtn.classList.add('hidden');
         }
     }
 
@@ -377,5 +389,218 @@ window.ubahKataLaluanSendiri = async function() {
             toggleLoading(false);
             Swal.fire('Gagal', err.message, 'error');
         }
+    }
+};
+
+// --- 4. BATCH IMPORT DATA (SUPER ADMIN) ---
+
+/**
+ * Menjana templat CSV kosong dengan format lajur yang tepat berpandukan pangkalan data.
+ */
+window.muatTurunTemplatCSV = function() {
+    const headers = [
+        "kod_sekolah", "nama_sekolah", "jenis_sekolah", "daerah", "parlimen", 
+        "nama_pgb", "no_telefon_pgb", "emel_delima_pgb", 
+        "nama_gpk", "no_telefon_gpk", "emel_delima_gpk", 
+        "nama_gpict", "no_telefon_gpict", "emel_delima_gpict", 
+        "nama_admin_delima", "no_telefon_admin_delima", "emel_delima_admin_delima"
+    ];
+    
+    // Menambah BOM (Byte Order Mark) untuk menyokong karakter khas (UTF-8) di MS Excel
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + headers.join(",") + "\n";
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "Templat_Data_Sekolah_SMPID.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+/**
+ * Membaca fail CSV dari input, mengesahkan struktur, dan melaksanakan operasi Upsert (Insert/Update)
+ * berkelompok ke pangkalan data Supabase.
+ */
+window.mulaImportCSV = async function() {
+    // 1. Semakan Keselamatan Tambahan
+    const currentUserRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+    if (currentUserRole !== 'SUPER_ADMIN') {
+        return Swal.fire('Akses Dihalang', 'Operasi kritikal ini dikhaskan untuk Super Admin sahaja.', 'error');
+    }
+
+    const fileInput = document.getElementById('csvFileInput');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        return Swal.fire('Tiada Fail', 'Sila pilih fail CSV terlebih dahulu.', 'warning');
+    }
+
+    const btn = document.getElementById('btnMulaImport');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sedang Membaca Fail...';
+    
+    // 2. Sediakan Terminal Log UI
+    const logContainer = document.getElementById('importLogContainer');
+    const terminal = document.getElementById('importTerminalInner');
+    const progressBar = document.getElementById('importProgressBar');
+    const progressText = document.getElementById('importProgressText');
+    
+    logContainer.classList.remove('hidden');
+    terminal.innerHTML = '';
+    progressBar.style.width = '0%';
+    progressText.innerText = '0 / 0 Baris';
+    
+    function logMsg(msg, type='info') {
+        const time = new Date().toLocaleTimeString('ms-MY');
+        let color = 'text-slate-300';
+        if (type === 'success') color = 'text-emerald-400';
+        if (type === 'error') color = 'text-red-400';
+        if (type === 'warn') color = 'text-amber-400';
+        
+        terminal.innerHTML += `<div class="${color}">[${time}] ${msg}</div>`;
+        const termContainer = document.getElementById('importTerminal');
+        termContainer.scrollTop = termContainer.scrollHeight;
+    }
+
+    logMsg('Mula mengekstrak dan menganalisis struktur fail CSV...', 'info');
+
+    // 3. Ekstrak Data Menggunakan PapaParse (Client-Side)
+    Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async function(results) {
+            const data = results.data;
+            logMsg(`Berjaya membaca ${data.length} baris data mentah.`, 'success');
+            
+            if (data.length === 0) {
+                logMsg('Kegagalan: Fail CSV ini kosong.', 'error');
+                resetBtn();
+                return;
+            }
+
+            if (!data[0].hasOwnProperty('kod_sekolah')) {
+                logMsg('Ralat Integriti: Lajur mandatori "kod_sekolah" tidak wujud.', 'error');
+                Swal.fire('Format Tidak Sah', 'Pengepala (Header) CSV tidak sepadan dengan struktur pangkalan data. Sila gunakan templat yang disediakan.', 'error');
+                resetBtn();
+                return;
+            }
+
+            // 4. Penapisan Baris Tidak Sah (Cth: Baris Kosong yang terlepas)
+            const validData = data.filter(row => row.kod_sekolah && row.kod_sekolah.trim() !== '');
+            const totalRows = validData.length;
+            
+            logMsg(`Menemui ${totalRows} rekod sekolah yang sah. Mula proses pangkalan data...`, 'info');
+            
+            const db = getDatabaseClient();
+            let successCount = 0;
+            let errorCount = 0;
+            
+            // 5. Keselamatan Pendaftaran: Semak akaun sedia ada supaya kata laluan tidak tertimpa.
+            logMsg('Membuat pemetaan (mapping) silang jadual smpid_users...', 'info');
+            const { data: existingUsers } = await db.from('smpid_users').select('kod_sekolah').eq('role', 'SEKOLAH');
+            const existingKods = new Set(existingUsers?.map(u => u.kod_sekolah) || []);
+
+            // 6. Pemprosesan Berkelompok (Chunking - 50 rekod per transaksi)
+            const CHUNK_SIZE = 50;
+            const chunks = [];
+            for (let i = 0; i < totalRows; i += CHUNK_SIZE) {
+                chunks.push(validData.slice(i, i + CHUNK_SIZE));
+            }
+
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+                logMsg(`Mengeksport Transaksi Pukal ${i+1} daripada ${chunks.length} (${chunk.length} rekod)...`, 'info');
+                
+                // Pemetaan ke format smpid_sekolah_data
+                const payloadSekolah = chunk.map(row => ({
+                    kod_sekolah: row.kod_sekolah.trim().toUpperCase(),
+                    nama_sekolah: row.nama_sekolah?.trim().toUpperCase() || null,
+                    jenis_sekolah: row.jenis_sekolah?.trim().toUpperCase() || null,
+                    daerah: row.daerah?.trim().toUpperCase() || 'ALOR GAJAH',
+                    parlimen: row.parlimen?.trim().toUpperCase() || null,
+                    nama_pgb: row.nama_pgb?.trim().toUpperCase() || null,
+                    no_telefon_pgb: row.no_telefon_pgb?.trim() || null,
+                    emel_delima_pgb: row.emel_delima_pgb?.trim() || null,
+                    nama_gpk: row.nama_gpk?.trim().toUpperCase() || null,
+                    no_telefon_gpk: row.no_telefon_gpk?.trim() || null,
+                    emel_delima_gpk: row.emel_delima_gpk?.trim() || null,
+                    nama_gpict: row.nama_gpict?.trim().toUpperCase() || null,
+                    no_telefon_gpict: row.no_telefon_gpict?.trim() || null,
+                    emel_delima_gpict: row.emel_delima_gpict?.trim() || null,
+                    nama_admin_delima: row.nama_admin_delima?.trim().toUpperCase() || null,
+                    no_telefon_admin_delima: row.no_telefon_admin_delima?.trim() || null,
+                    emel_delima_admin_delima: row.emel_delima_admin_delima?.trim() || null
+                }));
+
+                // Penyediaan profil pendaftaran baharu untuk jadual smpid_users
+                const newUsers = [];
+                chunk.forEach(row => {
+                    const kod = row.kod_sekolah.trim().toUpperCase();
+                    // Jika akaun belum pernah wujud, kita daftarkannya.
+                    if (!existingKods.has(kod)) {
+                        newUsers.push({
+                            id: crypto.randomUUID(),
+                            email: `${kod.toLowerCase()}@moe.gov.my`,
+                            password: APP_CONFIG.DEFAULTS.PASSWORD || 'ppdag@12345',
+                            role: 'SEKOLAH',
+                            kod_sekolah: kod
+                        });
+                        existingKods.add(kod); // Tambah ke memori tempatan untuk mengelakkan duplikasi jika ada kod sama dalam CSV
+                    }
+                });
+
+                try {
+                    // Operasi Upsert (Update jika wujud, Insert jika tiada) pada data sekolah
+                    const { error: errSekolah } = await db.from('smpid_sekolah_data').upsert(payloadSekolah);
+                    if (errSekolah) throw errSekolah;
+
+                    // Operasi Insert pada akaun pengguna (hanya yang baharu)
+                    if (newUsers.length > 0) {
+                        const { error: errUsers } = await db.from('smpid_users').insert(newUsers);
+                        if (errUsers) throw errUsers;
+                        logMsg(`Pengaktifan akaun log masuk: ${newUsers.length} akaun direkodkan.`, 'success');
+                    }
+
+                    successCount += chunk.length;
+                    logMsg(`Kumpulan ${i+1} diselaraskan tanpa ralat.`, 'success');
+
+                } catch (err) {
+                    errorCount += chunk.length;
+                    logMsg(`Kegagalan kritikal pada Kumpulan ${i+1}: ${err.message}`, 'error');
+                    console.error("[BatchImport Error]", err);
+                }
+
+                // Kemaskini Visual Progress Bar
+                const processed = Math.min((i + 1) * CHUNK_SIZE, totalRows);
+                const percent = Math.round((processed / totalRows) * 100);
+                progressBar.style.width = `${percent}%`;
+                progressText.innerText = `${processed} / ${totalRows} Baris`;
+            }
+
+            // 7. Pengakhiran Laporan
+            logMsg(`<b>OPERASI TAMAT.</b> Berjaya: ${successCount} rekod | Gagal: ${errorCount} rekod`, successCount > 0 ? 'success' : 'error');
+            resetBtn();
+
+            Swal.fire({
+                icon: errorCount === 0 ? 'success' : 'warning',
+                title: 'Data Disegerakkan',
+                text: `Sistem telah memproses ${totalRows} baris data.\nBerjaya: ${successCount} rekod.\nGagal: ${errorCount} rekod.`,
+                confirmButtonColor: '#059669',
+                customClass: { popup: 'rounded-3xl' }
+            }).then(() => {
+                // Muat semula jadual pemantauan utama di latar belakang jika tersedia
+                if (window.fetchDashboardData) window.fetchDashboardData();
+            });
+        },
+        error: function(err) {
+            logMsg(`Ralat pembacaan luaran: ${err.message}`, 'error');
+            Swal.fire('Ralat Fail', 'Format CSV tidak dapat dibaca. Pastikan tiada kerosakan pada struktur baris.', 'error');
+            resetBtn();
+        }
+    });
+
+    function resetBtn() {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-play"></i> Mulakan Proses Import';
     }
 };
