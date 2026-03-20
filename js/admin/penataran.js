@@ -5,6 +5,9 @@
  * --- UPDATE V2.1 (RBAC DAERAH) ---
  * 1. Menyuntik tapisan global supaya data laporan selari dengan daerah admin.
  * 2. Pemaparan dinamik nama PPD mengikut tetapan APP_CONFIG.
+ * --- UPDATE V2.2 (PENAPISAN DINAMIK KAD KPI & JADUAL) ---
+ * 1. Membenarkan penapisan data melalui klik kad KPI (Semua, 5 Bintang, Atas Purata).
+ * 2. Menyuntik dropdown daerah khas untuk peranan SUPER_ADMIN / JPNMEL.
  */
 
 import { PenataranService } from '../services/penataran.service.js';
@@ -13,6 +16,9 @@ import { APP_CONFIG } from '../config/app.config.js';
 
 let masterPenataranList = [];
 let filteredPenataranList = [];
+let activePenataranFilter = 'ALL';
+let activeDaerahPenataran = 'ALL';
+let purataSemasa = 0;
 
 /**
  * Muat senarai laporan penataran dari Supabase
@@ -26,6 +32,12 @@ window.muatSenaraiPenataran = async function() {
     try {
         let dataRaw = await PenataranService.getAll();
 
+        // Pemetaan data daerah dari memori global dashboard
+        dataRaw = dataRaw.map(d => {
+            const s = window.globalDashboardData?.find(x => x.kod_sekolah === d.kod_sekolah);
+            return { ...d, daerah: s?.daerah || 'TIADA REKOD' };
+        });
+
         // --- RBAC FILTERING ---
         const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
         const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
@@ -37,10 +49,9 @@ window.muatSenaraiPenataran = async function() {
         }
 
         masterPenataranList = dataRaw;
-        filteredPenataranList = dataRaw;
         
-        kemaskiniKPI(dataRaw);
-        renderJadualPenataran();
+        renderDaerahDropdownPenataran(userRole);
+        window.applyFilterPenataran();
 
     } catch (e) {
         console.error("[AdminPenataran] Ralat Fetch:", e);
@@ -49,22 +60,125 @@ window.muatSenaraiPenataran = async function() {
 };
 
 /**
- * Fungsi Carian Teks (Debounce ringan)
+ * Menjana Dropdown Daerah Untuk Super Admin / JPNMEL
  */
-window.filterSenaraiPenataran = function() {
+function renderDaerahDropdownPenataran(userRole) {
+    const container = document.getElementById('penataranDaerahFilterContainer');
+    if (!container) return;
+
+    if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
+        let daerahOpts = `<option value="ALL">SEMUA DAERAH</option>`;
+        if (APP_CONFIG.PPD_MAPPING) {
+            const uniqueDaerahs = [...new Set(Object.values(APP_CONFIG.PPD_MAPPING))].sort();
+            uniqueDaerahs.forEach(d => {
+                daerahOpts += `<option value="${d}">${d}</option>`;
+            });
+        }
+        container.innerHTML = `<select id="filterDaerahPenataran" class="w-full md:w-48 px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold outline-none focus:border-sky-500 bg-white text-slate-700 shadow-sm" onchange="window.setDaerahPenataran(this.value)">${daerahOpts}</select>`;
+        
+        const sel = document.getElementById('filterDaerahPenataran');
+        if(sel) sel.value = activeDaerahPenataran;
+    } else {
+        container.innerHTML = '';
+    }
+}
+
+/**
+ * Handler Penukaran Filter Daerah
+ */
+window.setDaerahPenataran = function(daerah) {
+    activeDaerahPenataran = daerah;
+    window.applyFilterPenataran();
+};
+
+/**
+ * Handler Penukaran Filter Kad (ALL, 5STAR, AVG)
+ */
+window.setFilterPenataran = function(filter) {
+    activePenataranFilter = filter;
+    
+    // UI Updates for Cards
+    ['ALL', '5STAR', 'AVG'].forEach(f => {
+        const el = document.getElementById(`card-penataran-${f}`);
+        if (el) {
+            el.classList.remove('border-sky-400', 'border-emerald-400', 'border-amber-400', 'opacity-100', 'shadow-md');
+            el.classList.add('border-transparent', 'opacity-80', 'shadow-sm');
+        }
+    });
+
+    const activeEl = document.getElementById(`card-penataran-${filter}`);
+    if (activeEl) {
+        activeEl.classList.remove('border-transparent', 'opacity-80', 'shadow-sm');
+        activeEl.classList.add('opacity-100', 'shadow-md');
+        if (filter === 'ALL') activeEl.classList.add('border-sky-400');
+        if (filter === '5STAR') activeEl.classList.add('border-emerald-400');
+        if (filter === 'AVG') activeEl.classList.add('border-amber-400');
+    }
+
+    window.applyFilterPenataran();
+};
+
+/**
+ * Fungsi Penapisan Keseluruhan (Daerah + Kad + Carian Teks)
+ */
+window.applyFilterPenataran = function() {
     const query = (document.getElementById('searchPenataran')?.value || '').toUpperCase().trim();
     
-    if (!query) {
-        filteredPenataranList = masterPenataranList;
-    } else {
-        filteredPenataranList = masterPenataranList.filter(item => 
-            item.nama_sekolah.toUpperCase().includes(query) || 
-            item.kod_sekolah.toUpperCase().includes(query)
-        );
+    // 1. Tapis Daerah Dulu
+    let baseData = masterPenataranList;
+    if (activeDaerahPenataran !== 'ALL') {
+        baseData = baseData.filter(d => d.daerah === activeDaerahPenataran);
     }
     
+    // 2. Kemaskini KPI menggunakan baseData (mengikut daerah)
+    kemaskiniKPI(baseData);
+
+    // 3. Tapis mengikut Card Filter & Text Search
+    filteredPenataranList = baseData.filter(item => {
+        // Card Match
+        let cardMatch = true;
+        if (activePenataranFilter === '5STAR') {
+            cardMatch = item.penarafan.includes('5 Bintang');
+        } else if (activePenataranFilter === 'AVG') {
+            cardMatch = item.jumlah_skor >= purataSemasa;
+        }
+
+        // Text Match
+        let textMatch = true;
+        if (query) {
+            textMatch = item.nama_sekolah.toUpperCase().includes(query) || 
+                        item.kod_sekolah.toUpperCase().includes(query);
+        }
+
+        return cardMatch && textMatch;
+    });
+
     renderJadualPenataran();
 };
+
+/**
+ * Kemaskini KPI Bar (Berdasarkan Base Data Daerah)
+ */
+function kemaskiniKPI(data) {
+    purataSemasa = 0;
+    if (data.length > 0) {
+        const sum = data.reduce((acc, curr) => acc + curr.jumlah_skor, 0);
+        purataSemasa = Math.round(sum / data.length);
+    }
+
+    const totalEl = document.getElementById('kpiPenataranTotal');
+    const cemEl = document.getElementById('kpiPenataranCemerlang');
+    const avgEl = document.getElementById('kpiPenataranPurata');
+    
+    if(totalEl) totalEl.innerText = data.length;
+    
+    if(cemEl) {
+        const cemerlang = data.filter(i => i.penarafan.includes('5 Bintang')).length;
+        cemEl.innerText = cemerlang;
+    }
+    
+    if(avgEl) avgEl.innerText = purataSemasa;
+}
 
 /**
  * Papar jadual ke dalam DOM HTML
@@ -114,7 +228,10 @@ function renderJadualPenataran() {
             </td>
             <td class="px-6 py-5 align-middle">
                 <div class="font-bold text-slate-800 text-sm leading-snug uppercase">${displayNama}</div>
-                <div class="text-[9px] text-slate-400 font-bold tracking-wider mt-1.5 uppercase"><i class="far fa-clock mr-1"></i> Diserah: ${dateStr}</div>
+                <div class="flex flex-wrap items-center gap-2 mt-1.5">
+                     <span class="text-[9px] font-bold px-2 py-0.5 rounded border border-slate-200 bg-slate-50 text-slate-500 uppercase">${item.daerah || 'TIADA REKOD'}</span>
+                     <span class="text-[9px] text-slate-400 font-bold tracking-wider uppercase"><i class="far fa-clock mr-1"></i> Diserah: ${dateStr}</span>
+                </div>
             </td>
             <td class="px-6 py-5 text-center bg-sky-50/20 align-middle font-black text-sky-700 text-lg">${item.jumlah_skor}</td>
             <td class="px-6 py-5 text-center bg-sky-50/20 align-middle font-bold text-slate-600">${item.peratus}</td>
@@ -129,29 +246,6 @@ function renderJadualPenataran() {
             </td>
         </tr>`;
     }).join('');
-}
-
-/**
- * Kemaskini KPI Bar
- */
-function kemaskiniKPI(data) {
-    const totalEl = document.getElementById('kpiPenataranTotal');
-    const cemEl = document.getElementById('kpiPenataranCemerlang');
-    const avgEl = document.getElementById('kpiPenataranPurata');
-    
-    if(totalEl) totalEl.innerText = data.length;
-    
-    if(cemEl) {
-        const cemerlang = data.filter(i => i.penarafan.includes('5 Bintang')).length;
-        cemEl.innerText = cemerlang;
-    }
-    
-    if(avgEl && data.length > 0) {
-        const sum = data.reduce((acc, curr) => acc + curr.jumlah_skor, 0);
-        avgEl.innerText = Math.round(sum / data.length);
-    } else if (avgEl) {
-        avgEl.innerText = '0';
-    }
 }
 
 /**
@@ -194,7 +288,7 @@ window.eksportPenataranCSV = function() {
     }
 
     // Tajuk Lajur Standard PPD
-    let csvContent = "BIL,KOD SEKOLAH,NAMA SEKOLAH,TARIKH SERAHAN,JUMLAH SKOR,PERATUS,PENARAFAN BINTANG,SKOR DIMENSI 1,SKOR DIMENSI 2,SKOR DIMENSI 3,SKOR DIMENSI 4,SKOR DIMENSI 5,SKOR DIMENSI 6\n";
+    let csvContent = "BIL,KOD SEKOLAH,NAMA SEKOLAH,DAERAH,TARIKH SERAHAN,JUMLAH SKOR,PERATUS,PENARAFAN BINTANG,SKOR DIMENSI 1,SKOR DIMENSI 2,SKOR DIMENSI 3,SKOR DIMENSI 4,SKOR DIMENSI 5,SKOR DIMENSI 6\n";
 
     const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
 
@@ -214,7 +308,7 @@ window.eksportPenataranCSV = function() {
         const d6 = s.skor_dimensi?.d6 || 0;
 
         let row = [
-            index + 1, s.kod_sekolah, cleanNama, tarikh,
+            index + 1, s.kod_sekolah, cleanNama, s.daerah, tarikh,
             s.jumlah_skor, s.peratus, s.penarafan.replace(/,/g, ''),
             d1, d2, d3, d4, d5, d6
         ];

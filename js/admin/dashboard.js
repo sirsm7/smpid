@@ -1,9 +1,9 @@
 /**
- * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPACT TABLE VIEW V3.4)
+ * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPACT TABLE VIEW V3.5)
  * Menguruskan senarai sekolah, filter berwarna, dan status data.
- * --- UPDATE V3.4 (RBAC DAERAH) ---
- * 1. Tapisan Global: Mengimplementasikan tapisan berasaskan daerah (PPD_MAPPING).
- * 2. Pembersihan Hardcode: Menukar rujukan statik 'M030' kepada senarai dinamik PPD.
+ * --- UPDATE V3.5 (SUPER ADMIN DAERAH FILTER) ---
+ * 1. Menambah kotak pilihan (dropdown) Daerah khusus untuk SUPER_ADMIN dan JPNMEL.
+ * 2. Mengintegrasikan penapisan daerah ke dalam senarai Telegram, tindakan pantas, dan paparan lencana (badges).
  */
 
 import { SchoolService } from '../services/school.service.js';
@@ -15,6 +15,7 @@ let dashboardData = [];
 let currentFilteredList = [];
 let activeStatus = 'ALL';
 let activeType = 'ALL';
+let activeDaerah = 'ALL'; // Tambahan state untuk filter daerah
 let searchTerm = ''; 
 let reminderQueue = [];
 let qIndex = 0;
@@ -60,6 +61,22 @@ function renderFilters() {
     let opts = `<option value="ALL">SEMUA JENIS</option>`;
     types.forEach(t => opts += `<option value="${t}">${t}</option>`);
     
+    // Ciri Baharu: Dropdown Daerah untuk SUPER_ADMIN / JPNMEL
+    const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+    let daerahDropdownHTML = '';
+    
+    if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
+        let daerahOpts = `<option value="ALL">SEMUA DAERAH</option>`;
+        if (APP_CONFIG.PPD_MAPPING) {
+            // Gunakan nama daerah (values) sebagai filter memandangkan DB simpan nama daerah
+            const uniqueDaerahs = [...new Set(Object.values(APP_CONFIG.PPD_MAPPING))].sort();
+            uniqueDaerahs.forEach(d => {
+                daerahOpts += `<option value="${d}">${d}</option>`;
+            });
+        }
+        daerahDropdownHTML = `<select id="filterDaerahSelect" class="w-full md:w-40 px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold outline-none focus:border-brand-500 bg-slate-50 text-slate-700" onchange="setDaerah(this.value)">${daerahOpts}</select>`;
+    }
+    
     const container = document.getElementById('filterContainer');
     if(container) {
         container.innerHTML = `
@@ -97,7 +114,8 @@ function renderFilters() {
             </button>
 
           </div>
-          <div class="flex gap-2 w-full md:w-auto">
+          <div class="flex flex-wrap gap-2 w-full md:w-auto justify-center md:justify-end">
+            ${daerahDropdownHTML}
             <select id="filterTypeSelect" class="w-full md:w-48 px-4 py-2 rounded-lg border border-slate-200 text-xs font-bold outline-none focus:border-brand-500 bg-slate-50" onchange="setType(this.value)">${opts}</select>
             <button onclick="resetDashboardFilters()" class="bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-500 px-3 py-2 rounded-lg border border-slate-200 hover:border-red-200 transition-colors shadow-sm" title="Reset Semua Filter">
                 <i class="fas fa-sync-alt"></i>
@@ -109,12 +127,14 @@ function renderFilters() {
 
 window.setFilter = function(s) { activeStatus = s; window.runFilter(); }
 window.setType = function(t) { activeType = t; window.runFilter(); }
+window.setDaerah = function(d) { activeDaerah = d; window.runFilter(); }
 window.handleSearch = function(val) { searchTerm = val.toUpperCase().trim(); window.runFilter(); }
 
 // --- FUNGSI RESET FILTER ---
 window.resetDashboardFilters = function() {
     activeStatus = 'ALL';
     activeType = 'ALL';
+    activeDaerah = 'ALL';
     searchTerm = '';
     
     // Kosongkan kotak carian jika wujud
@@ -124,6 +144,9 @@ window.resetDashboardFilters = function() {
     // Kembalikan pilihan dropdown ke 'ALL'
     const typeSelect = document.getElementById('filterTypeSelect');
     if (typeSelect) typeSelect.value = 'ALL';
+    
+    const daerahSelect = document.getElementById('filterDaerahSelect');
+    if (daerahSelect) daerahSelect.value = 'ALL';
     
     window.runFilter();
     
@@ -149,6 +172,8 @@ window.runFilter = function() {
                           
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
         
+        const daerahMatch = (activeDaerah === 'ALL') || (i.daerah === activeDaerah);
+        
         // Carian Super: Merangkumi Nama Sekolah, Kod, PGB dan GPK
         const searchMatch = !searchTerm || 
                             i.kod_sekolah.includes(searchTerm) || 
@@ -156,7 +181,7 @@ window.runFilter = function() {
                             (i.nama_pgb && i.nama_pgb.includes(searchTerm)) ||
                             (i.nama_gpk && i.nama_gpk.includes(searchTerm));
                             
-        return statMatch && typeMatch && searchMatch;
+        return statMatch && typeMatch && searchMatch && daerahMatch;
     });
 
     currentFilteredList = filtered;
@@ -201,12 +226,13 @@ function updateBadgeCounts() {
     
     const context = dashboardData.filter(i => {
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
+        const daerahMatch = (activeDaerah === 'ALL') || (i.daerah === activeDaerah);
         const searchMatch = !searchTerm || 
                             i.kod_sekolah.includes(searchTerm) || 
                             i.nama_sekolah.includes(searchTerm) ||
                             (i.nama_pgb && i.nama_pgb.includes(searchTerm)) ||
                             (i.nama_gpk && i.nama_gpk.includes(searchTerm));
-        return typeMatch && searchMatch;
+        return typeMatch && searchMatch && daerahMatch;
     });
     
     const setTxt = (id, count) => { if(document.getElementById(id)) document.getElementById(id).innerText = count; };
@@ -366,7 +392,13 @@ window.eksportDataTapis = function() {
 };
 
 window.janaSenaraiTelegram = function() {
-    let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
+    // Patuhi penapisan pandangan semasa termasuk daerah yang diaktifkan
+    let list = dashboardData.filter(i => {
+        const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
+        const daerahMatch = (activeDaerah === 'ALL') || (i.daerah === activeDaerah);
+        return typeMatch && daerahMatch;
+    });
+
     let txt = '';
     let pending = [];
 
@@ -388,7 +420,13 @@ window.janaSenaraiTelegram = function() {
 
 // --- QUEUE SYSTEM (MODAL CONTROL) ---
 window.mulaTindakanPantas = function() {
-    let list = (activeType === 'ALL') ? dashboardData : dashboardData.filter(i => i.jenis === activeType);
+    // Patuhi penapisan pandangan semasa termasuk daerah yang diaktifkan
+    let list = dashboardData.filter(i => {
+        const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
+        const daerahMatch = (activeDaerah === 'ALL') || (i.daerah === activeDaerah);
+        return typeMatch && daerahMatch;
+    });
+
     reminderQueue = [];
     
     list.forEach(i => {
