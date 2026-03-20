@@ -2,9 +2,9 @@
  * ADMIN MODULE: SETTINGS (STRICT RBAC & BATCH IMPORT EDITION)
  * Menguruskan pangkalan data pengguna pentadbir, kawalan akses sistem,
  * dan modul Import Data Pukal (Super Admin).
- * --- UPDATE V2.0 (BATCH IMPORT) ---
- * Logic: Menambah pemprosesan fail CSV di pihak klien menggunakan PapaParse,
- * diselaraskan dengan fungsi Supabase Upsert untuk sekolah dan pendaftaran pengguna baharu.
+ * --- UPDATE V2.5 (JPNMEL ROLE SUPPORT) ---
+ * Logic: Membersihkan manipulasi DOM tab import (dipindah ke main.js).
+ * Logic: Menyuntik peranan JPNMEL ke dalam dropdown dan lencana jadual pengguna.
  */
 
 import { AuthService } from '../services/auth.service.js';
@@ -36,18 +36,39 @@ window.loadAdminList = async function() {
     if (addUserForm) {
         if (currentUserRole === 'SUPER_ADMIN') {
             addUserForm.classList.remove('hidden'); // Papar jika Super Admin
-        } else {
-            addUserForm.classList.add('hidden'); // Sembunyi jika Admin/Unit PPD
-        }
-    }
+            
+            // SUNTIKAN DINAMIK: Tambah Dropdown PPD/Daerah untuk pendaftaran
+            if (!document.getElementById('inputNewAdminPPD')) {
+                const formGrid = addUserForm.querySelector('.grid');
+                if (formGrid) {
+                    // Lebarkan grid untuk memuatkan 5 kolum
+                    formGrid.classList.remove('md:grid-cols-4');
+                    formGrid.classList.add('md:grid-cols-5');
+                    
+                    const ppdDiv = document.createElement('div');
+                    let ppdOptions = '';
+                    
+                    if (APP_CONFIG.PPD_MAPPING) {
+                        for (const [kod, nama] of Object.entries(APP_CONFIG.PPD_MAPPING)) {
+                            ppdOptions += `<option value="${kod}">${nama} (${kod})</option>`;
+                        }
+                    } else {
+                        ppdOptions = `<option value="M030">PPD ALOR GAJAH (M030)</option>`;
+                    }
 
-    // Kawalan Paparan Tab Import Data
-    const importTabBtn = document.getElementById('import-data-tab');
-    if (importTabBtn) {
-        if (currentUserRole === 'SUPER_ADMIN') {
-            importTabBtn.classList.remove('hidden');
+                    ppdDiv.innerHTML = `
+                        <label class="block text-xs font-bold text-slate-500 mb-1 ml-1">PPD / Daerah</label>
+                        <select id="inputNewAdminPPD" class="w-full p-2.5 rounded-lg border-2 border-slate-300 text-sm bg-white">
+                            ${ppdOptions}
+                        </select>
+                    `;
+                    // Masukkan ke dalam grid sebelum butang (last child)
+                    formGrid.insertBefore(ppdDiv, formGrid.lastElementChild);
+                }
+            }
+
         } else {
-            importTabBtn.classList.add('hidden');
+            addUserForm.classList.add('hidden'); // Sembunyi jika Admin/Unit PPD/JPN
         }
     }
 
@@ -73,7 +94,7 @@ window.loadAdminList = async function() {
                     <tr>
                         <th class="px-6 py-4 font-black text-center w-16">#</th>
                         <th class="px-6 py-4 font-black">Emel Pengguna</th>
-                        <th class="px-6 py-4 font-black text-center w-40">Peranan</th>
+                        <th class="px-6 py-4 font-black text-center w-40">Peranan & Daerah</th>
                         <th class="px-6 py-4 font-black text-center w-48">Aksi Kawalan</th>
                     </tr>
                 </thead>
@@ -86,11 +107,19 @@ window.loadAdminList = async function() {
             let roleBadge = '';
             if (user.role === 'SUPER_ADMIN') {
                 roleBadge = `<span class="inline-block px-2.5 py-1 rounded-lg text-[9px] font-black bg-red-100 text-red-700 border border-red-200 shadow-sm">SUPER ADMIN</span>`;
+            } else if (user.role === 'JPNMEL') {
+                roleBadge = `<span class="inline-block px-2.5 py-1 rounded-lg text-[9px] font-black bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-200 shadow-sm">JPN MELAKA</span>`;
             } else if (user.role === 'ADMIN') {
                 roleBadge = `<span class="inline-block px-2.5 py-1 rounded-lg text-[9px] font-black bg-blue-100 text-blue-700 border border-blue-200 shadow-sm">MOD ADMIN</span>`;
             } else {
                 roleBadge = `<span class="inline-block px-2.5 py-1 rounded-lg text-[9px] font-black bg-indigo-100 text-indigo-700 border border-indigo-200 shadow-sm">UNIT PPD</span>`;
             }
+
+            // Nama Daerah / PPD
+            const ppdName = (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[user.kod_sekolah]) 
+                            ? APP_CONFIG.PPD_MAPPING[user.kod_sekolah] 
+                            : user.kod_sekolah;
+            roleBadge += `<div class="text-[9px] font-bold text-slate-500 mt-1 uppercase tracking-widest">${ppdName}</div>`;
 
             // Logik Butang Tindakan
             let actionButtons = '';
@@ -105,12 +134,12 @@ window.loadAdminList = async function() {
                 </button>`;
             } 
 
-            // B. RESET PASSWORD (Hirarki Kuasa)
+            // B. RESET PASSWORD (Hirarki Kuasa yang dikemaskini)
             let canForceReset = false;
-            if (user.role !== 'SUPER_ADMIN') {
-                if (currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN') {
-                    canForceReset = true;
-                }
+            if (currentUserRole === 'SUPER_ADMIN') {
+                canForceReset = true; // Super admin boleh reset sesiapa kecuali diri sendiri (isSelf)
+            } else if ((currentUserRole === 'ADMIN' || currentUserRole === 'JPNMEL') && user.role !== 'SUPER_ADMIN' && user.role !== 'JPNMEL') {
+                canForceReset = true; // Admin/JPN boleh reset Unit PPD atau peringkat bawahan
             }
 
             if (canForceReset && !isSelf) {
@@ -130,7 +159,7 @@ window.loadAdminList = async function() {
                         title="Tukar Kata Laluan">
                     <i class="fas fa-key me-1"></i> TUKAR PASS
                 </button>`;
-                roleBadge += ` <span class="ml-1 text-[8px] font-black text-slate-300 uppercase tracking-tighter italic">Sesi Ini</span>`;
+                roleBadge += ` <span class="ml-1 text-[8px] font-black text-slate-300 uppercase tracking-tighter italic block">Sesi Ini</span>`;
             }
 
             html += `
@@ -157,7 +186,7 @@ window.loadAdminList = async function() {
 };
 
 /**
- * Menambah akaun pentadbir baharu (HAD: Hanya SUPER ADMIN).
+ * Menambah akaun pentadbir baharu berserta tetapan PPD (HAD: Hanya SUPER ADMIN).
  */
 window.tambahAdmin = async function() {
     const currentUserRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
@@ -176,16 +205,20 @@ window.tambahAdmin = async function() {
     const role = document.getElementById('inputNewAdminRole').value;
     const pass = document.getElementById('inputNewAdminPass').value.trim();
     
+    // Tarik nilai kod daerah/PPD jika dropdown berjaya disuntik
+    const ppdInput = document.getElementById('inputNewAdminPPD');
+    const kodSekolah = ppdInput ? ppdInput.value : 'M030';
+    
     if(!email || !pass) return Swal.fire('Data Tidak Lengkap', 'Sila isi emel dan kata laluan.', 'warning');
 
     toggleLoading(true);
     try {
-        await AuthService.createAdmin(email, pass, role);
+        await AuthService.createAdmin(email, pass, role, kodSekolah);
         toggleLoading(false);
         Swal.fire({
             icon: 'success',
             title: 'Berjaya Ditambah',
-            text: `Akaun ${role} telah diaktifkan secara sah.`,
+            text: `Akaun ${role} (${kodSekolah}) telah diaktifkan secara sah.`,
             confirmButtonColor: '#1e293b'
         }).then(() => {
             document.getElementById('inputNewAdminEmail').value = '';
@@ -252,13 +285,16 @@ function updateRoleDropdown(currentUserRole) {
 
     select.innerHTML = '';
     const opts = [
-        { val: 'ADMIN', txt: 'MOD ADMIN (Pengurusan Data)' },
+        { val: 'ADMIN', txt: 'MOD ADMIN (Pengurusan Data PPD)' },
         { val: 'PPD_UNIT', txt: 'UNIT PPD (Pencapaian Sahaja)' }
     ];
 
-    // Hanya Super Admin boleh lantik Super Admin lain
+    // Hanya Super Admin boleh lantik Super Admin lain dan JPNMEL
     if (currentUserRole === 'SUPER_ADMIN') {
-        opts.unshift({ val: 'SUPER_ADMIN', txt: 'SUPER ADMIN (Kuasa Mutlak)' });
+        opts.unshift(
+            { val: 'SUPER_ADMIN', txt: 'SUPER ADMIN (Kuasa Mutlak)' },
+            { val: 'JPNMEL', txt: 'JPN MELAKA (Akses Penuh Negeri)' }
+        );
     }
 
     opts.forEach(opt => {
@@ -590,6 +626,7 @@ window.mulaImportCSV = async function() {
             }).then(() => {
                 // Muat semula jadual pemantauan utama di latar belakang jika tersedia
                 if (window.fetchDashboardData) window.fetchDashboardData();
+                window.loadAdminList(); // Refresh admin list table
             });
         },
         error: function(err) {

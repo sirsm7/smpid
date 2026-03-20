@@ -1,6 +1,8 @@
 /**
  * AUTHENTICATION SERVICE
  * Menguruskan log masuk, pendaftaran admin, dan reset kata laluan.
+ * * UPDATE V1.1: Pembuangan hardcode M030 pada createAdmin untuk sokongan pelbagai daerah.
+ * * UPDATE V1.2: Memasukkan peranan JPNMEL ke dalam pertanyaan (query) senarai admin.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -40,7 +42,7 @@ export const AuthService = {
         const { data, error } = await db
             .from('smpid_users')
             .select('id, email, role, kod_sekolah') // Exclude password
-            .in('role', ['SUPER_ADMIN', 'ADMIN', 'PPD_UNIT'])
+            .in('role', ['SUPER_ADMIN', 'JPNMEL', 'ADMIN', 'PPD_UNIT'])
             .order('role', { ascending: true }); // Sort by role priority visually if possible, or email
 
         if (error) throw error;
@@ -48,15 +50,15 @@ export const AuthService = {
     },
 
     /**
-     * Tambah admin baru
+     * Tambah admin baru dengan sokongan pelbagai PPD
      */
-    async createAdmin(email, password, role) {
+    async createAdmin(email, password, role, kodSekolah = 'M030') {
         const newId = crypto.randomUUID();
         const { error } = await db
             .from('smpid_users')
             .insert([{
                 id: newId,
-                kod_sekolah: 'M030', // PPD Code
+                kod_sekolah: kodSekolah,
                 email: email,
                 password: password,
                 role: role

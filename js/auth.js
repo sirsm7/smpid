@@ -3,6 +3,8 @@
  * Menguruskan interaksi UI untuk halaman log masuk.
  * Menggunakan: AuthService, toggleLoading
  * * UPDATE V1.1: Migrasi dari sessionStorage ke localStorage untuk sokongan cross-tab.
+ * * UPDATE V1.2: Pembersihan hardcode M030, menyokong UI mod=admin.
+ * * UPDATE V1.3: Sokongan laluan log masuk untuk peranan JPNMEL (Akses Negeri).
  */
 
 import { AuthService } from './services/auth.service.js';
@@ -20,12 +22,18 @@ document.addEventListener('DOMContentLoaded', () => {
     window.history.replaceState(null, null, window.location.href);
     console.log("🔒 [Auth] Sesi localStorage dibersihkan.");
 
-    // Auto-detect Kod Sekolah dari URL (?kod=M030)
+    // Auto-detect Parameter dari URL
     const params = new URLSearchParams(window.location.search);
     const kod = params.get('kod');
-    if (kod) {
-        const titleEl = document.getElementById('loginTitle');
-        if (titleEl) titleEl.innerHTML = `LOG MASUK <span class="text-primary">${kod.toUpperCase()}</span>`;
+    const mod = params.get('mod');
+    
+    const titleEl = document.getElementById('loginTitle');
+    if (titleEl) {
+        if (mod === 'admin') {
+            titleEl.innerHTML = `<i class="fas fa-user-shield mr-2"></i>LOG MASUK PENTADBIR`;
+        } else if (kod) {
+            titleEl.innerHTML = `LOG MASUK <span class="text-brand-600">${kod.toUpperCase()}</span>`;
+        }
     }
 });
 
@@ -78,8 +86,8 @@ window.prosesLogin = async function() {
         toggleLoading(false);
         if (btnLogin) btnLogin.disabled = false;
 
-        // Redirect Logic - PPD & ADMIN
-        if (user.role === 'ADMIN' || user.role === 'PPD_UNIT' || user.role === 'SUPER_ADMIN') {
+        // Redirect Logic - PPD, JPN & ADMIN
+        if (user.role === 'ADMIN' || user.role === 'PPD_UNIT' || user.role === 'SUPER_ADMIN' || user.role === 'JPNMEL') {
             localStorage.setItem(APP_CONFIG.SESSION.AUTH_FLAG, 'true');
             
             let welcomeTitle = 'Admin Disahkan';
@@ -91,6 +99,9 @@ window.prosesLogin = async function() {
             } else if (user.role === 'SUPER_ADMIN') {
                 welcomeTitle = 'Akses Super Admin';
                 welcomeMsg = 'Log masuk dengan kuasa penuh.';
+            } else if (user.role === 'JPNMEL') {
+                welcomeTitle = 'Akses JPN Melaka';
+                welcomeMsg = 'Log masuk pentadbir peringkat negeri.';
             }
 
             Swal.fire({

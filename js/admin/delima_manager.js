@@ -2,10 +2,14 @@
  * ADMIN MODULE: DELIMA MANAGER
  * Menguruskan paparan dan tindakan admin terhadap rekod status ID DELIMa sekolah.
  * Fungsi ini dipanggil dari panel 'Pusat Sokongan Terkumpul' (admin.html).
+ * --- UPDATE V2.1 (RBAC DAERAH) ---
+ * 1. Menyuntik tapisan global supaya data selari dengan daerah admin (PPD_MAPPING).
+ * 2. Mengurus pemaparan dinamik entiti PPD berdasarkan APP_CONFIG.
  */
 
 import { DelimaService } from '../../modules/helpdesk/delima.service.js';
 import { toggleLoading } from '../core/helpers.js';
+import { APP_CONFIG } from '../config/app.config.js';
 
 window.loadSenaraiDelimaAdmin = async function(kategori) {
     const tbodyId = kategori === 'GURU' ? 'tbodyAdminGuru' : 'tbodyAdminMurid';
@@ -18,17 +22,31 @@ window.loadSenaraiDelimaAdmin = async function(kategori) {
     tbody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-400 font-medium animate-pulse"><i class="fas fa-circle-notch fa-spin text-xl mb-3 block text-slate-300"></i>Memuatkan senarai...</td></tr>`;
 
     try {
-        const data = await DelimaService.getAll(kategori, filter);
+        let dataRaw = await DelimaService.getAll(kategori, filter);
 
-        if (data.length === 0) {
+        // --- RBAC FILTERING ---
+        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+
+        if (['ADMIN', 'PPD_UNIT'].includes(userRole) && window.globalDashboardData) {
+            const validSchoolCodes = window.globalDashboardData.map(s => s.kod_sekolah);
+            validSchoolCodes.push(userKod); // Benarkan rekod PPD mereka sendiri jika wujud
+            dataRaw = dataRaw.filter(item => validSchoolCodes.includes(item.kod_sekolah));
+        }
+
+        if (dataRaw.length === 0) {
             tbody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-400 italic bg-slate-50/50">Tiada rekod ditemui untuk saringan ini.</td></tr>`;
             return;
         }
 
-        tbody.innerHTML = data.map((item, index) => {
+        const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+
+        tbody.innerHTML = dataRaw.map((item, index) => {
             // Memadankan kod sekolah dengan nama penuh dari memori Dashboard
             let schoolName = item.kod_sekolah;
-            if (window.globalDashboardData) {
+            if (senaraiKodPPD.includes(item.kod_sekolah)) {
+                schoolName = APP_CONFIG.PPD_MAPPING[item.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[item.kod_sekolah]}` : 'PEJABAT PENDIDIKAN DAERAH';
+            } else if (window.globalDashboardData) {
                 const schoolMatch = window.globalDashboardData.find(s => s.kod_sekolah === item.kod_sekolah);
                 if (schoolMatch) schoolName = schoolMatch.nama_sekolah;
             }

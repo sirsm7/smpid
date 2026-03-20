@@ -2,10 +2,14 @@
  * ADMIN MODULE: ANALYSIS (TAILWIND EDITION - SORTING ENABLED)
  * Menguruskan laporan DCS dan DELIMa dengan UI Tailwind.
  * Menambah fungsi pengisihan dinamik (Dynamic Sorting) pada jadual terperinci.
+ * --- UPDATE V2.1 (RBAC DAERAH) ---
+ * 1. Tapisan Global (Data Filtering) mengikut daerah admin.
+ * 2. Pembuangan Hardcode PPD M030 untuk menyokong kepelbagaian PPD.
  */
 
 import { DcsService } from '../services/dcs.service.js';
 import { toggleLoading } from '../core/helpers.js';
+import { APP_CONFIG } from '../config/app.config.js';
 
 let dcsDataList = [];
 let currentFilteredDcs = []; 
@@ -23,7 +27,19 @@ window.loadDcsAdmin = async function() {
     if (wrapper) wrapper.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 font-medium">Memuatkan data analisa...</td></tr>`;
 
     try {
-        dcsDataList = await DcsService.getAll();
+        let dataRaw = await DcsService.getAll();
+
+        // --- RBAC FILTERING ---
+        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+
+        if (['ADMIN', 'PPD_UNIT'].includes(userRole) && window.globalDashboardData) {
+            const validSchoolCodes = window.globalDashboardData.map(s => s.kod_sekolah);
+            validSchoolCodes.push(userKod); // Benarkan rekod PPD mereka sendiri
+            dataRaw = dataRaw.filter(d => validSchoolCodes.includes(d.kod_sekolah));
+        }
+
+        dcsDataList = dataRaw;
         populateDcsYears();
         window.updateDashboardAnalisa();
     } catch (err) { 
@@ -95,7 +111,10 @@ function getKategoriDcs(score) {
  * Panel DCS (Tailwind)
  */
 function processDcsPanel(field) {
-    const ppdData = dcsDataList.find(d => d.kod_sekolah === 'M030');
+    const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+    
+    const ppdData = dcsDataList.find(d => d.kod_sekolah === userKod);
     const ppdScore = ppdData?.[field] || 0;
     
     document.getElementById('kpiDcsScore').innerText = ppdScore.toFixed(2);
@@ -107,14 +126,13 @@ function processDcsPanel(field) {
         lbl.className = `inline-block px-3 py-1 rounded-full text-xs font-bold mt-2 border ${cat.bg} ${cat.color}`;
     }
 
-    const schools = dcsDataList.filter(d => d.kod_sekolah !== 'M030');
+    const schools = dcsDataList.filter(d => !senaraiKodPPD.includes(d.kod_sekolah));
     let cats = { 'Beginner':0, 'Novice':0, 'Intermediate':0, 'Advance':0, 'Innovator':0 };
     schools.forEach(d => { 
         const score = d[field];
         if (score !== null) cats[getKategoriDcs(score).label.charAt(0) + getKategoriDcs(score).label.slice(1).toLowerCase()]++; 
-        // Nota: Label 'ADVANCE' -> 'Advance' untuk key matching
     });
-    // Betulkan keys manually sebab function return UPPERCASE
+
     const chartData = [
         cats['Beginner'] || 0,
         cats['Novice'] || 0,
@@ -161,10 +179,13 @@ function processDcsPanel(field) {
  * Panel Aktif (Tailwind)
  */
 function processActivePanel(field) {
-    const ppdData = dcsDataList.find(d => d.kod_sekolah === 'M030');
+    const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+
+    const ppdData = dcsDataList.find(d => d.kod_sekolah === userKod);
     document.getElementById('kpiActiveScore').innerText = ppdData?.[field] || 0;
 
-    const schools = dcsDataList.filter(d => d.kod_sekolah !== 'M030');
+    const schools = dcsDataList.filter(d => !senaraiKodPPD.includes(d.kod_sekolah));
     let ranges = { 'Tinggi (>80%)':0, 'Sederhana':0, 'Rendah':0 };
     schools.forEach(d => {
         const v = d[field];
@@ -234,7 +255,8 @@ window.filterAnalisaTable = function(currYear, prevYear) {
     const keyword = document.getElementById('searchAnalisa')?.value.toUpperCase() || '';
     
     // Asingkan PPD dari senarai untuk manipulasi data
-    const listWithoutPPD = dcsDataList.filter(d => d.kod_sekolah !== 'M030');
+    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+    const listWithoutPPD = dcsDataList.filter(d => !senaraiKodPPD.includes(d.kod_sekolah));
     
     // 1. Tapis carian
     let list = keyword 

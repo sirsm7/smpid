@@ -1,10 +1,9 @@
 /**
- * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPACT TABLE VIEW V3.3)
+ * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPACT TABLE VIEW V3.4)
  * Menguruskan senarai sekolah, filter berwarna, dan status data.
- * --- UPDATE V3.3 (PGB & GPK EXTRACTION FEATURE) ---
- * 1. Filter Baharu: Menambah lencana saringan 'Tiada PGB/GPK' (Rose/Pink)
- * 2. Logik Salinan: Memperbaiki butang 'Copy List' untuk menyokong saringan baharu
- * tanpa merosakkan logik 'Lengkap/Belum Lengkap' asal.
+ * --- UPDATE V3.4 (RBAC DAERAH) ---
+ * 1. Tapisan Global: Mengimplementasikan tapisan berasaskan daerah (PPD_MAPPING).
+ * 2. Pembersihan Hardcode: Menukar rujukan statik 'M030' kepada senarai dinamik PPD.
  */
 
 import { SchoolService } from '../services/school.service.js';
@@ -24,11 +23,25 @@ let qIndex = 0;
 window.fetchDashboardData = async function() {
     toggleLoading(true);
     try {
-        const data = await SchoolService.getAll();
+        let data = await SchoolService.getAll();
+        
+        // --- SUNTIKAN KAWALAN AKSES DAERAH (RBAC) ---
+        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+        
+        // Jika pengguna adalah ADMIN PPD atau UNIT PPD, tapis ikut daerah
+        if (['ADMIN', 'PPD_UNIT'].includes(userRole) && userKod && APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[userKod]) {
+            const daerahDibenarkan = APP_CONFIG.PPD_MAPPING[userKod];
+            // Tapis sekolah dalam daerah yang sama ATAU kod PPD itu sendiri
+            data = data.filter(item => item.daerah === daerahDibenarkan || item.kod_sekolah === userKod);
+        }
+        // -------------------------------------------
+
         window.globalDashboardData = data; 
         
-        // Asingkan PPD (M030) daripada visual dashboard utama
-        dashboardData = data.filter(item => item.kod_sekolah !== 'M030');
+        // Asingkan entiti PPD (semua daerah) daripada visual dashboard utama sekolah
+        const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+        dashboardData = data.filter(item => !senaraiKodPPD.includes(item.kod_sekolah));
         
         renderFilters();
         window.runFilter();
@@ -332,12 +345,12 @@ window.eksportDataTapis = function() {
     if (!currentFilteredList || currentFilteredList.length === 0) return Swal.fire('Tiada Data', '', 'info'); 
     
     // Kemas kini tajuk CSV untuk merangkumi profil PGB dan GPK
-    let csvContent = "BIL,KOD,NAMA,JENIS,NAMA PGB,TEL PGB,NAMA GPK,TEL GPK,NAMA GPICT,TEL GPICT,NAMA ADMIN,TEL ADMIN,STATUS PENGISIAN\n";
+    let csvContent = "BIL,KOD,NAMA,JENIS,DAERAH,NAMA PGB,TEL PGB,NAMA GPK,TEL GPK,NAMA GPICT,TEL GPICT,NAMA ADMIN,TEL ADMIN,STATUS PENGISIAN\n";
     
     currentFilteredList.forEach((s, index) => {
         const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
         let row = [
-            index + 1, clean(s.kod_sekolah), clean(s.nama_sekolah), clean(s.jenis),
+            index + 1, clean(s.kod_sekolah), clean(s.nama_sekolah), clean(s.jenis), clean(s.daerah),
             clean(s.nama_pgb), clean(s.no_telefon_pgb),
             clean(s.nama_gpk), clean(s.no_telefon_gpk),
             clean(s.nama_gpict), clean(s.no_telefon_gpict), 

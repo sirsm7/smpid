@@ -1,13 +1,15 @@
 /**
  * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V2.0 FILE UPLOAD)
  * Menguruskan rekod pencapaian dengan kawalan integriti data penuh.
- * --- UPDATE V2.0 ---
- * Integration: Modul Upload Fail Base64 untuk borang Edit dan Pendaftaran PPD.
+ * --- UPDATE V2.1 (RBAC DAERAH) ---
+ * 1. Menukar rujukan statik 'M030' kepada senarai dinamik PPD.
+ * 2. Menyuntik tapisan global supaya data pencapaian selari dengan daerah admin.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
 import { toggleLoading, uploadFileToDrive } from '../core/helpers.js';
 import { populateDropdown } from '../config/dropdowns.js';
+import { APP_CONFIG } from '../config/app.config.js';
 
 // --- STATE MANAGEMENT ---
 let pencapaianList = [];
@@ -49,7 +51,19 @@ window.loadMasterPencapaian = async function() {
     const tahun = document.getElementById('filterTahunPencapaian').value;
     
     try {
-        pencapaianList = await AchievementService.getAll(tahun);
+        let dataRaw = await AchievementService.getAll(tahun);
+        
+        // --- RBAC FILTERING ---
+        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+
+        if (['ADMIN', 'PPD_UNIT'].includes(userRole) && window.globalDashboardData) {
+            const validSchoolCodes = window.globalDashboardData.map(s => s.kod_sekolah);
+            validSchoolCodes.push(userKod); // Benarkan rekod PPD mereka sendiri
+            dataRaw = dataRaw.filter(p => validSchoolCodes.includes(p.kod_sekolah));
+        }
+        
+        pencapaianList = dataRaw;
         populateSekolahFilter(pencapaianList);
         window.renderPencapaianTable();
     } catch (e) {
@@ -63,11 +77,13 @@ function populateSekolahFilter(data) {
     const seen = new Set();
     const oldVal = select.value; 
     
+    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+    
     select.innerHTML = '<option value="ALL">SEMUA SEKOLAH</option>';
     
     const sortedData = [...data].sort((a, b) => {
-        if (a.kod_sekolah === 'M030') return -1;
-        if (b.kod_sekolah === 'M030') return 1;
+        if (senaraiKodPPD.includes(a.kod_sekolah)) return -1;
+        if (senaraiKodPPD.includes(b.kod_sekolah)) return 1;
         
         let nameA = a.kod_sekolah;
         let nameB = b.kod_sekolah;
@@ -85,7 +101,9 @@ function populateSekolahFilter(data) {
     sortedData.forEach(i => {
         if(!seen.has(i.kod_sekolah)) {
             let label = i.kod_sekolah;
-            if (i.kod_sekolah === 'M030') label = "PPD ALOR GAJAH (M030)";
+            if (senaraiKodPPD.includes(i.kod_sekolah)) {
+                label = APP_CONFIG.PPD_MAPPING[i.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[i.kod_sekolah]} (${i.kod_sekolah})` : `PEJABAT PENDIDIKAN DAERAH (${i.kod_sekolah})`;
+            }
             else if(window.globalDashboardData) {
                 const s = window.globalDashboardData.find(x => x.kod_sekolah === i.kod_sekolah);
                 if(s) label = `${s.nama_sekolah} (${i.kod_sekolah})`;
@@ -116,13 +134,15 @@ window.renderPencapaianTable = function() {
     const jenisFilter = document.getElementById('filterJenisPencapaian').value; 
     const search = document.getElementById('searchPencapaianInput').value.toUpperCase();
 
+    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+
     let data = pencapaianList.filter(i => {
         if(sekFilter !== 'ALL' && i.kod_sekolah !== sekFilter) return false;
         if(katFilter !== 'ALL' && i.kategori !== katFilter) return false;
         if(jenisFilter !== 'ALL' && i.jenis_rekod !== jenisFilter) return false; 
         
         if(search) {
-            let namaSekolah = (i.kod_sekolah === 'M030') ? 'PPD ALOR GAJAH' : 
+            let namaSekolah = senaraiKodPPD.includes(i.kod_sekolah) ? (APP_CONFIG.PPD_MAPPING[i.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[i.kod_sekolah]}` : 'PEJABAT PENDIDIKAN DAERAH') : 
                 (window.globalDashboardData?.find(s => s.kod_sekolah === i.kod_sekolah)?.nama_sekolah || '');
             const searchTarget = `${i.kod_sekolah} ${namaSekolah} ${i.nama_peserta} ${i.nama_pertandingan}`.toUpperCase();
             if (!searchTarget.includes(search)) return false;
@@ -159,7 +179,10 @@ window.renderPencapaianTable = function() {
 
     tbody.innerHTML = data.map(i => {
         let namaSekolah = i.kod_sekolah;
-        if(i.kod_sekolah === 'M030') namaSekolah = `<span class="text-indigo-600 font-black">PPD ALOR GAJAH</span>`;
+        if(senaraiKodPPD.includes(i.kod_sekolah)) {
+            const namaPpd = APP_CONFIG.PPD_MAPPING[i.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[i.kod_sekolah]}` : 'PEJABAT PENDIDIKAN DAERAH';
+            namaSekolah = `<span class="text-indigo-600 font-black">${namaPpd}</span>`;
+        }
         else if(window.globalDashboardData) {
             const s = window.globalDashboardData.find(x => x.kod_sekolah === i.kod_sekolah);
             if(s) namaSekolah = s.nama_sekolah;
@@ -325,9 +348,10 @@ function renderTopSchools(data) {
     if(badge) badge.innerText = `${data.length} Rekod`;
     if(!table) return;
     
+    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
     const schoolCounts = {};
     data.forEach(i => {
-        if(i.kod_sekolah !== 'M030') {
+        if(!senaraiKodPPD.includes(i.kod_sekolah)) {
             schoolCounts[i.kod_sekolah] = (schoolCounts[i.kod_sekolah] || 0) + 1;
         }
     });
@@ -655,6 +679,8 @@ window.simpanPencapaianPPD = async function() {
     if(btn) { btn.disabled = true; btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MEMUAT NAIK FAIL...`; btn.classList.add('opacity-75'); }
     toggleLoading(true);
 
+    const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'M030';
+
     try {
         // 1. Muat Naik Fail
         const uploadedUrl = await uploadFileToDrive(file);
@@ -662,7 +688,7 @@ window.simpanPencapaianPPD = async function() {
         if(btn) btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MENYIMPAN REKOD PPD...`;
 
         const payload = {
-            kod_sekolah: 'M030',
+            kod_sekolah: userKod,
             kategori: radKategori,
             nama_peserta: nama,
             nama_pertandingan: program,
@@ -722,12 +748,16 @@ window.eksportPencapaian = function() {
     }
 
     let csvContent = "BIL,KOD,NAMA SEKOLAH,JENIS REKOD,KATEGORI,PESERTA,JAWATAN,PROGRAM,PERINGKAT,PENCAPAIAN,TAHUN,PAUTAN BUKTI\n";
+    
+    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
 
     currentPencapaianFiltered.forEach((i, index) => {
         const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
         
         let namaSekolah = i.kod_sekolah;
-        if(i.kod_sekolah === 'M030') namaSekolah = "PPD ALOR GAJAH";
+        if(senaraiKodPPD.includes(i.kod_sekolah)) {
+            namaSekolah = APP_CONFIG.PPD_MAPPING[i.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[i.kod_sekolah]}` : 'PEJABAT PENDIDIKAN DAERAH';
+        }
         else if(window.globalDashboardData) {
             const s = window.globalDashboardData.find(x => x.kod_sekolah === i.kod_sekolah);
             if(s) namaSekolah = s.nama_sekolah;

@@ -1,10 +1,13 @@
 /**
  * modules/pppdm/script.js
  * Logik Papan Pemuka Analisa PPPDM (Modular Version - Diperluaskan dengan Tab Program & Kad SR/SM)
- * Fix: Menambah logik pengiraan pecahan SR/SM untuk dipaparkan dalam lencana kad.
+ * --- UPDATE V2.1 (RBAC DAERAH) ---
+ * 1. Tapisan Global: Mengimplementasikan tapisan berasaskan daerah (PPD_MAPPING).
+ * 2. Pembersihan Hardcode: Menukar rujukan statik 'M030' kepada senarai dinamik PPD.
  */
 
 import { getDatabaseClient } from '../../js/core/db.js';
+import { APP_CONFIG } from '../../js/config/app.config.js';
 
 // CONFIG & STATE
 const db = getDatabaseClient();
@@ -64,18 +67,41 @@ function getSchoolType(kod) {
 async function fetchData() {
     try {
         // Ambil data analisa dan data induk sekolah secara serentak (Parallel Execution)
+        // UPDATE: Tambah lajur 'daerah' ke dalam fetch sekolah
         const [resAnalisa, resSekolah] = await Promise.all([
             db.from('view_smpid_pppdm_analisa').select('*'),
-            db.from('smpid_sekolah_data').select('kod_sekolah, jenis_sekolah')
+            db.from('smpid_sekolah_data').select('kod_sekolah, jenis_sekolah, daerah')
         ]);
 
         if (resAnalisa.error) throw resAnalisa.error;
         if (resSekolah.error) throw resSekolah.error;
 
+        let sekolahDataRaw = resSekolah.data;
+        let analisaDataRaw = resAnalisa.data;
+
+        // --- RBAC FILTERING (SUNTIKAN DAERAH) ---
+        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+
+        // Jika pengguna adalah ADMIN PPD atau UNIT PPD, tapis ikut daerah
+        if (['ADMIN', 'PPD_UNIT'].includes(userRole) && userKod && APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[userKod]) {
+            const daerahDibenarkan = APP_CONFIG.PPD_MAPPING[userKod];
+            
+            // Tapis sekolah dalam daerah yang sama ATAU kod PPD itu sendiri
+            sekolahDataRaw = sekolahDataRaw.filter(s => s.daerah === daerahDibenarkan || s.kod_sekolah === userKod);
+            
+            // Hanya ekstrak ID sekolah yang melepasi tapisan
+            const validSchoolCodes = sekolahDataRaw.map(s => s.kod_sekolah);
+            
+            // Gunakan ID sekolah tersebut untuk menapis data Analisa PPPDM
+            analisaDataRaw = analisaDataRaw.filter(a => validSchoolCodes.includes(a.kod_sekolah));
+        }
+        // ----------------------------------------
+
         // Siapkan kamus memori jenis sekolah (SR/SM) sebelum proses data
-        buildSchoolTypeMap(resSekolah.data);
+        buildSchoolTypeMap(sekolahDataRaw);
         
-        const data = resAnalisa.data;
+        const data = analisaDataRaw;
 
         const years = [...new Set(data.map(d => d.tahun))].filter(y => y).sort((a,b) => b - a);
         if (years.length > 0) yearCurrent = years[0];
@@ -110,13 +136,17 @@ function updateYearLabels() {
     }
 }
 
-// 2. PROSES DATA (FILTER M030, REKOD SEKOLAH & REKOD PROGRAM)
+// 2. PROSES DATA (FILTER PPD, REKOD SEKOLAH & REKOD PROGRAM)
 function processData(rawData) {
     processedSchools = {};
     programStats = {}; // Reset data program
     
+    // Senarai pengecualian kod PPD secara dinamik
+    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+    
     rawData.forEach(row => {
-        if (row.kod_sekolah === 'M030') return; 
+        // Buang mana-mana aktiviti oleh PPD itu sendiri untuk analisa perbandingan sekolah
+        if (senaraiKodPPD.includes(row.kod_sekolah)) return; 
 
         // Dapat klasifikasi tepat (Exact Logic) berdasarkan smpid_sekolah_data
         const sType = getSchoolType(row.kod_sekolah);

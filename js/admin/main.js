@@ -1,9 +1,10 @@
 /**
- * ADMIN MODULE: MAIN CONTROLLER & ROUTER (V2.4 - BATCH IMPORT GATEKEEPER)
+ * ADMIN MODULE: MAIN CONTROLLER & ROUTER (V2.5.1 - UI FIX)
  * Fungsi: Menguruskan navigasi tab, keselamatan, dan peranan (RBAC).
- * --- UPDATE V2.4 ---
- * Integrasi Modul Import Data Pukal: Menambah sekatan tab 'import-data'
- * khusus untuk Super Admin sahaja melalui Gatekeeper RBAC.
+ * --- UPDATE V2.5.1 ---
+ * 1. Pembaikan Bug UI: Menggantikan manipulasi statik className kepada classList
+ * bagi memastikan kelas 'hidden' untuk tab sekuriti (cth: Import) tidak tertimpa.
+ * 2. Integrasi Modul Import Data Pukal & Sokongan JPNMEL.
  */
 
 import { AuthService } from '../services/auth.service.js';
@@ -39,6 +40,9 @@ async function initAdminPanel() {
         if (userRole === 'SUPER_ADMIN') {
             displayRole.innerText = 'SUPER ADMIN';
             displayRole.classList.add('text-red-400', 'font-black'); // Visual Khas
+        } else if (userRole === 'JPNMEL') {
+            displayRole.innerText = 'JPN MELAKA';
+            displayRole.classList.add('text-fuchsia-400', 'font-black'); // Visual Khas JPN
         } else if (userRole === 'PPD_UNIT') {
             displayRole.innerText = 'UNIT PPD';
         } else {
@@ -46,12 +50,22 @@ async function initAdminPanel() {
         }
     }
 
-    // 3. Konfigurasi Modul Mengikut Peranan (Strict Mode)
+    // 3. Kawalan Paparan Tab Import Data (Di awalkan ke initialization)
+    const importTabBtn = document.getElementById('import-data-tab');
+    if (importTabBtn) {
+        if (userRole === 'SUPER_ADMIN') {
+            importTabBtn.classList.remove('hidden');
+        } else {
+            importTabBtn.classList.add('hidden');
+        }
+    }
+
+    // 4. Konfigurasi Modul Mengikut Peranan (Strict Mode)
     if (userRole === 'PPD_UNIT') {
         setupUnitView();
     } 
 
-    // 4. Mulakan Routing (Hash Handler)
+    // 5. Mulakan Routing (Hash Handler)
     // Semak hash URL semasa atau default ke 'dashboard' (atau 'pencapaian' untuk Unit PPD)
     let initialTab = window.location.hash.replace('#', '');
     
@@ -70,7 +84,7 @@ async function initAdminPanel() {
         switchAdminTab(hash);
     });
 
-    // 5. Muat data Dashboard secara automatik (hanya jika bukan Unit PPD)
+    // 6. Muat data Dashboard secara automatik (hanya jika bukan Unit PPD)
     if (userRole !== 'PPD_UNIT' && window.fetchDashboardData) {
         window.fetchDashboardData();
     }
@@ -90,7 +104,7 @@ function switchAdminTab(tabId, event) {
     }
 
     // SEMAKAN KESELAMATAN (GATEKEEPER)
-    // Pastikan Unit PPD tidak boleh akses tab dilarang walaupun tukar hash manual
+    // Pastikan peranan tidak boleh akses tab dilarang walaupun tukar hash manual
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     const forbiddenForUnit = ['dashboard', 'analisa', 'gallery', 'tempahan', 'email', 'helpdesk', 'import-data'];
     const forbiddenForMod = ['import-data']; // Hanya Super Admin boleh Import
@@ -99,8 +113,8 @@ function switchAdminTab(tabId, event) {
         // Redirect senyap ke pencapaian
         tabId = 'pencapaian'; 
         history.replaceState(null, null, '#pencapaian');
-    } else if (userRole === 'ADMIN' && forbiddenForMod.includes(tabId)) {
-        // Redirect senyap ke dashboard jika Mod Admin cuba buka tab import
+    } else if (['ADMIN', 'JPNMEL'].includes(userRole) && forbiddenForMod.includes(tabId)) {
+        // Redirect senyap ke dashboard jika Mod Admin atau JPN cuba buka tab import
         tabId = 'dashboard';
         history.replaceState(null, null, '#dashboard');
     }
@@ -119,16 +133,17 @@ function switchAdminTab(tabId, event) {
     }
 
     // 3. Kemaskini butang navigasi (Active State)
+    // PENYELESAIAN BUG: Menggunakan classList untuk mengekalkan kelas utiliti lain (spt 'hidden')
     const allButtons = document.querySelectorAll('[id$="-tab"]');
     allButtons.forEach(btn => {
-        // Reset ke style inactive
-        btn.className = "tab-inactive px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap";
+        btn.classList.remove('tab-active');
+        btn.classList.add('tab-inactive');
     });
 
     const activeButton = document.getElementById(tabId + '-tab');
     if (activeButton) {
-        // Set ke style active
-        activeButton.className = "tab-active px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap";
+        activeButton.classList.remove('tab-inactive');
+        activeButton.classList.add('tab-active');
     }
 
     // 4. Lazy Load Data (Muat data hanya bila tab dibuka)

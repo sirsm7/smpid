@@ -1,7 +1,7 @@
 /**
  * SMPID CONFIGURATION MODULE
  * Pusat kawalan untuk pembolehubah persekitaran dan tetapan global.
- * UPDATE V1.1: Penukaran Deno API URL ke domain baharu (smpid.ppdag.deno.net).
+ * UPDATE V2.0: Menambah pemetaan kod PPD (PPD_MAPPING) bagi menyokong akses pelbagai daerah.
  */
 
 export const APP_CONFIG = {
@@ -14,11 +14,10 @@ export const APP_CONFIG = {
 
     // External Services (Telegram Bot & Edge Functions)
     API: {
-        // CHANGED: smpid-40.ppdag.deno.net -> smpid.ppdag.deno.net
         DENO_URL: 'https://smpid.ppdag.deno.net',
         // Integrasi Google Apps Script untuk Email Blaster
         GAS_EMAIL_URL: 'https://script.google.com/macros/s/AKfycbxGWS7aa1pH8A_8KZjhqz9wCv8xcOsTQekc_H3zriwNWYl4P1N-BlWlPQagPYEwS4HX/exec',
-        // BARU: Integrasi Google Apps Script untuk Upload Fail Bukti
+        // Integrasi Google Apps Script untuk Upload Fail Bukti
         GAS_UPLOAD_URL: 'https://script.google.com/macros/s/AKfycbw1gV5IniPgCY69RafvNTKe6ZOF2eP9twIQT1Fidj84wmCPD4d-iUyjkVQDsDap6aTP/exec'
     },
 
@@ -34,5 +33,12 @@ export const APP_CONFIG = {
     // Nilai Lalai Sistem
     DEFAULTS: {
         PASSWORD: 'ppdag@12345'
+    },
+
+    // Pemetaan Kod PPD Daerah Negeri Melaka
+    PPD_MAPPING: {
+        'M010': 'JASIN',
+        'M020': 'MELAKA TENGAH',
+        'M030': 'ALOR GAJAH'
     }
 };

@@ -2,11 +2,13 @@
  * ADMIN MODULE: GALLERY MANAGER (FULL PRODUCTION VERSION)
  * Menguruskan paparan galeri admin, penapisan kategori, 
  * carian sekolah, dan logik Word Cloud jawatan guru.
- * * UPDATE V1.1: Pembaikan isu teks terpotong (truncated).
- * Menukarkan truncate/line-clamp kepada whitespace-normal (wrap).
+ * * UPDATE V2.1 (RBAC DAERAH): 
+ * 1. Penyesuaian dinamik bagi senarai sekolah berasaskan PPD.
+ * 2. Pembuangan hardcode M030 untuk menyokong kepelbagaian daerah.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
+import { APP_CONFIG } from '../config/app.config.js';
 
 // --- GLOBAL STATE ---
 let adminGalleryData = [];
@@ -44,12 +46,16 @@ function populateGallerySchoolList() {
     const select = document.getElementById('gallerySchoolSelector');
     if (!select) return;
 
+    // Ambil senarai kod PPD yang didaftarkan
+    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+
     // Ambil semua sekolah kecuali PPD sendiri untuk senarai dropdown
-    gallerySchoolListCache = window.globalDashboardData.filter(s => s.kod_sekolah !== 'M030');
+    gallerySchoolListCache = window.globalDashboardData.filter(s => !senaraiKodPPD.includes(s.kod_sekolah));
     renderGalleryDropdown();
     
-    // Secara lalai, muat galeri PPD (M030) pada permulaan
-    window.loadAdminGalleryGrid('M030');
+    // Secara lalai, muat galeri PPD admin semasa pada permulaan
+    const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'M030';
+    window.loadAdminGalleryGrid(userKod);
 }
 
 /**
@@ -60,7 +66,10 @@ function renderGalleryDropdown(filterText = '') {
     if (!select) return;
 
     const currentValue = select.value;
-    select.innerHTML = '<option value="M030">PPD ALOR GAJAH (M030)</option>';
+    const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'M030';
+    const namaPpd = APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[userKod] ? APP_CONFIG.PPD_MAPPING[userKod] : 'PEJABAT PENDIDIKAN DAERAH';
+
+    select.innerHTML = `<option value="${userKod}">PPD ${namaPpd} (${userKod})</option>`;
 
     const listToRender = filterText 
         ? gallerySchoolListCache.filter(s => 
@@ -100,18 +109,19 @@ window.handleGallerySchoolSearch = function(val) {
 };
 
 /**
- * Menetapkan semula paparan galeri ke keadaan asal (M030).
+ * Menetapkan semula paparan galeri ke keadaan asal (PPD Semasa).
  */
 window.resetGallery = function() {
     const select = document.getElementById('gallerySchoolSelector');
     const searchInput = document.getElementById('gallerySearchInput');
+    const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'M030';
 
     if(select) {
         clearTimeout(searchDebounceTimer);
         if(searchInput) searchInput.value = "";
         renderGalleryDropdown(''); 
-        select.value = "M030";
-        window.loadAdminGalleryGrid("M030");
+        select.value = userKod;
+        window.loadAdminGalleryGrid(userKod);
     }
 };
 
@@ -193,10 +203,12 @@ window.loadAdminGalleryGrid = async function(kod) {
 function updateGalleryHeader(kod) {
     const lblTitle = document.getElementById('galleryHeaderTitle');
     const lblSub = document.getElementById('galleryHeaderSubtitle');
+    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
     
-    if (kod === 'M030') {
-        lblTitle.innerText = "PPD ALOR GAJAH";
-        lblSub.innerHTML = `<span class="inline-block bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-black mr-2">M030</span> UNIT SUMBER TEKNOLOGI PENDIDIKAN`;
+    if (senaraiKodPPD.includes(kod)) {
+        const namaPpd = APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[kod] ? APP_CONFIG.PPD_MAPPING[kod] : 'PEJABAT PENDIDIKAN DAERAH';
+        lblTitle.innerText = "PPD " + namaPpd;
+        lblSub.innerHTML = `<span class="inline-block bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-black mr-2">${kod}</span> UNIT SUMBER TEKNOLOGI PENDIDIKAN`;
     } else {
         let nama = kod;
         const s = window.globalDashboardData?.find(x => x.kod_sekolah === kod);
@@ -352,7 +364,6 @@ function renderAdminCards(filterType) {
 
 /**
  * Menjana HTML bagi sekeping kad galeri dengan pengecaman thumbnail pintar.
- * FIX: Menukar 'truncate' dan 'line-clamp' kepada 'whitespace-normal' untuk menyokong teks wrap.
  */
 function createAdminCardHTML(item) {
     const link = item.pautan_bukti || "";

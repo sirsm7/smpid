@@ -2,10 +2,14 @@
  * ADMIN MODULE: PENATARAN DIGITAL
  * Menguruskan penarikan data jadual, paparan analitik ringkas daerah,
  * carian sekolah, pemadaman rekod (reset), dan eksport CSV.
+ * --- UPDATE V2.1 (RBAC DAERAH) ---
+ * 1. Menyuntik tapisan global supaya data laporan selari dengan daerah admin.
+ * 2. Pemaparan dinamik nama PPD mengikut tetapan APP_CONFIG.
  */
 
 import { PenataranService } from '../services/penataran.service.js';
 import { toggleLoading } from '../core/helpers.js';
+import { APP_CONFIG } from '../config/app.config.js';
 
 let masterPenataranList = [];
 let filteredPenataranList = [];
@@ -20,11 +24,22 @@ window.muatSenaraiPenataran = async function() {
     tbody.innerHTML = `<tr><td colspan="7" class="p-10 text-center text-sky-600 font-bold animate-pulse"><i class="fas fa-spinner fa-spin mr-2"></i>Menyegerak data pelayan...</td></tr>`;
 
     try {
-        const data = await PenataranService.getAll();
-        masterPenataranList = data;
-        filteredPenataranList = data;
+        let dataRaw = await PenataranService.getAll();
+
+        // --- RBAC FILTERING ---
+        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+
+        if (['ADMIN', 'PPD_UNIT'].includes(userRole) && window.globalDashboardData) {
+            const validSchoolCodes = window.globalDashboardData.map(s => s.kod_sekolah);
+            validSchoolCodes.push(userKod); // Benarkan rekod PPD mereka sendiri
+            dataRaw = dataRaw.filter(p => validSchoolCodes.includes(p.kod_sekolah));
+        }
+
+        masterPenataranList = dataRaw;
+        filteredPenataranList = dataRaw;
         
-        kemaskiniKPI(data);
+        kemaskiniKPI(dataRaw);
         renderJadualPenataran();
 
     } catch (e) {
@@ -63,7 +78,15 @@ function renderJadualPenataran() {
         return;
     }
 
+    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+
     tbody.innerHTML = filteredPenataranList.map((item, index) => {
+        // Tentukan nama paparan dinamik untuk PPD
+        let displayNama = item.nama_sekolah;
+        if (senaraiKodPPD.includes(item.kod_sekolah)) {
+            displayNama = APP_CONFIG.PPD_MAPPING[item.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[item.kod_sekolah]}` : 'PEJABAT PENDIDIKAN DAERAH';
+        }
+
         // Tentukan warna lencana bintang
         let starColor = 'text-slate-300';
         let bgStyle = 'bg-slate-50 border-slate-200 text-slate-500';
@@ -90,7 +113,7 @@ function renderJadualPenataran() {
                 <span class="bg-slate-100 border border-slate-200 px-2 py-1 rounded shadow-sm group-hover:border-sky-300 transition-colors">${item.kod_sekolah}</span>
             </td>
             <td class="px-6 py-5 align-middle">
-                <div class="font-bold text-slate-800 text-sm leading-snug uppercase">${item.nama_sekolah}</div>
+                <div class="font-bold text-slate-800 text-sm leading-snug uppercase">${displayNama}</div>
                 <div class="text-[9px] text-slate-400 font-bold tracking-wider mt-1.5 uppercase"><i class="far fa-clock mr-1"></i> Diserah: ${dateStr}</div>
             </td>
             <td class="px-6 py-5 text-center bg-sky-50/20 align-middle font-black text-sky-700 text-lg">${item.jumlah_skor}</td>
@@ -173,8 +196,15 @@ window.eksportPenataranCSV = function() {
     // Tajuk Lajur Standard PPD
     let csvContent = "BIL,KOD SEKOLAH,NAMA SEKOLAH,TARIKH SERAHAN,JUMLAH SKOR,PERATUS,PENARAFAN BINTANG,SKOR DIMENSI 1,SKOR DIMENSI 2,SKOR DIMENSI 3,SKOR DIMENSI 4,SKOR DIMENSI 5,SKOR DIMENSI 6\n";
 
+    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+
     filteredPenataranList.forEach((s, index) => {
-        const cleanNama = `"${s.nama_sekolah.replace(/"/g, '""')}"`;
+        let displayNama = s.nama_sekolah;
+        if (senaraiKodPPD.includes(s.kod_sekolah)) {
+            displayNama = APP_CONFIG.PPD_MAPPING[s.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[s.kod_sekolah]}` : 'PEJABAT PENDIDIKAN DAERAH';
+        }
+
+        const cleanNama = `"${displayNama.replace(/"/g, '""')}"`;
         const tarikh = new Date(s.updated_at).toLocaleDateString('ms-MY');
         const d1 = s.skor_dimensi?.d1 || 0;
         const d2 = s.skor_dimensi?.d2 || 0;
