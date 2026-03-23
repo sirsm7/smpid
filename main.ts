@@ -1,5 +1,5 @@
 /**
- * SMPID Telegram Bot & API (Deno Deploy)
+ * NADIM Telegram Bot & API (Deno Deploy)
  * Versi: 5.0 (Full Integrity & Enhanced Notifications)
  * Host: smpid.ppdag.deno.net
  * * NOTA: Kod ini mengekalkan 100% logik pendaftaran dan pangkalan data asal.
@@ -172,7 +172,7 @@ async function getAdminUI(telegramId: number) {
 
 bot.command("start", async (ctx) => {
   await ctx.reply(
-    "👋 *Selamat Datang ke Bot SMPID*\n\n" +
+    "👋 *Selamat Datang ke Bot NADIM*\n\n" +
     "Sila masukkan **Kod Sekolah** anda untuk semakan status & pendaftaran.\n" +
     "_(Contoh: MBA0001)_",
     { parse_mode: "Markdown" }

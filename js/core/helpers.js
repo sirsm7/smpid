@@ -1,5 +1,5 @@
 /**
- * SMPID HELPER UTILITIES
+ * NADIM HELPER UTILITIES
  * Fungsi bantuan umum untuk manipulasi data dan UI.
  * * UPDATE V1.2: Menambah sokongan fungsi muat naik fail ke Google Drive (Base64).
  */
@@ -80,7 +80,7 @@ export function generateWhatsAppLink(nama, noTel, isRaw = false) {
     
     if (isRaw) return `https://wa.me/${cleanNum}`;
     
-    const rawMsg = `Assalamualaikum / Salam Sejahtera Cikgu ${nama || ''}, ini adalah mesej automatik SMPID.\n\nMohon kerjasama cikgu untuk aktifkan ID Telegram di bot kami. Sila klik https://t.me/smpid_bot , tekan Start, masukkan kod sekolah, dan pilih peranan.\n\nTerima kasih.`;
+    const rawMsg = `Assalamualaikum / Salam Sejahtera Cikgu ${nama || ''}, ini adalah mesej automatik NADIM.\n\nMohon kerjasama cikgu untuk aktifkan ID Telegram di bot kami. Sila klik https://t.me/smpid_bot , tekan Start, masukkan kod sekolah, dan pilih peranan.\n\nTerima kasih.`;
     return `https://wa.me/${cleanNum}?text=${encodeURIComponent(rawMsg)}`;
 }
 

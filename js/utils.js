@@ -1,5 +1,5 @@
 /**
- * SMPID CORE UTILITIES (js/utils.js)
+ * NADIM CORE UTILITIES (js/utils.js)
  * Versi: 2.3 (Full Production & Cross-Tab Support)
  * Fungsi: Konfigurasi Supabase, Helper Global & Keselamatan Sesi
  * * UPDATE V2.3:
@@ -103,7 +103,7 @@ function generateWhatsAppLink(nama, noTel, isRaw = false) {
     
     if (isRaw) return `https://wa.me/${cleanNum}`;
     
-    const rawMsg = `Assalamualaikum / Salam Sejahtera Cikgu ${nama || ''}, ini adalah mesej automatik SMPID.\n\nMohon kerjasama cikgu untuk aktifkan ID Telegram di bot kami. Sila klik https://t.me/smpid_bot , tekan Start, masukkan kod sekolah, dan pilih peranan.\n\nTerima kasih.`;
+    const rawMsg = `Assalamualaikum / Salam Sejahtera Cikgu ${nama || ''}, ini adalah mesej automatik NADIM.\n\nMohon kerjasama cikgu untuk aktifkan ID Telegram di bot kami. Sila klik https://t.me/smpid_bot , tekan Start, masukkan kod sekolah, dan pilih peranan.\n\nTerima kasih.`;
     return `https://wa.me/${cleanNum}?text=${encodeURIComponent(rawMsg)}`;
 }
 

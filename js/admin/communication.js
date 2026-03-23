@@ -29,7 +29,7 @@ window.initEmailEditor = function() {
     const defaultContent = `
         <p>Assalamualaikum & Salam Sejahtera Tuan/Puan,</p>
         <p><br></p>
-        <p>Mohon kerjasama Tuan/Puan selaku GPICT/Admin DELIMa sekolah untuk mengesahkan peranan anda dalam sistem SMPID melalui Bot Telegram rasmi kami.</p>
+        <p>Mohon kerjasama Tuan/Puan selaku GPICT/Admin DELIMa sekolah untuk mengesahkan peranan anda dalam sistem NADIM melalui Bot Telegram rasmi kami.</p>
         <p><br></p>
         <p><strong>Sila ikuti langkah berikut:</strong></p>
         <ol>
@@ -124,7 +124,7 @@ window.hantarEmelSistem = async function() {
 
     const emailList = document.getElementById('emailOutput').value.trim();
     const subject = document.getElementById('msgSubject').value.trim();
-    const senderName = document.getElementById('msgSenderName') ? document.getElementById('msgSenderName').value.trim() : "Admin SMPID";
+    const senderName = document.getElementById('msgSenderName') ? document.getElementById('msgSenderName').value.trim() : "Admin NADIM";
     const htmlBody = quill.root.innerHTML;
 
     if (!emailList) {
@@ -190,7 +190,7 @@ window.hantarEmelSistem = async function() {
                     bcc: chunk.join(','),
                     subject: subject,
                     htmlBody: htmlBody,
-                    name: senderName || "Admin SMPID"
+                    name: senderName || "Admin NADIM"
                 };
 
                 try {
