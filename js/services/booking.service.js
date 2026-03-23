@@ -1,11 +1,12 @@
 /**
  * BOOKING SERVICE (MODUL BIMBINGAN & BENGKEL - BB)
  * Purpose: Manages CRUD operations for workshop bookings and admin date locks.
- * Version: 6.0 (Full Day Logic Integration)
- * --- UPDATE V6.0 ---
- * 1. Full Day Logic: Menambah validasi untuk slot '1 HARI'.
- * 2. Overlap Protection: Sistem menyekat '1 HARI' jika Pagi/Petang wujud, dan sebaliknya.
- * 3. Day Rules: '1 HARI' hanya valid untuk Selasa, Rabu, Khamis.
+ * Version: 8.1 (Single-Row Database Constraint Fix)
+ * --- UPDATE V8.1 ---
+ * 1. Menggabungkan tatasusunan (array) pilihan daerah menjadi satu rentetan teks (String Join)
+ * bagi menyokong Kekangan Unik (Unique Constraint) pada lajur 'tarikh'.
+ * 2. Mengubah klausa tapisan dari `.eq` / `.in` kepada `.ilike` untuk ketepatan carian masa nyata
+ * merentas rentetan (string) yang mengandungi pelbagai kod.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -27,25 +28,52 @@ export const BookingService = {
         const lastDay = new Date(year, month + 1, 0).getDate();
         const endStr = `${year}-${pad(month + 1)}-${pad(lastDay)}`;
 
-        // 1. Ambil Tempahan Aktif dalam julat tarikh tersebut
-        const { data: bookings, error: errB } = await db
-            .from('smpid_bb_tempahan')
+        // --- RBAC DAERAH INJECTION ---
+        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+        let validCodes = [];
+        let ppdOwner = 'M030'; // Lalai
+        
+        // Kenal pasti daerah sekolah yang mengakses kalendar
+        if (userKod) {
+            const { data: sData } = await db.from('smpid_sekolah_data').select('daerah').eq('kod_sekolah', userKod).maybeSingle();
+            const daerah = sData ? sData.daerah : 'ALOR GAJAH';
+            
+            if (APP_CONFIG.PPD_MAPPING) {
+                for (const [k, v] of Object.entries(APP_CONFIG.PPD_MAPPING)) {
+                    if (v === daerah) { ppdOwner = k; break; }
+                }
+            }
+            
+            // Senaraikan semua sekolah dalam daerah yang sama
+            const { data: sList } = await db.from('smpid_sekolah_data').select('kod_sekolah').eq('daerah', daerah);
+            if (sList) validCodes = sList.map(x => x.kod_sekolah);
+        }
+
+        // 1. Ambil Tempahan Aktif (Ditapis mengikut daerah)
+        let queryB = db.from('smpid_bb_tempahan')
             .select('*')
             .eq('status', 'AKTIF')
             .gte('tarikh', startStr)
             .lte('tarikh', endStr);
+            
+        if (validCodes.length > 0) {
+            queryB = queryB.in('kod_sekolah', validCodes);
+        }
+
+        const { data: bookings, error: errB } = await queryB;
 
         if (errB) {
             console.error("[BookingService] Ralat mengambil data tempahan:", errB);
             throw errB;
         }
 
-        // 2. Ambil Kunci Tarikh Admin dalam julat tarikh tersebut
+        // 2. Ambil Kunci Tarikh Admin (Statewide 'ALL' atau Spesifik PPD - Menggunakan iLike untuk Pencarian String)
         const { data: locks, error: errL } = await db
             .from('smpid_bb_kunci')
             .select('*')
             .gte('tarikh', startStr)
-            .lte('tarikh', endStr);
+            .lte('tarikh', endStr)
+            .or(`kod_ppd.ilike.%ALL%,kod_ppd.ilike.%${ppdOwner}%`); 
 
         if (errL) {
             console.error("[BookingService] Ralat mengambil data kunci:", errL);
@@ -97,53 +125,69 @@ export const BookingService = {
             throw new Error("Opsyen '1 HARI' hanya tersedia untuk hari Selasa, Rabu, dan Khamis sahaja.");
         }
 
-        // Validasi 3: Semak jika tarikh telah dikunci oleh Admin
+        // --- RBAC DAERAH INJECTION UNTUK KAWALAN PERTINDIHAN (COLLISION) ---
+        const { data: sData } = await db.from('smpid_sekolah_data').select('daerah').eq('kod_sekolah', kod_sekolah).maybeSingle();
+        const daerah = sData ? sData.daerah : 'ALOR GAJAH';
+        
+        let ppdOwner = 'M030';
+        if (APP_CONFIG.PPD_MAPPING) {
+            for (const [k, v] of Object.entries(APP_CONFIG.PPD_MAPPING)) {
+                if (v === daerah) { ppdOwner = k; break; }
+            }
+        }
+        
+        const { data: sList } = await db.from('smpid_sekolah_data').select('kod_sekolah').eq('daerah', daerah);
+        const validCodes = sList ? sList.map(x => x.kod_sekolah) : [kod_sekolah];
+
+        // Validasi 3: Semak jika tarikh telah dikunci oleh Admin (Global atau Daerah ini menggunakan iLike)
         const { data: isLocked } = await db
             .from('smpid_bb_kunci')
             .select('id')
             .eq('tarikh', tarikh)
+            .or(`kod_ppd.ilike.%ALL%,kod_ppd.ilike.%${ppdOwner}%`)
             .maybeSingle();
         
         if (isLocked) {
-            throw new Error("Tarikh ini telah dikunci oleh pentadbir bagi urusan rasmi daerah.");
+            throw new Error("Tarikh ini telah dikunci oleh pentadbir bagi urusan rasmi jabatan.");
         }
 
-        // Validasi 4: Konflik Masa & Kapasiti (LOGIK OVERLAP BARU)
+        // Validasi 4: Konflik Masa & Kapasiti (Saringan Khusus Daerah)
         if (masa === '1 HARI') {
-            // Jika user minta 1 HARI, pastikan TIADA sebarang tempahan lain (Pagi atau Petang)
+            // Jika user minta 1 HARI, pastikan TIADA sebarang tempahan lain (Pagi atau Petang) dalam daerah ini
             const { data: anyBooking } = await db
                 .from('smpid_bb_tempahan')
                 .select('id')
                 .eq('tarikh', tarikh)
                 .eq('status', 'AKTIF')
+                .in('kod_sekolah', validCodes)
                 .maybeSingle();
             
             if (anyBooking) {
                 throw new Error("Permohonan '1 HARI' gagal kerana terdapat sesi lain (Pagi/Petang) yang telah ditempah pada tarikh ini.");
             }
         } else {
-            // Jika user minta Pagi atau Petang
-            
-            // A. Cek konflik langsung (Slot sama diambil)
+            // A. Cek konflik langsung (Slot sama diambil dalam daerah yang sama)
             const { data: sameSlot } = await db
                 .from('smpid_bb_tempahan')
                 .select('id')
                 .eq('tarikh', tarikh)
                 .eq('masa', masa)
                 .eq('status', 'AKTIF')
+                .in('kod_sekolah', validCodes)
                 .maybeSingle();
 
             if (sameSlot) {
                 throw new Error(`Maaf, slot ${masa.toUpperCase()} pada tarikh tersebut telah ditempah.`);
             }
 
-            // B. Cek konflik dengan '1 HARI' (Slot Full Day diambil oleh orang lain)
+            // B. Cek konflik dengan '1 HARI' (Slot Full Day diambil oleh orang lain di daerah sama)
             const { data: fullDayBooking } = await db
                 .from('smpid_bb_tempahan')
                 .select('id')
                 .eq('tarikh', tarikh)
                 .eq('masa', '1 HARI')
                 .eq('status', 'AKTIF')
+                .in('kod_sekolah', validCodes)
                 .maybeSingle();
             
             if (fullDayBooking) {
@@ -211,13 +255,27 @@ export const BookingService = {
 
     /**
      * Admin Function: Mengambil semua data tarikh yang dikunci secara global.
+     * Ditapis mengikut PPD supaya paparan senarai terkawal (Menggunakan iLike).
      */
     async getAllLocks() {
         const db = getDatabaseClient();
-        const { data, error } = await db
-            .from('smpid_bb_kunci')
-            .select('*')
-            .order('tarikh', { ascending: true });
+        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+        
+        let query = db.from('smpid_bb_kunci').select('*').order('tarikh', { ascending: true });
+
+        // Tapis mengikut PPD jika pengguna bukan Super Admin / JPNMEL
+        if (['ADMIN', 'PPD_UNIT'].includes(userRole) && userKod) {
+            let ppdOwner = userKod;
+            if (APP_CONFIG.PPD_MAPPING) {
+                // Cuba dapatkan kunci tepat sekiranya mereka menggunakan ID selain yang ada dalam senarai
+                const foundKey = Object.keys(APP_CONFIG.PPD_MAPPING).find(k => k === userKod);
+                if (foundKey) ppdOwner = foundKey; 
+            }
+            query = query.or(`kod_ppd.ilike.%ALL%,kod_ppd.ilike.%${ppdOwner}%`);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
         return data;
@@ -257,23 +315,43 @@ export const BookingService = {
     },
 
     /**
-     * Admin Function: Menukar status kunci pada tarikh tertentu (Toggle).
+     * Admin Function: Menguruskan kunci tarikh menggunakan *Single-Row Storage String*.
+     * Kaedah ini lebih berkesan menangani kekangan pangkalan data (Constraint) dengan
+     * memadamkan baris tarikh dan memasukkannya semula sebagai satu rentetan gabungan (String Join).
+     * @param {string} action - 'LOCK', 'UNLOCK', atau 'UPDATE'
      * @param {string} tarikh - Rentetan tarikh ISO.
      * @param {string} note - Sebab atau ulasan kunci.
-     * @param {string} adminEmail - Identiti admin yang melakukan perubahan.
+     * @param {Array<string>} targetPpds - Senarai kod PPD baharu untuk dikunci (contoh: ['M010', 'M020'] atau ['ALL']).
      */
-    async toggleDateLock(tarikh, note, adminEmail) {
+    async manageDateLock(action, tarikh, note, targetPpds) {
         const db = getDatabaseClient();
-        
-        // Semak jika kunci sudah wujud untuk tarikh ini
-        const { data: existing } = await db
-            .from('smpid_bb_kunci')
-            .select('id')
-            .eq('tarikh', tarikh)
-            .maybeSingle();
 
-        if (existing) {
-            // Jika wujud, lakukan operasi padam (Buka Kunci)
+        // 1. Format Perlindungan Array ke String Keseluruhan
+        let finalTargetPpds = Array.isArray(targetPpds) ? targetPpds : [targetPpds];
+        if (finalTargetPpds.includes('ALL')) finalTargetPpds = ['ALL'];
+        
+        // Gabungkan tatasusunan menjadi rentetan tunggal yang dipisahkan koma
+        const joinedScopes = finalTargetPpds.join(','); // Contoh hasil: "M010,M020" atau "ALL"
+
+        // Dapatkan Identiti Pentadbir untuk Jejak Audit
+        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE) || 'ADMIN';
+        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'PPD';
+        const userId = localStorage.getItem(APP_CONFIG.SESSION.USER_ID);
+        
+        const dikunciOlehIdentifier = `${userRole} (${userKod})`;
+        let adminEmail = null;
+
+        // Tarik emel admin dari pangkalan data (smpid_users) untuk direkodkan
+        if (userId) {
+            const { data: userData } = await db.from('smpid_users').select('email').eq('id', userId).maybeSingle();
+            if (userData && userData.email) {
+                adminEmail = userData.email;
+            }
+        }
+
+        // TINDAKAN A: BUKA KUNCI KESELURUHAN PADA TARIKH TERSEBUT
+        if (action === 'UNLOCK') {
+            // Kerana "Unique Constraint", kita hanya perlu memadam baris berasaskan tarikh sahaja.
             const { error } = await db
                 .from('smpid_bb_kunci')
                 .delete()
@@ -281,19 +359,28 @@ export const BookingService = {
             
             if (error) throw error;
             return { success: true, action: 'UNLOCKED' };
-        } else {
-            // Jika tiada, lakukan operasi tambah (Kunci Tarikh)
-            const { error } = await db
-                .from('smpid_bb_kunci')
-                .insert([{
-                    tarikh: tarikh,
-                    komen: note,
-                    admin_email: adminEmail,
-                    created_at: new Date().toISOString()
-                }]);
+        }
+
+        // TINDAKAN B: KEMASKINI ATAU KUNCI BAHARU
+        if (action === 'UPDATE' || action === 'LOCK') {
+            
+            // Langkah 1: Buang kunci sedia ada pada tarikh ini untuk mengelak pelanggaran Unique Key
+            await db.from('smpid_bb_kunci').delete().eq('tarikh', tarikh);
+
+            // Langkah 2: Laksanakan Sisipan Baris Tunggal (Single-Row Insert) dengan Rentetan Kombo
+            const { error } = await db.from('smpid_bb_kunci').insert([{
+                tarikh: tarikh,
+                komen: note,
+                kod_ppd: joinedScopes, // Hantar sebagai rentetan (String)
+                dikunci_oleh: dikunciOlehIdentifier,
+                admin_email: adminEmail,
+                created_at: new Date().toISOString()
+            }]);
 
             if (error) throw error;
-            return { success: true, action: 'LOCKED' };
+            return { success: true, action: action === 'LOCK' ? 'LOCKED' : 'UPDATED' };
         }
+        
+        throw new Error("Tindakan pengurusan kunci tarikh tidak sah.");
     }
 };

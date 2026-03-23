@@ -1,8 +1,10 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 6.0 (FULL DAY LOGIC)
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 6.1 (FULL DAY LOGIC + RBAC DAERAH)
  * Fungsi: Menguruskan logik tempahan dengan paparan Grid Kad Interaktif.
- * --- UPDATE V6.0 ---
- * 1. Logic '1 HARI': Hanya aktif jika Selasa-Khamis DAN tiada slot lain diambil.
+ * --- UPDATE V6.1 ---
+ * Keserasian penuh dengan API Perkhidmatan (Service) baharu yang
+ * mengasingkan tarikh, slot, dan kunci admin mengikut daerah secara automatik.
+ * 1. Logic '1 HARI': Hanya aktif jika Selasa-Khamis DAN tiada slot lain diambil dalam daerah.
  * 2. Logic Sabtu: Kekal hanya Pagi. Petang & 1 Hari disekat.
  * 3. Visual Grid: Mengesan slot '1 HARI' sebagai status PENUH (Merah).
  */
