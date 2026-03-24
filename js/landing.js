@@ -1,13 +1,15 @@
 /**
- * LANDING PAGE CONTROLLER (TAILWIND EDITION)
- * Menguruskan carian sekolah dan paparan kad akses pantas.
- * Menggunakan: SchoolService, APP_CONFIG
+ * LANDING PAGE CONTROLLER (TAILWIND EDITION + SUPABASE REALTIME)
+ * Menguruskan carian sekolah, paparan kad akses pantas, dan kaunter pelawat.
+ * Menggunakan: SchoolService, APP_CONFIG, Supabase Realtime (Presence).
  */
 
 import { SchoolService } from './services/school.service.js';
 import { APP_CONFIG } from './config/app.config.js';
+import { getDatabaseClient } from './core/db.js';
 
 let allSchools = [];
+let presenceChannel = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Papar loading semasa mula
@@ -16,7 +18,69 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await loadSchools();
     setupSearchListener();
+    setupLiveCounter(); // Inisialisasi Supabase Realtime Counter
 });
+
+/**
+ * Menjana UUID ringkas untuk sesi pelawat sekiranya crypto API tidak tersedia.
+ */
+function generateSessionId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return 'session-xxx-xxx'.replace(/[x]/g, () => (Math.random() * 16 | 0).toString(16));
+}
+
+/**
+ * [BARU] Menubuhkan sambungan WebSocket ke Supabase menggunakan Presence API.
+ * Ia menyegerakkan bilangan pengguna aktif (live) di latar belakang.
+ */
+function setupLiveCounter() {
+    const db = getDatabaseClient();
+    if (!db) {
+        console.warn("[Realtime] Gagal memulakan sambungan Supabase Client untuk fungsi Live Counter.");
+        return;
+    }
+
+    const sessionId = generateSessionId();
+
+    // 1. Buat saluran komunikasi khusus
+    presenceChannel = db.channel('room-nadim-live', {
+        config: {
+            presence: {
+                key: sessionId,
+            },
+        },
+    });
+
+    // 2. Dengar perubahan state 'sync'
+    presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+            const state = presenceChannel.presenceState();
+            // Kira jumlah unik key yang bersambung ke bilik (room) ini
+            const activeCount = Object.keys(state).length;
+            updateCounterUI(activeCount);
+        })
+        .subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                // Selepas berjaya connect, jejak sesi pengguna ini
+                await presenceChannel.track({
+                    online_at: new Date().toISOString(),
+                });
+            }
+        });
+}
+
+/**
+ * Kemas kini angka paparan pada Lencana Antaramuka (UI Badge).
+ */
+function updateCounterUI(count) {
+    const counterEl = document.getElementById('liveCounterVal');
+    if (counterEl) {
+        // Fallback kepada 1 sekiranya berlaku 'lag' rangkaian sebentar
+        counterEl.innerText = count > 0 ? count : 1;
+    }
+}
 
 async function loadSchools() {
     try {
