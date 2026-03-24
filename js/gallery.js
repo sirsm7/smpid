@@ -1,8 +1,10 @@
 import { AchievementService } from './services/achievement.service.js';
 import { SchoolService } from './services/school.service.js';
+import { APP_CONFIG } from './config/app.config.js';
 
 let allGalleryData = [];
 let currentJawatanFilter = 'ALL';
+let isPPDMode = false; // Flag dinamik untuk menentukan status PPD
 
 document.addEventListener('DOMContentLoaded', () => {
     initGallery();
@@ -10,23 +12,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function initGallery() {
     const urlParams = new URLSearchParams(window.location.search);
-    const kodSekolah = urlParams.get('kod');
+    const kodSekolah = urlParams.get('kod') ? urlParams.get('kod').toUpperCase() : null;
 
     if (!kodSekolah) {
         window.location.replace('index.html');
         return;
     }
 
+    // Semak sama ada kod pada URL adalah sebahagian daripada senarai PPD
+    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+    isPPDMode = senaraiKodPPD.includes(kodSekolah);
+
     try {
-        const sekolah = await SchoolService.getByCode(kodSekolah);
-        if (sekolah) {
-            document.getElementById('headerSchoolName').innerText = sekolah.nama_sekolah;
+        // Paparan Header Dinamik
+        if (isPPDMode) {
+            const namaPpd = APP_CONFIG.PPD_MAPPING[kodSekolah] || 'PEJABAT PENDIDIKAN DAERAH';
+            document.getElementById('headerSchoolName').innerText = "PPD " + namaPpd;
             document.getElementById('headerSchoolCode').innerText = kodSekolah;
+        } else {
+            const sekolah = await SchoolService.getByCode(kodSekolah);
+            if (sekolah) {
+                document.getElementById('headerSchoolName').innerText = sekolah.nama_sekolah;
+                document.getElementById('headerSchoolCode').innerText = kodSekolah;
+            }
         }
 
         const data = await AchievementService.getBySchool(kodSekolah);
-        allGalleryData = data.filter(item => ['MURID', 'GURU', 'SEKOLAH'].includes(item.kategori));
+        
+        // Asingkan data berdasarkan mod PPD atau Sekolah
+        if (isPPDMode) {
+            allGalleryData = data.filter(item => ['PEGAWAI', 'PPD'].includes(item.kategori));
+        } else {
+            allGalleryData = data.filter(item => ['MURID', 'GURU', 'SEKOLAH'].includes(item.kategori));
+        }
 
+        renderDynamicFilters();
         updateStats(allGalleryData);
         window.renderGallery('SEMUA');
 
@@ -40,15 +60,54 @@ async function initGallery() {
 function updateStats(data) {
     const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
     setTxt('countTotal', data.length);
-    setTxt('countMurid', data.filter(i => i.kategori === 'MURID').length);
-    setTxt('countGuru', data.filter(i => i.kategori === 'GURU').length);
-    setTxt('countSekolah', data.filter(i => i.kategori === 'SEKOLAH').length);
+    
+    const statBox3 = document.getElementById('statBox3');
+    const lblStat1 = document.getElementById('lblStat1');
+    const lblStat2 = document.getElementById('lblStat2');
+
+    if (isPPDMode) {
+        setTxt('countMurid', data.filter(i => i.kategori === 'PEGAWAI').length);
+        setTxt('countGuru', data.filter(i => i.kategori === 'PPD').length);
+        if (statBox3) statBox3.classList.add('hidden');
+        if (lblStat1) lblStat1.innerText = 'PEGAWAI';
+        if (lblStat2) lblStat2.innerText = 'UNIT / SEKTOR';
+    } else {
+        setTxt('countMurid', data.filter(i => i.kategori === 'MURID').length);
+        setTxt('countGuru', data.filter(i => i.kategori === 'GURU').length);
+        setTxt('countSekolah', data.filter(i => i.kategori === 'SEKOLAH').length);
+        if (statBox3) statBox3.classList.remove('hidden');
+        if (lblStat1) lblStat1.innerText = 'MURID';
+        if (lblStat2) lblStat2.innerText = 'GURU';
+    }
+}
+
+function renderDynamicFilters() {
+    const container = document.getElementById('filterContainerPublic');
+    if (!container) return;
+
+    let html = `<button onclick="filterGallery('SEMUA', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all bg-slate-900 text-white shadow-md uppercase tracking-widest">SEMUA</button>`;
+
+    if (isPPDMode) {
+        html += `
+            <button onclick="filterGallery('PEGAWAI', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-blue-600 uppercase tracking-widest">PEGAWAI</button>
+            <button onclick="filterGallery('PPD', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-indigo-600 uppercase tracking-widest">UNIT / SEKTOR</button>
+        `;
+    } else {
+        html += `
+            <button onclick="filterGallery('MURID', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-blue-600 uppercase tracking-widest">MURID</button>
+            <button onclick="filterGallery('GURU', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-amber-600 uppercase tracking-widest">GURU</button>
+            <button onclick="filterGallery('SEKOLAH', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-indigo-600 uppercase tracking-widest">SEKOLAH</button>
+        `;
+    }
+
+    container.innerHTML = html;
 }
 
 window.filterGallery = function(type, btn) {
     const cloudWrapper = document.getElementById('jawatanCloudWrapper');
     
-    if (type === 'GURU') {
+    // Cloud jawatan hanya untuk guru di peringkat sekolah
+    if (type === 'GURU' && !isPPDMode) {
         if(cloudWrapper) cloudWrapper.classList.remove('hidden');
         generateJawatanCloud();
     } else {
@@ -115,6 +174,10 @@ function createCardHTML(item) {
         borderClass = "border-t-4 border-amber-500"; textClass = "text-amber-600"; catIcon = "fa-chalkboard-user";
     } else if (item.kategori === 'SEKOLAH') {
         borderClass = "border-t-4 border-indigo-500"; textClass = "text-indigo-600"; catIcon = "fa-school";
+    } else if (item.kategori === 'PEGAWAI') {
+        borderClass = "border-t-4 border-teal-500"; textClass = "text-teal-600"; catIcon = "fa-user-tie";
+    } else if (item.kategori === 'PPD') {
+        borderClass = "border-t-4 border-fuchsia-500"; textClass = "text-fuchsia-600"; catIcon = "fa-building";
     }
 
     const fileIdMatch = link.match(/\/d\/([a-zA-Z0-9_-]+)/);

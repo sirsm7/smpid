@@ -1,8 +1,9 @@
 /**
  * PUBLIC FORM MODULE (FULL PRODUCTION VERSION)
  * Menguruskan logik borang serahan data awam, pengesahan sekolah,
- * penapisan kategori, dan integrasi mod PPD (M030).
- * --- UPDATE V2.0 ---
+ * penapisan kategori, dan integrasi mod PPD (Dinamik).
+ * --- UPDATE V2.1 ---
+ * Integration: Sokongan PPD Dinamik (Membuang hardcode M030) menggunakan APP_CONFIG.
  * Integration: Modul Upload Fail Base64 menggantikan input URL manual.
  */
 
@@ -10,9 +11,11 @@ import { SchoolService } from './services/school.service.js';
 import { AchievementService } from './services/achievement.service.js';
 import { toggleLoading, formatSentenceCase, uploadFileToDrive } from './core/helpers.js';
 import { populateDropdown } from './config/dropdowns.js';
+import { APP_CONFIG } from './config/app.config.js';
 
 // --- GLOBAL STATE ---
 let globalSchoolList = [];
+let currentPpdCode = null; // Menyimpan kod PPD semasa dari URL
 
 /**
  * Inisialisasi portal awam apabila DOM sedia.
@@ -49,7 +52,7 @@ async function initPublicPortal() {
         populateDropdown('pubPenyedia', 'PENYEDIA', 'LAIN-LAIN');
         populateDropdown('pubTahun', 'TAHUN', currentYear); // Dropdown Tahun Baru
         
-        // PPD Dropdowns (M030)
+        // PPD Dropdowns (Kini Dinamik)
         populateDropdown('ppdPeringkat', 'PERINGKAT', 'KEBANGSAAN');
         populateDropdown('ppdPenyedia', 'PENYEDIA', 'LAIN-LAIN');
         populateDropdown('ppdTahun', 'TAHUN', currentYear); // Dropdown Tahun PPD Baru
@@ -58,9 +61,12 @@ async function initPublicPortal() {
         const urlParams = new URLSearchParams(window.location.search);
         const kodURL = urlParams.get('kod') ? urlParams.get('kod').toUpperCase() : null;
 
-        if (kodURL === 'M030') {
-            // Aktifkan mod khas PPD
-            setupPPDMode();
+        const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+
+        if (kodURL && senaraiKodPPD.includes(kodURL)) {
+            // Aktifkan mod khas PPD secara dinamik berdasarkan senarai PPD
+            currentPpdCode = kodURL;
+            setupPPDMode(kodURL);
         } else if (kodURL) {
             // Sahkan kod sekolah dari URL
             validateAndLockSchool(kodURL);
@@ -430,12 +436,12 @@ window.resetBorang = function(fullReset = true) {
     }
 };
 
-// --- 4. PPD MODE LOGIC (M030) ---
+// --- 4. PPD MODE LOGIC (Dinamik) ---
 
 /**
- * Konfigurasi portal khusus untuk Pejabat Pendidikan Daerah.
+ * Konfigurasi portal khusus untuk Pejabat Pendidikan Daerah secara dinamik.
  */
-window.setupPPDMode = function() {
+window.setupPPDMode = function(kodPPD) {
     const cardSekolah = document.getElementById('cardIdentitiSekolah');
     const formSekolah = document.getElementById('formSection');
     if(cardSekolah) cardSekolah.classList.add('hidden');
@@ -445,6 +451,13 @@ window.setupPPDMode = function() {
     const formPPD = document.getElementById('formSectionPPD');
     if(cardPPD) cardPPD.classList.remove('hidden');
     if(formPPD) formPPD.classList.remove('hidden');
+
+    // Suntik nama PPD secara dinamik ke UI HTML
+    const ppdNameSubtitle = document.getElementById('ppdNameSubtitle');
+    if (ppdNameSubtitle) {
+        const namaPpd = APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[kodPPD] ? APP_CONFIG.PPD_MAPPING[kodPPD] : 'PEJABAT PENDIDIKAN DAERAH';
+        ppdNameSubtitle.innerText = `Unit Sumber Teknologi Pendidikan (${kodPPD}) - ${namaPpd}`;
+    }
 
     window.toggleKategoriPPD();
     window.toggleJenisPencapaianPPD();
@@ -554,7 +567,7 @@ window.hantarBorangPPD = async function() {
         if(btn) btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MENYIMPAN REKOD...`;
 
         const payload = {
-            kod_sekolah: 'M030',
+            kod_sekolah: currentPpdCode || 'M030', // DIKEMASKINI UNTUK KOD DINAMIK
             kategori, 
             nama_peserta: nama, 
             nama_pertandingan: program,

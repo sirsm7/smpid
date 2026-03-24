@@ -86,8 +86,9 @@ async function loadSchools() {
     try {
         const schools = await SchoolService.getAll();
         
-        // Filter: Buang PPD (M030) dari senarai awam
-        allSchools = schools.filter(s => s.kod_sekolah !== 'M030');
+        // KEMASKINI: Membenarkan semua sekolah dan PPD muncul di carian awam
+        // (Menghapuskan hardcode penapisan kod 'M030')
+        allSchools = schools;
         
         populateDatalist(allSchools);
         checkSession();

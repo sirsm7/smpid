@@ -112,24 +112,22 @@
                 <div class="flex gap-8">
                     <div class="text-center md:text-left">
                         <div class="text-lg font-black text-blue-600" id="countMurid">0</div>
-                        <div class="text-[9px] font-black text-blue-400 uppercase tracking-widest">Murid</div>
+                        <div class="text-[9px] font-black text-blue-400 uppercase tracking-widest" id="lblStat1">Murid</div>
                     </div>
                     <div class="text-center md:text-left">
                         <div class="text-lg font-black text-amber-500" id="countGuru">0</div>
-                        <div class="text-[9px] font-black text-amber-400 uppercase tracking-widest">Guru</div>
+                        <div class="text-[9px] font-black text-amber-400 uppercase tracking-widest" id="lblStat2">Guru</div>
                     </div>
-                    <div class="text-center md:text-left">
+                    <div class="text-center md:text-left" id="statBox3">
                         <div class="text-lg font-black text-indigo-600" id="countSekolah">0</div>
                         <div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Sekolah</div>
                     </div>
                 </div>
             </div>
 
-            <div class="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100 w-full lg:w-auto">
-                <button onclick="filterGallery('SEMUA', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all bg-slate-900 text-white shadow-md uppercase tracking-widest">SEMUA</button>
-                <button onclick="filterGallery('MURID', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-blue-600 uppercase tracking-widest">MURID</button>
-                <button onclick="filterGallery('GURU', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-amber-600 uppercase tracking-widest">GURU</button>
-                <button onclick="filterGallery('SEKOLAH', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-indigo-600 uppercase tracking-widest">SEKOLAH</button>
+            <!-- BUTANG TAPISAN DINAMIK -->
+            <div class="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100 w-full lg:w-auto" id="filterContainerPublic">
+                <!-- Butang akan disuntik secara dinamik oleh renderDynamicFilters() dalam gallery.js -->
             </div>
 
         </div>
@@ -169,9 +167,12 @@
       window.updateFilterUI = function(btn) {
           const btns = document.querySelectorAll('.btn-filter');
           btns.forEach(b => {
-              b.className = "btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:bg-white/50 uppercase tracking-widest";
+              b.classList.remove('bg-slate-900', 'text-white', 'shadow-md', 'scale-105', 'transform');
+              b.classList.add('text-slate-500'); // Ensure it goes back to unselected text color
           });
-          btn.className = "btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all bg-slate-900 text-white shadow-md uppercase tracking-widest transform scale-105";
+          // Remove default colors from the active button so the dark theme applies cleanly
+          btn.classList.remove('text-slate-500', 'hover:text-blue-600', 'hover:text-amber-600', 'hover:text-indigo-600', 'hover:text-teal-600', 'hover:text-fuchsia-600');
+          btn.classList.add('bg-slate-900', 'text-white', 'shadow-md', 'transform', 'scale-105');
       };
 
       const originalFilterGallery = window.filterGallery;
