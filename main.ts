@@ -2,6 +2,7 @@
  * NADIM Telegram Bot & API (Deno Deploy)
  * Menyokong penerimaan parameter pukal bagi senarai ID guru dan murid.
  * Dikemas kini dengan paparan maklumat daerah untuk rujukan pantas pentadbir.
+ * Disertakan pautan WhatsApp Admin DELIMa bagi pemudahan komunikasi.
  */
 
 import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";
@@ -18,20 +19,22 @@ if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_KEY) {
 const bot = new Bot(BOT_TOKEN);
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Naik taraf fungsi untuk mengambil nama dan daerah serentak
-async function getSchoolInfo(kod: string): Promise<{ nama: string; daerah: string }> {
+// Naik taraf fungsi untuk mengambil nama, daerah dan maklumat Admin DELIMa serentak
+async function getSchoolInfo(kod: string): Promise<{ nama: string; daerah: string; admin_nama: string; admin_tel: string }> {
   try {
     const { data } = await supabase
       .from("smpid_sekolah_data")
-      .select("nama_sekolah, daerah")
+      .select("nama_sekolah, daerah, nama_admin_delima, no_telefon_admin_delima")
       .eq("kod_sekolah", kod)
       .single();
     return {
       nama: data?.nama_sekolah || kod,
-      daerah: data?.daerah || "TIADA MAKLUMAT"
+      daerah: data?.daerah || "TIADA MAKLUMAT",
+      admin_nama: data?.nama_admin_delima || "",
+      admin_tel: data?.no_telefon_admin_delima || ""
     };
   } catch (e) {
-    return { nama: kod, daerah: "TIADA MAKLUMAT" };
+    return { nama: kod, daerah: "TIADA MAKLUMAT", admin_nama: "", admin_tel: "" };
   }
 }
 
@@ -418,13 +421,21 @@ Deno.serve(async (req) => {
           senaraiHTML += `${index + 1}. <b>${c.nama}</b>\n   📧 <i>${c.id_delima || 'Tiada emel'}</i>\n`;
       });
 
-      const text = `🔄 <b>${title}</b>\n\n🏫 Sekolah: <b>${schoolInfo.nama}</b> (<code>${kod}</code>)\n📍 Daerah: <b>${schoolInfo.daerah}</b>\n👥 Kategori: <b>${kategori}</b>\n📝 Catatan: <i>${catatan}</i>\n\n📋 <b>Senarai Calon:</b>\n${senaraiHTML}`;
+      let waLink = "";
+      if (schoolInfo.admin_tel) {
+          const cleanTel = schoolInfo.admin_tel.replace(/[^0-9]/g, '');
+          const formattedTel = cleanTel.startsWith('0') ? '6' + cleanTel : cleanTel;
+          const waUrl = `https://wa.me/${formattedTel}`;
+          waLink = `\n👨‍💻 <b>Admin DELIMa:</b> ${schoolInfo.admin_nama}\n💬 <a href="${waUrl}">WhatsApp Admin</a>`;
+      }
+
+      const text = `🔄 <b>${title}</b>\n\n🏫 Sekolah: <b>${schoolInfo.nama}</b> (<code>${kod}</code>)\n📍 Daerah: <b>${schoolInfo.daerah}</b>${waLink}\n👥 Kategori: <b>${kategori}</b>\n📝 Catatan: <i>${catatan}</i>\n\n📋 <b>Senarai Calon:</b>\n${senaraiHTML}`;
       
-      await bot.api.sendMessage("-1003371951236", text, { parse_mode: "HTML" }).catch(e => console.error("Ralat hantar ke group:", e));
+      await bot.api.sendMessage("-1003371951236", text, { parse_mode: "HTML", disable_web_page_preview: true }).catch(e => console.error("Ralat hantar ke group:", e));
       
       const { data: admins } = await supabase.from("smpid_admin_users").select("telegram_id").not("telegram_id", "is", null);
       if (admins && admins.length > 0) {
-        admins.forEach(a => bot.api.sendMessage(a.telegram_id, text, { parse_mode: "HTML" }).catch(() => {}));
+        admins.forEach(a => bot.api.sendMessage(a.telegram_id, text, { parse_mode: "HTML", disable_web_page_preview: true }).catch(() => {}));
       }
       
       return createRes({ status: "success" });
