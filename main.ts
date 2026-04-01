@@ -1,6 +1,7 @@
 /**
  * NADIM Telegram Bot & API (Deno Deploy)
  * Menyokong penerimaan parameter pukal bagi senarai ID guru dan murid.
+ * Dikemas kini dengan paparan maklumat daerah untuk rujukan pantas pentadbir.
  */
 
 import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";
@@ -17,16 +18,20 @@ if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_KEY) {
 const bot = new Bot(BOT_TOKEN);
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-async function getSchoolName(kod: string): Promise<string> {
+// Naik taraf fungsi untuk mengambil nama dan daerah serentak
+async function getSchoolInfo(kod: string): Promise<{ nama: string; daerah: string }> {
   try {
     const { data } = await supabase
       .from("smpid_sekolah_data")
-      .select("nama_sekolah")
+      .select("nama_sekolah, daerah")
       .eq("kod_sekolah", kod)
       .single();
-    return data?.nama_sekolah || kod;
+    return {
+      nama: data?.nama_sekolah || kod,
+      daerah: data?.daerah || "TIADA MAKLUMAT"
+    };
   } catch (e) {
-    return kod;
+    return { nama: kod, daerah: "TIADA MAKLUMAT" };
   }
 }
 
@@ -362,11 +367,11 @@ Deno.serve(async (req) => {
 
     if (path === "/notify-ticket" && req.method === "POST") {
       const { kod, peranan, tajuk, mesej } = await req.json();
-      const namaSekolah = await getSchoolName(kod);
+      const schoolInfo = await getSchoolInfo(kod);
       const { data: admins } = await supabase.from("smpid_admin_users").select("telegram_id").not("telegram_id", "is", null);
       
       if (admins && admins.length > 0) {
-        const text = `🆘 <b>TIKET ADUAN BARU</b>\n\n🏫 Sekolah: <b>${namaSekolah}</b> (<code>${kod}</code>)\n👤 Pengirim: <b>${peranan}</b>\n📌 Tajuk: <b>${tajuk}</b>\n\n📝 Mesej: <i>${mesej}</i>`;
+        const text = `🆘 <b>TIKET ADUAN BARU</b>\n\n🏫 Sekolah: <b>${schoolInfo.nama}</b> (<code>${kod}</code>)\n📍 Daerah: <b>${schoolInfo.daerah}</b>\n👤 Pengirim: <b>${peranan}</b>\n📌 Tajuk: <b>${tajuk}</b>\n\n📝 Mesej: <i>${mesej}</i>`;
         admins.forEach(a => bot.api.sendMessage(a.telegram_id, text, { parse_mode: "HTML" }).catch(() => {}));
       }
       return createRes({ status: "success" });
@@ -374,13 +379,13 @@ Deno.serve(async (req) => {
 
     if (path === "/reply-ticket" && req.method === "POST") {
       const { kod, peranan, tajuk, balasan } = await req.json();
-      const namaSekolah = await getSchoolName(kod);
+      const schoolInfo = await getSchoolInfo(kod);
       const { data: sek } = await supabase.from("smpid_sekolah_data").select("telegram_id_gpict, telegram_id_admin").eq("kod_sekolah", kod).single();
       
       if (sek) {
         const targetId = (peranan === 'GPICT') ? sek.telegram_id_gpict : sek.telegram_id_admin;
         if (targetId) {
-          const text = `✅ <b>STATUS TIKET: SELESAI</b>\n\n🏫 Sekolah: <b>${namaSekolah}</b>\n📌 Tajuk: <b>${tajuk}</b>\n💬 Respon PPD: <i>${balasan}</i>`;
+          const text = `✅ <b>STATUS TIKET: SELESAI</b>\n\n🏫 Sekolah: <b>${schoolInfo.nama}</b>\n📌 Tajuk: <b>${tajuk}</b>\n💬 Respon PPD: <i>${balasan}</i>`;
           await bot.api.sendMessage(targetId, text, { parse_mode: "HTML" }).catch(() => {});
         }
       }
@@ -401,7 +406,7 @@ Deno.serve(async (req) => {
 
     if (path === "/notify-delima" && req.method === "POST") {
       const { kod, kategori, catatan, senarai_calon } = await req.json();
-      const namaSekolah = await getSchoolName(kod);
+      const schoolInfo = await getSchoolInfo(kod);
       
       let title = "KEMASKINI STATUS ID (KELOMPOK)";
       if (catatan === 'Berpindah MASUK ke sekolah ini') {
@@ -413,7 +418,7 @@ Deno.serve(async (req) => {
           senaraiHTML += `${index + 1}. <b>${c.nama}</b>\n   📧 <i>${c.id_delima || 'Tiada emel'}</i>\n`;
       });
 
-      const text = `🔄 <b>${title}</b>\n\n🏫 Sekolah: <b>${namaSekolah}</b> (<code>${kod}</code>)\n👥 Kategori: <b>${kategori}</b>\n📝 Catatan: <i>${catatan}</i>\n\n📋 <b>Senarai Calon:</b>\n${senaraiHTML}`;
+      const text = `🔄 <b>${title}</b>\n\n🏫 Sekolah: <b>${schoolInfo.nama}</b> (<code>${kod}</code>)\n📍 Daerah: <b>${schoolInfo.daerah}</b>\n👥 Kategori: <b>${kategori}</b>\n📝 Catatan: <i>${catatan}</i>\n\n📋 <b>Senarai Calon:</b>\n${senaraiHTML}`;
       
       await bot.api.sendMessage("-1003371951236", text, { parse_mode: "HTML" }).catch(e => console.error("Ralat hantar ke group:", e));
       
@@ -427,13 +432,13 @@ Deno.serve(async (req) => {
 
     if (path === "/reply-delima" && req.method === "POST") {
       const { kod, kategori, nama, status } = await req.json();
-      const namaSekolah = await getSchoolName(kod);
+      const schoolInfo = await getSchoolInfo(kod);
       const { data: sek } = await supabase.from("smpid_sekolah_data").select("telegram_id_gpict, telegram_id_admin").eq("kod_sekolah", kod).single();
       
       if (sek) {
         const targetId = sek.telegram_id_admin || sek.telegram_id_gpict;
         if (targetId) {
-          const text = `✅ <b>STATUS DELIMA: ${status}</b>\n\n🏫 Sekolah: <b>${namaSekolah}</b>\n👥 Kategori: <b>${kategori}</b>\n👤 Nama: <b>${nama}</b>\n💬 Tindakan PPD telah selesai.`;
+          const text = `✅ <b>STATUS DELIMA: ${status}</b>\n\n🏫 Sekolah: <b>${schoolInfo.nama}</b>\n👥 Kategori: <b>${kategori}</b>\n👤 Nama: <b>${nama}</b>\n💬 Tindakan PPD telah selesai.`;
           await bot.api.sendMessage(targetId, text, { parse_mode: "HTML" }).catch(() => {});
         }
       }
