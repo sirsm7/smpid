@@ -1,7 +1,7 @@
 /**
  * HELPDESK & DELIMA MANAGER CONTROLLER
  * Menguruskan logik antaramuka tiket aduan, status guru, dan status murid.
- * Modul ini menggunakan Service Layer untuk berinteraksi dengan Supabase.
+ * Menggunakan sisipan pukal untuk rekod DELIMa.
  */
 
 import { SupportService } from '../../js/services/support.service.js';
@@ -20,12 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Intercept dan perkayakan fungsi switchTab sedia ada untuk menyokong Lazy Loading data
     const originalSwitchTab = window.switchTab;
     window.switchTab = function(tabId) {
-        // Laksanakan pertukaran UI (UI visual switch)
         if (typeof originalSwitchTab === 'function') {
             originalSwitchTab(tabId);
         }
-        
-        // Muat data dari pangkalan data apabila tab ditekan (Lazy Load)
         if (tabId === 'aduan') window.muatSenaraiTiket();
         else if (tabId === 'guru') window.muatSenaraiDelima('GURU');
         else if (tabId === 'murid') window.muatSenaraiDelima('MURID');
@@ -35,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.muatSenaraiTiket();
 });
 
-// --- FUNGSI UTILITI ---
 function toggleLoadingLocal(show) {
     const el = document.getElementById('loadingOverlay');
     if (el) {
@@ -123,83 +119,118 @@ window.muatSenaraiTiket = async function() {
 };
 
 // ==========================================
-// SEKSYEN 2: PENGURUSAN STATUS ID DELIMA
+// SEKSYEN 2: PENGURUSAN STATUS ID DELIMA PUKAL
 // ==========================================
+
+window.tambahBarisCalon = function(kategori) {
+    const containerId = kategori === 'GURU' ? 'guruCalonContainer' : 'muridCalonContainer';
+    const container = document.getElementById(containerId);
+    const colorTheme = kategori === 'GURU' ? 'delima' : 'cyan';
+    const idPlaceholder = kategori === 'GURU' ? 'g-xxxxxxxx@moe-dl.edu.my' : 'm-xxxxxxxx@moe-dl.edu.my';
+    
+    const div = document.createElement('div');
+    div.className = 'calon-row flex flex-col md:flex-row gap-3 items-end animate-slide-down';
+    div.innerHTML = `
+        <div class="flex-1 w-full">
+            <input type="text" class="form-input uppercase input-nama focus:border-${colorTheme}-500" required placeholder="NAMA SEPERTI DALAM K/P" oninput="this.value = this.value.toUpperCase()">
+        </div>
+        <div class="flex-1 w-full">
+            <input type="email" class="form-input lowercase input-id focus:border-${colorTheme}-500" required pattern=".*@moe-dl\\.edu\\.my$" title="Sila pastikan ID mengandungi @moe-dl.edu.my" placeholder="${idPlaceholder}" oninput="this.value = this.value.toLowerCase()">
+        </div>
+        <button type="button" onclick="padamBarisCalon(this)" class="w-full md:w-auto p-3.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors btn-padam-calon"><i class="fas fa-trash-alt"></i></button>
+    `;
+    container.appendChild(div);
+    updatePadamButtons(container);
+};
+
+window.padamBarisCalon = function(btn) {
+    const row = btn.closest('.calon-row');
+    const container = row.parentElement;
+    row.remove();
+    updatePadamButtons(container);
+};
+
+function updatePadamButtons(container) {
+    const rows = container.querySelectorAll('.calon-row');
+    const btns = container.querySelectorAll('.btn-padam-calon');
+    if (rows.length > 1) {
+        btns.forEach(b => b.classList.remove('hidden'));
+    } else {
+        btns.forEach(b => b.classList.add('hidden'));
+    }
+}
+
+function resetContainerCalon(containerId, kategori) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    window.tambahBarisCalon(kategori);
+}
 
 window.hantarStatusDelima = async function(kategori) {
     const kod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     
-    // PEMBUANGAN DATA LAPUK: unit_organisasi_asal dan nama_organisasi_baharu dibuang dari payload
-    let payload = {
+    const catatanId = kategori === 'GURU' ? 'guruCatatan' : 'muridCatatan';
+    const containerId = kategori === 'GURU' ? 'guruCalonContainer' : 'muridCalonContainer';
+    const catatan = document.getElementById(catatanId).value;
+
+    const rows = document.getElementById(containerId).querySelectorAll('.calon-row');
+    let senaraiCalon = [];
+    let isValid = true;
+
+    rows.forEach(row => {
+        const nama = row.querySelector('.input-nama').value.trim().toUpperCase();
+        const id_delima = row.querySelector('.input-id').value.trim().toLowerCase();
+        
+        if (!nama || !id_delima) {
+            isValid = false;
+        }
+        
+        if (id_delima && !id_delima.endsWith('@moe-dl.edu.my')) {
+            isValid = false;
+        }
+
+        senaraiCalon.push({ nama, id_delima });
+    });
+
+    if (!isValid || !catatan) {
+        return Swal.fire('Tidak Lengkap/Sah', 'Sila pastikan semua ruangan nama, ID DELIMa yang sah, dan catatan diisi.', 'warning');
+    }
+
+    const isTarikMasuk = catatan === 'Berpindah MASUK ke sekolah ini';
+    const unit_organisasi_baharu = isTarikMasuk ? kod.toLowerCase() : null;
+
+    let dbPayloads = senaraiCalon.map(c => ({
         kod_sekolah: kod,
         kategori: kategori,
-        status_proses: 'DALAM PROSES'
+        status_proses: 'DALAM PROSES',
+        catatan: catatan,
+        nama: c.nama,
+        id_delima: c.id_delima,
+        unit_organisasi_baharu: unit_organisasi_baharu
+    }));
+
+    const webhookPayload = {
+        kod: kod,
+        kategori: kategori,
+        catatan: catatan,
+        senarai_calon: senaraiCalon
     };
-
-    // Logik Pengekstrakan Data Borang Guru
-    if (kategori === 'GURU') {
-        payload.nama = document.getElementById('guruNama').value.trim().toUpperCase();
-        payload.id_delima = document.getElementById('guruIdDelima').value.trim().toLowerCase();
-        payload.catatan = document.getElementById('guruCatatan').value;
-        
-        // Auto-set OU jika tarik masuk
-        if (payload.catatan === 'Berpindah MASUK ke sekolah ini') {
-            payload.unit_organisasi_baharu = kod.toLowerCase();
-        } else {
-            payload.unit_organisasi_baharu = null;
-        }
-
-        // Validasi Ekstra untuk ID DELIMa
-        if (payload.id_delima && !payload.id_delima.endsWith('@moe-dl.edu.my')) {
-            return Swal.fire('Format Tidak Sah', 'ID DELIMa Guru mestilah berakhir dengan @moe-dl.edu.my', 'error');
-        }
-        
-        if (!payload.nama || !payload.id_delima || !payload.catatan) {
-            return Swal.fire('Tidak Lengkap', 'Sila pastikan semua ruangan wajib diisi.', 'warning');
-        }
-    } 
-    // Logik Pengekstrakan Data Borang Murid
-    else {
-        payload.nama = document.getElementById('muridNama').value.trim().toUpperCase();
-        payload.id_delima = document.getElementById('muridIdDelima').value.trim().toLowerCase();
-        payload.catatan = document.getElementById('muridCatatan').value;
-        
-        // Auto-set OU jika tarik masuk
-        if (payload.catatan === 'Berpindah MASUK ke sekolah ini') {
-            payload.unit_organisasi_baharu = kod.toLowerCase();
-        } else {
-            payload.unit_organisasi_baharu = null;
-        }
-
-        // Validasi Ekstra untuk ID DELIMa
-        if (payload.id_delima && !payload.id_delima.endsWith('@moe-dl.edu.my')) {
-            return Swal.fire('Format Tidak Sah', 'ID DELIMa Murid mestilah berakhir dengan @moe-dl.edu.my', 'error');
-        }
-
-        if (!payload.nama || !payload.id_delima || !payload.catatan) {
-            return Swal.fire('Tidak Lengkap', 'Sila pastikan semua ruangan wajib diisi.', 'warning');
-        }
-    }
 
     toggleLoadingLocal(true);
     try {
-        await DelimaService.createStatus(payload);
+        await DelimaService.createStatusBulk(dbPayloads, webhookPayload);
         
         toggleLoadingLocal(false);
         Swal.fire({
             icon: 'success',
             title: 'Berjaya Direkodkan',
-            text: `Status permohonan ID DELIMa bagi ${kategori.toLowerCase()} telah dihantar ke PPD untuk proses selanjutnya.`,
+            text: `Maklumat ${senaraiCalon.length} orang ${kategori.toLowerCase()} telah dihantar ke PPD secara pukal.`,
             confirmButtonColor: kategori === 'GURU' ? '#2563eb' : '#0891b2'
         }).then(() => {
-            // Reset UI selepas berjaya
-            if (kategori === 'GURU') {
-                document.getElementById('formStatusGuru').reset();
-                window.muatSenaraiDelima('GURU');
-            } else {
-                document.getElementById('formStatusMurid').reset();
-                window.muatSenaraiDelima('MURID');
-            }
+            const formId = kategori === 'GURU' ? 'formStatusGuru' : 'formStatusMurid';
+            document.getElementById(formId).reset();
+            resetContainerCalon(containerId, kategori);
+            window.muatSenaraiDelima(kategori);
         });
     } catch (e) {
         toggleLoadingLocal(false);
@@ -230,8 +261,6 @@ window.muatSenaraiDelima = async function(kategori) {
                 : `<span class="inline-flex items-center justify-center bg-amber-100 text-amber-700 text-[9px] px-3 py-1.5 rounded-full font-black animate-pulse border border-amber-200 shadow-sm w-full uppercase tracking-widest"><i class="fas fa-clock mr-1.5"></i> PROSES</span>`;
             
             let detailsHtml = '';
-            
-            // Paparan Lencana "Mohon Tarik" untuk Guru dan Murid
             const isTarikMasuk = item.catatan === 'Berpindah MASUK ke sekolah ini';
             const colorTheme = kategori === 'GURU' ? 'blue' : 'cyan';
             

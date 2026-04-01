@@ -1,50 +1,38 @@
 /**
  * DELIMA STATUS SERVICE
  * Menguruskan rekod perubahan status ID DELIMa (Guru & Murid).
- * Mempunyai fungsi CRUD lengkap untuk portal sekolah dan panel Admin.
+ * Dipertingkat untuk menyokong sisipan pukal (Bulk Insert).
  */
 
 import { getDatabaseClient } from '../../js/core/db.js';
-import { APP_CONFIG } from '../../js/config/app.config.js'; // Ditambah untuk capaian Deno API
+import { APP_CONFIG } from '../../js/config/app.config.js';
 
 const db = getDatabaseClient();
 
 export const DelimaService = {
     /**
-     * Tambah rekod status DELIMa baharu (Dipanggil oleh pihak sekolah)
-     * @param {Object} payload Butiran borang
+     * Tambah rekod status DELIMa secara berkelompok
+     * @param {Array} dbPayloads Senarai objek untuk disisip ke DB
+     * @param {Object} webhookPayload Objek untuk dihantar ke Telegram
      */
-    async createStatus(payload) {
+    async createStatusBulk(dbPayloads, webhookPayload) {
         const { error } = await db
             .from('smpid_delima_status')
-            .insert([payload]);
+            .insert(dbPayloads);
 
         if (error) throw error;
 
-        // Suntikan Notifikasi Telegram via Deno API (Webhooks)
-        // UPDATE: Menambah hantaran 'id_delima' ke backend
         if (APP_CONFIG.API.DENO_URL) {
             fetch(`${APP_CONFIG.API.DENO_URL}/notify-delima`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    kod: payload.kod_sekolah, 
-                    kategori: payload.kategori, 
-                    nama: payload.nama, 
-                    id_delima: payload.id_delima,
-                    catatan: payload.catatan 
-                })
+                body: JSON.stringify(webhookPayload)
             }).catch(e => console.warn("[DelimaService] Bot offline:", e));
         }
 
         return { success: true };
     },
 
-    /**
-     * Dapatkan senarai rekod mengikut kod sekolah dan kategori
-     * @param {string} kodSekolah Kod sekolah semasa
-     * @param {string} kategori 'GURU' atau 'MURID'
-     */
     async getBySchool(kodSekolah, kategori) {
         const { data, error } = await db
             .from('smpid_delima_status')
@@ -57,11 +45,6 @@ export const DelimaService = {
         return data;
     },
 
-    /**
-     * Dapatkan semua rekod (Untuk paparan Master List Admin PPD)
-     * @param {string} kategori 'ALL', 'GURU', atau 'MURID'
-     * @param {string} statusFilter 'ALL', 'DALAM PROSES', atau 'SELESAI'
-     */
     async getAll(kategori = 'ALL', statusFilter = 'ALL') {
         let query = db.from('smpid_delima_status').select('*').order('created_at', { ascending: false });
 
@@ -78,11 +61,6 @@ export const DelimaService = {
         return data;
     },
 
-    /**
-     * Kemaskini status pemprosesan (Dilaksanakan oleh Admin PPD)
-     * @param {number} id ID Rekod
-     * @param {string} statusProses 'SELESAI' atau 'DALAM PROSES'
-     */
     async updateStatus(id, statusProses) {
         const { error } = await db
             .from('smpid_delima_status')
@@ -93,10 +71,6 @@ export const DelimaService = {
         return { success: true };
     },
 
-    /**
-     * Padam rekod (Untuk kegunaan Admin PPD jika perlu)
-     * @param {number} id ID Rekod
-     */
     async deleteStatus(id) {
         const { error } = await db
             .from('smpid_delima_status')

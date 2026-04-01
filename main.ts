@@ -1,19 +1,11 @@
 /**
  * NADIM Telegram Bot & API (Deno Deploy)
- * Versi: 5.0 (Full Integrity & Enhanced Notifications)
- * Host: smpid.ppdag.deno.net
- * * NOTA: Kod ini mengekalkan 100% logik pendaftaran dan pangkalan data asal.
- * Isu CORS diselesaikan secara tuntas dengan pengendalian preflight global.
- * Penambahan V5.0: Memasukkan Nama Sekolah, Alamat Emel, dan penambahbaikan 
- * format HTML bagi semua notifikasi Telegram untuk kejelasan maksima.
+ * Menyokong penerimaan parameter pukal bagi senarai ID guru dan murid.
  */
 
 import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
-// ==========================================
-// 1. KONFIGURASI PERSEKITARAN (ENV)
-// ==========================================
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_KEY = Deno.env.get("SUPABASE_KEY");
@@ -22,17 +14,9 @@ if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_KEY) {
   throw new Error("CRITICAL: Sila tetapkan BOT_TOKEN, SUPABASE_URL, dan SUPABASE_KEY di Deno Deploy.");
 }
 
-// ==========================================
-// 2. INISIALISASI KLIENT
-// ==========================================
 const bot = new Bot(BOT_TOKEN);
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ==========================================
-// 3. FUNGSI BANTUAN (HELPER) PANGKALAN DATA
-// ==========================================
-
-// Fungsi baru untuk mendapatkan nama sekolah bagi tujuan notifikasi
 async function getSchoolName(kod: string): Promise<string> {
   try {
     const { data } = await supabase
@@ -45,10 +29,6 @@ async function getSchoolName(kod: string): Promise<string> {
     return kod;
   }
 }
-
-// ==========================================
-// 4. FUNGSI UI HELPER (INTERFACE BOT)
-// ==========================================
 
 async function getSchoolUI(kodSekolah: string, telegramId: number) {
   const { data: sekolah, error } = await supabase
@@ -165,10 +145,6 @@ async function getAdminUI(telegramId: number) {
     keyboard.text("❌ Tutup", "close");
     return { text: msg, keyboard };
 }
-
-// ==========================================
-// 5. LOGIK BOT TELEGRAM (HANDLERS)
-// ==========================================
 
 bot.command("start", async (ctx) => {
   await ctx.reply(
@@ -344,16 +320,12 @@ async function alertTaken(ctx: any) {
   await ctx.deleteMessage(); 
 }
 
-// ==========================================
-// 6. SERVER API & WEBHOOK (BULLETPROOF CORS & HTML PARSING)
-// ==========================================
 const handleBotUpdate = webhookCallback(bot, "std/http");
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const path = url.pathname.replace(/\/$/, ""); 
 
-  // HEADER CORS GLOBAL
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
@@ -361,7 +333,6 @@ Deno.serve(async (req) => {
     "Access-Control-Max-Age": "86400",
   };
 
-  // PENGENDALIAN PREFLIGHT (Surgical Priority)
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
@@ -374,7 +345,6 @@ Deno.serve(async (req) => {
   };
 
   try {
-    // --- [1] ENDPOINT: /notify (Profil Sekolah Dikemaskini) ---
     if (path === "/notify" && req.method === "POST") {
       const { kod, nama, updated_by } = await req.json();
       const { data: admins } = await supabase.from("smpid_admin_users").select("telegram_id").not("telegram_id", "is", null);
@@ -390,7 +360,6 @@ Deno.serve(async (req) => {
       return createRes({ status: "success" });
     }
 
-    // --- [2] ENDPOINT: /notify-ticket (Aduan Baharu Dihantar) ---
     if (path === "/notify-ticket" && req.method === "POST") {
       const { kod, peranan, tajuk, mesej } = await req.json();
       const namaSekolah = await getSchoolName(kod);
@@ -403,7 +372,6 @@ Deno.serve(async (req) => {
       return createRes({ status: "success" });
     }
 
-    // --- [3] ENDPOINT: /reply-ticket (Admin PPD Membalas Tiket) ---
     if (path === "/reply-ticket" && req.method === "POST") {
       const { kod, peranan, tajuk, balasan } = await req.json();
       const namaSekolah = await getSchoolName(kod);
@@ -419,7 +387,6 @@ Deno.serve(async (req) => {
       return createRes({ status: "success" });
     }
 
-    // --- [4] ENDPOINT: /notify-booking (Tempahan Bimbingan Baharu) ---
     if (path === "/notify-booking" && req.method === "POST") {
       const { kod, nama, tajuk, tarikh, masa, pic, tel } = await req.json();
       const { data: admins } = await supabase.from("smpid_admin_users").select("telegram_id").not("telegram_id", "is", null);
@@ -432,23 +399,24 @@ Deno.serve(async (req) => {
       return createRes({ status: "success" });
     }
 
-    // --- [5] ENDPOINT: /notify-delima (Permohonan Status ID Baru) ---
     if (path === "/notify-delima" && req.method === "POST") {
-      const { kod, kategori, nama, id_delima, catatan } = await req.json();
+      const { kod, kategori, catatan, senarai_calon } = await req.json();
       const namaSekolah = await getSchoolName(kod);
       
-      let title = "KEMASKINI STATUS ID";
+      let title = "KEMASKINI STATUS ID (KELOMPOK)";
       if (catatan === 'Berpindah MASUK ke sekolah ini') {
-          title = "MOHON PINDAH MASUK ID";
+          title = "MOHON PINDAH MASUK ID (KELOMPOK)";
       }
 
-      // Memperkayakan notifikasi dengan nama sekolah dan alamat emel
-      const text = `🔄 <b>${title}</b>\n\n🏫 Sekolah: <b>${namaSekolah}</b> (<code>${kod}</code>)\n👥 Kategori: <b>${kategori}</b>\n👤 Nama Pemohon: <b>${nama}</b>\n📧 Alamat Emel: <b>${id_delima || '<i>Belum diisi</i>'}</b>\n📝 Catatan: <i>${catatan}</i>`;
+      let senaraiHTML = "";
+      senarai_calon.forEach((c: any, index: number) => {
+          senaraiHTML += `${index + 1}. <b>${c.nama}</b>\n   📧 <i>${c.id_delima || 'Tiada emel'}</i>\n`;
+      });
+
+      const text = `🔄 <b>${title}</b>\n\n🏫 Sekolah: <b>${namaSekolah}</b> (<code>${kod}</code>)\n👥 Kategori: <b>${kategori}</b>\n📝 Catatan: <i>${catatan}</i>\n\n📋 <b>Senarai Calon:</b>\n${senaraiHTML}`;
       
-      // Hantar ke Telegram Group Khas DELIMa
       await bot.api.sendMessage("-1003371951236", text, { parse_mode: "HTML" }).catch(e => console.error("Ralat hantar ke group:", e));
       
-      // Hantar kepada PIC berdaftar
       const { data: admins } = await supabase.from("smpid_admin_users").select("telegram_id").not("telegram_id", "is", null);
       if (admins && admins.length > 0) {
         admins.forEach(a => bot.api.sendMessage(a.telegram_id, text, { parse_mode: "HTML" }).catch(() => {}));
@@ -457,14 +425,12 @@ Deno.serve(async (req) => {
       return createRes({ status: "success" });
     }
 
-    // --- [6] ENDPOINT: /reply-delima (Tindakan ID DELIMa Selesai) ---
     if (path === "/reply-delima" && req.method === "POST") {
       const { kod, kategori, nama, status } = await req.json();
       const namaSekolah = await getSchoolName(kod);
       const { data: sek } = await supabase.from("smpid_sekolah_data").select("telegram_id_gpict, telegram_id_admin").eq("kod_sekolah", kod).single();
       
       if (sek) {
-        // Hantar kepada Admin DELIMa (Priority), jika tiada, hantar kepada GPICT
         const targetId = sek.telegram_id_admin || sek.telegram_id_gpict;
         if (targetId) {
           const text = `✅ <b>STATUS DELIMA: ${status}</b>\n\n🏫 Sekolah: <b>${namaSekolah}</b>\n👥 Kategori: <b>${kategori}</b>\n👤 Nama: <b>${nama}</b>\n💬 Tindakan PPD telah selesai.`;
@@ -474,7 +440,6 @@ Deno.serve(async (req) => {
       return createRes({ status: "success" });
     }
 
-    // FALLBACK KE TELEGRAM BOT WEBHOOK
     return await handleBotUpdate(req);
 
   } catch (err) {
