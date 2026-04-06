@@ -4,6 +4,7 @@
  * --- UPDATE V2.1 (RBAC DAERAH) ---
  * 1. Tapisan Global: Mengimplementasikan tapisan berasaskan daerah (PPD_MAPPING).
  * 2. Pembersihan Hardcode: Menukar rujukan statik 'M030' kepada senarai dinamik PPD.
+ * 3. Filter Interaktif Daerah: Dihidupkan untuk SUPER_ADMIN & JPNMEL. Data Program & KPI kini dinamik mengikut daerah!
  */
 
 import { getDatabaseClient } from '../../js/core/db.js';
@@ -18,6 +19,7 @@ let processedSchools = {};
 // State untuk Program Stats & Pemetaan Jenis Sekolah
 let programStats = {};
 let schoolTypeMap = {}; // Kamus rujukan pantas SR/SM
+let schoolDaerahMap = {}; // Kamus rujukan daerah
 
 // Filter State (Default: Tunjuk Semua)
 let activeCardFilter = 'ALL'; 
@@ -34,13 +36,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     await fetchData();
 });
 
-// FUNGSI BANTUAN: BINA PETA JENIS SEKOLAH (EXACT LOGIC)
-function buildSchoolTypeMap(sekolahData) {
+// FUNGSI BANTUAN: BINA PETA JENIS & DAERAH SEKOLAH
+function buildSchoolMetadataMap(sekolahData) {
     schoolTypeMap = {};
+    schoolDaerahMap = {};
     const srTypes = ['SK', 'SJKC', 'SJKT', 'SR SABK'];
     const smTypes = ['SMK', 'SBP', 'SM SABK', 'KV'];
 
     sekolahData.forEach(s => {
+        schoolDaerahMap[s.kod_sekolah] = s.daerah || 'TIADA REKOD';
+        
         if (!s.jenis_sekolah) {
             schoolTypeMap[s.kod_sekolah] = 'LAIN';
             return;
@@ -57,17 +62,19 @@ function buildSchoolTypeMap(sekolahData) {
     });
 }
 
-// FUNGSI BANTUAN: KATEGORI SEKOLAH (Rujukan Kamus Memori)
 function getSchoolType(kod) {
     if (!kod) return 'LAIN';
     return schoolTypeMap[kod] || 'LAIN';
 }
 
+function getSchoolDaerah(kod) {
+    if (!kod) return 'TIADA REKOD';
+    return schoolDaerahMap[kod] || 'TIADA REKOD';
+}
+
 // 1. FETCH DATA (DUAL-FETCH) & TENTUKAN TAHUN
 async function fetchData() {
     try {
-        // Ambil data analisa dan data induk sekolah secara serentak (Parallel Execution)
-        // UPDATE: Tambah lajur 'daerah' ke dalam fetch sekolah
         const [resAnalisa, resSekolah] = await Promise.all([
             db.from('view_smpid_pppdm_analisa').select('*'),
             db.from('smpid_sekolah_data').select('kod_sekolah, jenis_sekolah, daerah')
@@ -83,23 +90,17 @@ async function fetchData() {
         const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
         const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
 
-        // Jika pengguna adalah ADMIN PPD atau UNIT PPD, tapis ikut daerah
         if (['ADMIN', 'PPD_UNIT'].includes(userRole) && userKod && APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[userKod]) {
             const daerahDibenarkan = APP_CONFIG.PPD_MAPPING[userKod];
             
-            // Tapis sekolah dalam daerah yang sama ATAU kod PPD itu sendiri
             sekolahDataRaw = sekolahDataRaw.filter(s => s.daerah === daerahDibenarkan || s.kod_sekolah === userKod);
-            
-            // Hanya ekstrak ID sekolah yang melepasi tapisan
             const validSchoolCodes = sekolahDataRaw.map(s => s.kod_sekolah);
-            
-            // Gunakan ID sekolah tersebut untuk menapis data Analisa PPPDM
             analisaDataRaw = analisaDataRaw.filter(a => validSchoolCodes.includes(a.kod_sekolah));
         }
         // ----------------------------------------
 
-        // Siapkan kamus memori jenis sekolah (SR/SM) sebelum proses data
-        buildSchoolTypeMap(sekolahDataRaw);
+        // Siapkan kamus memori jenis dan daerah sekolah sebelum proses data
+        buildSchoolMetadataMap(sekolahDataRaw);
         
         const data = analisaDataRaw;
 
@@ -109,8 +110,10 @@ async function fetchData() {
 
         updateYearLabels();
         processData(data);
-        renderDashboard();
-        renderProgramTable(); 
+        populateDaerahFilter();
+        
+        // Memacu keseluruhan pengiraan KPI, Program Table dan Jadual Sekolah
+        applyFilters(); 
 
     } catch (e) {
         console.error("Fetch Error:", e);
@@ -136,28 +139,25 @@ function updateYearLabels() {
     }
 }
 
-// 2. PROSES DATA (FILTER PPD, REKOD SEKOLAH & REKOD PROGRAM)
+// 2. PROSES DATA INDUK (SEKOLAH & AKTIVITI)
 function processData(rawData) {
     processedSchools = {};
-    programStats = {}; // Reset data program
-    
-    // Senarai pengecualian kod PPD secara dinamik
     const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
     
     rawData.forEach(row => {
-        // Buang mana-mana aktiviti oleh PPD itu sendiri untuk analisa perbandingan sekolah
+        // Buang aktiviti oleh PPD itu sendiri untuk analisa sekolah
         if (senaraiKodPPD.includes(row.kod_sekolah)) return; 
 
-        // Dapat klasifikasi tepat (Exact Logic) berdasarkan smpid_sekolah_data
         const sType = getSchoolType(row.kod_sekolah);
+        const sDaerah = getSchoolDaerah(row.kod_sekolah);
 
-        // --- A. PENGIRAAN PROFIL SEKOLAH (Asal) ---
         if (!processedSchools[row.kod_sekolah]) {
             processedSchools[row.kod_sekolah] = {
                 kod: row.kod_sekolah,
                 nama: row.nama_sekolah,
                 parlimen: row.parlimen || "LAIN-LAIN",
-                type: sType, // Simpan jenis sekolah ke dalam objek untuk proses filter SR/SM
+                type: sType, 
+                daerah: sDaerah,
                 scores: {}, 
                 activities: []
             };
@@ -173,29 +173,34 @@ function processData(rawData) {
                 tahun: row.tahun,
                 program: row.nama_program
             });
-
-            // --- B. PENGIRAAN KEKERAPAN PROGRAM (Baharu) ---
-            if (row.tahun) {
-                const progName = row.nama_program.trim().toUpperCase();
-                const year = row.tahun;
-
-                if (!programStats[progName]) {
-                    programStats[progName] = {};
-                }
-                
-                if (!programStats[progName][year]) {
-                    programStats[progName][year] = { SR: 0, SM: 0, LAIN: 0, Total: 0 };
-                }
-                
-                // Tambah data ke dalam pecahan yang tepat
-                programStats[progName][year][sType] = (programStats[progName][year][sType] || 0) + 1;
-                programStats[progName][year].Total++;
-            }
         }
     });
 
     globalData = Object.values(processedSchools);
     populateParlimenFilter();
+}
+
+function populateDaerahFilter() {
+    const select = document.getElementById('filterDaerah');
+    if(!select) return;
+    
+    const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+    if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
+        select.classList.remove('hidden');
+        select.innerHTML = '<option value="ALL">SEMUA DAERAH</option>';
+        
+        if (APP_CONFIG.PPD_MAPPING) {
+            const uniqueDaerahs = [...new Set(Object.values(APP_CONFIG.PPD_MAPPING))].sort();
+            uniqueDaerahs.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d;
+                opt.innerText = d;
+                select.appendChild(opt);
+            });
+        }
+    } else {
+        select.classList.add('hidden');
+    }
 }
 
 function populateParlimenFilter() {
@@ -215,37 +220,32 @@ function populateParlimenFilter() {
     });
 }
 
-// 3. RENDER DASHBOARD & KPI (Dengan Pecahan SR/SM)
-function renderDashboard() {
-    // Pengiraan Asas
-    const totalSchools = globalData.length; 
-    const allSr = globalData.filter(s => s.type === 'SR').length;
-    const allSm = globalData.filter(s => s.type === 'SM').length;
+// 3. RENDER KPI SECARA DINAMIK
+function updateKPICards(dataList) {
+    const totalSchools = dataList.length; 
+    const allSr = dataList.filter(s => s.type === 'SR').length;
+    const allSm = dataList.filter(s => s.type === 'SM').length;
 
-    const activeSchoolsList = globalData.filter(s => s.activities.length > 0);
+    const activeSchoolsList = dataList.filter(s => s.activities.length > 0);
     const activeSchoolsCount = activeSchoolsList.length;
     const activeSr = activeSchoolsList.filter(s => s.type === 'SR').length;
     const activeSm = activeSchoolsList.filter(s => s.type === 'SM').length;
-    
-    // KPI SR & SM yang terlibat
-    const srActiveCount = activeSr;
-    const smActiveCount = activeSm;
 
-    const totalActs = globalData.reduce((acc, s) => acc + s.activities.length, 0);
-    const actsSr = globalData.filter(s => s.type === 'SR').reduce((acc, s) => acc + s.activities.length, 0);
-    const actsSm = globalData.filter(s => s.type === 'SM').reduce((acc, s) => acc + s.activities.length, 0);
+    const totalActs = dataList.reduce((acc, s) => acc + s.activities.length, 0);
+    const actsSr = dataList.filter(s => s.type === 'SR').reduce((acc, s) => acc + s.activities.length, 0);
+    const actsSm = dataList.filter(s => s.type === 'SM').reduce((acc, s) => acc + s.activities.length, 0);
 
-    const currentActiveList = globalData.filter(s => (s.scores[yearCurrent] || 0) > 0);
+    const currentActiveList = dataList.filter(s => (s.scores[yearCurrent] || 0) > 0);
     const currentActiveCount = currentActiveList.length;
     const currSr = currentActiveList.filter(s => s.type === 'SR').length;
     const currSm = currentActiveList.filter(s => s.type === 'SM').length;
 
-    const transformList = globalData.filter(s => (s.scores[yearCurrent] || 0) > (s.scores[yearPrev] || 0));
+    const transformList = dataList.filter(s => (s.scores[yearCurrent] || 0) > (s.scores[yearPrev] || 0));
     const transformCount = transformList.length;
     const transSr = transformList.filter(s => s.type === 'SR').length;
     const transSm = transformList.filter(s => s.type === 'SM').length;
 
-    const zeroList = globalData.filter(s => s.activities.length === 0);
+    const zeroList = dataList.filter(s => s.activities.length === 0);
     const zeroCount = zeroList.length;
     const zeroSr = zeroList.filter(s => s.type === 'SR').length;
     const zeroSm = zeroList.filter(s => s.type === 'SM').length;
@@ -255,36 +255,47 @@ function renderDashboard() {
         if(el) el.innerText = val; 
     };
     
-    // Set Nilai Utama Kad
     setTxt('kpi-total-schools', totalSchools);
     setTxt('kpi-active-schools', activeSchoolsCount);
-    setTxt('kpi-sr-active', srActiveCount);
-    setTxt('kpi-sm-active', smActiveCount);
+    setTxt('kpi-sr-active', activeSr);
+    setTxt('kpi-sm-active', activeSm);
     setTxt('kpi-total-acts', totalActs);
     setTxt('kpi-year-curr', currentActiveCount);
     setTxt('kpi-transform', transformCount);
     setTxt('kpi-zero', zeroCount);
 
-    // Set Nilai Pecahan (Breakdown) SR & SM dalam lencana kad
     setTxt('kpi-all-sr', `SR: ${allSr}`);
     setTxt('kpi-all-sm', `SM: ${allSm}`);
-    
     setTxt('kpi-active-sr', `SR: ${activeSr}`);
     setTxt('kpi-active-sm', `SM: ${activeSm}`);
-    
     setTxt('kpi-acts-sr', `SR: ${actsSr}`);
     setTxt('kpi-acts-sm', `SM: ${actsSm}`);
-    
     setTxt('kpi-curr-sr', `SR: ${currSr}`);
     setTxt('kpi-curr-sm', `SM: ${currSm}`);
-    
     setTxt('kpi-trans-sr', `SR: ${transSr}`);
     setTxt('kpi-trans-sm', `SM: ${transSm}`);
-    
     setTxt('kpi-zero-sr', `SR: ${zeroSr}`);
     setTxt('kpi-zero-sm', `SM: ${zeroSm}`);
+}
 
-    applyFilters();
+function rebuildProgramStats(dataList) {
+    programStats = {};
+    dataList.forEach(s => {
+        s.activities.forEach(act => {
+            const progName = act.program.trim().toUpperCase();
+            const year = act.tahun;
+            const sType = s.type;
+
+            if (!programStats[progName]) {
+                programStats[progName] = {};
+            }
+            if (!programStats[progName][year]) {
+                programStats[progName][year] = { SR: 0, SM: 0, LAIN: 0, Total: 0 };
+            }
+            programStats[progName][year][sType] = (programStats[progName][year][sType] || 0) + 1;
+            programStats[progName][year].Total++;
+        });
+    });
 }
 
 // 4. INTERACTIVE CARD FILTER (Bilik Dashboard)
@@ -326,53 +337,68 @@ window.setCardFilter = function(type) {
     applyFilters();
 }
 
-// 5. FILTER & RENDER TABLE (Sekolah)
+// 5. FILTER PUSAT & RENDER JADUAL (Pusat Kawalan Penapisan)
 window.applyFilters = function() {
     const parlimenFilter = document.getElementById('filterParlimen')?.value || 'ALL';
-    let filtered = [...globalData]; 
+    const daerahFilter = document.getElementById('filterDaerah')?.value || 'ALL';
 
+    // 1. TAPISAN KAWASAN (Dropdown)
+    let baseFiltered = [...globalData]; 
+
+    if (daerahFilter !== 'ALL') {
+        baseFiltered = baseFiltered.filter(s => s.daerah === daerahFilter);
+    }
     if (parlimenFilter !== 'ALL') {
-        filtered = filtered.filter(s => s.parlimen === parlimenFilter);
+        baseFiltered = baseFiltered.filter(s => s.parlimen === parlimenFilter);
     }
 
+    // 2. KEMASKINI KPI & TAB PROGRAM (Dinamic Cascading)
+    updateKPICards(baseFiltered);
+    rebuildProgramStats(baseFiltered);
+    renderProgramTable();
+
+    // 3. TAPISAN KAD AKTIF (Active Card Filter - Cth: Hanya SR, atau Zero)
+    let tableFiltered = [...baseFiltered];
+    
     if (activeCardFilter === 'ACTIVE') {
-        filtered = filtered.filter(s => s.activities.length > 0);
-        filtered.sort((a, b) => b.activities.length - a.activities.length);
+        tableFiltered = tableFiltered.filter(s => s.activities.length > 0);
+        tableFiltered.sort((a, b) => b.activities.length - a.activities.length);
     } 
     else if (activeCardFilter === 'SR') {
-        filtered = filtered.filter(s => s.type === 'SR' && s.activities.length > 0);
-        filtered.sort((a, b) => b.activities.length - a.activities.length);
+        tableFiltered = tableFiltered.filter(s => s.type === 'SR' && s.activities.length > 0);
+        tableFiltered.sort((a, b) => b.activities.length - a.activities.length);
     }
     else if (activeCardFilter === 'SM') {
-        filtered = filtered.filter(s => s.type === 'SM' && s.activities.length > 0);
-        filtered.sort((a, b) => b.activities.length - a.activities.length);
+        tableFiltered = tableFiltered.filter(s => s.type === 'SM' && s.activities.length > 0);
+        tableFiltered.sort((a, b) => b.activities.length - a.activities.length);
     }
     else if (activeCardFilter === 'TOTAL_ACTS') {
-        filtered = filtered.filter(s => s.activities.length > 0);
-        filtered.sort((a, b) => b.activities.length - a.activities.length);
+        tableFiltered = tableFiltered.filter(s => s.activities.length > 0);
+        tableFiltered.sort((a, b) => b.activities.length - a.activities.length);
     }
     else if (activeCardFilter === 'CURRENT') {
-        filtered = filtered.filter(s => (s.scores[yearCurrent] || 0) > 0);
-        filtered.sort((a, b) => b.scores[yearCurrent] - a.scores[yearCurrent]);
+        tableFiltered = tableFiltered.filter(s => (s.scores[yearCurrent] || 0) > 0);
+        tableFiltered.sort((a, b) => b.scores[yearCurrent] - a.scores[yearCurrent]);
     }
     else if (activeCardFilter === 'TRANSFORM') {
-        filtered = filtered.filter(s => (s.scores[yearCurrent] || 0) > (s.scores[yearPrev] || 0));
-        filtered.sort((a, b) => {
+        tableFiltered = tableFiltered.filter(s => (s.scores[yearCurrent] || 0) > (s.scores[yearPrev] || 0));
+        tableFiltered.sort((a, b) => {
             const gapA = (a.scores[yearCurrent] - a.scores[yearPrev]);
             const gapB = (b.scores[yearCurrent] - b.scores[yearPrev]);
             return gapB - gapA;
         });
     }
     else if (activeCardFilter === 'ZERO') {
-        filtered = filtered.filter(s => s.activities.length === 0);
-        filtered.sort((a, b) => a.nama.localeCompare(b.nama));
+        tableFiltered = tableFiltered.filter(s => s.activities.length === 0);
+        tableFiltered.sort((a, b) => a.nama.localeCompare(b.nama));
     }
     else {
-        filtered.sort((a, b) => (b.scores[yearCurrent] || 0) - (a.scores[yearCurrent] || 0));
+        // Lalai: Susun berdasarkan skor tahun semasa tertinggi
+        tableFiltered.sort((a, b) => (b.scores[yearCurrent] || 0) - (a.scores[yearCurrent] || 0));
     }
 
-    filteredDataForCSV = filtered; 
-    renderTable(filtered);
+    filteredDataForCSV = tableFiltered; 
+    renderTable(tableFiltered);
 }
 
 function renderTable(dataList) {
@@ -432,12 +458,11 @@ function renderTable(dataList) {
     });
 }
 
-// 6. RENDER JADUAL PROGRAM 
+// 6. RENDER JADUAL PROGRAM (Dynamic by District)
 function renderProgramTable() {
     const tbody = document.getElementById('programTableBody');
     if(!tbody) return;
     
-    // Transformasi Object programStats kepada Array untuk mudah di-'sort'
     let progArray = Object.keys(programStats).map(name => {
         return {
             name: name,
@@ -453,7 +478,7 @@ function renderProgramTable() {
     tbody.innerHTML = '';
     
     if (progArray.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-400">Tiada rekod program direkodkan.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-400">Tiada rekod program direkodkan untuk saringan ini.</td></tr>`;
         return;
     }
 
@@ -490,10 +515,11 @@ window.downloadCSV = function() {
     }
 
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-    csvContent += `KOD SEKOLAH,NAMA SEKOLAH,JENIS SEKOLAH,PARLIMEN,SKOR ${yearCurrent},SKOR ${yearPrev},JUMLAH AKTIVITI,STATUS\n`;
+    csvContent += `KOD SEKOLAH,NAMA SEKOLAH,JENIS SEKOLAH,DAERAH,PARLIMEN,SKOR ${yearCurrent},SKOR ${yearPrev},JUMLAH AKTIVITI,STATUS\n`;
 
     filteredDataForCSV.forEach(s => {
         const cleanNama = `"${s.nama.replace(/"/g, '""')}"`;
+        const cleanDaerah = `"${s.daerah || '-'}"`;
         const cleanParlimen = `"${s.parlimen}"`;
         const sCurr = s.scores[yearCurrent] || 0;
         const sPrev = s.scores[yearPrev] || 0;
@@ -502,7 +528,7 @@ window.downloadCSV = function() {
         else if(sCurr > sPrev) status = "NAIK";
         else if(sCurr < sPrev) status = "TURUN";
 
-        csvContent += `${s.kod},${cleanNama},${s.type},${cleanParlimen},${sCurr},${sPrev},${s.activities.length},${status}\n`;
+        csvContent += `${s.kod},${cleanNama},${s.type},${cleanDaerah},${cleanParlimen},${sCurr},${sPrev},${s.activities.length},${status}\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
