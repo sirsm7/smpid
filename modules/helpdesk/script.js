@@ -2,6 +2,9 @@
  * HELPDESK & DELIMA MANAGER CONTROLLER
  * Menguruskan logik antaramuka tiket aduan, status guru, dan status murid.
  * Menggunakan sisipan pukal untuk rekod DELIMa.
+ * --- UPDATE ---
+ * 1. Fungsi toggleLokasiPindah untuk memaparkan dropdown lokasi.
+ * 2. Ciri gabungan Nama + (Lokasi) secara automatik sebelum dihantar ke pangkalan data dan Webhook Telegram.
  */
 
 import { SupportService } from '../../js/services/support.service.js';
@@ -122,11 +125,42 @@ window.muatSenaraiTiket = async function() {
 // SEKSYEN 2: PENGURUSAN STATUS ID DELIMA PUKAL
 // ==========================================
 
+// Mengawal keterlihatan dropdown Lokasi jika Kategori "Berpindah MASUK" dipilih
+window.toggleLokasiPindah = function(kategori) {
+    const catatanId = kategori === 'GURU' ? 'guruCatatan' : 'muridCatatan';
+    const containerId = kategori === 'GURU' ? 'guruCalonContainer' : 'muridCalonContainer';
+    
+    const catatanVal = document.getElementById(catatanId).value;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const isPindahMasuk = (catatanVal === 'Berpindah MASUK ke sekolah ini');
+    const lokasiGroups = container.querySelectorAll('.lokasi-pindah-group');
+
+    lokasiGroups.forEach(group => {
+        if (isPindahMasuk) {
+            group.classList.remove('hidden');
+        } else {
+            group.classList.add('hidden');
+            // Reset pilihan jika disembunyikan
+            const sel = group.querySelector('.input-lokasi');
+            if (sel) sel.value = "";
+        }
+    });
+};
+
 window.tambahBarisCalon = function(kategori) {
     const containerId = kategori === 'GURU' ? 'guruCalonContainer' : 'muridCalonContainer';
+    const catatanId = kategori === 'GURU' ? 'guruCatatan' : 'muridCatatan';
     const container = document.getElementById(containerId);
+    
     const colorTheme = kategori === 'GURU' ? 'delima' : 'cyan';
     const idPlaceholder = kategori === 'GURU' ? 'g-xxxxxxxx@moe-dl.edu.my' : 'm-xxxxxxxx@moe-dl.edu.my';
+    
+    // Semak pilihan catatan semasa
+    const catatanVal = document.getElementById(catatanId).value;
+    const isPindahMasuk = (catatanVal === 'Berpindah MASUK ke sekolah ini');
+    const hiddenClass = isPindahMasuk ? '' : 'hidden';
     
     const div = document.createElement('div');
     div.className = 'calon-row flex flex-col md:flex-row gap-3 items-end animate-slide-down';
@@ -136,6 +170,15 @@ window.tambahBarisCalon = function(kategori) {
         </div>
         <div class="flex-1 w-full">
             <input type="email" class="form-input lowercase input-id focus:border-${colorTheme}-500" required pattern=".*@moe-dl\\.edu\\.my$" title="Sila pastikan ID mengandungi @moe-dl.edu.my" placeholder="${idPlaceholder}" oninput="this.value = this.value.toLowerCase()">
+        </div>
+        <div class="flex-1 w-full lokasi-pindah-group ${hiddenClass} transition-all duration-300">
+            <label class="form-label text-amber-600">Asal Dari Mana? <span class="text-red-500">*</span></label>
+            <select class="form-input input-lokasi border-amber-300 bg-amber-50 focus:border-amber-500 text-amber-900">
+                <option value="">- Sila Pilih -</option>
+                <option value="DALAM DAERAH">DALAM DAERAH</option>
+                <option value="LUAR DAERAH">LUAR DAERAH</option>
+                <option value="LUAR NEGERI">LUAR NEGERI</option>
+            </select>
         </div>
         <button type="button" onclick="padamBarisCalon(this)" class="w-full md:w-auto p-3.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors btn-padam-calon"><i class="fas fa-trash-alt"></i></button>
     `;
@@ -173,12 +216,14 @@ window.hantarStatusDelima = async function(kategori) {
     const containerId = kategori === 'GURU' ? 'guruCalonContainer' : 'muridCalonContainer';
     const catatan = document.getElementById(catatanId).value;
 
+    const isTarikMasuk = (catatan === 'Berpindah MASUK ke sekolah ini');
     const rows = document.getElementById(containerId).querySelectorAll('.calon-row');
+    
     let senaraiCalon = [];
     let isValid = true;
 
     rows.forEach(row => {
-        const nama = row.querySelector('.input-nama').value.trim().toUpperCase();
+        let nama = row.querySelector('.input-nama').value.trim().toUpperCase();
         const id_delima = row.querySelector('.input-id').value.trim().toLowerCase();
         
         if (!nama || !id_delima) {
@@ -188,15 +233,25 @@ window.hantarStatusDelima = async function(kategori) {
         if (id_delima && !id_delima.endsWith('@moe-dl.edu.my')) {
             isValid = false;
         }
+        
+        // Logik Validasi & Manipulasi Nama berdasarkan Lokasi Asal
+        if (isTarikMasuk) {
+            const lokasi = row.querySelector('.input-lokasi').value;
+            if (!lokasi) {
+                isValid = false; // Harus buat pilihan lokasi jika berpindah masuk
+            } else {
+                // Cantumkan lokasi ke dalam string nama, cth: "ALI BIN ABU (DALAM DAERAH)"
+                nama = `${nama} (${lokasi})`;
+            }
+        }
 
         senaraiCalon.push({ nama, id_delima });
     });
 
     if (!isValid || !catatan) {
-        return Swal.fire('Tidak Lengkap/Sah', 'Sila pastikan semua ruangan nama, ID DELIMa yang sah, dan catatan diisi.', 'warning');
+        return Swal.fire('Tidak Lengkap/Sah', 'Sila pastikan semua ruangan nama, ID DELIMa yang sah, asal lokasi (jika memohon pindah masuk), dan catatan telah diisi.', 'warning');
     }
 
-    const isTarikMasuk = catatan === 'Berpindah MASUK ke sekolah ini';
     const unit_organisasi_baharu = isTarikMasuk ? kod.toLowerCase() : null;
 
     let dbPayloads = senaraiCalon.map(c => ({
@@ -204,16 +259,17 @@ window.hantarStatusDelima = async function(kategori) {
         kategori: kategori,
         status_proses: 'DALAM PROSES',
         catatan: catatan,
-        nama: c.nama,
+        nama: c.nama, // Nama sudah berserta lokasi
         id_delima: c.id_delima,
         unit_organisasi_baharu: unit_organisasi_baharu
     }));
 
+    // Webhook Payload - Akan di iterasi untuk menjana "📋 Senarai Calon:" di Deno
     const webhookPayload = {
         kod: kod,
         kategori: kategori,
         catatan: catatan,
-        senarai_calon: senaraiCalon
+        senarai_calon: senaraiCalon 
     };
 
     toggleLoadingLocal(true);
@@ -230,6 +286,7 @@ window.hantarStatusDelima = async function(kategori) {
             const formId = kategori === 'GURU' ? 'formStatusGuru' : 'formStatusMurid';
             document.getElementById(formId).reset();
             resetContainerCalon(containerId, kategori);
+            window.toggleLokasiPindah(kategori); // Pastikan disembunyikan semula
             window.muatSenaraiDelima(kategori);
         });
     } catch (e) {

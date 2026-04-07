@@ -4,6 +4,7 @@
  * Dikemas kini dengan paparan maklumat daerah untuk rujukan pantas pentadbir.
  * Disertakan pautan WhatsApp Admin DELIMa bagi pemudahan komunikasi.
  * KEMASKINI: Suntikan semakan silang kod_ou dari jadual delima_data_sekolah.
+ * KEMASKINI: Penukaran "Senarai Calon" kepada "Senarai Pemilik ID".
  */
 
 import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";
@@ -441,7 +442,7 @@ Deno.serve(async (req) => {
       }
 
       // KEMASKINI: Suntikan kod_ou secara estetik di sini
-      const text = `🔄 <b>${title}</b>\n\n🏫 Sekolah: <b>${schoolInfo.nama}</b> (<code>${kod}</code>)\n📍 Daerah: <b>${schoolInfo.daerah}</b>\n🏢 Kod OU: <code>${schoolInfo.kod_ou}</code>${waLink}\n👥 Kategori: <b>${kategori}</b>\n📝 Catatan: <i>${catatan}</i>\n\n📋 <b>Senarai Calon:</b>\n${senaraiHTML}`;
+      const text = `🔄 <b>${title}</b>\n\n🏫 Sekolah: <b>${schoolInfo.nama}</b> (<code>${kod}</code>)\n📍 Daerah: <b>${schoolInfo.daerah}</b>\n🏢 Kod OU: <code>${schoolInfo.kod_ou}</code>${waLink}\n👥 Kategori: <b>${kategori}</b>\n📝 Catatan: <i>${catatan}</i>\n\n📋 <b>Senarai Pemilik ID:</b>\n${senaraiHTML}`;
       
       await bot.api.sendMessage("-1003371951236", text, { parse_mode: "HTML", disable_web_page_preview: true }).catch(e => console.error("Ralat hantar ke group:", e));
       

@@ -170,7 +170,7 @@
                         <div>
                             <label class="form-label text-delima-700">Kategori Catatan (Pilih satu untuk semua calon di bawah)</label>
                             <div class="relative">
-                                <select id="guruCatatan" class="form-input appearance-none pr-10" required>
+                                <select id="guruCatatan" class="form-input appearance-none pr-10" required onchange="if(window.toggleLokasiPindah) window.toggleLokasiPindah('GURU')">
                                     <option value="" disabled selected>- Pilih Catatan -</option>
                                     <option value="Berpindah MASUK ke sekolah ini">Berpindah MASUK ke sekolah ini</option>
                                     <option value="Bersara">Bersara</option>
@@ -192,6 +192,16 @@
                                 <div class="flex-1 w-full">
                                     <label class="form-label text-delima-700">ID DELIMa</label>
                                     <input type="email" class="form-input lowercase input-id focus:border-delima-500" required pattern=".*@moe-dl\.edu\.my$" title="Sila pastikan ID mengandungi @moe-dl.edu.my" placeholder="g-xxxxxxxx@moe-dl.edu.my" oninput="this.value = this.value.toLowerCase()">
+                                </div>
+                                <!-- DROPDOWN DINAMIK LOKASI PINDAH -->
+                                <div class="flex-1 w-full lokasi-pindah-group hidden transition-all duration-300">
+                                    <label class="form-label text-amber-600">Asal Dari Mana? <span class="text-red-500">*</span></label>
+                                    <select class="form-input input-lokasi border-amber-300 bg-amber-50 focus:border-amber-500 text-amber-900">
+                                        <option value="">- Sila Pilih -</option>
+                                        <option value="DALAM DAERAH">DALAM DAERAH</option>
+                                        <option value="LUAR DAERAH">LUAR DAERAH</option>
+                                        <option value="LUAR NEGERI">LUAR NEGERI</option>
+                                    </select>
                                 </div>
                                 <button type="button" onclick="padamBarisCalon(this)" class="w-full md:w-auto p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors hidden btn-padam-calon"><i class="fas fa-trash-alt"></i></button>
                             </div>
@@ -253,7 +263,7 @@
                         <div>
                             <label class="form-label text-cyan-700">Kategori Catatan (Pilih satu untuk semua calon di bawah)</label>
                             <div class="relative">
-                                <select id="muridCatatan" class="form-input appearance-none pr-10 focus:border-cyan-500" required>
+                                <select id="muridCatatan" class="form-input appearance-none pr-10 focus:border-cyan-500" required onchange="if(window.toggleLokasiPindah) window.toggleLokasiPindah('MURID')">
                                     <option value="" disabled selected>- Pilih Catatan -</option>
                                     <option value="Berpindah MASUK ke sekolah ini">Berpindah MASUK ke sekolah ini</option>
                                     <option value="Tamat Persekolahan">Tamat Persekolahan</option>
@@ -275,6 +285,16 @@
                                 <div class="flex-1 w-full">
                                     <label class="form-label text-cyan-700">ID DELIMa</label>
                                     <input type="email" class="form-input lowercase input-id focus:border-cyan-500" required pattern=".*@moe-dl\.edu\.my$" title="Sila pastikan ID mengandungi @moe-dl.edu.my" placeholder="m-xxxxxxxx@moe-dl.edu.my" oninput="this.value = this.value.toLowerCase()">
+                                </div>
+                                <!-- DROPDOWN DINAMIK LOKASI PINDAH -->
+                                <div class="flex-1 w-full lokasi-pindah-group hidden transition-all duration-300">
+                                    <label class="form-label text-amber-600">Asal Dari Mana? <span class="text-red-500">*</span></label>
+                                    <select class="form-input input-lokasi border-amber-300 bg-amber-50 focus:border-amber-500 text-amber-900">
+                                        <option value="">- Sila Pilih -</option>
+                                        <option value="DALAM DAERAH">DALAM DAERAH</option>
+                                        <option value="LUAR DAERAH">LUAR DAERAH</option>
+                                        <option value="LUAR NEGERI">LUAR NEGERI</option>
+                                    </select>
                                 </div>
                                 <button type="button" onclick="padamBarisCalon(this)" class="w-full md:w-auto p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors hidden btn-padam-calon"><i class="fas fa-trash-alt"></i></button>
                             </div>
