@@ -3,6 +3,7 @@
  * Menyokong penerimaan parameter pukal bagi senarai ID guru dan murid.
  * Dikemas kini dengan paparan maklumat daerah untuk rujukan pantas pentadbir.
  * Disertakan pautan WhatsApp Admin DELIMa bagi pemudahan komunikasi.
+ * KEMASKINI: Suntikan semakan silang kod_ou dari jadual delima_data_sekolah.
  */
 
 import { Bot, InlineKeyboard, webhookCallback } from "https://deno.land/x/grammy@v1.21.1/mod.ts";
@@ -19,22 +20,32 @@ if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_KEY) {
 const bot = new Bot(BOT_TOKEN);
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Naik taraf fungsi untuk mengambil nama, daerah dan maklumat Admin DELIMa serentak
-async function getSchoolInfo(kod: string): Promise<{ nama: string; daerah: string; admin_nama: string; admin_tel: string }> {
+// Naik taraf fungsi untuk mengambil nama, daerah, maklumat Admin DELIMa, dan Kod OU serentak
+async function getSchoolInfo(kod: string): Promise<{ nama: string; daerah: string; admin_nama: string; admin_tel: string; kod_ou: string }> {
   try {
+    // 1. Carian maklumat asas sekolah
     const { data } = await supabase
       .from("smpid_sekolah_data")
       .select("nama_sekolah, daerah, nama_admin_delima, no_telefon_admin_delima")
       .eq("kod_sekolah", kod)
       .single();
+
+    // 2. Carian silang (cross-query) untuk mendapatkan Kod OU dari jadual DELIMa
+    const { data: dataOU } = await supabase
+      .from("delima_data_sekolah")
+      .select("kod_ou")
+      .eq("kod_sekolah", kod)
+      .maybeSingle();
+
     return {
       nama: data?.nama_sekolah || kod,
       daerah: data?.daerah || "TIADA MAKLUMAT",
       admin_nama: data?.nama_admin_delima || "",
-      admin_tel: data?.no_telefon_admin_delima || ""
+      admin_tel: data?.no_telefon_admin_delima || "",
+      kod_ou: dataOU?.kod_ou || "TIADA KOD OU"
     };
   } catch (e) {
-    return { nama: kod, daerah: "TIADA MAKLUMAT", admin_nama: "", admin_tel: "" };
+    return { nama: kod, daerah: "TIADA MAKLUMAT", admin_nama: "", admin_tel: "", kod_ou: "TIADA KOD OU" };
   }
 }
 
@@ -429,7 +440,8 @@ Deno.serve(async (req) => {
           waLink = `\n👨‍💻 <b>Admin DELIMa:</b> ${schoolInfo.admin_nama}\n💬 <a href="${waUrl}">WhatsApp Admin</a>`;
       }
 
-      const text = `🔄 <b>${title}</b>\n\n🏫 Sekolah: <b>${schoolInfo.nama}</b> (<code>${kod}</code>)\n📍 Daerah: <b>${schoolInfo.daerah}</b>${waLink}\n👥 Kategori: <b>${kategori}</b>\n📝 Catatan: <i>${catatan}</i>\n\n📋 <b>Senarai Calon:</b>\n${senaraiHTML}`;
+      // KEMASKINI: Suntikan kod_ou secara estetik di sini
+      const text = `🔄 <b>${title}</b>\n\n🏫 Sekolah: <b>${schoolInfo.nama}</b> (<code>${kod}</code>)\n📍 Daerah: <b>${schoolInfo.daerah}</b>\n🏢 Kod OU: <code>${schoolInfo.kod_ou}</code>${waLink}\n👥 Kategori: <b>${kategori}</b>\n📝 Catatan: <i>${catatan}</i>\n\n📋 <b>Senarai Calon:</b>\n${senaraiHTML}`;
       
       await bot.api.sendMessage("-1003371951236", text, { parse_mode: "HTML", disable_web_page_preview: true }).catch(e => console.error("Ralat hantar ke group:", e));
       
