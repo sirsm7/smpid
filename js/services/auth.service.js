@@ -3,9 +3,11 @@
  * Menguruskan log masuk, pendaftaran admin, dan reset kata laluan.
  * * UPDATE V1.1: Pembuangan hardcode M030 pada createAdmin untuk sokongan pelbagai daerah.
  * * UPDATE V1.2: Memasukkan peranan JPNMEL ke dalam pertanyaan (query) senarai admin.
+ * * UPDATE V1.3: Mengintegrasikan APP_CONFIG untuk rujukan dinamik kata laluan lalai sistem.
  */
 
 import { getDatabaseClient } from '../core/db.js';
+import { APP_CONFIG } from '../config/app.config.js';
 
 const db = getDatabaseClient();
 
@@ -96,7 +98,7 @@ export const AuthService = {
      * Reset Paksa Kata Laluan (Admin Action - Tanpa password lama)
      * Digunakan oleh SUPER ADMIN atau ADMIN untuk reset user lain.
      */
-    async forceResetUserPassword(targetUserId, newPassword) {
+    async forceResetUserPassword(targetUserId, newPassword = APP_CONFIG.DEFAULTS.PASSWORD) {
         const { error } = await db
             .from('smpid_users')
             .update({ password: newPassword })
@@ -109,7 +111,7 @@ export const AuthService = {
     /**
      * Reset kata laluan sekolah kepada default (Admin Action)
      */
-    async resetSchoolPassword(kodSekolah, defaultPass = 'ppdag@12345') {
+    async resetSchoolPassword(kodSekolah, defaultPass = APP_CONFIG.DEFAULTS.PASSWORD) {
         const { error } = await db
             .from('smpid_users')
             .update({ password: defaultPass })

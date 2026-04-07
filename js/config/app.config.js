@@ -1,44 +1,63 @@
 /**
- * SMPID CONFIGURATION MODULE
- * Pusat kawalan untuk pembolehubah persekitaran dan tetapan global.
- * UPDATE V2.0: Menambah pemetaan kod PPD (PPD_MAPPING) bagi menyokong akses pelbagai daerah.
+ * @file app.config.js
+ * @description Core application configuration constants and default values.
+ * @module AppConfig
  */
 
 export const APP_CONFIG = {
-    // Supabase Credentials
-    SUPABASE: {
-        URL: 'https://app.tech4ag.my',
-        // Kunci awam (anon key) dari persekitaran produksi
-        KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY'
-    },
-
-    // External Services (Telegram Bot & Edge Functions)
-    API: {
-        DENO_URL: 'https://smpid.ppdag.deno.net',
-        // Integrasi Google Apps Script untuk Email Blaster
-        GAS_EMAIL_URL: 'https://script.google.com/macros/s/AKfycbxGWS7aa1pH8A_8KZjhqz9wCv8xcOsTQekc_H3zriwNWYl4P1N-BlWlPQagPYEwS4HX/exec',
-        // Integrasi Google Apps Script untuk Upload Fail Bukti
-        GAS_UPLOAD_URL: 'https://script.google.com/macros/s/AKfycbw1gV5IniPgCY69RafvNTKe6ZOF2eP9twIQT1Fidj84wmCPD4d-iUyjkVQDsDap6aTP/exec'
-    },
-
-    // Session Keys (Kekunci storan lokal untuk konsistensi data)
-    SESSION: {
-        USER_KOD: 'smpid_user_kod',
-        USER_ROLE: 'smpid_user_role',
-        USER_ID: 'smpid_user_id',
-        AUTH_FLAG: 'smpid_auth',
-        ACTIVE_SCHOOL: 'smpid_active_school_code'
-    },
-
-    // Nilai Lalai Sistem
+    APP_NAME: 'Sistem Maklumat Pendidikan Islam Daerah (SMPID)',
+    APP_VERSION: '1.0.0',
+    
+    // Default values for system initializations, user creation, and resets
     DEFAULTS: {
-        PASSWORD: 'ppdag@12345'
+        // Kemaskini: Kata laluan lalai baharu untuk sistem
+        PASSWORD: 'jpnmel@12345', 
+        AVATAR_URL: 'assets/img/default-avatar.png',
+        ROLE: 'user',
+        PPD: 'Alor Gajah',
+        STATUS: 'active'
     },
 
-    // Pemetaan Kod PPD Daerah Negeri Melaka
-    PPD_MAPPING: {
-        'M010': 'JASIN',
-        'M020': 'MELAKA TENGAH',
-        'M030': 'ALOR GAJAH'
+    // API & Database Configurations (Table definitions for Supabase)
+    DB_TABLES: {
+        USERS: 'smpid_users',
+        SCHOOLS: 'smpid_schools',
+        ACHIEVEMENTS: 'smpid_achievements',
+        GALLERY: 'smpid_gallery',
+        BOOKINGS: 'smpid_bookings',
+        PENATARAN: 'smpid_penataran',
+        SETTINGS: 'smpid_settings'
+    },
+
+    // Pagination defaults for data tables and lists
+    PAGINATION: {
+        ITEMS_PER_PAGE: 10,
+        MAX_PAGES_SHOWN: 5
+    },
+
+    // File upload limits and security parameters
+    UPLOADS: {
+        MAX_FILE_SIZE_MB: 5,
+        ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/webp'],
+        ALLOWED_DOC_TYPES: [
+            'application/pdf', 
+            'application/msword', 
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ]
+    },
+    
+    // UI/UX Notification settings (SweetAlert defaults)
+    ALERTS: {
+        TIMER_SHORT: 1500,
+        TIMER_NORMAL: 3000,
+        TIMER_LONG: 5000
     }
 };
+
+// Deep freeze the configuration object to prevent accidental runtime mutations
+Object.freeze(APP_CONFIG);
+Object.freeze(APP_CONFIG.DEFAULTS);
+Object.freeze(APP_CONFIG.DB_TABLES);
+Object.freeze(APP_CONFIG.PAGINATION);
+Object.freeze(APP_CONFIG.UPLOADS);
+Object.freeze(APP_CONFIG.ALERTS);

@@ -5,6 +5,8 @@
  * --- UPDATE V2.5 (JPNMEL ROLE SUPPORT) ---
  * Logic: Membersihkan manipulasi DOM tab import (dipindah ke main.js).
  * Logic: Menyuntik peranan JPNMEL ke dalam dropdown dan lencana jadual pengguna.
+ * --- UPDATE V2.6 (DYNAMIC DEFAULT PASSWORD) ---
+ * Logic: Melenyapkan teks statik 'ppdag@12345' dan menggantikannya dengan pembolehubah APP_CONFIG.
  */
 
 import { AuthService } from '../services/auth.service.js';
@@ -248,6 +250,7 @@ window.resetUserPass = async function(targetId, targetEmail, targetRole) {
         `,
         input: 'text',
         inputPlaceholder: 'Masukkan Kata Laluan Baharu...',
+        inputValue: APP_CONFIG.DEFAULTS.PASSWORD, // Pra-isi dengan kata laluan lalai sistem
         showCancelButton: true,
         confirmButtonText: 'SAHKAN RESET',
         confirmButtonColor: '#4f46e5',
@@ -346,9 +349,10 @@ window.padamAdmin = async function(id, email) {
  * Tetapkan semula password sekolah ke default (Admin / Super Admin).
  */
 window.resetPasswordSekolah = async function(kod) {
+    const defaultPassword = APP_CONFIG.DEFAULTS.PASSWORD;
     Swal.fire({ 
         title: 'Reset Password Sekolah?', 
-        text: `Tetapkan semula kata laluan ${kod} kepada default (ppdag@12345)?`, 
+        text: `Tetapkan semula kata laluan ${kod} kepada lalai sistem (${defaultPassword})?`, 
         icon: 'question', 
         showCancelButton: true,
         confirmButtonColor: '#f59e0b',
@@ -358,12 +362,12 @@ window.resetPasswordSekolah = async function(kod) {
         if(r.isConfirmed) {
             toggleLoading(true);
             try {
-                await AuthService.resetSchoolPassword(kod);
+                await AuthService.resetSchoolPassword(kod, defaultPassword);
                 toggleLoading(false);
                 Swal.fire({
                     icon: 'success',
                     title: 'Selesai',
-                    text: `Password ${kod} telah dikembalikan kepada asal.`,
+                    text: `Kata laluan ${kod} telah dikembalikan kepada lalai (${defaultPassword}).`,
                     confirmButtonColor: '#f59e0b'
                 });
             } catch (e) { 
@@ -543,6 +547,9 @@ window.mulaImportCSV = async function() {
                 chunks.push(validData.slice(i, i + CHUNK_SIZE));
             }
 
+            // Gunakan kata laluan dari konfigurasi pusat
+            const defaultPassword = APP_CONFIG.DEFAULTS.PASSWORD;
+
             for (let i = 0; i < chunks.length; i++) {
                 const chunk = chunks[i];
                 logMsg(`Mengeksport Transaksi Pukal ${i+1} daripada ${chunks.length} (${chunk.length} rekod)...`, 'info');
@@ -577,11 +584,11 @@ window.mulaImportCSV = async function() {
                         newUsers.push({
                             id: crypto.randomUUID(),
                             email: `${kod.toLowerCase()}@moe.gov.my`,
-                            password: APP_CONFIG.DEFAULTS.PASSWORD || 'ppdag@12345',
+                            password: defaultPassword,
                             role: 'SEKOLAH',
                             kod_sekolah: kod
                         });
-                        existingKods.add(kod); // Tambah ke memori tempatan untuk mengelakkan duplikasi jika ada kod sama dalam CSV
+                        existingKods.add(kod); // Tambah ke memori tempatan untuk mengelakkan duplikasi
                     }
                 });
 
