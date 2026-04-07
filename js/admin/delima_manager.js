@@ -5,6 +5,9 @@
  * --- UPDATE V2.1 (RBAC DAERAH) ---
  * 1. Menyuntik tapisan global supaya data selari dengan daerah admin (PPD_MAPPING).
  * 2. Mengurus pemaparan dinamik entiti PPD berdasarkan APP_CONFIG.
+ * --- UPDATE V2.2 (UI FIX) ---
+ * 1. Menggantikan .truncate dengan .wrap-safe untuk memastikan nama sekolah tidak terpotong.
+ * 2. Menambah .break-all pada emel dan Kod OU bagi mengelakkan jadual melimpah.
  */
 
 import { DelimaService } from '../../modules/helpdesk/delima.service.js';
@@ -66,11 +69,11 @@ window.loadSenaraiDelimaAdmin = async function(kategori) {
             const colorTheme = kategori === 'GURU' ? 'blue' : 'cyan';
             
             const destinasiBadge = isTarikMasuk 
-                ? `<br><span class="text-${colorTheme}-700 font-bold mt-2 block text-xs bg-${colorTheme}-50 p-2.5 rounded-lg border border-${colorTheme}-100 shadow-sm"><i class="fas fa-download mr-1.5 text-${colorTheme}-500"></i> Mohon Tarik Masuk Ke:<br><span class="text-[10px] text-slate-500 font-mono mt-1 block tracking-wider bg-white px-2 py-1 rounded inline-block">OU: ${item.unit_organisasi_baharu || item.kod_sekolah}</span></span>` 
+                ? `<br><span class="text-${colorTheme}-700 font-bold mt-2 block text-xs bg-${colorTheme}-50 p-2.5 rounded-lg border border-${colorTheme}-100 shadow-sm wrap-safe"><i class="fas fa-download mr-1.5 text-${colorTheme}-500"></i> Mohon Tarik Masuk Ke:<br><span class="text-[10px] text-slate-500 font-mono mt-1 block tracking-wider bg-white px-2 py-1 rounded inline-block wrap-safe break-all">OU: ${item.unit_organisasi_baharu || item.kod_sekolah}</span></span>` 
                 : '';
                 
             detailsHtml = `
-                <div class="font-bold text-slate-700 text-xs mb-1 uppercase bg-slate-100 inline-block px-2.5 py-1 rounded-md border border-slate-200 shadow-sm">${item.catatan}</div>
+                <div class="font-bold text-slate-700 text-xs mb-1 uppercase bg-slate-100 inline-block px-2.5 py-1 rounded-md border border-slate-200 shadow-sm wrap-safe">${item.catatan}</div>
                 ${destinasiBadge}
             `;
 
@@ -78,12 +81,12 @@ window.loadSenaraiDelimaAdmin = async function(kategori) {
             <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-0 group">
                 <td class="px-6 py-4 w-12 text-center font-mono font-bold text-slate-400 text-xs align-top pt-6">${index + 1}</td>
                 <td class="px-6 py-4 w-2/5 align-top pt-6">
-                    <div class="flex items-center gap-2 mb-1.5">
-                        <span class="bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded font-bold tracking-widest shadow-sm">${item.kod_sekolah}</span>
-                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate max-w-[200px]" title="${schoolName}">${schoolName}</span>
+                    <div class="flex items-start gap-2 mb-1.5">
+                        <span class="bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded font-bold tracking-widest shadow-sm shrink-0 mt-0.5">${item.kod_sekolah}</span>
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest wrap-safe break-words leading-snug" title="${schoolName}">${schoolName}</span>
                     </div>
-                    <div class="font-bold text-slate-800 text-sm leading-snug mb-2 uppercase break-words">${item.nama}</div>
-                    <div class="text-[10px] text-slate-500 font-mono font-bold bg-white px-2 py-1 rounded-md inline-block border border-slate-200 shadow-sm">${item.id_delima}</div>
+                    <div class="font-bold text-slate-800 text-sm leading-snug mb-2 uppercase wrap-safe break-words">${item.nama}</div>
+                    <div class="text-[10px] text-slate-500 font-mono font-bold bg-white px-2 py-1 rounded-md inline-block border border-slate-200 shadow-sm wrap-safe break-all">${item.id_delima}</div>
                     <div class="text-[9px] text-slate-400 mt-2 font-semibold tracking-wider"><i class="far fa-calendar-alt mr-1"></i> Dihantar: ${new Date(item.created_at).toLocaleDateString('ms-MY')}</div>
                 </td>
                 <td class="px-6 py-4 w-2/5 align-top pt-6">${detailsHtml}</td>
