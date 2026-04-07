@@ -286,7 +286,7 @@ window.loadTiketAdmin = async function() {
                 actionArea = `
                 <div class="bg-slate-50 p-5 border-t border-slate-100">
                     <label class="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-3"><i class="fas fa-reply text-indigo-400 mr-2"></i>Tindakan Maklum Balas</label>
-                    <textarea id="reply-${t.id}" class="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none mb-3 transition-shadow placeholder-slate-400" rows="2" placeholder="Taip cadangan penyelesaian kepada sekolah di sini..."></textarea>
+                    <textarea id="reply-${t.id}" class="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none mb-3 transition-shadow placeholder-slate-400 wrap-safe" rows="2" placeholder="Taip cadangan penyelesaian kepada sekolah di sini..."></textarea>
                     <div class="flex justify-end gap-3">
                         <button onclick="padamTiket(${t.id})" class="px-4 py-2 rounded-xl border-2 border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200 text-xs font-bold transition flex items-center gap-2"><i class="fas fa-trash-alt"></i> Padam</button>
                         <button onclick="submitBalasanAdmin(${t.id})" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-md shadow-indigo-500/30 flex items-center gap-2"><i class="fas fa-paper-plane"></i> Hantar & Tutup Tiket</button>
@@ -297,7 +297,7 @@ window.loadTiketAdmin = async function() {
                 <div class="bg-emerald-50/50 p-5 border-t border-emerald-100 flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div class="flex-1">
                         <div class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fas fa-check-double text-emerald-500"></i> Respon Dihantar:</div>
-                        <p class="text-sm text-slate-700 font-medium leading-relaxed bg-white/60 p-3 rounded-lg border border-emerald-100/50">${t.balasan_admin}</p>
+                        <p class="text-sm text-slate-700 font-medium leading-relaxed bg-white/60 p-3 rounded-lg border border-emerald-100/50 wrap-safe whitespace-pre-wrap">${t.balasan_admin}</p>
                     </div>
                     <button onclick="padamTiket(${t.id})" class="shrink-0 p-2.5 rounded-xl border-2 border-transparent text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-500 transition mt-1 sm:mt-0" title="Padam Tiket"><i class="fas fa-trash-alt"></i></button>
                 </div>`;
@@ -314,10 +314,10 @@ window.loadTiketAdmin = async function() {
             <div class="bg-white rounded-2xl shadow-sm overflow-hidden ${borderClass} mb-5 transition-all duration-300">
                 <!-- Header Segment -->
                 <div class="p-5 bg-slate-50/70 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div class="flex flex-col">
+                    <div class="flex flex-col w-full md:w-auto overflow-hidden">
                         <div class="flex items-center gap-3 mb-2">
-                            <span class="bg-slate-800 text-white text-[10px] px-2.5 py-1 rounded-lg font-bold tracking-widest shadow-sm">${t.kod_sekolah}</span>
-                            <span class="text-sm font-bold text-slate-800 truncate max-w-[200px] sm:max-w-xs md:max-w-md" title="${schoolName}">${schoolName}</span>
+                            <span class="bg-slate-800 text-white text-[10px] px-2.5 py-1 rounded-lg font-bold tracking-widest shadow-sm shrink-0">${t.kod_sekolah}</span>
+                            <span class="text-sm font-bold text-slate-800 wrap-safe break-words leading-snug">${schoolName}</span>
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="${roleColor} text-[9px] px-2.5 py-1 rounded-lg font-bold uppercase tracking-widest flex items-center gap-1.5 border shadow-sm">
@@ -326,14 +326,14 @@ window.loadTiketAdmin = async function() {
                             <span class="text-[10px] text-slate-400 font-bold flex items-center gap-1.5"><i class="far fa-calendar-alt"></i> ${dateStr}</span>
                         </div>
                     </div>
-                    <div class="shrink-0 self-start md:self-auto">
+                    <div class="shrink-0 self-start md:self-auto mt-2 md:mt-0">
                         ${statusBadge}
                     </div>
                 </div>
                 
                 <!-- Body Segment -->
                 <div class="p-6">
-                    <h4 class="font-black text-slate-800 text-base md:text-lg mb-4 leading-tight uppercase tracking-tight">${t.tajuk}</h4>
+                    <h4 class="font-black text-slate-800 text-base md:text-lg mb-4 leading-tight uppercase tracking-tight wrap-safe break-words">${t.tajuk}</h4>
                     <div class="bg-amber-50/40 p-4 md:p-5 rounded-2xl border border-amber-100/60 text-slate-700 text-sm leading-relaxed relative">
                         <i class="fas fa-quote-left absolute top-4 left-4 text-amber-200/50 text-3xl"></i>
                         <div class="relative z-10 pl-8 wrap-safe whitespace-pre-wrap">${t.butiran_masalah}</div>
