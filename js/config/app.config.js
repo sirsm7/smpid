@@ -6,11 +6,39 @@
 
 export const APP_CONFIG = {
     APP_NAME: 'Sistem Maklumat Pendidikan Islam Daerah (SMPID)',
-    APP_VERSION: '1.0.0',
+    APP_VERSION: '2.5.0',
     
+    // Konfigurasi Pangkalan Data Supabase (Data dirujuk dari utils.js sebagai fallback)
+    SUPABASE: {
+        URL: typeof window !== 'undefined' && window.SUPABASE_URL ? window.SUPABASE_URL : 'https://app.tech4ag.my',
+        KEY: typeof window !== 'undefined' && window.SUPABASE_KEY ? window.SUPABASE_KEY : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY'
+    },
+
+    // Konfigurasi API & Endpoint (Deno Bot & GAS Microservices)
+    API: {
+        DENO_URL: typeof window !== 'undefined' && window.DENO_API_URL ? window.DENO_API_URL : 'https://smpid.ppdag.deno.net',
+        GAS_UPLOAD_URL: 'https://script.google.com/macros/s/AKfycbycTjZ2X69Y5k90L_n4O_j4n8kY9r8H3X1N_h8V2B/exec', // Gantikan dengan URL GAS Upload yang sah jika perlu
+        GAS_EMAIL_URL: 'https://script.google.com/macros/s/AKfycbycTjZ2X69Y5k90L_n4O_j4n8kY9r8H3X1N_h8V2B/exec'   // Gantikan dengan URL GAS Email yang sah jika perlu
+    },
+
+    // Kunci Sesi LocalStorage (Untuk Integriti Auth)
+    SESSION: {
+        AUTH_FLAG: 'smpid_auth',
+        USER_ROLE: 'smpid_user_role',
+        USER_KOD: 'smpid_user_kod',
+        USER_ID: 'smpid_user_id',
+        ACTIVE_SCHOOL: 'smpid_active_school'
+    },
+
+    // Pemetaan Daerah (Untuk RBAC & Filter Sistem)
+    PPD_MAPPING: {
+        'M010': 'JASIN',
+        'M020': 'MELAKA TENGAH',
+        'M030': 'ALOR GAJAH'
+    },
+
     // Default values for system initializations, user creation, and resets
     DEFAULTS: {
-        // Kemaskini: Kata laluan lalai baharu untuk sistem
         PASSWORD: 'jpnmel@12345', 
         AVATAR_URL: 'assets/img/default-avatar.png',
         ROLE: 'user',
@@ -56,6 +84,10 @@ export const APP_CONFIG = {
 
 // Deep freeze the configuration object to prevent accidental runtime mutations
 Object.freeze(APP_CONFIG);
+Object.freeze(APP_CONFIG.SUPABASE);
+Object.freeze(APP_CONFIG.API);
+Object.freeze(APP_CONFIG.SESSION);
+Object.freeze(APP_CONFIG.PPD_MAPPING);
 Object.freeze(APP_CONFIG.DEFAULTS);
 Object.freeze(APP_CONFIG.DB_TABLES);
 Object.freeze(APP_CONFIG.PAGINATION);
