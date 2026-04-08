@@ -2,6 +2,7 @@
  * PENATARAN DIGITAL CONTROLLER (V2.0 - AUTO-SAVE EDITION)
  * Logik pemarkahan dinamik, janaan UI rubrik, carta radar, dan enjin auto-simpan.
  * KEMASKINI: Input Bil. Guru dan Bil. Murid kini disimpan terus ke jadual Penataran.
+ * KEMASKINI: Logik Daerah Dinamik disuntik pada Initialization.
  */
 
 import { PenataranService } from '../../js/services/penataran.service.js';
@@ -47,10 +48,29 @@ async function initPenataran() {
         // 1. Muat Data Asas Sekolah (Auto-fill)
         const schoolData = await SchoolService.getByCode(kodSekolah);
         if (schoolData) {
+            
+            // --- LOGIK DAERAH DINAMIK ---
+            let namaDaerah = schoolData.daerah ? schoolData.daerah.toUpperCase() : '';
+            // Rujukan sandaran (fallback) sekiranya ini adalah log masuk PPD
+            if (!namaDaerah && APP_CONFIG.PPD_MAPPING[kodSekolah]) {
+                namaDaerah = APP_CONFIG.PPD_MAPPING[kodSekolah].toUpperCase();
+            }
+            if (!namaDaerah) namaDaerah = "TIADA REKOD";
+
+            const headerDaerahEl = document.getElementById('headerDaerah');
+            if (headerDaerahEl) headerDaerahEl.innerText = `PPD ${namaDaerah}`;
+
+            const pkgDisplayEl = document.getElementById('pkgDisplay');
+            if (pkgDisplayEl) pkgDisplayEl.value = `PPD ${namaDaerah}`;
+
+            const pdfHeaderDaerahEl = document.getElementById('pdf-header-daerah');
+            if (pdfHeaderDaerahEl) pdfHeaderDaerahEl.innerText = `PEJABAT PENDIDIKAN DAERAH ${namaDaerah}`;
+            // -----------------------------
+
             document.getElementById('namaSekolah').value = schoolData.nama_sekolah || '';
             document.getElementById('kodSekolah').value = schoolData.kod_sekolah || '';
-            document.getElementById('bilGuru').value = schoolData.bil_guru || ''; // Fallback data lama jika masih ada
-            document.getElementById('bilMurid').value = schoolData.bil_murid || ''; // Fallback data lama jika masih ada
+            document.getElementById('bilGuru').value = schoolData.bil_guru || ''; 
+            document.getElementById('bilMurid').value = schoolData.bil_murid || ''; 
             document.getElementById('pgbNama').value = schoolData.nama_pgb || '';
             document.getElementById('pgbId').value = schoolData.emel_delima_pgb || '';
             document.getElementById('pgbTel').value = schoolData.no_telefon_pgb || '';

@@ -94,7 +94,7 @@
                 </div>
                 <div>
                     <h1 class="text-base md:text-xl font-black uppercase tracking-tight leading-none">Penataran Sekolah Digital</h1>
-                    <p class="text-[10px] font-bold text-blue-300 uppercase tracking-widest mt-1">PPD Alor Gajah</p>
+                    <p id="headerDaerah" class="text-[10px] font-bold text-blue-300 uppercase tracking-widest mt-1">PPD ALOR GAJAH</p>
                 </div>
             </div>
             <button onclick="kembaliKePortal()" class="bg-blue-800 hover:bg-blue-700 border border-blue-700 px-4 py-2 rounded-lg text-xs font-bold transition shadow flex items-center gap-2">
@@ -162,7 +162,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
                             <div><label class="label-text">Nama Sekolah</label><input type="text" id="namaSekolah" class="input-field" readonly></div>
                             <div><label class="label-text">Kod Sekolah</label><input type="text" id="kodSekolah" class="input-field font-mono" readonly></div>
-                            <div><label class="label-text">Daerah / PKG</label><input type="text" id="pkgDisplay" class="input-field" readonly value="PPD ALOR GAJAH"></div>
+                            <div><label class="label-text">Daerah / PPD</label><input type="text" id="pkgDisplay" class="input-field" readonly></div>
                             
                             <div class="grid grid-cols-2 gap-3">
                                 <div><label class="label-text">Bilangan Guru</label><input type="number" id="bilGuru" class="input-field bg-white focus:ring-2 focus:ring-blue-500/20" required placeholder="0"></div>
@@ -336,7 +336,7 @@
     <div id="pdf-template">
         <div class="pdf-header">
             <img src="../../icoppdag.png" style="height: 60px; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto;">
-            <h3 style="font-size: 14px; font-weight: bold; margin: 0; padding: 0;">PEJABAT PENDIDIKAN DAERAH ALOR GAJAH</h3>
+            <h3 id="pdf-header-daerah" style="font-size: 14px; font-weight: bold; margin: 0; padding: 0;">PEJABAT PENDIDIKAN DAERAH</h3>
             <h2 style="font-size: 18px; font-weight: bold; margin: 5px 0 0 0; padding: 0;">LAPORAN PENATARAN SEKOLAH DIGITAL</h2>
         </div>
         <div style="margin-bottom: 20px; font-size: 14px;">
