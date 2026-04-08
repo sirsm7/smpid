@@ -128,6 +128,8 @@ export async function uploadFileToDrive(file) {
                 // Menghantar ke Google Apps Script
                 const response = await fetch(APP_CONFIG.API.GAS_UPLOAD_URL, {
                     method: 'POST',
+                    mode: 'cors',
+                    redirect: 'follow',
                     // Menggunakan text/plain untuk memintas halangan CORS (Preflight OPTIONS)
                     headers: {
                         'Content-Type': 'text/plain;charset=utf-8',

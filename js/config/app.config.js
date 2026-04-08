@@ -17,7 +17,7 @@ export const APP_CONFIG = {
     // Konfigurasi API & Endpoint (Deno Bot & GAS Microservices)
     API: {
         DENO_URL: typeof window !== 'undefined' && window.DENO_API_URL ? window.DENO_API_URL : 'https://smpid.ppdag.deno.net',
-        GAS_UPLOAD_URL: 'https://script.google.com/macros/s/AKfycbycTjZ2X69Y5k90L_n4O_j4n8kY9r8H3X1N_h8V2B/exec', // Gantikan dengan URL GAS Upload yang sah jika perlu
+        GAS_UPLOAD_URL: 'https://script.google.com/macros/s/AKfycbyjmVnKMNa5KSSCdIWG00dmgrYFBsfRtkswlBXTZUL0cKJ8h15V3X71EsqGd4B1etdg/exec', // Gantikan dengan URL GAS Upload yang sah jika perlu
         GAS_EMAIL_URL: 'https://script.google.com/macros/s/AKfycbycTjZ2X69Y5k90L_n4O_j4n8kY9r8H3X1N_h8V2B/exec'   // Gantikan dengan URL GAS Email yang sah jika perlu
     },
 
