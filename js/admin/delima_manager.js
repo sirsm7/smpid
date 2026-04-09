@@ -1,153 +1,275 @@
+import { supabase } from '../core/db.js';
+
+// Menyimpan data mentah untuk tapisan silang (client-side cache) bagi melancarkan prestasi UI
+let rawDataGuru = [];
+let rawDataMurid = [];
+let mapKodOuGlobal = {};
+
 /**
- * ADMIN MODULE: DELIMA MANAGER
- * Menguruskan paparan dan tindakan admin terhadap rekod status ID DELIMa sekolah.
- * Fungsi ini dipanggil dari panel 'Pusat Sokongan Terkumpul' (admin.html).
- * --- UPDATE V2.1 (RBAC DAERAH) ---
- * 1. Menyuntik tapisan global supaya data selari dengan daerah admin (PPD_MAPPING).
- * 2. Mengurus pemaparan dinamik entiti PPD berdasarkan APP_CONFIG.
- * --- UPDATE V2.2 (UI FIX) ---
- * 1. Menggantikan .truncate dengan .wrap-safe untuk memastikan nama sekolah tidak terpotong.
- * 2. Menambah .break-all pada emel dan Kod OU bagi mengelakkan jadual melimpah.
+ * Memuatkan senarai permohonan DELIMa dari pangkalan data dan 
+ * melaksanakan integrasi bersama jadual delima_data_sekolah untuk kod_ou
+ * @param {string} kategori - 'GURU' atau 'MURID'
+ * @param {boolean} forceRefresh - Paksa tarik data baharu dari Supabase
  */
-
-import { DelimaService } from '../../modules/helpdesk/delima.service.js';
-import { toggleLoading } from '../core/helpers.js';
-import { APP_CONFIG } from '../config/app.config.js';
-
-window.loadSenaraiDelimaAdmin = async function(kategori) {
-    const tbodyId = kategori === 'GURU' ? 'tbodyAdminGuru' : 'tbodyAdminMurid';
-    const filterId = kategori === 'GURU' ? 'filterDelimaGuruAdmin' : 'filterDelimaMuridAdmin';
-    const tbody = document.getElementById(tbodyId);
-    const filter = document.getElementById(filterId).value;
-
-    if (!tbody) return;
-
-    tbody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-400 font-medium animate-pulse"><i class="fas fa-circle-notch fa-spin text-xl mb-3 block text-slate-300"></i>Memuatkan senarai...</td></tr>`;
-
+window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
     try {
-        let dataRaw = await DelimaService.getAll(kategori, filter);
+        const tbodyId = kategori === 'GURU' ? 'tbodyAdminGuru' : 'tbodyAdminMurid';
+        const tbody = document.getElementById(tbodyId);
+        
+        if (!tbody) return;
 
-        // --- RBAC FILTERING ---
-        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
-        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+        // Dapatkan elemen filter UI
+        const statusFilterId = kategori === 'GURU' ? 'filterDelimaGuruAdmin' : 'filterDelimaMuridAdmin';
+        const catatanFilterId = kategori === 'GURU' ? 'filterCatatanGuruAdmin' : 'filterCatatanMuridAdmin';
+        
+        const statusFilter = document.getElementById(statusFilterId)?.value || 'ALL';
+        const catatanFilter = document.getElementById(catatanFilterId)?.value || 'ALL';
 
-        if (['ADMIN', 'PPD_UNIT'].includes(userRole) && window.globalDashboardData) {
-            const validSchoolCodes = window.globalDashboardData.map(s => s.kod_sekolah);
-            validSchoolCodes.push(userKod); // Benarkan rekod PPD mereka sendiri jika wujud
-            dataRaw = dataRaw.filter(item => validSchoolCodes.includes(item.kod_sekolah));
+        let dataToProcess = kategori === 'GURU' ? rawDataGuru : rawDataMurid;
+
+        // Tarik data baharu dari pangkalan data jika diarahkan
+        if (forceRefresh || dataToProcess.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium"><i class="fas fa-circle-notch fa-spin mr-2"></i>Mengumpul dan menyegerak pangkalan data ${kategori}...</td></tr>`;
+
+            const { data: delimaData, error: delimaError } = await supabase
+                .from('helpdesk_delima')
+                .select('*')
+                .eq('kategori', kategori)
+                .order('created_at', { ascending: false });
+
+            if (delimaError) throw delimaError;
+
+            // Simpan dalam state aplikasi
+            if (kategori === 'GURU') {
+                rawDataGuru = delimaData || [];
+                dataToProcess = rawDataGuru;
+            } else {
+                rawDataMurid = delimaData || [];
+                dataToProcess = rawDataMurid;
+            }
+
+            // CROSS-QUERY: Tarik kod_ou dari delima_data_sekolah
+            const unikKodSekolah = [...new Set(dataToProcess.map(item => item.kod_sekolah))];
+            
+            if (unikKodSekolah.length > 0) {
+                const { data: sekolahData, error: sekolahError } = await supabase
+                    .from('delima_data_sekolah')
+                    .select('kod_sekolah, kod_ou')
+                    .in('kod_sekolah', unikKodSekolah);
+                
+                if (!sekolahError && sekolahData) {
+                    sekolahData.forEach(sek => {
+                        mapKodOuGlobal[sek.kod_sekolah] = sek.kod_ou;
+                    });
+                }
+            }
         }
 
-        if (dataRaw.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-400 italic bg-slate-50/50">Tiada rekod ditemui untuk saringan ini.</td></tr>`;
+        // Laksanakan Tapisan (Client-side Filtering)
+        let filteredData = dataToProcess;
+
+        // 1. Tapis mengikut Status (DALAM PROSES / SELESAI / ALL)
+        if (statusFilter !== 'ALL') {
+            filteredData = filteredData.filter(item => item.status === statusFilter);
+        }
+
+        // 2. Tapis mengikut Catatan Khusus
+        if (catatanFilter !== 'ALL') {
+            filteredData = filteredData.filter(item => {
+                if (!item.catatan) return false;
+                // Menggunakan 'includes' untuk padanan separa kerana pengguna mungkin menambah teks lain dalam catatan
+                return item.catatan.includes(catatanFilter);
+            });
+        }
+
+        // Proses Paparan Antaramuka (UI Render)
+        if (!filteredData || filteredData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium"><i class="fas fa-inbox text-3xl mb-3 opacity-20 block"></i>Tiada rekod permohonan padan dengan tapisan ini.</td></tr>`;
             return;
         }
 
-        const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
-
-        tbody.innerHTML = dataRaw.map((item, index) => {
-            // Memadankan kod sekolah dengan nama penuh dari memori Dashboard
-            let schoolName = item.kod_sekolah;
-            if (senaraiKodPPD.includes(item.kod_sekolah)) {
-                schoolName = APP_CONFIG.PPD_MAPPING[item.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[item.kod_sekolah]}` : 'PEJABAT PENDIDIKAN DAERAH';
-            } else if (window.globalDashboardData) {
-                const schoolMatch = window.globalDashboardData.find(s => s.kod_sekolah === item.kod_sekolah);
-                if (schoolMatch) schoolName = schoolMatch.nama_sekolah;
-            }
-
-            // Penetapan Butang Status & Aksi
-            let actionArea = '';
-            if (item.status_proses === 'SELESAI') {
-                actionArea = `<span class="inline-flex items-center justify-center bg-green-100 text-green-700 text-[10px] px-3 py-1.5 rounded-full font-black border border-green-200 shadow-sm w-full uppercase tracking-widest"><i class="fas fa-check mr-1.5"></i> SELESAI</span>
-                              <button onclick="hapusDelimaAdmin(${item.id}, '${kategori}')" class="mt-2 text-[10px] font-bold text-slate-400 hover:text-red-500 transition uppercase tracking-wider"><i class="fas fa-trash-alt"></i> Padam</button>`;
-            } else {
-                actionArea = `<button onclick="kemaskiniStatusDelimaAdmin(${item.id}, 'SELESAI', '${kategori}')" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black px-3 py-2 rounded-lg shadow-md transition-all flex items-center justify-center gap-1.5 uppercase tracking-widest transform active:scale-95"><i class="fas fa-check-double"></i> Tanda Selesai</button>`;
-            }
-
-            // Penetapan Visual Susun Atur Destinasi Guru vs Murid
-            let detailsHtml = '';
-            const isTarikMasuk = item.catatan === 'Berpindah MASUK ke sekolah ini';
-            const colorTheme = kategori === 'GURU' ? 'blue' : 'cyan';
+        let html = '';
+        filteredData.forEach((item, index) => {
+            const dateObj = new Date(item.created_at);
+            const formatTarikh = dateObj.toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric' });
+            const formatMasa = dateObj.toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' });
             
-            const destinasiBadge = isTarikMasuk 
-                ? `<br><span class="text-${colorTheme}-700 font-bold mt-2 block text-xs bg-${colorTheme}-50 p-2.5 rounded-lg border border-${colorTheme}-100 shadow-sm wrap-safe"><i class="fas fa-download mr-1.5 text-${colorTheme}-500"></i> Mohon Tarik Masuk Ke:<br><span class="text-[10px] text-slate-500 font-mono mt-1 block tracking-wider bg-white px-2 py-1 rounded inline-block wrap-safe break-all">OU: ${item.unit_organisasi_baharu || item.kod_sekolah}</span></span>` 
-                : '';
-                
-            detailsHtml = `
-                <div class="font-bold text-slate-700 text-xs mb-1 uppercase bg-slate-100 inline-block px-2.5 py-1 rounded-md border border-slate-200 shadow-sm wrap-safe">${item.catatan}</div>
-                ${destinasiBadge}
-            `;
+            // Gabungan Paparan Kod Sekolah & Kod OU
+            const kodOu = mapKodOuGlobal[item.kod_sekolah] || 'Tiada Kod OU';
+            const paparKodSekolahGabungan = `${item.kod_sekolah} (${kodOu})`;
 
-            return `
-            <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100 last:border-0 group">
-                <td class="px-6 py-4 w-12 text-center font-mono font-bold text-slate-400 text-xs align-top pt-6">${index + 1}</td>
-                <td class="px-6 py-4 w-2/5 align-top pt-6">
-                    <div class="flex items-start gap-2 mb-1.5">
-                        <span class="bg-slate-800 text-white text-[9px] px-2 py-0.5 rounded font-bold tracking-widest shadow-sm shrink-0 mt-0.5">${item.kod_sekolah}</span>
-                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest wrap-safe break-words leading-snug" title="${schoolName}">${schoolName}</span>
-                    </div>
-                    <div class="font-bold text-slate-800 text-sm leading-snug mb-2 uppercase wrap-safe break-words">${item.nama}</div>
-                    <div class="text-[10px] text-slate-500 font-mono font-bold bg-white px-2 py-1 rounded-md inline-block border border-slate-200 shadow-sm wrap-safe break-all">${item.id_delima}</div>
-                    <div class="text-[9px] text-slate-400 mt-2 font-semibold tracking-wider"><i class="far fa-calendar-alt mr-1"></i> Dihantar: ${new Date(item.created_at).toLocaleDateString('ms-MY')}</div>
-                </td>
-                <td class="px-6 py-4 w-2/5 align-top pt-6">${detailsHtml}</td>
-                <td class="px-6 py-4 text-center w-32 align-top pt-6">${actionArea}</td>
-            </tr>`;
-        }).join('');
-        
-    } catch (e) {
-        console.error("[AdminDelima] Error loading list:", e);
-        tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-red-500 font-bold bg-red-50 border border-red-100 rounded-xl"><i class="fas fa-exclamation-triangle text-lg mb-2 block"></i> Gagal memuatkan data pangkalan data.</td></tr>`;
+            let badgeStatus = '';
+            let bgRow = 'hover:bg-slate-50';
+            
+            if (item.status === 'DALAM PROSES') {
+                badgeStatus = `<span class="bg-amber-100 border border-amber-200 text-amber-700 px-2.5 py-1 rounded-full text-[10px] font-black tracking-widest"><i class="fas fa-clock mr-1"></i>PROSES</span>`;
+            } else if (item.status === 'SELESAI') {
+                badgeStatus = `<span class="bg-emerald-100 border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-full text-[10px] font-black tracking-widest"><i class="fas fa-check-double mr-1"></i>SELESAI</span>`;
+                bgRow = 'bg-slate-50/50 hover:bg-slate-100 opacity-80 grayscale-[0.2]';
+            }
+
+            const actionButton = item.status === 'DALAM PROSES'
+                ? `<button onclick="kemaskiniStatusDelima('${item.id}', 'SELESAI', '${kategori}')" class="mt-3 w-full bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-md transform active:scale-95"><i class="fas fa-check-circle mr-1"></i>Tanda Selesai</button>`
+                : `<button onclick="kemaskiniStatusDelima('${item.id}', 'DALAM PROSES', '${kategori}')" class="mt-3 w-full bg-white border-2 border-slate-200 hover:border-amber-400 hover:bg-amber-50 text-slate-600 hover:text-amber-600 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm transform active:scale-95"><i class="fas fa-undo mr-1"></i>Buka Semula</button>`;
+
+            const deleteButton = `<button onclick="padamRekodDelima('${item.id}', '${kategori}')" class="mt-1.5 w-full bg-white border border-red-100 hover:bg-red-50 text-red-500 hover:text-red-600 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all shadow-sm"><i class="fas fa-trash-alt mr-1"></i>Padam</button>`;
+
+            html += `
+                <tr class="${bgRow} border-b border-slate-100 transition-colors">
+                    <td class="px-6 py-4 text-center font-black text-slate-400">${index + 1}</td>
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-slate-800 tracking-tight">${item.nama_sekolah}</div>
+                        <div class="inline-flex items-center gap-1.5 text-[10px] font-black tracking-widest text-indigo-700 bg-indigo-50 px-2 py-1 rounded mt-1.5 border border-indigo-100 shadow-sm">
+                            <i class="fas fa-building text-indigo-400"></i> ${paparKodSekolahGabungan}
+                        </div>
+                        <div class="mt-3 p-3 bg-white border-2 border-slate-100 rounded-xl shadow-sm">
+                            <span class="font-bold text-slate-700 block mb-1 text-xs"><i class="fas fa-user-circle text-slate-400 mr-1.5"></i>${item.nama_pemohon}</span>
+                            <span class="font-mono text-slate-500 text-[10px] font-bold tracking-wider bg-slate-50 px-1.5 py-0.5 border border-slate-200 rounded block w-fit">IC: ${item.ic_pemohon || 'TIADA REKOD'}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-xs font-bold text-slate-700 bg-sky-50 border-l-4 border-sky-400 p-3 rounded-r-xl shadow-sm mb-3 relative overflow-hidden">
+                            <i class="fas fa-quote-right absolute right-2 bottom-2 text-3xl text-sky-500/10 z-0"></i>
+                            <span class="block text-[9px] uppercase tracking-widest text-sky-600 mb-1 z-10 relative">Isu / Catatan Permohonan:</span>
+                            <span class="z-10 relative">${item.catatan || '-'}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                            <span class="bg-slate-100 px-2 py-1 rounded"><i class="fas fa-calendar-alt mr-1"></i> ${formatTarikh}</span>
+                            <span class="bg-slate-100 px-2 py-1 rounded"><i class="fas fa-clock mr-1"></i> ${formatMasa}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-center align-middle">
+                        <div class="mb-3">${badgeStatus}</div>
+                        ${actionButton}
+                        ${deleteButton}
+                    </td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+
+    } catch (error) {
+        console.error('Ralat Admin DELIMa (loadSenaraiDelimaAdmin):', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Ralat Pangkalan Data',
+            text: 'Gagal menarik data permohonan DELIMa atau Kod OU.',
+            confirmButtonColor: '#3085d6',
+            confirmButtonText: 'Tutup'
+        });
     }
 };
 
-window.kemaskiniStatusDelimaAdmin = async function(id, status, kategori) {
-    Swal.fire({
-        title: 'Sahkan Tindakan',
-        text: 'Adakah permohonan ini telah diselesaikan (diproses dalam konsol admin)?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#10b981',
-        confirmButtonText: 'Ya, Selesai!',
-        cancelButtonText: 'Batal',
-        customClass: { popup: 'rounded-3xl' }
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            toggleLoading(true);
-            try {
-                await DelimaService.updateStatus(id, status);
-                toggleLoading(false);
-                Swal.fire({ icon: 'success', title: 'Status Dikemaskini', timer: 1500, showConfirmButton: false });
-                window.loadSenaraiDelimaAdmin(kategori);
-            } catch (e) {
-                toggleLoading(false);
-                Swal.fire('Ralat', 'Gagal mengemaskini status.', 'error');
-            }
+/**
+ * Mengemas kini status tiket DELIMa
+ * @param {string} id - UUID tiket
+ * @param {string} statusBaru - 'DALAM PROSES' atau 'SELESAI'
+ * @param {string} kategori - Kategori untuk refresh jadual yang betul
+ */
+window.kemaskiniStatusDelima = async function(id, statusBaru, kategori) {
+    try {
+        if (statusBaru === 'SELESAI') {
+            const confirm = await Swal.fire({
+                title: 'Sahkan Tindakan',
+                text: 'Adakah isu/permohonan ini telah diselesaikan sepenuhnya di pangkalan DELIMa pusat?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#10b981',
+                cancelButtonColor: '#cbd5e1',
+                confirmButtonText: 'Ya, Sahkan Selesai',
+                cancelButtonText: 'Batal Tindakan'
+            });
+            
+            if (!confirm.isConfirmed) return;
         }
-    });
+
+        Swal.fire({
+            title: 'Menyimpan Rekod...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        const { error } = await supabase
+            .from('helpdesk_delima')
+            .update({ status: statusBaru })
+            .eq('id', id);
+
+        if (error) throw error;
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Rekod Dikemas Kini',
+            text: `Status telah ditukar kepada ${statusBaru}.`,
+            timer: 1500,
+            showConfirmButton: false
+        });
+
+        // Wajib set forceRefresh = true supaya array data mentah dikemas kini dengan status terbaharu
+        loadSenaraiDelimaAdmin(kategori, true);
+
+    } catch (error) {
+        console.error('Ralat kemaskini status DELIMa:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Ralat Keselamatan',
+            text: 'Gagal mengemas kini status pada pangkalan data.',
+            confirmButtonColor: '#ef4444'
+        });
+    }
 };
 
-window.hapusDelimaAdmin = async function(id, kategori) {
-    Swal.fire({
-        title: 'Padam Rekod?',
-        text: 'Rekod ini akan dipadam secara kekal dari pangkalan data.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#ef4444',
-        confirmButtonText: 'Ya, Padam',
-        cancelButtonText: 'Batal',
-        customClass: { popup: 'rounded-3xl' }
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            toggleLoading(true);
-            try {
-                await DelimaService.deleteStatus(id);
-                toggleLoading(false);
-                Swal.fire({ icon: 'success', title: 'Dipadam', timer: 1500, showConfirmButton: false });
-                window.loadSenaraiDelimaAdmin(kategori);
-            } catch (e) {
-                toggleLoading(false);
-                Swal.fire('Ralat', 'Gagal memadam rekod.', 'error');
-            }
-        }
-    });
+/**
+ * Memadam rekod permohonan secara kekal
+ * @param {string} id - UUID tiket
+ * @param {string} kategori - Kategori untuk refresh jadual yang betul
+ */
+window.padamRekodDelima = async function(id, kategori) {
+    try {
+        const confirm = await Swal.fire({
+            title: 'Padam Rekod?',
+            text: 'Tindakan ini tidak boleh diundur. Rekod permohonan akan dihapuskan sepenuhnya.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#cbd5e1',
+            confirmButtonText: 'Ya, Padam',
+            cancelButtonText: 'Batal'
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Melaksanakan arahan...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        const { error } = await supabase
+            .from('helpdesk_delima')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Terpadam',
+            text: 'Rekod berjaya dibersihkan dari sistem.',
+            timer: 1500,
+            showConfirmButton: false
+        });
+
+        // Wajib tarik rekod terkini selepas penghapusan
+        loadSenaraiDelimaAdmin(kategori, true);
+
+    } catch (error) {
+        console.error('Ralat padam rekod DELIMa:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Akses Ditolak',
+            text: 'Ralat berlaku semasa cuba memadam rekod pangkalan data.',
+            confirmButtonColor: '#ef4444'
+        });
+    }
 };

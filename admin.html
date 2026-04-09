@@ -657,7 +657,18 @@
 
             <!-- Panel Status ID Guru -->
             <div id="panelAdminGuru" class="hidden">
-                <div class="flex justify-end mb-4">
+                <div class="flex flex-col sm:flex-row justify-between mb-4 gap-2">
+                    <div class="relative w-full sm:w-64">
+                        <i class="fas fa-filter absolute left-3 top-1/2 -translate-y-1/2 text-blue-400"></i>
+                        <select id="filterCatatanGuruAdmin" class="w-full pl-9 pr-3 py-1.5 rounded-lg border-2 border-blue-100 bg-white text-slate-600 text-xs font-bold outline-none focus:border-blue-500" onchange="loadSenaraiDelimaAdmin('GURU')">
+                            <option value="ALL">Semua Catatan</option>
+                            <option value="Berpindah MASUK ke sekolah ini">Berpindah MASUK</option>
+                            <option value="Permohonan Aktifkan Semula Akaun (Unsuspend)">Aktifkan Semula</option>
+                            <option value="Bersara">Bersara</option>
+                            <option value="Meninggal Dunia">Meninggal Dunia</option>
+                            <option value="Berhenti Kerja / Tukar Profesion">Berhenti Kerja</option>
+                        </select>
+                    </div>
                     <select id="filterDelimaGuruAdmin" class="px-3 py-1.5 rounded-lg border-2 border-blue-100 bg-blue-50 text-blue-700 text-xs font-bold outline-none" onchange="loadSenaraiDelimaAdmin('GURU')">
                         <option value="ALL">Semua Status</option>
                         <option value="DALAM PROSES" selected>Dalam Proses</option>
@@ -685,7 +696,18 @@
 
             <!-- Panel Status ID Murid -->
             <div id="panelAdminMurid" class="hidden">
-                <div class="flex justify-end mb-4">
+                <div class="flex flex-col sm:flex-row justify-between mb-4 gap-2">
+                    <div class="relative w-full sm:w-64">
+                        <i class="fas fa-filter absolute left-3 top-1/2 -translate-y-1/2 text-cyan-400"></i>
+                        <select id="filterCatatanMuridAdmin" class="w-full pl-9 pr-3 py-1.5 rounded-lg border-2 border-cyan-100 bg-white text-slate-600 text-xs font-bold outline-none focus:border-cyan-500" onchange="loadSenaraiDelimaAdmin('MURID')">
+                            <option value="ALL">Semua Catatan</option>
+                            <option value="Berpindah MASUK ke sekolah ini">Berpindah MASUK</option>
+                            <option value="Permohonan Aktifkan Semula Akaun (Unsuspend)">Aktifkan Semula</option>
+                            <option value="Tamat Persekolahan">Tamat Persekolahan</option>
+                            <option value="Meninggal Dunia">Meninggal Dunia</option>
+                            <option value="Berhenti Sekolah">Berhenti Sekolah</option>
+                        </select>
+                    </div>
                     <select id="filterDelimaMuridAdmin" class="px-3 py-1.5 rounded-lg border-2 border-cyan-100 bg-cyan-50 text-cyan-700 text-xs font-bold outline-none" onchange="loadSenaraiDelimaAdmin('MURID')">
                         <option value="ALL">Semua Status</option>
                         <option value="DALAM PROSES" selected>Dalam Proses</option>
