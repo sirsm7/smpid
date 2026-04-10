@@ -117,6 +117,12 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
         if (!filteredData || filteredData.length === 0) {
             tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium"><i class="fas fa-inbox text-3xl mb-3 opacity-20 block"></i>Tiada rekod permohonan padan dengan tapisan ini.</td></tr>`;
             window.resetBulkState(kategori);
+            
+            // Sembunyikan butang Select All pada header jika tiada data
+            const capitalizedKategori = kategori.charAt(0).toUpperCase() + kategori.slice(1).toLowerCase();
+            const selectAllCb = document.getElementById(`selectAll${capitalizedKategori}`);
+            if (selectAllCb) selectAllCb.classList.add('hidden');
+            
             return;
         }
 
@@ -165,7 +171,11 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
                 : '';
 
             // SUNTIKAN ROW CHECKBOX UNTUK TINDAKAN PUKAL
-            const checkboxHtml = `<input type="checkbox" class="cb-delima-${kategori} w-4 h-4 accent-${colorTheme}-600 cursor-pointer rounded mb-2" value="${item.id}" data-email="${item.id_delima || ''}" onchange="checkBulkStatus('${kategori}')">`;
+            // KEMASKINI: Hanya papar kotak semak jika status adalah 'DALAM PROSES'
+            let checkboxHtml = '';
+            if (item.status_proses === 'DALAM PROSES') {
+                checkboxHtml = `<input type="checkbox" class="cb-delima-${kategori} w-4 h-4 accent-${colorTheme}-600 cursor-pointer rounded mb-2" value="${item.id}" data-email="${item.id_delima || ''}" onchange="checkBulkStatus('${kategori}')">`;
+            }
 
             html += `
                 <tr class="${bgRow} border-b border-slate-100 transition-colors group">
@@ -208,6 +218,19 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
 
         tbody.innerHTML = html;
         window.resetBulkState(kategori);
+
+        // KAWALAN PAPARAN SELECT ALL CHECKBOX
+        // Sembunyikan checkbox 'Pilih Semua' jika tiada rekod DALAM PROSES
+        const capitalizedKategori = kategori.charAt(0).toUpperCase() + kategori.slice(1).toLowerCase();
+        const selectAllCb = document.getElementById(`selectAll${capitalizedKategori}`);
+        if (selectAllCb) {
+            const hasPending = filteredData.some(item => item.status_proses === 'DALAM PROSES');
+            if (hasPending) {
+                selectAllCb.classList.remove('hidden');
+            } else {
+                selectAllCb.classList.add('hidden');
+            }
+        }
 
     } catch (error) {
         console.error('Ralat Admin DELIMa (loadSenaraiDelimaAdmin):', error);
