@@ -324,7 +324,7 @@ window.salinEmelPukal = function(kategori) {
     }
 };
 
-// Mengemas kini berbilang rekod secara optimistik ke pangkalan data
+// Mengemas kini berbilang rekod secara optimistik ke pangkalan data menggunakan .in() semula
 window.tandaSelesaiPukal = async function(kategori) {
     const db = getDatabaseClient();
     if (!db) return;
@@ -349,25 +349,13 @@ window.tandaSelesaiPukal = async function(kategori) {
     });
 
     try {
-        // PEMBAIKAN V8.2: Menggantikan .in() dengan Promise.all() untuk memintas sekatan pelayan
-        const updatePromises = idsToUpdate.map(id => {
-            return db.from('smpid_delima_status')
-                .update({ 
-                    status_proses: 'SELESAI',
-                    tarikh_selesai: new Date().toISOString()
-                })
-                .eq('id', id);
-        });
+        // Melaksanakan SATU API call menggunakan .in() untuk kelajuan luar biasa (Bebas dari ralat tarikh)
+        const { error } = await db
+            .from('smpid_delima_status')
+            .update({ status_proses: 'SELESAI' })
+            .in('id', idsToUpdate);
 
-        // Eksekusi semua panggilan secara serentak (Parallel Execution)
-        const results = await Promise.all(updatePromises);
-        
-        // Semak jika ada sebarang ralat dalam mana-mana transaksi
-        const hasError = results.some(res => res.error);
-        if (hasError) {
-            console.error("Sebahagian ralat dikesan:", results.filter(r => r.error));
-            throw new Error("Terdapat ralat pada pelayan pangkalan data semasa proses kelompok.");
-        }
+        if (error) throw error;
 
         // Notifikasi Toast
         Swal.fire({
@@ -427,6 +415,7 @@ window.tandaSelesaiPukal = async function(kategori) {
 
 // Kemaskini Status Individu (Optimistic UI)
 window.kemaskiniStatusDelima = async function(id, statusBaru, kategori, btnElement) {
+    const db = getDatabaseClient();
     if (!db) return;
     
     const originalHtml = btnElement.innerHTML;
@@ -439,10 +428,7 @@ window.kemaskiniStatusDelima = async function(id, statusBaru, kategori, btnEleme
     try {
         const { error } = await db
             .from('smpid_delima_status')
-            .update({ 
-                status_proses: statusBaru,
-                tarikh_selesai: statusBaru === 'SELESAI' ? new Date().toISOString() : null
-            })
+            .update({ status_proses: statusBaru })
             .eq('id', id);
 
         if (error) throw error;
@@ -531,6 +517,7 @@ window.salinIdDelimaAdmin = function(emel) {
 };
 
 window.padamRekodDelima = async function(id, kategori) {
+    const db = getDatabaseClient();
     if (!db) return;
     try {
         const confirm = await Swal.fire({
