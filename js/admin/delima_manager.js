@@ -1,11 +1,14 @@
 import { getDatabaseClient } from '../core/db.js';
 import { APP_CONFIG } from '../config/app.config.js';
 
-const db = getDatabaseClient();
-
 // Menyimpan data mentah untuk tapisan silang (client-side cache) bagi melancarkan prestasi UI
 let rawDataGuru = [];
 let rawDataMurid = [];
+
+// Menyimpan data yang TELAH ditapis untuk tujuan eksport CSV (Sync UI-State)
+let filteredDataGuru = [];
+let filteredDataMurid = [];
+
 let mapKodOuGlobal = {};
 
 /**
@@ -15,8 +18,12 @@ let mapKodOuGlobal = {};
  * @param {boolean} forceRefresh - Paksa tarik data baharu dari Supabase
  */
 window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
+    // FIX: Sentiasa dapatkan instance terkini dari DB Core untuk elak isu sambungan (Race Condition)
+    const db = getDatabaseClient();
+    
     if (!db) {
         console.error("Gagal menyambung ke pangkalan data.");
+        if (typeof Swal !== 'undefined') Swal.fire('Ralat Sistem', 'Pangkalan data tidak bersambung. Sila muat semula halaman.', 'error');
         return;
     }
 
@@ -101,6 +108,13 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
             });
         }
 
+        // PENTING: Simpan data yang telah ditapis ke dalam state global untuk dieksport ke CSV kelak
+        if (kategori === 'GURU') {
+            filteredDataGuru = filteredData;
+        } else {
+            filteredDataMurid = filteredData;
+        }
+
         // Proses Paparan Antaramuka (UI Render)
         if (!filteredData || filteredData.length === 0) {
             tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium"><i class="fas fa-inbox text-3xl mb-3 opacity-20 block"></i>Tiada rekod permohonan padan dengan tapisan ini.</td></tr>`;
@@ -138,7 +152,6 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
                 bgRow = 'bg-slate-50/50 hover:bg-slate-100 opacity-80 grayscale-[0.2]';
             }
 
-            // PENUKARAN: Menambah elemen 'this' ke dalam argument onlick
             const actionButton = item.status_proses === 'DALAM PROSES'
                 ? `<button onclick="kemaskiniStatusDelima('${item.id}', 'SELESAI', '${kategori}', this)" class="mt-3 w-full bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-md transform active:scale-95"><i class="fas fa-check-circle mr-1"></i>Tanda Selesai</button>`
                 : `<button onclick="kemaskiniStatusDelima('${item.id}', 'DALAM PROSES', '${kategori}', this)" class="mt-3 w-full bg-white border-2 border-slate-200 hover:border-amber-400 hover:bg-amber-50 text-slate-600 hover:text-amber-600 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm transform active:scale-95"><i class="fas fa-undo mr-1"></i>Buka Semula</button>`;
@@ -201,6 +214,64 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
             confirmButtonText: 'Tutup'
         });
     }
+};
+
+/**
+ * FUNGSI BAHARU: Mengeksport data status ID ke format CSV berdasarkan paparan semasa
+ * Mematuhi prinsip WYSIWYG (What You See Is What You Get) untuk pengguna Admin.
+ * @param {string} kategori - 'GURU' atau 'MURID'
+ */
+window.eksportSenaraiDelimaAdmin = function(kategori) {
+    const dataToExport = kategori === 'GURU' ? filteredDataGuru : filteredDataMurid;
+
+    if (!dataToExport || dataToExport.length === 0) {
+        Swal.fire('Tiada Data', `Tiada rekod ${kategori} untuk dieksport berdasarkan tapisan semasa.`, 'info');
+        return;
+    }
+
+    // Tajuk Lajur CSV
+    let csvContent = "BIL,KOD SEKOLAH,KOD OU,NAMA SEKOLAH,KATEGORI,NAMA PEMOHON,ID DELIMA,CATATAN/ISU,DESTINASI PINDAH (KOD OU),STATUS PROSES,TARIKH MOHON\n";
+
+    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+
+    dataToExport.forEach((item, index) => {
+        // Dapatkan semula Nama Sekolah mengikut data PPD/Dashboard
+        let schoolName = item.kod_sekolah;
+        if (senaraiKodPPD.includes(item.kod_sekolah)) {
+            schoolName = APP_CONFIG.PPD_MAPPING[item.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[item.kod_sekolah]}` : 'PEJABAT PENDIDIKAN DAERAH';
+        } else if (window.globalDashboardData) {
+            const schoolMatch = window.globalDashboardData.find(s => s.kod_sekolah === item.kod_sekolah);
+            if (schoolMatch) schoolName = schoolMatch.nama_sekolah;
+        }
+
+        const kodOu = mapKodOuGlobal[item.kod_sekolah] || 'TIADA REKOD';
+        const tarikh = new Date(item.created_at).toLocaleDateString('ms-MY');
+
+        // Pembantu untuk mengelakkan ralat koma di dalam rentetan Excel
+        const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
+
+        let row = [
+            index + 1,
+            clean(item.kod_sekolah),
+            clean(kodOu),
+            clean(schoolName),
+            clean(item.kategori),
+            clean(item.nama),
+            clean(item.id_delima),
+            clean(item.catatan),
+            clean(item.unit_organisasi_baharu || '-'),
+            clean(item.status_proses),
+            clean(tarikh)
+        ];
+
+        csvContent += row.join(",") + "\n";
+    });
+
+    // Melancarkan proses muat turun mandatori kepada pelayar (Browser Download)
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }));
+    link.download = `Laporan_Status_DELIMa_${kategori}_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
 };
 
 /**
@@ -280,13 +351,15 @@ window.salinIdDelimaAdmin = function(emel) {
 };
 
 /**
- * PENUKARAN: Mengemas kini status tiket DELIMa (Optimistic Asynchronous UI)
+ * Mengemas kini status tiket DELIMa (Optimistic Asynchronous UI)
  * @param {string} id - UUID tiket
  * @param {string} statusBaru - 'DALAM PROSES' atau 'SELESAI'
  * @param {string} kategori - Kategori untuk refresh jadual yang betul
  * @param {HTMLElement} btnElement - Rujukan butang yang diklik (this)
  */
 window.kemaskiniStatusDelima = async function(id, statusBaru, kategori, btnElement) {
+    // FIX: Dapatkan DB Client Semasa Mengklik untuk keselamatan
+    const db = getDatabaseClient();
     if (!db) return;
     
     // 1. Simpan rujukan HTML asal
@@ -314,7 +387,14 @@ window.kemaskiniStatusDelima = async function(id, statusBaru, kategori, btnEleme
             dataArray[index].status_proses = statusBaru;
         }
 
-        // 5. Paparkan notifikasi Toast (Ganti modal statik Swal lama)
+        // Kemaskini juga tapisan aktif (Filtered Data Cache) jika ia wujud
+        let filteredArray = kategori === 'GURU' ? filteredDataGuru : filteredDataMurid;
+        const filterIndex = filteredArray.findIndex(item => item.id === id);
+        if (filterIndex !== -1) {
+            filteredArray[filterIndex].status_proses = statusBaru;
+        }
+
+        // 5. Paparkan notifikasi Toast
         Swal.fire({
             toast: true,
             position: 'top-end',
@@ -340,6 +420,13 @@ window.kemaskiniStatusDelima = async function(id, statusBaru, kategori, btnEleme
                 setTimeout(() => {
                     const tbody = rowElement.parentNode;
                     rowElement.remove();
+                    
+                    // Juga padam dari state array untuk CSV Export
+                    if (kategori === 'GURU') {
+                        filteredDataGuru = filteredDataGuru.filter(i => i.id !== id);
+                    } else {
+                        filteredDataMurid = filteredDataMurid.filter(i => i.id !== id);
+                    }
                     
                     // Inject placeholder jika jadual telah bersih sepenuhnya
                     if (tbody && tbody.children.length === 0) {
@@ -378,7 +465,10 @@ window.kemaskiniStatusDelima = async function(id, statusBaru, kategori, btnEleme
  * @param {string} kategori - Kategori untuk refresh jadual yang betul
  */
 window.padamRekodDelima = async function(id, kategori) {
+    // FIX: Dapatkan DB Client Semasa
+    const db = getDatabaseClient();
     if (!db) return;
+    
     try {
         const confirm = await Swal.fire({
             title: 'Padam Rekod?',

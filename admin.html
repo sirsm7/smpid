@@ -669,11 +669,16 @@
                             <option value="Berhenti Kerja / Tukar Profesion">Berhenti Kerja</option>
                         </select>
                     </div>
-                    <select id="filterDelimaGuruAdmin" class="px-3 py-1.5 rounded-lg border-2 border-blue-100 bg-blue-50 text-blue-700 text-xs font-bold outline-none" onchange="loadSenaraiDelimaAdmin('GURU')">
-                        <option value="ALL">Semua Status</option>
-                        <option value="DALAM PROSES" selected>Dalam Proses</option>
-                        <option value="SELESAI">Selesai</option>
-                    </select>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <select id="filterDelimaGuruAdmin" class="px-3 py-1.5 rounded-lg border-2 border-blue-100 bg-blue-50 text-blue-700 text-xs font-bold outline-none w-full sm:w-auto" onchange="loadSenaraiDelimaAdmin('GURU')">
+                            <option value="ALL">Semua Status</option>
+                            <option value="DALAM PROSES" selected>Dalam Proses</option>
+                            <option value="SELESAI">Selesai</option>
+                        </select>
+                        <button onclick="window.eksportSenaraiDelimaAdmin('GURU')" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm flex items-center justify-center gap-2 whitespace-nowrap">
+                            <i class="fas fa-file-csv"></i> Eksport
+                        </button>
+                    </div>
                 </div>
                 <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                     <div class="overflow-x-auto max-h-[600px]">
@@ -708,11 +713,16 @@
                             <option value="Berhenti Sekolah">Berhenti Sekolah</option>
                         </select>
                     </div>
-                    <select id="filterDelimaMuridAdmin" class="px-3 py-1.5 rounded-lg border-2 border-cyan-100 bg-cyan-50 text-cyan-700 text-xs font-bold outline-none" onchange="loadSenaraiDelimaAdmin('MURID')">
-                        <option value="ALL">Semua Status</option>
-                        <option value="DALAM PROSES" selected>Dalam Proses</option>
-                        <option value="SELESAI">Selesai</option>
-                    </select>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <select id="filterDelimaMuridAdmin" class="px-3 py-1.5 rounded-lg border-2 border-cyan-100 bg-cyan-50 text-cyan-700 text-xs font-bold outline-none w-full sm:w-auto" onchange="loadSenaraiDelimaAdmin('MURID')">
+                            <option value="ALL">Semua Status</option>
+                            <option value="DALAM PROSES" selected>Dalam Proses</option>
+                            <option value="SELESAI">Selesai</option>
+                        </select>
+                        <button onclick="window.eksportSenaraiDelimaAdmin('MURID')" class="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold transition shadow-sm flex items-center justify-center gap-2 whitespace-nowrap">
+                            <i class="fas fa-file-csv"></i> Eksport
+                        </button>
+                    </div>
                 </div>
                 <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                     <div class="overflow-x-auto max-h-[600px]">
