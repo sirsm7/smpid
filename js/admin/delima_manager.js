@@ -18,7 +18,7 @@ let mapKodOuGlobal = {};
  * @param {boolean} forceRefresh - Paksa tarik data baharu dari Supabase
  */
 window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
-    // FIX: Sentiasa dapatkan instance terkini dari DB Core untuk elak isu sambungan
+    // FIX: Sentiasa dapatkan instance terkini dari DB Core untuk elak isu sambungan (Race Condition)
     const db = getDatabaseClient();
     
     if (!db) {
@@ -349,16 +349,25 @@ window.tandaSelesaiPukal = async function(kategori) {
     });
 
     try {
-        // Melaksanakan SATU API call menggunakan .in() untuk prestasi maksimum
-        const { error } = await db
-            .from('smpid_delima_status')
-            .update({ 
-                status_proses: 'SELESAI',
-                tarikh_selesai: new Date().toISOString()
-            })
-            .in('id', idsToUpdate);
+        // PEMBAIKAN V8.2: Menggantikan .in() dengan Promise.all() untuk memintas sekatan pelayan
+        const updatePromises = idsToUpdate.map(id => {
+            return db.from('smpid_delima_status')
+                .update({ 
+                    status_proses: 'SELESAI',
+                    tarikh_selesai: new Date().toISOString()
+                })
+                .eq('id', id);
+        });
 
-        if (error) throw error;
+        // Eksekusi semua panggilan secara serentak (Parallel Execution)
+        const results = await Promise.all(updatePromises);
+        
+        // Semak jika ada sebarang ralat dalam mana-mana transaksi
+        const hasError = results.some(res => res.error);
+        if (hasError) {
+            console.error("Sebahagian ralat dikesan:", results.filter(r => r.error));
+            throw new Error("Terdapat ralat pada pelayan pangkalan data semasa proses kelompok.");
+        }
 
         // Notifikasi Toast
         Swal.fire({
