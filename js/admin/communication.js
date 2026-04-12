@@ -42,7 +42,7 @@ window.initEmailEditor = function() {
         <p>Kerjasama Tuan/Puan amat dihargai.</p>
         <p>Sekian, terima kasih.</p>
         <p><br></p>
-        <p><strong>Unit Sumber Teknologi Pendidikan,</strong><br>PPD Alor Gajah.</p>
+        <p><strong>Sektor Sumber Teknologi Pendidikan,</strong><br>JPN Melaka.</p>
     `;
     
     // Masukkan ke dalam editor

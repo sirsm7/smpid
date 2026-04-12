@@ -18,7 +18,7 @@ export const APP_CONFIG = {
     API: {
         DENO_URL: typeof window !== 'undefined' && window.DENO_API_URL ? window.DENO_API_URL : 'https://smpid.ppdag.deno.net',
         GAS_UPLOAD_URL: 'https://script.google.com/macros/s/AKfycbyjmVnKMNa5KSSCdIWG00dmgrYFBsfRtkswlBXTZUL0cKJ8h15V3X71EsqGd4B1etdg/exec', // Gantikan dengan URL GAS Upload yang sah jika perlu
-        GAS_EMAIL_URL: 'https://script.google.com/macros/s/AKfycbycTjZ2X69Y5k90L_n4O_j4n8kY9r8H3X1N_h8V2B/exec'   // Gantikan dengan URL GAS Email yang sah jika perlu
+        GAS_EMAIL_URL: 'https://script.google.com/macros/s/AKfycbwALQrAcEO156fXzNim_8New_iOFFUHvPL5wOhILpJDMxB80_-4BhiK1x3UbNeK6_IrCg/exec'   // Gantikan dengan URL GAS Email yang sah jika perlu
     },
 
     // Kunci Sesi LocalStorage (Untuk Integriti Auth)
