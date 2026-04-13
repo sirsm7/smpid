@@ -276,22 +276,93 @@ window.checkBulkStatus = function(kategori) {
     const bulkContainer = document.getElementById(`bulkActions${capitalizedKategori}`);
     const btnSalin = document.getElementById(`btnSalinPukal${capitalizedKategori}`);
     const btnSelesai = document.getElementById(`btnSelesaiPukal${capitalizedKategori}`);
+    const btnEksport = document.getElementById(`btnEksportPukal${capitalizedKategori}`);
     const countSpan = document.getElementById(`countPukal${capitalizedKategori}`);
 
     if (count > 0) {
         if (bulkContainer) bulkContainer.classList.remove('hidden');
         if (btnSalin) btnSalin.disabled = false;
         if (btnSelesai) btnSelesai.disabled = false;
+        if (btnEksport) btnEksport.disabled = false;
         if (countSpan) countSpan.innerText = count;
     } else {
         if (bulkContainer) bulkContainer.classList.add('hidden');
         if (btnSalin) btnSalin.disabled = true;
         if (btnSelesai) btnSelesai.disabled = true;
+        if (btnEksport) btnEksport.disabled = true;
         if (countSpan) countSpan.innerText = '0';
         
         const selectAllCb = document.getElementById(`selectAll${capitalizedKategori}`);
         if (selectAllCb) selectAllCb.checked = false;
     }
+};
+
+/**
+ * EKSPORT CSV BERKELOMPOK BAHARU (Mengekstrak rekod yang ditandakan sahaja)
+ */
+window.eksportCsvPukal = function(kategori) {
+    const checkboxes = document.querySelectorAll(`.cb-delima-${kategori}:checked`);
+    if (checkboxes.length === 0) return;
+
+    // Kumpul senarai ID rekod yang ditandakan
+    const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+
+    // Kenal pasti sumber data yang betul berdasarkan kategori
+    const dataPool = kategori === 'GURU' ? rawDataGuru : rawDataMurid;
+    
+    // Tapis rekod dari cache berpandukan ID yang dipilih - PENYELESAIAN BUG MENGGUNAKAN String()
+    const recordsToExport = dataPool.filter(item => selectedIds.includes(String(item.id)));
+
+    if (recordsToExport.length === 0) {
+        Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Tiada Data', text: 'Tiada rekod sah untuk dieksport.', showConfirmButton: false, timer: 2000 });
+        return;
+    }
+
+    // Penyediaan kandungan CSV
+    let csvContent = "BIL,KOD SEKOLAH,KOD OU,NAMA,ID DELIMA,KATEGORI,CATATAN,STATUS PROSES,TARIKH MOHON\n";
+    
+    recordsToExport.forEach((item, index) => {
+        // Pembersihan (escaping) teks CSV untuk mengelakkan ralat tanda koma dalam rentetan
+        const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
+        
+        const kodOu = mapKodOuGlobal[item.kod_sekolah] || 'TIADA KOD OU';
+        const tarikhStr = new Date(item.created_at).toLocaleDateString('ms-MY');
+        
+        let row = [
+            index + 1,
+            clean(item.kod_sekolah),
+            clean(kodOu),
+            clean(item.nama),
+            clean(item.id_delima),
+            clean(item.kategori),
+            clean(item.catatan),
+            clean(item.status_proses),
+            clean(tarikhStr)
+        ];
+        csvContent += row.join(",") + "\n";
+    });
+
+    // Melaksanakan muat turun dengan format BOM UTF-8 supaya serasi dengan paparan MS Excel
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Eksport_ID_${kategori}_Terpilih_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Paparan maklum balas kejayaan
+    Swal.fire({ 
+        toast: true, 
+        position: 'top-end', 
+        icon: 'success', 
+        title: 'Berjaya Dieksport!', 
+        text: `${recordsToExport.length} rekod dimuat turun.`, 
+        showConfirmButton: false, 
+        timer: 2000, 
+        customClass: { popup: 'colored-toast' } 
+    });
 };
 
 // Mengekstrak dan menyalin emel ke papan keratan dalam format selari ke bawah (\n)
@@ -387,13 +458,13 @@ window.tandaSelesaiPukal = async function(kategori) {
             customClass: { popup: 'colored-toast' }
         });
 
-        // 1. Kemaskini Cache Supaya Tidak Timbul Apabila Filter Berubah
+        // 1. Kemaskini Cache Supaya Tidak Timbul Apabila Filter Berubah - PENYELESAIAN BUG MENGGUNAKAN String()
         if (kategori === 'GURU') {
-            rawDataGuru = rawDataGuru.filter(item => !idsToUpdate.includes(item.id));
-            if (filteredDataGuru) filteredDataGuru = filteredDataGuru.filter(item => !idsToUpdate.includes(item.id));
+            rawDataGuru = rawDataGuru.filter(item => !idsToUpdate.includes(String(item.id)));
+            if (filteredDataGuru) filteredDataGuru = filteredDataGuru.filter(item => !idsToUpdate.includes(String(item.id)));
         } else {
-            rawDataMurid = rawDataMurid.filter(item => !idsToUpdate.includes(item.id));
-            if (filteredDataMurid) filteredDataMurid = filteredDataMurid.filter(item => !idsToUpdate.includes(item.id));
+            rawDataMurid = rawDataMurid.filter(item => !idsToUpdate.includes(String(item.id)));
+            if (filteredDataMurid) filteredDataMurid = filteredDataMurid.filter(item => !idsToUpdate.includes(String(item.id)));
         }
 
         // 2. Animasi Pembuangan Baris
@@ -456,9 +527,9 @@ window.kemaskiniStatusDelima = async function(id, statusBaru, kategori, btnEleme
 
         if (error) throw error;
 
-        // Kemaskini cache tempatan
+        // Kemaskini cache tempatan - PENYELESAIAN BUG MENGGUNAKAN String()
         let dataArray = kategori === 'GURU' ? rawDataGuru : rawDataMurid;
-        const index = dataArray.findIndex(item => item.id === id);
+        const index = dataArray.findIndex(item => String(item.id) === String(id));
         if (index !== -1) {
             dataArray[index].status_proses = statusBaru;
         }
