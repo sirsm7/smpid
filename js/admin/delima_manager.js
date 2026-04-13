@@ -36,9 +36,15 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
         // Dapatkan elemen filter UI
         const statusFilterId = kategori === 'GURU' ? 'filterDelimaGuruAdmin' : 'filterDelimaMuridAdmin';
         const catatanFilterId = kategori === 'GURU' ? 'filterCatatanGuruAdmin' : 'filterCatatanMuridAdmin';
+        const sekolahFilterId = kategori === 'GURU' ? 'filterSekolahGuruAdmin' : 'filterSekolahMuridAdmin';
         
-        const statusFilter = document.getElementById(statusFilterId)?.value || 'ALL';
-        const catatanFilter = document.getElementById(catatanFilterId)?.value || 'ALL';
+        const statusSelect = document.getElementById(statusFilterId);
+        const catatanSelect = document.getElementById(catatanFilterId);
+        const sekolahSelect = document.getElementById(sekolahFilterId);
+
+        let statusVal = statusSelect?.value || 'ALL';
+        let catVal = catatanSelect?.value || 'ALL';
+        let sekVal = sekolahSelect?.value || 'ALL';
 
         let dataToProcess = kategori === 'GURU' ? rawDataGuru : rawDataMurid;
 
@@ -92,28 +98,91 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
             }
         }
 
-        // Laksanakan Tapisan (Client-side Filtering)
-        let filteredData = dataToProcess;
-
-        if (statusFilter !== 'ALL') {
-            filteredData = filteredData.filter(item => item.status_proses === statusFilter);
+        // =========================================================
+        // SMART DYNAMIC CASCADING FILTERS LOGIC
+        // =========================================================
+        
+        // 1. Tapis data asas berdasarkan Status Semasa terlebih dahulu
+        let statusFilteredData = dataToProcess;
+        if (statusVal !== 'ALL') {
+            statusFilteredData = statusFilteredData.filter(item => item.status_proses === statusVal);
         }
 
-        if (catatanFilter !== 'ALL') {
-            filteredData = filteredData.filter(item => {
-                if (!item.catatan) return false;
-                return item.catatan.includes(catatanFilter);
+        if (catatanSelect && sekolahSelect) {
+            
+            // A. JANA DROPDOWN CATATAN (Dibasaskan pada pilihan Sekolah semasa)
+            let dataForCatatan = statusFilteredData;
+            if (sekVal !== 'ALL') {
+                dataForCatatan = dataForCatatan.filter(item => item.kod_sekolah === sekVal);
+            }
+            const uniqueCatatan = [...new Set(dataForCatatan.map(item => item.catatan).filter(Boolean))].sort();
+            
+            let catatanHtml = '<option value="ALL">Semua Catatan</option>';
+            uniqueCatatan.forEach(c => {
+                catatanHtml += `<option value="${c}">${c}</option>`;
             });
+            catatanSelect.innerHTML = catatanHtml;
+
+            // State Restoration: Kekalkan pilihan jika ia masih wujud, reset jika terkeluar skop
+            if (catVal !== 'ALL' && uniqueCatatan.includes(catVal)) {
+                catatanSelect.value = catVal;
+            } else {
+                catVal = 'ALL';
+                catatanSelect.value = 'ALL';
+            }
+
+            // B. JANA DROPDOWN SEKOLAH (Dibasaskan pada pilihan Catatan semasa)
+            let dataForSekolah = statusFilteredData;
+            if (catVal !== 'ALL') {
+                dataForSekolah = dataForSekolah.filter(item => item.catatan === catVal);
+            }
+            const uniqueSekolah = [...new Set(dataForSekolah.map(item => item.kod_sekolah).filter(Boolean))].sort();
+            
+            const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+            let sekolahHtml = '<option value="ALL">Semua Sekolah</option>';
+            
+            uniqueSekolah.forEach(kod => {
+                let namaSekolah = kod;
+                if (senaraiKodPPD.includes(kod)) {
+                    namaSekolah = APP_CONFIG.PPD_MAPPING[kod] ? `PPD ${APP_CONFIG.PPD_MAPPING[kod]}` : 'PEJABAT PENDIDIKAN DAERAH';
+                } else if (window.globalDashboardData) {
+                    const schoolMatch = window.globalDashboardData.find(s => s.kod_sekolah === kod);
+                    if (schoolMatch) namaSekolah = `${schoolMatch.nama_sekolah}`;
+                }
+                sekolahHtml += `<option value="${kod}">${namaSekolah} (${kod})</option>`;
+            });
+            sekolahSelect.innerHTML = sekolahHtml;
+
+            // State Restoration: Kekalkan pilihan jika ia masih wujud, reset jika terkeluar skop
+            if (sekVal !== 'ALL' && uniqueSekolah.includes(sekVal)) {
+                sekolahSelect.value = sekVal;
+            } else {
+                sekVal = 'ALL';
+                sekolahSelect.value = 'ALL';
+            }
         }
 
-        // Simpan state tapisan untuk kegunaan eksport CSV
+        // 2. Laksanakan Tapisan Jadual Akhir menggunakan parameter yang telah disahkan (Validated Parameters)
+        let filteredData = statusFilteredData;
+
+        if (sekVal !== 'ALL') {
+            filteredData = filteredData.filter(item => item.kod_sekolah === sekVal);
+        }
+        if (catVal !== 'ALL') {
+            filteredData = filteredData.filter(item => item.catatan === catVal);
+        }
+
+        // Simpan state tapisan penuh untuk kegunaan eksport CSV
         if (kategori === 'GURU') {
             filteredDataGuru = filteredData;
         } else {
             filteredDataMurid = filteredData;
         }
 
-        // Proses Paparan Antaramuka (UI Render)
+        // =========================================================
+        // PROSES PAPARAN ANTARAMUKA (UI RENDER)
+        // =========================================================
+
         if (!filteredData || filteredData.length === 0) {
             tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium"><i class="fas fa-inbox text-3xl mb-3 opacity-20 block"></i>Tiada rekod permohonan padan dengan tapisan ini.</td></tr>`;
             window.resetBulkState(kategori);
@@ -310,7 +379,7 @@ window.eksportCsvPukal = function(kategori) {
     // Kenal pasti sumber data yang betul berdasarkan kategori
     const dataPool = kategori === 'GURU' ? rawDataGuru : rawDataMurid;
     
-    // Tapis rekod dari cache berpandukan ID yang dipilih - PENYELESAIAN BUG MENGGUNAKAN String()
+    // Tapis rekod dari cache berpandukan ID yang dipilih
     const recordsToExport = dataPool.filter(item => selectedIds.includes(String(item.id)));
 
     if (recordsToExport.length === 0) {
@@ -443,7 +512,7 @@ window.tandaSelesaiPukal = async function(kategori) {
     });
 
     try {
-        // Melaksanakan SATU API call menggunakan .in() untuk kelajuan luar biasa (Bebas dari ralat tarikh)
+        // Melaksanakan SATU API call menggunakan .in() untuk kelajuan luar biasa
         const { error } = await db
             .from('smpid_delima_status')
             .update({ status_proses: 'SELESAI' })
@@ -458,7 +527,7 @@ window.tandaSelesaiPukal = async function(kategori) {
             customClass: { popup: 'colored-toast' }
         });
 
-        // 1. Kemaskini Cache Supaya Tidak Timbul Apabila Filter Berubah - PENYELESAIAN BUG MENGGUNAKAN String()
+        // 1. Kemaskini Cache Supaya Tidak Timbul Apabila Filter Berubah
         if (kategori === 'GURU') {
             rawDataGuru = rawDataGuru.filter(item => !idsToUpdate.includes(String(item.id)));
             if (filteredDataGuru) filteredDataGuru = filteredDataGuru.filter(item => !idsToUpdate.includes(String(item.id)));
@@ -527,7 +596,7 @@ window.kemaskiniStatusDelima = async function(id, statusBaru, kategori, btnEleme
 
         if (error) throw error;
 
-        // Kemaskini cache tempatan - PENYELESAIAN BUG MENGGUNAKAN String()
+        // Kemaskini cache tempatan
         let dataArray = kategori === 'GURU' ? rawDataGuru : rawDataMurid;
         const index = dataArray.findIndex(item => String(item.id) === String(id));
         if (index !== -1) {
