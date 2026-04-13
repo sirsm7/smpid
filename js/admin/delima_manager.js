@@ -311,7 +311,7 @@ window.eksportCsvPukal = function(kategori) {
     const dataPool = kategori === 'GURU' ? rawDataGuru : rawDataMurid;
     
     // Tapis rekod dari cache berpandukan ID yang dipilih
-    const recordsToExport = dataPool.filter(item => selectedIds.includes(item.id));
+    const recordsToExport = dataPool.filter(item => selectedIds.includes(String(item.id)));
 
     if (recordsToExport.length === 0) {
         Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Tiada Data', text: 'Tiada rekod sah untuk dieksport.', showConfirmButton: false, timer: 2000 });
@@ -460,11 +460,11 @@ window.tandaSelesaiPukal = async function(kategori) {
 
         // 1. Kemaskini Cache Supaya Tidak Timbul Apabila Filter Berubah
         if (kategori === 'GURU') {
-            rawDataGuru = rawDataGuru.filter(item => !idsToUpdate.includes(item.id));
-            if (filteredDataGuru) filteredDataGuru = filteredDataGuru.filter(item => !idsToUpdate.includes(item.id));
+            rawDataGuru = rawDataGuru.filter(item => !idsToUpdate.includes(String(item.id)));
+            if (filteredDataGuru) filteredDataGuru = filteredDataGuru.filter(item => !idsToUpdate.includes(String(item.id)));
         } else {
-            rawDataMurid = rawDataMurid.filter(item => !idsToUpdate.includes(item.id));
-            if (filteredDataMurid) filteredDataMurid = filteredDataMurid.filter(item => !idsToUpdate.includes(item.id));
+            rawDataMurid = rawDataMurid.filter(item => !idsToUpdate.includes(String(item.id)));
+            if (filteredDataMurid) filteredDataMurid = filteredDataMurid.filter(item => !idsToUpdate.includes(String(item.id)));
         }
 
         // 2. Animasi Pembuangan Baris
@@ -529,7 +529,7 @@ window.kemaskiniStatusDelima = async function(id, statusBaru, kategori, btnEleme
 
         // Kemaskini cache tempatan
         let dataArray = kategori === 'GURU' ? rawDataGuru : rawDataMurid;
-        const index = dataArray.findIndex(item => item.id === id);
+        const index = dataArray.findIndex(item => String(item.id) === String(id));
         if (index !== -1) {
             dataArray[index].status_proses = statusBaru;
         }
