@@ -98,6 +98,20 @@ export const AchievementService = {
     },
 
     /**
+     * BARU: Padam rekod secara pukal (Bulk Delete)
+     * Menggunakan operator .in() untuk prestasi maksimum dalam satu transaksi API
+     */
+    async deleteBulk(ids) {
+        const { error } = await db
+            .from('smpid_pencapaian')
+            .delete()
+            .in('id', ids);
+
+        if (error) throw error;
+        return { success: true };
+    },
+
+    /**
      * Fungsi Dalaman: Menyelaraskan jawatan guru merentas semua rekod
      */
     async syncTeacherPosition(namaGuru, jawatanBaru, excludeId) {
@@ -116,7 +130,7 @@ export const AchievementService = {
     },
 
     /**
-     * BARU: Kemaskini Pukal Nama Program (Standardization)
+     * Kemaskini Pukal Nama Program (Standardization)
      * Mengubah semua rekod yang mempunyai 'oldName' kepada 'newName'
      */
     async batchUpdateProgramName(oldName, newName) {

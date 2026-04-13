@@ -4,6 +4,8 @@
  * --- UPDATE V2.1 (RBAC DAERAH) ---
  * 1. Menukar rujukan statik 'M030' kepada senarai dinamik PPD.
  * 2. Menyuntik tapisan global supaya data pencapaian selari dengan daerah admin.
+ * --- UPDATE V2.2 (BULK DELETE) ---
+ * 1. Menambah fungsi kawalan kotak semak dan pemadaman pukal.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
@@ -45,7 +47,7 @@ window.loadMasterPencapaian = async function() {
     if(!tbody) return;
     
     if (pencapaianList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-10"><i class="fas fa-circle-notch fa-spin text-brand-500 text-2xl"></i></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-10"><i class="fas fa-circle-notch fa-spin text-brand-500 text-2xl"></i></td></tr>`;
     }
     
     const tahun = document.getElementById('filterTahunPencapaian').value;
@@ -67,7 +69,7 @@ window.loadMasterPencapaian = async function() {
         populateSekolahFilter(pencapaianList);
         window.renderPencapaianTable();
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-red-500 font-bold p-4">Gagal memuatkan data dari pangkalan data.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-red-500 font-bold p-4">Gagal memuatkan data dari pangkalan data.</td></tr>`;
     }
 };
 
@@ -172,8 +174,13 @@ window.renderPencapaianTable = function() {
     currentPencapaianFiltered = data;
     renderTopSchools(data);
 
+    // RESET: Kotak semak pilihan pukal apabila jadual dimuat semula
+    const selectAllCb = document.getElementById('selectAllPencapaian');
+    if (selectAllCb) selectAllCb.checked = false;
+    window.checkBulkStatusPencapaian();
+
     if(data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-10 text-slate-400 font-medium">Tiada rekod ditemui untuk kriteria ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-10 text-slate-400 font-medium">Tiada rekod ditemui untuk kriteria ini.</td></tr>`;
         return;
     }
 
@@ -203,6 +210,9 @@ window.renderPencapaianTable = function() {
         }
 
         return `<tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
+            <td class="px-4 py-3 text-center border-r border-slate-100 w-12">
+                <input type="checkbox" class="cb-pencapaian w-4 h-4 accent-red-500 cursor-pointer rounded" value="${i.id}" onchange="window.checkBulkStatusPencapaian()">
+            </td>
             <td class="px-6 py-4 font-mono text-xs font-bold text-slate-400 w-24">${i.kod_sekolah}</td>
             <td class="px-6 py-4 text-xs font-semibold text-slate-700 leading-snug w-64 whitespace-normal">${namaSekolah}</td>
             <td class="px-6 py-4 text-center"><span class="inline-block whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}">${i.kategori}</span></td>
@@ -453,6 +463,71 @@ window.handleSort = function(col) {
 
 window.handlePencapaianSearch = function() { 
     window.renderPencapaianTable(); 
+};
+
+// --- BULK ACTION LOGIC ---
+
+window.toggleSelectAllPencapaian = function(element) {
+    const checkboxes = document.querySelectorAll('.cb-pencapaian');
+    checkboxes.forEach(cb => {
+        cb.checked = element.checked;
+    });
+    window.checkBulkStatusPencapaian();
+};
+
+window.checkBulkStatusPencapaian = function() {
+    const checkboxes = document.querySelectorAll('.cb-pencapaian:checked');
+    const count = checkboxes.length;
+    
+    const bulkContainer = document.getElementById('bulkActionsPencapaian');
+    const countSpan = document.getElementById('countPukalPencapaian');
+
+    if (count > 0) {
+        if (bulkContainer) bulkContainer.classList.remove('hidden');
+        if (countSpan) countSpan.innerText = count;
+    } else {
+        if (bulkContainer) bulkContainer.classList.add('hidden');
+        if (countSpan) countSpan.innerText = '0';
+        
+        const selectAllCb = document.getElementById('selectAllPencapaian');
+        if (selectAllCb) selectAllCb.checked = false;
+    }
+};
+
+window.padamPukalPencapaianAdmin = async function() {
+    const checkboxes = document.querySelectorAll('.cb-pencapaian:checked');
+    if (checkboxes.length === 0) return;
+
+    const idsToDelete = Array.from(checkboxes).map(cb => cb.value);
+
+    Swal.fire({ 
+        title: 'Padam Pukal Rekod?', 
+        text: `Anda pasti mahu memadam ${idsToDelete.length} rekod ini? Tindakan ini tidak boleh dikembalikan.`, 
+        icon: 'warning', 
+        showCancelButton: true, 
+        confirmButtonColor: '#ef4444', 
+        confirmButtonText: 'Ya, Padam Pukal',
+        cancelButtonText: 'Batal'
+    }).then(async (r) => {
+        if(r.isConfirmed) {
+            toggleLoading(true);
+            try {
+                await AchievementService.deleteBulk(idsToDelete);
+                toggleLoading(false);
+                
+                // Reset UI states
+                const selectAllCb = document.getElementById('selectAllPencapaian');
+                if (selectAllCb) selectAllCb.checked = false;
+                window.checkBulkStatusPencapaian();
+
+                Swal.fire({ icon: 'success', title: 'Dipadam', text: `${idsToDelete.length} rekod telah berjaya dipadam.`, timer: 1500, showConfirmButton: false })
+                .then(() => window.loadMasterPencapaian());
+            } catch (e) {
+                toggleLoading(false);
+                Swal.fire('Ralat', 'Gagal memadam rekod secara pukal.', 'error');
+            }
+        }
+    });
 };
 
 // --- 5. EDIT MODAL OPERATIONS (HYBRID FILE LOGIC - ADMIN) ---
