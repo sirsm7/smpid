@@ -2,11 +2,10 @@
  * ADMIN MODULE: SETTINGS (STRICT RBAC & BATCH IMPORT EDITION)
  * Menguruskan pangkalan data pengguna pentadbir, kawalan akses sistem,
  * dan modul Import Data Pukal (Super Admin).
- * --- UPDATE V2.5 (JPNMEL ROLE SUPPORT) ---
- * Logic: Membersihkan manipulasi DOM tab import (dipindah ke main.js).
- * Logic: Menyuntik peranan JPNMEL ke dalam dropdown dan lencana jadual pengguna.
- * --- UPDATE V2.6 (DYNAMIC DEFAULT PASSWORD) ---
- * Logic: Melenyapkan teks statik 'ppdag@12345' dan menggantikannya dengan pembolehubah APP_CONFIG.
+ * --- UPDATE V2.7 (DB CONSTRAINT & ERROR HANDLING FIX) ---
+ * Logic: Menyuntik penapis awal (validation) untuk kata laluan.
+ * Logic: Memastikan JPNMEL dan SUPER_ADMIN diberikan kod_sekolah 'ALL' untuk elak konflik RBAC.
+ * Logic: Menangkap ralat spesifik Supabase untuk diagnosis 400 Bad Request.
  */
 
 import { AuthService } from '../services/auth.service.js';
@@ -118,9 +117,13 @@ window.loadAdminList = async function() {
             }
 
             // Nama Daerah / PPD
-            const ppdName = (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[user.kod_sekolah]) 
-                            ? APP_CONFIG.PPD_MAPPING[user.kod_sekolah] 
-                            : user.kod_sekolah;
+            let ppdName = user.kod_sekolah;
+            if (user.kod_sekolah === 'ALL' || user.role === 'JPNMEL' || user.role === 'SUPER_ADMIN') {
+                ppdName = 'SELURUH NEGERI';
+            } else if (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[user.kod_sekolah]) {
+                ppdName = APP_CONFIG.PPD_MAPPING[user.kod_sekolah];
+            }
+            
             roleBadge += `<div class="text-[9px] font-bold text-slate-500 mt-1 uppercase tracking-widest">${ppdName}</div>`;
 
             // Logik Butang Tindakan
@@ -207,11 +210,18 @@ window.tambahAdmin = async function() {
     const role = document.getElementById('inputNewAdminRole').value;
     const pass = document.getElementById('inputNewAdminPass').value.trim();
     
-    // Tarik nilai kod daerah/PPD jika dropdown berjaya disuntik
+    // Tarik nilai kod daerah/PPD
     const ppdInput = document.getElementById('inputNewAdminPPD');
-    const kodSekolah = ppdInput ? ppdInput.value : 'M030';
+    let kodSekolah = ppdInput ? ppdInput.value : 'M030';
     
+    // PEMBAIKAN: Jika JPNMEL atau SUPER_ADMIN didaftarkan, kod akses mereka merangkumi semua.
+    if (role === 'SUPER_ADMIN' || role === 'JPNMEL') {
+        kodSekolah = 'ALL';
+    }
+    
+    // Validasi Asas (Client-Side)
     if(!email || !pass) return Swal.fire('Data Tidak Lengkap', 'Sila isi emel dan kata laluan.', 'warning');
+    if(pass.length < 6) return Swal.fire('Format Salah', 'Kata laluan mestilah sekurang-kurangnya 6 aksara.', 'warning');
 
     toggleLoading(true);
     try {
@@ -220,7 +230,7 @@ window.tambahAdmin = async function() {
         Swal.fire({
             icon: 'success',
             title: 'Berjaya Ditambah',
-            text: `Akaun ${role} (${kodSekolah}) telah diaktifkan secara sah.`,
+            text: `Akaun ${role} telah diaktifkan secara sah.`,
             confirmButtonColor: '#1e293b'
         }).then(() => {
             document.getElementById('inputNewAdminEmail').value = '';
@@ -229,7 +239,15 @@ window.tambahAdmin = async function() {
         });
     } catch(e) {
         toggleLoading(false);
-        Swal.fire('Ralat Pendaftaran', 'Pastikan emel unik dan format kata laluan betul.', 'error');
+        // Log ralat ke console untuk melihat mesej sebenar dari Supabase (cth: Constraint violation)
+        console.error("Supabase Insert Error:", e);
+        
+        let errorMsg = 'Pastikan emel adalah unik dan sah.';
+        if (e.code === '23514') { // PostgreSQL Check Constraint Violation
+            errorMsg = `Peranan '${role}' belum didaftarkan dalam CHECK CONSTRAINT jadual pangkalan data. Sila kemaskini 'smpid_users' di Supabase.`;
+        }
+        
+        Swal.fire('Ralat Pangkalan Data (400)', errorMsg, 'error');
     }
 };
 
