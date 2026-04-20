@@ -5,7 +5,7 @@
  */
 
 export const APP_CONFIG = {
-    APP_NAME: 'Sistem Maklumat Pendidikan Islam Daerah (SMPID)',
+    APP_NAME: 'Nadi Analitik, Digital & Inovasi Melaka (NADIM)',
     APP_VERSION: '2.5.0',
     
     // Konfigurasi Pangkalan Data Supabase (Data dirujuk dari utils.js sebagai fallback)
