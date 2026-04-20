@@ -1,12 +1,12 @@
 /**
  * BOOKING SERVICE (MODUL BIMBINGAN & BENGKEL - BB)
  * Purpose: Manages CRUD operations for workshop bookings and admin date locks.
- * Version: 8.1 (Single-Row Database Constraint Fix)
- * --- UPDATE V8.1 ---
- * 1. Menggabungkan tatasusunan (array) pilihan daerah menjadi satu rentetan teks (String Join)
+ * Version: 8.2 (Single-Row Database Constraint Fix + RBAC Calendar Fix)
+ * --- UPDATE V8.2 ---
+ * 1. Pembaikan Pepijat Kalendar (RBAC): Membetulkan fungsi getMonthlyData supaya tidak
+ * melaksanakan carian smpid_sekolah_data bagi pengguna ADMIN dan SUPER_ADMIN.
+ * 2. Menggabungkan tatasusunan (array) pilihan daerah menjadi satu rentetan teks (String Join)
  * bagi menyokong Kekangan Unik (Unique Constraint) pada lajur 'tarikh'.
- * 2. Mengubah klausa tapisan dari `.eq` / `.in` kepada `.ilike` untuk ketepatan carian masa nyata
- * merentas rentetan (string) yang mengandungi pelbagai kod.
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -29,12 +29,26 @@ export const BookingService = {
         const endStr = `${year}-${pad(month + 1)}-${pad(lastDay)}`;
 
         // --- RBAC DAERAH INJECTION ---
-        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || '';
+        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE) || 'USER';
+        
         let validCodes = [];
         let ppdOwner = 'M030'; // Lalai
         
-        // Kenal pasti daerah sekolah yang mengakses kalendar
-        if (userKod) {
+        // Kenal pasti daerah berdasarkan peranan untuk paparan kalendar
+        if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
+            // Super Admin melihat semua data, pintasan saringan daerah diaktifkan
+            ppdOwner = 'ALL_DISTRICTS';
+        } else if (['ADMIN', 'PPD_UNIT'].includes(userRole)) {
+            // Pentadbir PPD memegang kod M010, M020, M030 secara terus
+            ppdOwner = userKod;
+            if (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[userKod]) {
+                const daerah = APP_CONFIG.PPD_MAPPING[userKod];
+                const { data: sList } = await db.from('smpid_sekolah_data').select('kod_sekolah').eq('daerah', daerah);
+                if (sList) validCodes = sList.map(x => x.kod_sekolah);
+            }
+        } else if (userKod) {
+            // Sekolah biasa (USER) - Cari daerah berdasarkan kod sekolah
             const { data: sData } = await db.from('smpid_sekolah_data').select('daerah').eq('kod_sekolah', userKod).maybeSingle();
             const daerah = sData ? sData.daerah : 'ALOR GAJAH';
             
@@ -49,14 +63,14 @@ export const BookingService = {
             if (sList) validCodes = sList.map(x => x.kod_sekolah);
         }
 
-        // 1. Ambil Tempahan Aktif (Ditapis mengikut daerah)
+        // 1. Ambil Tempahan Aktif (Ditapis mengikut daerah kecuali Super Admin)
         let queryB = db.from('smpid_bb_tempahan')
             .select('*')
             .eq('status', 'AKTIF')
             .gte('tarikh', startStr)
             .lte('tarikh', endStr);
             
-        if (validCodes.length > 0) {
+        if (!['SUPER_ADMIN', 'JPNMEL'].includes(userRole) && validCodes.length > 0) {
             queryB = queryB.in('kod_sekolah', validCodes);
         }
 
@@ -67,13 +81,17 @@ export const BookingService = {
             throw errB;
         }
 
-        // 2. Ambil Kunci Tarikh Admin (Statewide 'ALL' atau Spesifik PPD - Menggunakan iLike untuk Pencarian String)
-        const { data: locks, error: errL } = await db
-            .from('smpid_bb_kunci')
+        // 2. Ambil Kunci Tarikh Admin (Menggunakan iLike untuk Pencarian String)
+        let queryL = db.from('smpid_bb_kunci')
             .select('*')
             .gte('tarikh', startStr)
-            .lte('tarikh', endStr)
-            .or(`kod_ppd.ilike.%ALL%,kod_ppd.ilike.%${ppdOwner}%`); 
+            .lte('tarikh', endStr);
+            
+        if (!['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
+            queryL = queryL.or(`kod_ppd.ilike.%ALL%,kod_ppd.ilike.%${ppdOwner}%`); 
+        }
+
+        const { data: locks, error: errL } = await queryL;
 
         if (errL) {
             console.error("[BookingService] Ralat mengambil data kunci:", errL);
