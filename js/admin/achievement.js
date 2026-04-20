@@ -1,17 +1,16 @@
 /**
- * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V2.0 FILE UPLOAD)
+ * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V3.0 SURGICAL EDIT)
  * Menguruskan rekod pencapaian dengan kawalan integriti data penuh.
- * --- UPDATE V2.1 (RBAC DAERAH) ---
- * 1. Menukar rujukan statik 'M030' kepada senarai dinamik PPD.
- * 2. Menyuntik tapisan global supaya data pencapaian selari dengan daerah admin.
- * --- UPDATE V2.2 (BULK DELETE) ---
- * 1. Menambah fungsi kawalan kotak semak dan pemadaman pukal.
+ * --- UPDATE V3.0 (STANDARDIZE & BULK EDIT) ---
+ * 1. Ditambah keupayaan menyaring (Standardize) 'Nama Program' dan 'Skor Pencapaian'.
+ * 2. Ditambah fungsi 'Ubah Penyedia Pukal' menggunakan SweetAlert2.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
 import { toggleLoading, uploadFileToDrive } from '../core/helpers.js';
 import { populateDropdown } from '../config/dropdowns.js';
 import { APP_CONFIG } from '../config/app.config.js';
+import { getDatabaseClient } from '../core/db.js'; // BARU: Tambahan untuk operasi komposit terus
 
 // --- STATE MANAGEMENT ---
 let pencapaianList = [];
@@ -21,7 +20,7 @@ let currentJawatanFilter = 'ALL';
 let currentKategoriFilter = 'ALL'; 
 let sortState = { column: 'created_at', direction: 'desc' };
 
-// Cache untuk senarai nama program unik bagi tujuan penyeragaman
+// Cache untuk senarai nama/skor unik bagi tujuan penyeragaman
 let standardizationList = []; 
 let filteredStandardizationList = [];
 
@@ -120,7 +119,7 @@ function populateSekolahFilter(data) {
     else select.value = 'ALL';
 }
 
-// --- RENDERING LOGIC (Disusun Penuh Tanpa Truncation) ---
+// --- RENDERING LOGIC ---
 
 window.renderPencapaianTable = function() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
@@ -146,7 +145,7 @@ window.renderPencapaianTable = function() {
         if(search) {
             let namaSekolah = senaraiKodPPD.includes(i.kod_sekolah) ? (APP_CONFIG.PPD_MAPPING[i.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[i.kod_sekolah]}` : 'PEJABAT PENDIDIKAN DAERAH') : 
                 (window.globalDashboardData?.find(s => s.kod_sekolah === i.kod_sekolah)?.nama_sekolah || '');
-            const searchTarget = `${i.kod_sekolah} ${namaSekolah} ${i.nama_peserta} ${i.nama_pertandingan}`.toUpperCase();
+            const searchTarget = `${i.kod_sekolah} ${namaSekolah} ${i.nama_peserta} ${i.nama_pertandingan} ${i.pencapaian}`.toUpperCase();
             if (!searchTarget.includes(search)) return false;
         }
         
@@ -203,8 +202,12 @@ window.renderPencapaianTable = function() {
         else if (i.kategori === 'PPD') badgeClass = 'bg-indigo-100 text-indigo-700 border-indigo-200';
 
         let jenisBadge = '';
+        let penyediaBadge = '';
         if (i.jenis_rekod === 'PENSIJILAN') {
             jenisBadge = `<span class="bg-amber-50 text-amber-600 border border-amber-200 text-[9px] font-black px-1 rounded mr-1">SIJIL</span>`;
+            if(i.penyedia) {
+                penyediaBadge = `<span class="block text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-wider"><i class="fas fa-building mr-1"></i>${i.penyedia}</span>`;
+            }
         } else {
             jenisBadge = `<span class="bg-blue-50 text-blue-600 border border-blue-200 text-[9px] font-black px-1 rounded mr-1">PROG</span>`;
         }
@@ -223,6 +226,7 @@ window.renderPencapaianTable = function() {
             <td class="px-6 py-4 whitespace-normal">
                 <div class="mb-1">${jenisBadge}</div>
                 <div class="text-brand-600 text-xs font-bold leading-tight">${i.nama_pertandingan}</div>
+                ${penyediaBadge}
             </td>
             <td class="px-6 py-4 text-center font-black text-slate-700 text-xs w-32 whitespace-normal bg-slate-50/50">${i.pencapaian}</td>
             <td class="px-6 py-4 text-center w-24"><a href="${i.pautan_bukti}" target="_blank" class="p-2 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition" title="Lihat Bukti"><i class="fas fa-link"></i></a></td>
@@ -529,6 +533,55 @@ window.padamPukalPencapaianAdmin = async function() {
         }
     });
 };
+
+// ── SURGICAL EDIT START: Fungsi Ubah Penyedia Pukal ──
+window.ubahPenyediaPukalAdmin = async function() {
+    const checkboxes = document.querySelectorAll('.cb-pencapaian:checked');
+    if (checkboxes.length === 0) return;
+
+    const idsToUpdate = Array.from(checkboxes).map(cb => cb.value);
+
+    const { value: newPenyedia } = await Swal.fire({
+        title: 'Ubah Penyedia (Pukal)',
+        html: `Sila pilih penyedia baharu untuk <b>${idsToUpdate.length}</b> rekod pensijilan yang ditandakan.`,
+        input: 'select',
+        inputOptions: {
+            'GOOGLE': 'GOOGLE FOR EDUCATION',
+            'APPLE': 'APPLE EDUCATION',
+            'MICROSOFT': 'MICROSOFT EDUCATION',
+            'LAIN-LAIN': 'LAIN-LAIN / TIADA'
+        },
+        inputPlaceholder: '- Sila Pilih Penyedia -',
+        showCancelButton: true,
+        confirmButtonColor: '#2563eb',
+        confirmButtonText: 'Simpan Pukal',
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-3xl' },
+        inputValidator: (value) => {
+            if (!value) return 'Anda mesti memilih salah satu penyedia!';
+        }
+    });
+
+    if (newPenyedia) {
+        toggleLoading(true);
+        try {
+            await AchievementService.batchUpdatePenyedia(idsToUpdate, newPenyedia);
+            toggleLoading(false);
+
+            // Reset UI states
+            const selectAllCb = document.getElementById('selectAllPencapaian');
+            if (selectAllCb) selectAllCb.checked = false;
+            window.checkBulkStatusPencapaian();
+
+            Swal.fire({ icon: 'success', title: 'Berjaya', text: `${idsToUpdate.length} rekod telah dikemaskini.`, timer: 1500, showConfirmButton: false })
+            .then(() => window.loadMasterPencapaian());
+        } catch (e) {
+            toggleLoading(false);
+            Swal.fire('Ralat', 'Gagal mengubah penyedia secara pukal.', 'error');
+        }
+    }
+};
+// ── SURGICAL EDIT END ──
 
 // --- 5. EDIT MODAL OPERATIONS (HYBRID FILE LOGIC - ADMIN) ---
 
@@ -861,20 +914,32 @@ window.eksportPencapaian = function() {
     link.click();
 };
 
-// --- DATA STANDARDIZATION LOGIC (KEKAL) ---
+// ── SURGICAL EDIT START: Logik Penyeragaman Dinamik ──
 
 window.refreshStandardizeUI = function() {
     const counts = {};
     standardizationList = [];
     filteredStandardizationList = [];
 
+    // Mengumpul kekerapan menggunakan kunci komposit (Program + Skor)
     pencapaianList.forEach(item => {
-        const name = item.nama_pertandingan || "TIADA NAMA";
-        counts[name] = (counts[name] || 0) + 1;
+        const prog = item.nama_pertandingan || "TIADA NAMA";
+        const skor = item.pencapaian || "TIADA SKOR";
+        const key = `${prog} | ${skor}`;
+
+        if (!counts[key]) {
+            counts[key] = { prog: prog, skor: skor, count: 0 };
+        }
+        counts[key].count += 1;
     });
 
-    Object.keys(counts).sort().forEach(name => {
-        standardizationList.push({ name: name, count: counts[name] });
+    Object.keys(counts).sort().forEach(key => {
+        standardizationList.push({ 
+            key: key, 
+            prog: counts[key].prog, 
+            skor: counts[key].skor, 
+            count: counts[key].count 
+        });
     });
 
     filteredStandardizationList = standardizationList;
@@ -885,7 +950,7 @@ window.refreshStandardizeUI = function() {
     } else {
         renderStandardizeTable(filteredStandardizationList);
     }
-}
+};
 
 window.openStandardizeModal = function() {
     document.getElementById('standardizeSearch').value = '';
@@ -898,34 +963,51 @@ window.renderStandardizeTable = function(list) {
     if (!tbody) return;
     
     if(list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-5 text-slate-400">Tiada padanan carian.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-5 text-slate-400 font-bold">Tiada padanan carian.</td></tr>`;
         return;
     }
 
     tbody.innerHTML = list.map((item, index) => {
         const safeId = index; 
-        const safeName = item.name.replace(/'/g, "\\'"); 
+        const safeProg = item.prog.replace(/'/g, "\\'"); 
+        const safeSkor = item.skor.replace(/'/g, "\\'"); 
 
         return `
             <tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
-                <td class="text-center font-bold text-xs text-slate-300 p-4">${index + 1}</td>
-                <td class="font-bold text-slate-800 text-xs w-1/3 p-4 leading-snug">${item.name}</td>
-                <td class="text-center p-4">
-                    <span class="bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full text-[10px] font-black border border-indigo-100">
+                <td class="text-center font-bold text-xs text-slate-300 p-4 align-top pt-6">${index + 1}</td>
+                <td class="p-4 align-top">
+                    <div class="font-bold text-slate-800 text-xs leading-snug mb-2 uppercase">${item.prog}</div>
+                    <div class="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block uppercase tracking-widest">${item.skor}</div>
+                </td>
+                <td class="text-center p-4 align-top pt-6">
+                    <span class="bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full text-[10px] font-black border border-indigo-100 shadow-sm">
                         ${item.count} REKOD
                     </span>
                 </td>
-                <td class="p-4 w-1/3">
-                    <input type="text" id="std-input-${safeId}" 
-                           class="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-700 font-bold text-xs uppercase-input focus:border-indigo-500 outline-none bg-white" 
-                           placeholder="Nama baharu..." 
-                           value="${item.name.replace(/"/g, '&quot;')}"
-                           oninput="this.value = this.value.toUpperCase()">
+                <td class="p-4 align-top">
+                    <div class="flex flex-col gap-2">
+                        <div>
+                            <label class="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Nama Program</label>
+                            <input type="text" id="std-prog-${safeId}" 
+                                   class="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-700 font-bold text-xs uppercase-input focus:border-indigo-500 outline-none bg-white shadow-sm" 
+                                   placeholder="Kemas kini program..." 
+                                   value="${item.prog.replace(/"/g, '&quot;')}"
+                                   oninput="this.value = this.value.toUpperCase()">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Skor Pencapaian</label>
+                            <input type="text" id="std-skor-${safeId}" 
+                                   class="w-full px-3 py-2 rounded-lg border border-slate-200 text-emerald-700 font-bold text-xs uppercase-input focus:border-emerald-500 outline-none bg-emerald-50 shadow-sm" 
+                                   placeholder="Kemas kini skor..." 
+                                   value="${item.skor.replace(/"/g, '&quot;')}"
+                                   oninput="this.value = this.value.toUpperCase()">
+                        </div>
+                    </div>
                 </td>
-                <td class="text-center p-4">
-                    <button onclick="executeStandardization('${safeName}', 'std-input-${safeId}')" 
-                            class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black shadow-sm transition transform active:scale-95">
-                        <i class="fas fa-magic me-1"></i> SET
+                <td class="text-center p-4 align-middle">
+                    <button onclick="executeStandardization('${safeId}', '${safeProg}', '${safeSkor}')" 
+                            class="w-full px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-[10px] font-black shadow-md transition transform active:scale-95 flex flex-col items-center gap-1 justify-center">
+                        <i class="fas fa-magic text-sm mb-0.5"></i> SET KEMASKINI
                     </button>
                 </td>
             </tr>
@@ -938,38 +1020,57 @@ window.handleStandardizeSearch = function(val) {
     if (!term) {
         filteredStandardizationList = standardizationList;
     } else {
-        filteredStandardizationList = standardizationList.filter(item => item.name.toUpperCase().includes(term));
+        filteredStandardizationList = standardizationList.filter(item => 
+            item.prog.toUpperCase().includes(term) || 
+            item.skor.toUpperCase().includes(term)
+        );
     }
     renderStandardizeTable(filteredStandardizationList);
 };
 
-window.executeStandardization = function(oldName, inputId) {
-    const newName = document.getElementById(inputId).value.trim().toUpperCase();
+window.executeStandardization = function(index, oldProg, oldSkor) {
+    const newProg = document.getElementById('std-prog-' + index).value.trim().toUpperCase();
+    const newSkor = document.getElementById('std-skor-' + index).value.trim().toUpperCase();
     
-    if (!newName) return Swal.fire('Ralat', 'Nama baharu kosong.', 'warning');
-    if (newName === oldName) return Swal.fire('Tiada Perubahan', 'Nama sama dengan asal.', 'info');
+    if (!newProg || !newSkor) return Swal.fire('Ralat', 'Nama program dan skor tidak boleh dibiarkan kosong.', 'warning');
+    if (newProg === oldProg && newSkor === oldSkor) return Swal.fire('Tiada Perubahan', 'Tiada data yang diubah.', 'info');
 
     Swal.fire({
-        title: 'Sahkan Penyeragaman?',
-        html: `Menukar <b>"${oldName}"</b> kepada <br><b class="text-emerald-600">"${newName}"</b><br>untuk semua rekod berkaitan.`,
+        title: 'Sahkan Penyeragaman Komposit?',
+        html: `<div class="text-left text-sm bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <p class="mb-2"><span class="font-bold text-slate-500 text-[10px] uppercase">Data Asal:</span><br> ${oldProg} <br> <span class="text-emerald-600 font-bold text-xs">${oldSkor}</span></p>
+                  <hr class="my-2 border-slate-200">
+                  <p><span class="font-bold text-slate-500 text-[10px] uppercase">Data Baharu:</span><br> <span class="font-bold text-indigo-700">${newProg}</span> <br> <span class="text-emerald-600 font-bold text-xs">${newSkor}</span></p>
+               </div>
+               <p class="mt-4 text-xs font-bold text-red-500">Amaran: Semua rekod yang sepadan dengan data asal akan dikemaskini serentak.</p>`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#10b981', 
+        confirmButtonColor: '#1e293b', 
         confirmButtonText: 'Ya, Seragamkan!',
-        cancelButtonText: 'Batal'
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-3xl' }
     }).then(async (result) => {
         if (result.isConfirmed) {
             toggleLoading(true);
             try {
-                await AchievementService.batchUpdateProgramName(oldName, newName);
+                // Menggunakan getDatabaseClient secara terus untuk operasi komposit (Dual Update)
+                const db = getDatabaseClient();
+                const { error } = await db.from('smpid_pencapaian')
+                    .update({ nama_pertandingan: newProg, pencapaian: newSkor })
+                    .eq('nama_pertandingan', oldProg)
+                    .eq('pencapaian', oldSkor);
+
+                if (error) throw error;
+                
                 toggleLoading(false);
-                await Swal.fire({ title: 'Berjaya!', text: 'Data telah diseragamkan.', icon: 'success', timer: 1500, showConfirmButton: false });
+                await Swal.fire({ title: 'Berjaya!', text: 'Data gabungan telah diseragamkan.', icon: 'success', timer: 1500, showConfirmButton: false });
                 await window.loadMasterPencapaian(); 
                 window.refreshStandardizeUI(); 
             } catch (e) {
                 toggleLoading(false);
-                Swal.fire('Ralat', 'Gagal mengemaskini data.', 'error');
+                Swal.fire('Ralat', 'Gagal mengemaskini data ke pangkalan data.', 'error');
             }
         }
     });
 };
+// ── SURGICAL EDIT END ──

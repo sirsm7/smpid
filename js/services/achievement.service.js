@@ -98,7 +98,7 @@ export const AchievementService = {
     },
 
     /**
-     * BARU: Padam rekod secara pukal (Bulk Delete)
+     * Padam rekod secara pukal (Bulk Delete)
      * Menggunakan operator .in() untuk prestasi maksimum dalam satu transaksi API
      */
     async deleteBulk(ids) {
@@ -141,5 +141,35 @@ export const AchievementService = {
 
         if (error) throw error;
         return { success: true };
+    },
+
+    // ── SURGICAL EDIT START: Menambah sokongan Penyeragaman Skor & Ubah Penyedia Pukal ──
+    /**
+     * Kemaskini Pukal Skor / Pencapaian (Standardization)
+     * Mengubah semua rekod yang mempunyai 'oldSkor' kepada 'newSkor'
+     */
+    async batchUpdateSkor(oldSkor, newSkor) {
+        const { error } = await db
+            .from('smpid_pencapaian')
+            .update({ pencapaian: newSkor })
+            .eq('pencapaian', oldSkor);
+
+        if (error) throw error;
+        return { success: true };
+    },
+
+    /**
+     * Kemaskini Penyedia (Provider) secara Pukal berdasarkan IDs
+     * Digunakan untuk membetulkan Sijil Profesional secara berkelompok
+     */
+    async batchUpdatePenyedia(ids, newPenyedia) {
+        const { error } = await db
+            .from('smpid_pencapaian')
+            .update({ penyedia: newPenyedia })
+            .in('id', ids);
+
+        if (error) throw error;
+        return { success: true };
     }
+    // ── SURGICAL EDIT END ──
 };
