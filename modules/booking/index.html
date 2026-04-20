@@ -129,7 +129,8 @@
                 </div>
                 <div>
                     <h1 class="font-black text-slate-900 text-base md:text-lg tracking-tight uppercase leading-none">Tempahan Bimbingan</h1>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">USTP PPD Alor Gajah</p>
+                    <!-- SURGICAL FIX: Ditambah id="headerDaerah" dan menggunakan teks fallback neutral -->
+                    <p id="headerDaerah" class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">PEJABAT PENDIDIKAN DAERAH</p>
                 </div>
             </div>
             <a href="../../user.html" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-full text-xs font-bold text-slate-600 transition flex items-center gap-2 group border-2 border-slate-200">
@@ -324,7 +325,8 @@
 
     <footer class="bg-white border-t-2 border-slate-200 py-10 mt-auto">
         <div class="container mx-auto px-4 text-center">
-            <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">&copy; 2026 USTP PPD Alor Gajah</p>
+            <!-- SURGICAL FIX: Ditambah id="footerDaerah" dan menggunakan teks fallback neutral -->
+            <p id="footerDaerah" class="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">&copy; <span id="currentYear">2026</span> PEJABAT PENDIDIKAN DAERAH</p>
         </div>
     </footer>
 
@@ -334,6 +336,8 @@
     <script type="module" src="../../js/config/dropdowns.js"></script>
     <script type="module" src="../../js/services/booking.service.js"></script>
     <script type="module" src="script.js"></script>
-
+    <script>
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+    </script>
 </body>
 </html>

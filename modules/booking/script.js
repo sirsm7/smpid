@@ -1,6 +1,9 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 6.1 (FULL DAY LOGIC + RBAC DAERAH)
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 6.2 (FULL DAY LOGIC + RBAC DAERAH + DYNAMIC UI)
  * Fungsi: Menguruskan logik tempahan dengan paparan Grid Kad Interaktif.
+ * --- UPDATE V6.2 ---
+ * Menyuntik logik pengecaman daerah dinamik di dalam initBookingPortal() menggunakan tetapan berpusat APP_CONFIG.PPD_MAPPING.
+ * Menangkap userKod dari sesi (localStorage) dan menyasarkan manipulasi DOM pada #headerDaerah dan #footerDaerah untuk memaparkan nama Pejabat Pendidikan Daerah yang betul.
  * --- UPDATE V6.1 ---
  * Keserasian penuh dengan API Perkhidmatan (Service) baharu yang
  * mengasingkan tarikh, slot, dan kunci admin mengikut daerah secara automatik.
@@ -54,6 +57,27 @@ async function initBookingPortal() {
                 dispNama.innerText = schoolInfo.nama.toUpperCase();
                 dispNama.classList.add('wrap-safe');
             }
+            
+            // --- LOGIK DAERAH DINAMIK (SUNTIKAN PPD) ---
+            let namaDaerah = data.daerah ? data.daerah.toUpperCase() : '';
+            
+            // Rujukan sandaran (fallback) jika kod adalah PPD (contoh: M010, M020, M030)
+            if (!namaDaerah && APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[kod]) {
+                namaDaerah = APP_CONFIG.PPD_MAPPING[kod].toUpperCase();
+            }
+            
+            // Kemaskini DOM Header & Footer jika daerah berjaya dikesan
+            if (namaDaerah) {
+                const headerDaerahEl = document.getElementById('headerDaerah');
+                if (headerDaerahEl) headerDaerahEl.innerText = `PEJABAT PENDIDIKAN DAERAH ${namaDaerah}`;
+                
+                const footerDaerahEl = document.getElementById('footerDaerah');
+                if (footerDaerahEl) {
+                    const currentYear = new Date().getFullYear();
+                    footerDaerahEl.innerHTML = `&copy; <span id="currentYear">${currentYear}</span> PEJABAT PENDIDIKAN DAERAH ${namaDaerah}`;
+                }
+            }
+            // -------------------------------------------
             
             loadBookingHistory(schoolInfo.kod);
         }
