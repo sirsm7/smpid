@@ -672,7 +672,8 @@
             <!-- Panel Status ID Guru -->
             <div id="panelAdminGuru" class="hidden">
                 <div class="flex flex-col sm:flex-row justify-between mb-4 gap-2">
-                    <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <!-- ── SURGICAL EDIT START: Tambah Filter Lokasi Asal Guru & Flex Wrap ── -->
+                    <div class="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
                         <div class="relative w-full sm:w-64">
                             <i class="fas fa-school absolute left-3 top-1/2 -translate-y-1/2 text-blue-400"></i>
                             <select id="filterSekolahGuruAdmin" class="w-full pl-9 pr-3 py-1.5 rounded-lg border-2 border-blue-100 bg-white text-slate-600 text-xs font-bold outline-none focus:border-blue-500" onchange="loadSenaraiDelimaAdmin('GURU')">
@@ -685,7 +686,17 @@
                                 <option value="ALL">Semua Catatan</option>
                             </select>
                         </div>
+                        <div class="relative w-full sm:w-48">
+                            <i class="fas fa-map-marker-alt absolute left-3 top-1/2 -translate-y-1/2 text-blue-400"></i>
+                            <select id="filterLokasiGuruAdmin" class="w-full pl-9 pr-3 py-1.5 rounded-lg border-2 border-blue-100 bg-white text-slate-600 text-xs font-bold outline-none focus:border-blue-500" onchange="loadSenaraiDelimaAdmin('GURU')">
+                                <option value="ALL">Semua Lokasi</option>
+                                <option value="DALAM DAERAH">Dalam Daerah</option>
+                                <option value="LUAR DAERAH">Luar Daerah</option>
+                                <option value="LUAR NEGERI">Luar Negeri</option>
+                            </select>
+                        </div>
                     </div>
+                    <!-- ── SURGICAL EDIT END ── -->
                     <select id="filterDelimaGuruAdmin" class="px-3 py-1.5 rounded-lg border-2 border-blue-100 bg-blue-50 text-blue-700 text-xs font-bold outline-none" onchange="loadSenaraiDelimaAdmin('GURU')">
                         <option value="ALL">Semua Status</option>
                         <option value="DALAM PROSES" selected>Dalam Proses</option>
@@ -730,7 +741,8 @@
             <!-- Panel Status ID Murid -->
             <div id="panelAdminMurid" class="hidden">
                 <div class="flex flex-col sm:flex-row justify-between mb-4 gap-2">
-                    <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <!-- ── SURGICAL EDIT START: Tambah Filter Lokasi Asal Murid & Flex Wrap ── -->
+                    <div class="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
                         <div class="relative w-full sm:w-64">
                             <i class="fas fa-school absolute left-3 top-1/2 -translate-y-1/2 text-cyan-400"></i>
                             <select id="filterSekolahMuridAdmin" class="w-full pl-9 pr-3 py-1.5 rounded-lg border-2 border-cyan-100 bg-white text-slate-600 text-xs font-bold outline-none focus:border-cyan-500" onchange="loadSenaraiDelimaAdmin('MURID')">
@@ -743,7 +755,17 @@
                                 <option value="ALL">Semua Catatan</option>
                             </select>
                         </div>
+                        <div class="relative w-full sm:w-48">
+                            <i class="fas fa-map-marker-alt absolute left-3 top-1/2 -translate-y-1/2 text-cyan-400"></i>
+                            <select id="filterLokasiMuridAdmin" class="w-full pl-9 pr-3 py-1.5 rounded-lg border-2 border-cyan-100 bg-white text-slate-600 text-xs font-bold outline-none focus:border-cyan-500" onchange="loadSenaraiDelimaAdmin('MURID')">
+                                <option value="ALL">Semua Lokasi</option>
+                                <option value="DALAM DAERAH">Dalam Daerah</option>
+                                <option value="LUAR DAERAH">Luar Daerah</option>
+                                <option value="LUAR NEGERI">Luar Negeri</option>
+                            </select>
+                        </div>
                     </div>
+                    <!-- ── SURGICAL EDIT END ── -->
                     <select id="filterDelimaMuridAdmin" class="px-3 py-1.5 rounded-lg border-2 border-cyan-100 bg-cyan-50 text-cyan-700 text-xs font-bold outline-none" onchange="loadSenaraiDelimaAdmin('MURID')">
                         <option value="ALL">Semua Status</option>
                         <option value="DALAM PROSES" selected>Dalam Proses</option>

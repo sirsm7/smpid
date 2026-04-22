@@ -37,14 +37,23 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
         const statusFilterId = kategori === 'GURU' ? 'filterDelimaGuruAdmin' : 'filterDelimaMuridAdmin';
         const catatanFilterId = kategori === 'GURU' ? 'filterCatatanGuruAdmin' : 'filterCatatanMuridAdmin';
         const sekolahFilterId = kategori === 'GURU' ? 'filterSekolahGuruAdmin' : 'filterSekolahMuridAdmin';
+        // ── SURGICAL EDIT START: Tambah pembolehubah ID Lokasi ──
+        const lokasiFilterId = kategori === 'GURU' ? 'filterLokasiGuruAdmin' : 'filterLokasiMuridAdmin';
+        // ── SURGICAL EDIT END ──
         
         const statusSelect = document.getElementById(statusFilterId);
         const catatanSelect = document.getElementById(catatanFilterId);
         const sekolahSelect = document.getElementById(sekolahFilterId);
+        // ── SURGICAL EDIT START: Dapatkan elemen dropdown Lokasi ──
+        const lokasiSelect = document.getElementById(lokasiFilterId);
+        // ── SURGICAL EDIT END ──
 
         let statusVal = statusSelect?.value || 'ALL';
         let catVal = catatanSelect?.value || 'ALL';
         let sekVal = sekolahSelect?.value || 'ALL';
+        // ── SURGICAL EDIT START: Dapatkan nilai Lokasi semasa ──
+        let lokVal = lokasiSelect?.value || 'ALL';
+        // ── SURGICAL EDIT END ──
 
         let dataToProcess = kategori === 'GURU' ? rawDataGuru : rawDataMurid;
 
@@ -171,6 +180,11 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
         if (catVal !== 'ALL') {
             filteredData = filteredData.filter(item => item.catatan === catVal);
         }
+        // ── SURGICAL EDIT START: Laksanakan tapisan Lokasi Asal (Rentetan Teks) ──
+        if (lokVal !== 'ALL') {
+            filteredData = filteredData.filter(item => item.nama && item.nama.includes(`(${lokVal})`));
+        }
+        // ── SURGICAL EDIT END ──
 
         // Simpan state tapisan penuh untuk kegunaan eksport CSV
         if (kategori === 'GURU') {
