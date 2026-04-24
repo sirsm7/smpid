@@ -1,7 +1,10 @@
 /**
  * BOOKING SERVICE (MODUL BIMBINGAN & BENGKEL - BB)
  * Purpose: Manages CRUD operations for workshop bookings and admin date locks.
- * Version: 8.4 (Surgical RBAC Calibration & Non-Destructive Lock Merge)
+ * Version: 8.5 (Surgical RBAC Calibration & Non-Destructive Lock Merge Fix)
+ * --- UPDATE V8.5 (SUPER_ADMIN UNLOCK FIX) ---
+ * Memperbetulkan pepijat (bug) di mana tindakan 'UNLOCK' oleh SUPER_ADMIN sebelum ini
+ * hanya menimpa (overwrite) data berbanding menolak (subtract) daerah daripada senarai kunci.
  * --- UPDATE V8.4 ---
  * 1. Pengecaman Daerah Kebal: Membina pemetaan padanan huruf besar (.toUpperCase()) dan pencarian
  * ilike supaya pentadbir dan sekolah tidak jatuh ke zon M030 (fallback) secara salah.
@@ -366,8 +369,25 @@ export const BookingService = {
 
         // 2. Logik Penggabungan Pintar (Smart Merge)
         if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
-            // Super Admin mengawal secara mutlak kotak semak (checkbox)
-            finalScopes = Array.isArray(targetPpds) ? targetPpds : [targetPpds];
+            // ── SURGICAL EDIT START: Memisahkan logik UNLOCK dan LOCK bagi Super Admin ──
+            if (action === 'UNLOCK') {
+                if (targetPpds.includes('ALL')) {
+                    finalScopes = []; // Buka semua kunci
+                } else {
+                    if (currentScopes.includes('ALL')) {
+                        // Jika sebelum ini kunci 'ALL', kita perlu kembangkan kepada semua daerah, kemudian tolak yang dipilih
+                        const allPPDs = Object.keys(APP_CONFIG.PPD_MAPPING || {});
+                        finalScopes = allPPDs.filter(k => !targetPpds.includes(k));
+                    } else {
+                        // Tolak daerah yang dipilih dari senarai kunci sedia ada
+                        finalScopes = currentScopes.filter(code => !targetPpds.includes(code));
+                    }
+                }
+            } else {
+                // Untuk LOCK / UPDATE, Super Admin mengawal secara mutlak kotak semak (checkbox)
+                finalScopes = Array.isArray(targetPpds) ? targetPpds : [targetPpds];
+            }
+            // ── SURGICAL EDIT END ──
         } else {
             // Admin PPD Biasa -> Tambah/Buang diri sendiri dari cantuman daerah
             if (action === 'UNLOCK') {
@@ -387,16 +407,14 @@ export const BookingService = {
         }
 
         // Persediaan Rentetan Keseluruhan
-        if (finalScopes.includes('ALL')) finalScopes = ['ALL'];
-        const joinedScopes = finalScopes.join(',');
-
-        // 3. Pelaksanaan Pangkalan Data (Non-Destructive Overwrite)
-        if (finalScopes.length === 0 || joinedScopes === '') {
+        if (finalScopes.length === 0 || finalScopes.join('') === '') {
             // Pembersihan Total Jika Tiada Lagi Daerah Berkunci
             const { error } = await db.from('smpid_bb_kunci').delete().eq('tarikh', tarikh);
             if (error) throw error;
             return { success: true, action: 'UNLOCKED' };
         } else {
+            const joinedScopes = finalScopes.join(',');
+            
             if (existingLock) {
                 // Cantuman / Pengemaskinian Rekod Bersilang
                 const { error } = await db.from('smpid_bb_kunci').update({
