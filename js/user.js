@@ -58,7 +58,9 @@ function initUserPortal() {
         
         if(btnLogout) {
             btnLogout.innerHTML = `<i class="fas fa-arrow-left"></i> Kembali ke Dashboard Admin`;
-            btnLogout.setAttribute('onclick', "window.location.href='admin.html'");
+            // ── SURGICAL EDIT START: Panggil fungsi pemulihan impersonation ──
+            btnLogout.setAttribute('onclick', "window.kembaliKeAdmin()");
+            // ── SURGICAL EDIT END ──
             btnLogout.className = "w-full py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm";
         }
         
@@ -72,6 +74,25 @@ function initUserPortal() {
     // Muat data profil sekolah
     loadProfil(kod);
 }
+
+// ── SURGICAL EDIT START: Logik Pemulihan Peranan Asal (Revert Impersonation) ──
+window.kembaliKeAdmin = function() {
+    const realRole = localStorage.getItem('smpid_real_user_role');
+    const realKod = localStorage.getItem('smpid_real_user_kod');
+    
+    if (realRole) {
+        // Kembalikan kuasa penuh Pentadbir / PPD_UNIT kepada sesi aktif
+        localStorage.setItem(APP_CONFIG.SESSION.USER_ROLE, realRole);
+        localStorage.removeItem('smpid_real_user_role');
+    }
+    if (realKod) {
+        localStorage.setItem(APP_CONFIG.SESSION.USER_KOD, realKod);
+        localStorage.removeItem('smpid_real_user_kod');
+    }
+    
+    window.location.href = 'admin.html';
+};
+// ── SURGICAL EDIT END ──
 
 // --- 1. NAVIGATION LOGIC ---
 

@@ -362,10 +362,25 @@ function renderGrid(data) {
  * FIXED: Menghalakan pandangan admin ke profil sekolah yang dipilih.
  * Menggunakan localStorage untuk integriti data silang modul.
  */
+// ── SURGICAL EDIT START: Menyuntik logik 'Impersonation' ──
 window.viewSchoolProfile = function(kod) {
+    const currentRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+    const currentKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+    
+    // Jika admin masuk ke paparan sekolah, simpan peranan mutlak ke memori sandaran
+    if (currentRole && currentRole !== 'SEKOLAH') {
+        localStorage.setItem('smpid_real_user_role', currentRole);
+        if (currentKod) {
+            localStorage.setItem('smpid_real_user_kod', currentKod);
+        }
+        // Paksa sistem bertindak sebagai peranan SEKOLAH (Impersonation)
+        localStorage.setItem(APP_CONFIG.SESSION.USER_ROLE, 'SEKOLAH');
+    }
+
     localStorage.setItem(APP_CONFIG.SESSION.USER_KOD, kod);
     window.location.href = 'user.html'; 
 };
+// ── SURGICAL EDIT END ──
 
 window.eksportDataTapis = function() {
     if (!currentFilteredList || currentFilteredList.length === 0) return Swal.fire('Tiada Data', '', 'info'); 
