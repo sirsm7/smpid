@@ -47,9 +47,11 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+// ── SURGICAL EDIT START: Membaiki isu sintaks HTML pada onclick word cloud dengan escapeHtml ──
 function toInlineJsString(value) {
-    return JSON.stringify(String(value ?? ''));
+    return escapeHtml(JSON.stringify(String(value ?? '')));
 }
+// ── SURGICAL EDIT END ──
 
 function getSchoolMetaByKod(kodSekolah) {
     if (!window.globalDashboardData || !kodSekolah) return null;
