@@ -408,7 +408,7 @@
             </div>
 
             <!-- UNIFIED FILTER DECK -->
-            <div class="bg-slate-50 p-4 rounded-2xl mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 border border-slate-100">
+            <div class="bg-slate-50 p-4 rounded-2xl mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 border border-slate-100">
                 <div class="col-span-1 lg:col-span-2 relative">
                     <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
                     <input type="text" id="searchPencapaianInput" class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-sm font-semibold" placeholder="Cari Nama / Program..." onkeyup="handlePencapaianSearch()">
@@ -429,6 +429,17 @@
                     <option value="PERTANDINGAN">PERTANDINGAN</option>
                     <option value="PENSIJILAN">PENSIJILAN</option>
                 </select>
+                <!-- ── SURGICAL EDIT START: Tambah filter daerah dan program untuk tab Kemenjadian ── -->
+                <div id="filterDaerahPencapaianWrapper" class="hidden relative">
+                    <i class="fas fa-map-marker-alt absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400"></i>
+                    <select id="filterDaerahPencapaian" class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-indigo-100 bg-white text-sm font-semibold outline-none focus:border-indigo-500" onchange="if(window.setPencapaianDaerahFilter) window.setPencapaianDaerahFilter(this.value)">
+                        <option value="ALL">SEMUA DAERAH</option>
+                    </select>
+                </div>
+                <select id="filterProgramPencapaian" class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold outline-none col-span-1 lg:col-span-2" onchange="if(window.filterPencapaianByProgram) window.filterPencapaianByProgram(this.value)">
+                    <option value="ALL">SEMUA PROGRAM</option>
+                </select>
+                <!-- ── SURGICAL EDIT END ── -->
                 <select id="filterSekolahPencapaian" class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold outline-none col-span-1 lg:col-span-2" onchange="renderPencapaianTable()">
                     <option value="ALL">SEMUA SEKOLAH</option>
                 </select>
@@ -513,7 +524,15 @@
                     </div>
                 </div>
             </div>
-
+            <!-- ── SURGICAL EDIT START: Tambah word cloud tajuk program untuk tab Kemenjadian ── -->
+            <div id="programCloudWrapper" class="mb-6 hidden animate-fade-up">
+                <div class="flex justify-between items-center mb-2">
+                    <h6 class="font-bold text-slate-400 text-[10px] uppercase tracking-widest"><i class="fas fa-tags mr-1"></i> Tapisan Tajuk Program</h6>
+                    <button onclick="filterPencapaianByProgram('ALL')" id="btnResetProgram" class="text-[10px] font-bold text-red-400 hover:text-red-600 hidden uppercase">Reset Tapis</button>
+                </div>
+                <div id="programCloudContainer" class="p-4 bg-indigo-50/50 border-2 border-indigo-100 rounded-2xl flex flex-wrap justify-center"></div>
+            </div>
+            <!-- ── SURGICAL EDIT END ── -->
             <div id="jawatanCloudWrapper" class="mb-6 hidden animate-fade-up">
                 <div class="flex justify-between items-center mb-2">
                     <h6 class="font-bold text-slate-400 text-[10px] uppercase tracking-widest"><i class="fas fa-tags mr-1"></i> Tapisan Jawatan Guru</h6>

@@ -17,12 +17,133 @@ let pencapaianList = [];
 let currentPencapaianFiltered = []; 
 let currentCardFilter = 'ALL';
 let currentJawatanFilter = 'ALL';
-let currentKategoriFilter = 'ALL'; 
+let currentKategoriFilter = 'ALL';
+// ── SURGICAL EDIT START: State tapisan daerah dan program Kemenjadian ──
+let currentProgramFilter = 'ALL';
+let currentDaerahFilter = 'ALL';
+// ── SURGICAL EDIT END ──
 let sortState = { column: 'created_at', direction: 'desc' };
 
 // Cache untuk senarai nama/skor unik bagi tujuan penyeragaman
 let standardizationList = []; 
 let filteredStandardizationList = [];
+
+// ── SURGICAL EDIT START: Helper tapisan daerah dan program Kemenjadian ──
+function getPpdCodeList() {
+    return APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+}
+
+function isSuperAdminRole() {
+    const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+    return userRole === 'SUPER_ADMIN';
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function toInlineJsString(value) {
+    return JSON.stringify(String(value ?? ''));
+}
+
+function getSchoolMetaByKod(kodSekolah) {
+    if (!window.globalDashboardData || !kodSekolah) return null;
+    return window.globalDashboardData.find(s => s.kod_sekolah === kodSekolah) || null;
+}
+
+function getPencapaianDaerah(item) {
+    const kodSekolah = item?.kod_sekolah;
+    if (!kodSekolah) return '';
+
+    if (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[kodSekolah]) {
+        return APP_CONFIG.PPD_MAPPING[kodSekolah];
+    }
+
+    const schoolMeta = getSchoolMetaByKod(kodSekolah);
+    return schoolMeta?.daerah || '';
+}
+
+function populateDaerahFilter() {
+    const wrapper = document.getElementById('filterDaerahPencapaianWrapper');
+    const select = document.getElementById('filterDaerahPencapaian');
+    if (!wrapper || !select) return;
+
+    if (!isSuperAdminRole()) {
+        wrapper.classList.add('hidden');
+        select.value = 'ALL';
+        currentDaerahFilter = 'ALL';
+        return;
+    }
+
+    wrapper.classList.remove('hidden');
+
+    const oldVal = select.value || currentDaerahFilter || 'ALL';
+    let daerahList = [];
+
+    if (APP_CONFIG.PPD_MAPPING) {
+        daerahList = Object.values(APP_CONFIG.PPD_MAPPING);
+    }
+
+    if (window.globalDashboardData) {
+        window.globalDashboardData.forEach(s => {
+            if (s.daerah) daerahList.push(s.daerah);
+        });
+    }
+
+    daerahList = [...new Set(daerahList.filter(Boolean))].sort();
+
+    select.innerHTML = '<option value="ALL">SEMUA DAERAH</option>' + daerahList.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+
+    if (oldVal !== 'ALL' && daerahList.includes(oldVal)) {
+        select.value = oldVal;
+        currentDaerahFilter = oldVal;
+    } else {
+        select.value = 'ALL';
+        currentDaerahFilter = 'ALL';
+    }
+}
+
+function getDaerahFilteredPencapaianSource() {
+    if (!isSuperAdminRole() || currentDaerahFilter === 'ALL') return pencapaianList;
+    return pencapaianList.filter(item => getPencapaianDaerah(item) === currentDaerahFilter);
+}
+
+function populateProgramFilter(data) {
+    const select = document.getElementById('filterProgramPencapaian');
+    if (!select) return;
+
+    const oldVal = select.value || currentProgramFilter || 'ALL';
+    const counts = {};
+
+    (data || []).forEach(item => {
+        const program = (item.nama_pertandingan || '').trim();
+        if (!program) return;
+        counts[program] = (counts[program] || 0) + 1;
+    });
+
+    let options = '<option value="ALL">SEMUA PROGRAM</option>';
+    Object.entries(counts)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .forEach(([program, count]) => {
+            options += `<option value="${escapeHtml(program)}">${escapeHtml(program)} (${count})</option>`;
+        });
+
+    select.innerHTML = options;
+
+    if (oldVal !== 'ALL' && Object.prototype.hasOwnProperty.call(counts, oldVal)) {
+        select.value = oldVal;
+        currentProgramFilter = oldVal;
+    } else {
+        select.value = 'ALL';
+        currentProgramFilter = 'ALL';
+    }
+}
+// ── SURGICAL EDIT END ──
 
 // --- INITIALIZATION ---
 
@@ -65,7 +186,12 @@ window.loadMasterPencapaian = async function() {
         }
         
         pencapaianList = dataRaw;
-        populateSekolahFilter(pencapaianList);
+        // ── SURGICAL EDIT START: Muatkan filter daerah dan program Kemenjadian ──
+        populateDaerahFilter();
+        const scopedData = getDaerahFilteredPencapaianSource();
+        populateSekolahFilter(scopedData);
+        populateProgramFilter(scopedData);
+        // ── SURGICAL EDIT END ──
         window.renderPencapaianTable();
     } catch (e) {
         tbody.innerHTML = `<tr><td colspan="9" class="text-center text-red-500 font-bold p-4">Gagal memuatkan data dari pangkalan data.</td></tr>`;
@@ -78,7 +204,7 @@ function populateSekolahFilter(data) {
     const seen = new Set();
     const oldVal = select.value; 
     
-    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+    const senaraiKodPPD = getPpdCodeList();
     
     select.innerHTML = '<option value="ALL">SEMUA SEKOLAH</option>';
     
@@ -130,21 +256,40 @@ window.renderPencapaianTable = function() {
         currentKategoriFilter = elKat.value;
     }
 
+    // ── SURGICAL EDIT START: Ambil nilai filter daerah dan program Kemenjadian ──
+    const elDaerah = document.getElementById('filterDaerahPencapaian');
+    if(elDaerah && isSuperAdminRole()) {
+        currentDaerahFilter = elDaerah.value || 'ALL';
+    } else {
+        currentDaerahFilter = 'ALL';
+    }
+
+    const elProgram = document.getElementById('filterProgramPencapaian');
+    if(elProgram) {
+        currentProgramFilter = elProgram.value || 'ALL';
+    }
+    // ── SURGICAL EDIT END ──
+
     const katFilter = currentKategoriFilter;
     const sekFilter = document.getElementById('filterSekolahPencapaian').value;
     const jenisFilter = document.getElementById('filterJenisPencapaian').value; 
     const search = document.getElementById('searchPencapaianInput').value.toUpperCase();
 
-    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+    const senaraiKodPPD = getPpdCodeList();
 
-    let data = pencapaianList.filter(i => {
+    // ── SURGICAL EDIT START: Satukan logik filter supaya program cloud/dropdown kekal dinamik ──
+    const applyCoreFilters = (i, options = {}) => {
+        const ignoreProgram = options.ignoreProgram === true;
+
+        if(currentDaerahFilter !== 'ALL' && getPencapaianDaerah(i) !== currentDaerahFilter) return false;
         if(sekFilter !== 'ALL' && i.kod_sekolah !== sekFilter) return false;
         if(katFilter !== 'ALL' && i.kategori !== katFilter) return false;
-        if(jenisFilter !== 'ALL' && i.jenis_rekod !== jenisFilter) return false; 
+        if(jenisFilter !== 'ALL' && i.jenis_rekod !== jenisFilter) return false;
+        if(!ignoreProgram && currentProgramFilter !== 'ALL' && i.nama_pertandingan !== currentProgramFilter) return false;
         
         if(search) {
             let namaSekolah = senaraiKodPPD.includes(i.kod_sekolah) ? (APP_CONFIG.PPD_MAPPING[i.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[i.kod_sekolah]}` : 'PEJABAT PENDIDIKAN DAERAH') : 
-                (window.globalDashboardData?.find(s => s.kod_sekolah === i.kod_sekolah)?.nama_sekolah || '');
+                (getSchoolMetaByKod(i.kod_sekolah)?.nama_sekolah || '');
             const searchTarget = `${i.kod_sekolah} ${namaSekolah} ${i.nama_peserta} ${i.nama_pertandingan} ${i.pencapaian}`.toUpperCase();
             if (!searchTarget.includes(search)) return false;
         }
@@ -157,7 +302,14 @@ window.renderPencapaianTable = function() {
         if(currentJawatanFilter !== 'ALL' && i.jawatan !== currentJawatanFilter) return false;
 
         return true;
-    });
+    };
+
+    const dataForProgramFilter = pencapaianList.filter(i => applyCoreFilters(i, { ignoreProgram: true }));
+    populateProgramFilter(dataForProgramFilter);
+    updateProgramCloud(dataForProgramFilter);
+
+    let data = pencapaianList.filter(i => applyCoreFilters(i));
+    // ── SURGICAL EDIT END ──
 
     updateStats(data);
     updateCloud(data); 
@@ -356,13 +508,65 @@ function updateCloud(data) {
         }).join('');
 }
 
+// ── SURGICAL EDIT START: Word cloud tajuk program Kemenjadian ──
+function updateProgramCloud(data) {
+    const container = document.getElementById('programCloudContainer');
+    const wrapper = document.getElementById('programCloudWrapper');
+    if (!container) return;
+
+    const programData = (data || []).filter(i => i.nama_pertandingan);
+
+    if(programData.length === 0) {
+        if(wrapper) wrapper.classList.add('hidden');
+        container.innerHTML = '';
+        return;
+    }
+
+    if(wrapper) wrapper.classList.remove('hidden');
+
+    const counts = {};
+    programData.forEach(i => {
+        const program = i.nama_pertandingan.trim();
+        if (!program) return;
+        counts[program] = (counts[program] || 0) + 1;
+    });
+
+    const sortedPrograms = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, 40);
+
+    container.innerHTML = sortedPrograms.map(([program, count]) => {
+        const isActive = currentProgramFilter === program;
+        let sizeClass = "text-[10px]";
+        if(count > 2) sizeClass = "text-[11px] font-bold";
+        if(count > 5) sizeClass = "text-[12px] font-black";
+
+        return `
+            <div onclick="filterPencapaianByProgram(${toInlineJsString(program)})" 
+                 title="${escapeHtml(program)}"
+                 class="inline-flex items-center px-3 py-1.5 rounded-full border cursor-pointer transition-all m-1 shadow-sm max-w-full
+                        ${isActive ? 'bg-indigo-600 text-white border-indigo-600 scale-105 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-400 hover:text-indigo-600'}">
+                <span class="${sizeClass} truncate max-w-[240px]">${escapeHtml(program)}</span>
+                <span class="ml-2 bg-slate-100 text-slate-400 px-1.5 rounded-full text-[9px] font-bold ${isActive ? 'bg-white/20 text-white' : ''}">${count}</span>
+            </div>
+        `;
+    }).join('');
+
+    const btnReset = document.getElementById('btnResetProgram');
+    if(btnReset) {
+        if (currentProgramFilter !== 'ALL') btnReset.classList.remove('hidden');
+        else btnReset.classList.add('hidden');
+    }
+}
+// ── SURGICAL EDIT END ──
+
 function renderTopSchools(data) {
     const table = document.getElementById('tableTopContributors');
     const badge = document.getElementById('totalRecordsBadge');
     if(badge) badge.innerText = `${data.length} Rekod`;
     if(!table) return;
     
-    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+    const senaraiKodPPD = getPpdCodeList();
     const schoolCounts = {};
     data.forEach(i => {
         if(!senaraiKodPPD.includes(i.kod_sekolah)) {
@@ -428,6 +632,49 @@ window.filterPencapaianByJawatan = function(j) {
     window.renderPencapaianTable(); 
 };
 
+// ── SURGICAL EDIT START: Fungsi global tapisan daerah dan tajuk program Kemenjadian ──
+window.filterPencapaianByProgram = function(program) {
+    currentProgramFilter = (currentProgramFilter === program) ? 'ALL' : program;
+
+    const select = document.getElementById('filterProgramPencapaian');
+    if(select) select.value = currentProgramFilter;
+
+    const btnReset = document.getElementById('btnResetProgram');
+    if(btnReset) {
+        if (currentProgramFilter !== 'ALL') btnReset.classList.remove('hidden');
+        else btnReset.classList.add('hidden');
+    }
+
+    window.renderPencapaianTable();
+};
+
+window.setPencapaianDaerahFilter = function(daerah) {
+    currentDaerahFilter = daerah || 'ALL';
+    currentProgramFilter = 'ALL';
+    currentJawatanFilter = 'ALL';
+
+    const selectDaerah = document.getElementById('filterDaerahPencapaian');
+    if(selectDaerah) selectDaerah.value = currentDaerahFilter;
+
+    const selectProgram = document.getElementById('filterProgramPencapaian');
+    if(selectProgram) selectProgram.value = 'ALL';
+
+    const selectSekolah = document.getElementById('filterSekolahPencapaian');
+    if(selectSekolah) selectSekolah.value = 'ALL';
+
+    const btnResetProgram = document.getElementById('btnResetProgram');
+    if(btnResetProgram) btnResetProgram.classList.add('hidden');
+
+    const btnResetJawatan = document.getElementById('btnResetJawatan');
+    if(btnResetJawatan) btnResetJawatan.classList.add('hidden');
+
+    const scopedData = getDaerahFilteredPencapaianSource();
+    populateSekolahFilter(scopedData);
+    populateProgramFilter(scopedData);
+    window.renderPencapaianTable();
+};
+// ── SURGICAL EDIT END ──
+
 window.filterBySchoolFromTop5 = function(kod) { 
     const el = document.getElementById('filterSekolahPencapaian');
     if(el) {
@@ -441,10 +688,28 @@ window.resetPencapaianFilters = function() {
     currentCardFilter = 'ALL'; 
     currentJawatanFilter = 'ALL'; 
     currentKategoriFilter = 'ALL';
+    // ── SURGICAL EDIT START: Reset filter daerah dan program Kemenjadian ──
+    currentProgramFilter = 'ALL';
+    currentDaerahFilter = 'ALL';
+    // ── SURGICAL EDIT END ──
     document.getElementById('searchPencapaianInput').value = '';
     
     const elSek = document.getElementById('filterSekolahPencapaian');
     if(elSek) elSek.value = 'ALL';
+
+    // ── SURGICAL EDIT START: Reset elemen UI daerah dan program ──
+    const elProgram = document.getElementById('filterProgramPencapaian');
+    if(elProgram) elProgram.value = 'ALL';
+
+    const elDaerah = document.getElementById('filterDaerahPencapaian');
+    if(elDaerah) elDaerah.value = 'ALL';
+
+    const btnResetProgram = document.getElementById('btnResetProgram');
+    if(btnResetProgram) btnResetProgram.classList.add('hidden');
+
+    const btnResetJawatan = document.getElementById('btnResetJawatan');
+    if(btnResetJawatan) btnResetJawatan.classList.add('hidden');
+    // ── SURGICAL EDIT END ──
 
     const elKat = document.getElementById('filterKategoriPencapaian');
     if(elKat) elKat.value = 'ALL'; 
@@ -877,7 +1142,7 @@ window.eksportPencapaian = function() {
 
     let csvContent = "BIL,KOD,NAMA SEKOLAH,JENIS REKOD,KATEGORI,PESERTA,JAWATAN,PROGRAM,PERINGKAT,PENCAPAIAN,TAHUN,PAUTAN BUKTI\n";
     
-    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+    const senaraiKodPPD = getPpdCodeList();
 
     currentPencapaianFiltered.forEach((i, index) => {
         const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
