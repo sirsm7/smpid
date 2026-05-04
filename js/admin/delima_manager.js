@@ -37,23 +37,17 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
         const statusFilterId = kategori === 'GURU' ? 'filterDelimaGuruAdmin' : 'filterDelimaMuridAdmin';
         const catatanFilterId = kategori === 'GURU' ? 'filterCatatanGuruAdmin' : 'filterCatatanMuridAdmin';
         const sekolahFilterId = kategori === 'GURU' ? 'filterSekolahGuruAdmin' : 'filterSekolahMuridAdmin';
-        // ── SURGICAL EDIT START: Tambah pembolehubah ID Lokasi ──
         const lokasiFilterId = kategori === 'GURU' ? 'filterLokasiGuruAdmin' : 'filterLokasiMuridAdmin';
-        // ── SURGICAL EDIT END ──
         
         const statusSelect = document.getElementById(statusFilterId);
         const catatanSelect = document.getElementById(catatanFilterId);
         const sekolahSelect = document.getElementById(sekolahFilterId);
-        // ── SURGICAL EDIT START: Dapatkan elemen dropdown Lokasi ──
         const lokasiSelect = document.getElementById(lokasiFilterId);
-        // ── SURGICAL EDIT END ──
 
         let statusVal = statusSelect?.value || 'ALL';
         let catVal = catatanSelect?.value || 'ALL';
         let sekVal = sekolahSelect?.value || 'ALL';
-        // ── SURGICAL EDIT START: Dapatkan nilai Lokasi semasa ──
         let lokVal = lokasiSelect?.value || 'ALL';
-        // ── SURGICAL EDIT END ──
 
         let dataToProcess = kategori === 'GURU' ? rawDataGuru : rawDataMurid;
 
@@ -119,12 +113,11 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
 
         if (catatanSelect && sekolahSelect) {
             
-            // A. JANA DROPDOWN CATATAN (Dibasaskan pada pilihan Sekolah semasa)
-            let dataForCatatan = statusFilteredData;
-            if (sekVal !== 'ALL') {
-                dataForCatatan = dataForCatatan.filter(item => item.kod_sekolah === sekVal);
-            }
-            const uniqueCatatan = [...new Set(dataForCatatan.map(item => item.catatan).filter(Boolean))].sort();
+            // ── SURGICAL EDIT START: Menyahgandingkan (decouple) dropdown Sekolah & Catatan ──
+            // Dropdown dibina bebas berpandukan 'statusFilteredData' mentah sahaja untuk halang infinite-reset loop
+            
+            // A. JANA DROPDOWN CATATAN (Bebas)
+            const uniqueCatatan = [...new Set(statusFilteredData.map(item => item.catatan).filter(Boolean))].sort();
             
             let catatanHtml = '<option value="ALL">Semua Catatan</option>';
             uniqueCatatan.forEach(c => {
@@ -132,7 +125,7 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
             });
             catatanSelect.innerHTML = catatanHtml;
 
-            // State Restoration: Kekalkan pilihan jika ia masih wujud, reset jika terkeluar skop
+            // State Restoration: Kekalkan pilihan jika ia masih wujud
             if (catVal !== 'ALL' && uniqueCatatan.includes(catVal)) {
                 catatanSelect.value = catVal;
             } else {
@@ -140,12 +133,8 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
                 catatanSelect.value = 'ALL';
             }
 
-            // B. JANA DROPDOWN SEKOLAH (Dibasaskan pada pilihan Catatan semasa)
-            let dataForSekolah = statusFilteredData;
-            if (catVal !== 'ALL') {
-                dataForSekolah = dataForSekolah.filter(item => item.catatan === catVal);
-            }
-            const uniqueSekolah = [...new Set(dataForSekolah.map(item => item.kod_sekolah).filter(Boolean))].sort();
+            // B. JANA DROPDOWN SEKOLAH (Bebas)
+            const uniqueSekolah = [...new Set(statusFilteredData.map(item => item.kod_sekolah).filter(Boolean))].sort();
             
             const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
             let sekolahHtml = '<option value="ALL">Semua Sekolah</option>';
@@ -162,13 +151,14 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
             });
             sekolahSelect.innerHTML = sekolahHtml;
 
-            // State Restoration: Kekalkan pilihan jika ia masih wujud, reset jika terkeluar skop
+            // State Restoration: Kekalkan pilihan jika ia masih wujud
             if (sekVal !== 'ALL' && uniqueSekolah.includes(sekVal)) {
                 sekolahSelect.value = sekVal;
             } else {
                 sekVal = 'ALL';
                 sekolahSelect.value = 'ALL';
             }
+            // ── SURGICAL EDIT END ──
         }
 
         // 2. Laksanakan Tapisan Jadual Akhir menggunakan parameter yang telah disahkan (Validated Parameters)
@@ -180,9 +170,17 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
         if (catVal !== 'ALL') {
             filteredData = filteredData.filter(item => item.catatan === catVal);
         }
-        // ── SURGICAL EDIT START: Laksanakan tapisan Lokasi Asal (Rentetan Teks) ──
+        
+        // ── SURGICAL EDIT START: Laksanakan tapisan gabungan untuk Lokasi Asal DALAM NEGERI ──
         if (lokVal !== 'ALL') {
-            filteredData = filteredData.filter(item => item.nama && item.nama.includes(`(${lokVal})`));
+            if (lokVal === 'DALAM NEGERI') {
+                // Tangkap kedua-dua kluster daerah Melaka
+                filteredData = filteredData.filter(item => item.nama && (item.nama.includes('(DALAM DAERAH)') || item.nama.includes('(LUAR DAERAH)')));
+            } else if (lokVal === 'LUAR NEGERI') {
+                filteredData = filteredData.filter(item => item.nama && item.nama.includes('(LUAR NEGERI)'));
+            } else {
+                filteredData = filteredData.filter(item => item.nama && item.nama.includes(`(${lokVal})`));
+            }
         }
         // ── SURGICAL EDIT END ──
 
