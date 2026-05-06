@@ -265,12 +265,42 @@ async function loadAnalisaSekolah() {
             return;
         }
 
-        // Tentukan data terkini (2025 vs 2024)
-        let dcsLatest = (data.dcs_2025 !== null) ? data.dcs_2025 : data.dcs_2024;
-        let aktifLatest = (data.peratus_aktif_2025 !== null) ? data.peratus_aktif_2025 : data.peratus_aktif_2024;
+// ── SURGICAL EDIT START: Membaiki pepijat DOM untuk elemen trendDcs ──
+        // Tentukan data terkini dan terdahulu untuk analisis trend
+        let dcsLatest = null;
+        let dcsPrev = null;
         
-        document.getElementById('valDcs').innerText = dcsLatest ? dcsLatest.toFixed(2) : "0.00";
+        if (data.dcs_2025 != null) {
+            dcsLatest = data.dcs_2025;
+            dcsPrev = data.dcs_2024;
+        } else if (data.dcs_2024 != null) {
+            dcsLatest = data.dcs_2024;
+            dcsPrev = data.dcs_2023;
+        }
+
+        let aktifLatest = (data.peratus_aktif_2025 != null) ? data.peratus_aktif_2025 : data.peratus_aktif_2024;
+        
+        document.getElementById('valDcs').innerText = (dcsLatest != null) ? dcsLatest.toFixed(2) : "0.00";
         document.getElementById('valAktif').innerText = aktifLatest ? aktifLatest : "0";
+
+        // Kemaskini elemen UI Trend DCS
+        const trendEl = document.getElementById('trendDcs');
+        if (trendEl) {
+            if (dcsLatest == null || dcsPrev == null) {
+                trendEl.innerHTML = `Tahun Semasa`;
+                trendEl.className = "inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm";
+            } else if (dcsLatest > dcsPrev) {
+                trendEl.innerHTML = `<i class="fas fa-arrow-up text-green-300 mr-1"></i> Meningkat`;
+                trendEl.className = "inline-block bg-green-500/30 border border-green-400/50 text-white px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm";
+            } else if (dcsLatest < dcsPrev) {
+                trendEl.innerHTML = `<i class="fas fa-arrow-down text-red-300 mr-1"></i> Menurun`;
+                trendEl.className = "inline-block bg-red-500/30 border border-red-400/50 text-white px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm";
+            } else {
+                trendEl.innerHTML = `<i class="fas fa-minus text-slate-200 mr-1"></i> Kekal`;
+                trendEl.className = "inline-block bg-white/20 border border-white/30 text-white px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm";
+            }
+        }
+// ── SURGICAL EDIT END ──
 
         renderAnalisaTable(data);
         renderDcsChart(data);
