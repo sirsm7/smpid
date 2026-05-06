@@ -105,19 +105,30 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
         // SMART DYNAMIC CASCADING FILTERS LOGIC
         // =========================================================
         
-        // 1. Tapis data asas berdasarkan Status Semasa terlebih dahulu
-        let statusFilteredData = dataToProcess;
+        // ── SURGICAL EDIT START: Memindahkan tapisan Lokasi ke tahap Pra-Tapisan untuk kesan lata (cascading) ──
+        // 1. Pra-Tapisan data asas berdasarkan Status Semasa & Lokasi
+        let preFilteredData = dataToProcess;
+        
         if (statusVal !== 'ALL') {
-            statusFilteredData = statusFilteredData.filter(item => item.status_proses === statusVal);
+            preFilteredData = preFilteredData.filter(item => item.status_proses === statusVal);
+        }
+
+        // Tapisan gabungan untuk Lokasi Asal dilaksanakan sebelum penjanaan dropdown
+        if (lokVal !== 'ALL') {
+            if (lokVal === 'DALAM NEGERI') {
+                // Tangkap kedua-dua kluster daerah Melaka
+                preFilteredData = preFilteredData.filter(item => item.nama && (item.nama.includes('(DALAM DAERAH)') || item.nama.includes('(LUAR DAERAH)')));
+            } else if (lokVal === 'LUAR NEGERI') {
+                preFilteredData = preFilteredData.filter(item => item.nama && item.nama.includes('(LUAR NEGERI)'));
+            } else {
+                preFilteredData = preFilteredData.filter(item => item.nama && item.nama.includes(`(${lokVal})`));
+            }
         }
 
         if (catatanSelect && sekolahSelect) {
             
-            // ── SURGICAL EDIT START: Menyahgandingkan (decouple) dropdown Sekolah & Catatan ──
-            // Dropdown dibina bebas berpandukan 'statusFilteredData' mentah sahaja untuk halang infinite-reset loop
-            
-            // A. JANA DROPDOWN CATATAN (Bebas)
-            const uniqueCatatan = [...new Set(statusFilteredData.map(item => item.catatan).filter(Boolean))].sort();
+            // A. JANA DROPDOWN CATATAN (Berdasarkan preFilteredData)
+            const uniqueCatatan = [...new Set(preFilteredData.map(item => item.catatan).filter(Boolean))].sort();
             
             let catatanHtml = '<option value="ALL">Semua Catatan</option>';
             uniqueCatatan.forEach(c => {
@@ -133,8 +144,8 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
                 catatanSelect.value = 'ALL';
             }
 
-            // B. JANA DROPDOWN SEKOLAH (Bebas)
-            const uniqueSekolah = [...new Set(statusFilteredData.map(item => item.kod_sekolah).filter(Boolean))].sort();
+            // B. JANA DROPDOWN SEKOLAH (Berdasarkan preFilteredData)
+            const uniqueSekolah = [...new Set(preFilteredData.map(item => item.kod_sekolah).filter(Boolean))].sort();
             
             const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
             let sekolahHtml = '<option value="ALL">Semua Sekolah</option>';
@@ -158,11 +169,10 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
                 sekVal = 'ALL';
                 sekolahSelect.value = 'ALL';
             }
-            // ── SURGICAL EDIT END ──
         }
 
-        // 2. Laksanakan Tapisan Jadual Akhir menggunakan parameter yang telah disahkan (Validated Parameters)
-        let filteredData = statusFilteredData;
+        // 2. Laksanakan Tapisan Jadual Akhir menggunakan parameter yang telah disahkan
+        let filteredData = preFilteredData;
 
         if (sekVal !== 'ALL') {
             filteredData = filteredData.filter(item => item.kod_sekolah === sekVal);
@@ -170,18 +180,7 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
         if (catVal !== 'ALL') {
             filteredData = filteredData.filter(item => item.catatan === catVal);
         }
-        
-        // ── SURGICAL EDIT START: Laksanakan tapisan gabungan untuk Lokasi Asal DALAM NEGERI ──
-        if (lokVal !== 'ALL') {
-            if (lokVal === 'DALAM NEGERI') {
-                // Tangkap kedua-dua kluster daerah Melaka
-                filteredData = filteredData.filter(item => item.nama && (item.nama.includes('(DALAM DAERAH)') || item.nama.includes('(LUAR DAERAH)')));
-            } else if (lokVal === 'LUAR NEGERI') {
-                filteredData = filteredData.filter(item => item.nama && item.nama.includes('(LUAR NEGERI)'));
-            } else {
-                filteredData = filteredData.filter(item => item.nama && item.nama.includes(`(${lokVal})`));
-            }
-        }
+        // Nota: Tapisan lokVal telah dipindahkan ke blok preFilteredData di atas.
         // ── SURGICAL EDIT END ──
 
         // Simpan state tapisan penuh untuk kegunaan eksport CSV
