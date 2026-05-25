@@ -19,7 +19,7 @@ let currentCardFilter = 'ALL';
 let currentJawatanFilter = 'ALL';
 let currentKategoriFilter = 'ALL';
 // ── SURGICAL EDIT START: State tapisan daerah dan program Kemenjadian ──
-let currentProgramFilter = 'ALL';
+let currentProgramFilter = []; // Ditukar kepada tatasusunan (Array) untuk menyokong Multi-Select
 let currentDaerahFilter = 'ALL';
 // ── SURGICAL EDIT END ──
 let sortState = { column: 'created_at', direction: 'desc' };
@@ -115,38 +115,87 @@ function getDaerahFilteredPencapaianSource() {
     return pencapaianList.filter(item => getPencapaianDaerah(item) === currentDaerahFilter);
 }
 
+// ── SURGICAL EDIT START: Susunan Abjad A-Z & Suntikan Multi-Select Dropdown ──
 function populateProgramFilter(data) {
-    const select = document.getElementById('filterProgramPencapaian');
-    if (!select) return;
+    const selectEl = document.getElementById('filterProgramPencapaian');
+    if (!selectEl) return;
+    const parent = selectEl.parentElement;
 
-    const oldVal = select.value || currentProgramFilter || 'ALL';
     const counts = {};
-
     (data || []).forEach(item => {
         const program = (item.nama_pertandingan || '').trim();
         if (!program) return;
         counts[program] = (counts[program] || 0) + 1;
     });
 
-// ── SURGICAL EDIT START: Susunan Abjad A-Z untuk Dropdown Program ──
-    let options = '<option value="ALL">SEMUA PROGRAM</option>';
-    Object.entries(counts)
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .forEach(([program, count]) => {
-            options += `<option value="${escapeHtml(program)}">${escapeHtml(program)} (${count})</option>`;
-        });
-// ── SURGICAL EDIT END ──
+    const sortedPrograms = Object.entries(counts).sort((a, b) => a[0].localeCompare(b[0]));
 
-    select.innerHTML = options;
-
-    if (oldVal !== 'ALL' && Object.prototype.hasOwnProperty.call(counts, oldVal)) {
-        select.value = oldVal;
-        currentProgramFilter = oldVal;
-    } else {
-        select.value = 'ALL';
-        currentProgramFilter = 'ALL';
+    let customDropdown = document.getElementById('customProgramDropdown');
+    if (!customDropdown) {
+        // Sembunyikan elemen asal dan bina bekas dropdown tersuai
+        selectEl.style.display = 'none';
+        customDropdown = document.createElement('div');
+        customDropdown.id = 'customProgramDropdown';
+        customDropdown.className = 'relative w-full mt-1';
+        parent.appendChild(customDropdown);
     }
+
+    let btnText = "SEMUA PROGRAM";
+    let btnClass = "text-slate-500 bg-slate-50 border-slate-200";
+    if (currentProgramFilter.length > 0) {
+        btnText = `${currentProgramFilter.length} PROGRAM DIPILIH`;
+        btnClass = "text-indigo-700 font-bold bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200";
+    }
+
+    let listHTML = `
+        <button type="button" onclick="document.getElementById('customProgramDropdownMenu').classList.toggle('hidden'); event.stopPropagation();"
+                class="w-full text-left px-3 py-2 border rounded-lg shadow-sm focus:outline-none flex justify-between items-center text-xs transition-all ${btnClass}">
+            <span class="truncate pr-2">${btnText}</span>
+            <i class="fas fa-chevron-down opacity-50"></i>
+        </button>
+        <div id="customProgramDropdownMenu" onclick="event.stopPropagation();" class="hidden absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-64 overflow-y-auto">
+            <div class="p-2 sticky top-0 bg-white border-b border-slate-100 z-10 flex justify-between items-center shadow-sm">
+                <span class="text-[10px] font-black text-slate-400 tracking-wider">PILIHAN BERBILANG</span>
+                ${currentProgramFilter.length > 0 ? `<button onclick="filterPencapaianByProgram('ALL')" class="text-[9px] font-bold bg-red-50 text-red-600 px-2.5 py-1 rounded-md hover:bg-red-100 transition">RESET</button>` : ''}
+            </div>
+            <ul class="p-1.5 flex flex-col gap-0.5">
+    `;
+
+    sortedPrograms.forEach(([program, count]) => {
+        const isChecked = currentProgramFilter.includes(program);
+        const safeProgStr = toInlineJsString(program);
+        listHTML += `
+            <li>
+                <label class="flex items-start px-2 py-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-100 ${isChecked ? 'bg-indigo-50/50' : ''}">
+                    <div class="flex items-center h-5">
+                        <input type="checkbox" class="form-checkbox h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
+                               ${isChecked ? 'checked' : ''}
+                               onchange="filterPencapaianByProgram(${safeProgStr})">
+                    </div>
+                    <div class="ml-2 flex-1 min-w-0">
+                        <div class="text-xs font-bold leading-tight ${isChecked ? 'text-indigo-700' : 'text-slate-600'} whitespace-normal" title="${escapeHtml(program)}">${escapeHtml(program)}</div>
+                    </div>
+                    <span class="text-[9px] bg-white border border-slate-200 text-slate-500 font-bold px-1.5 py-0.5 rounded-full ml-2 whitespace-nowrap shadow-sm">${count}</span>
+                </label>
+            </li>
+        `;
+    });
+
+    if (sortedPrograms.length === 0) {
+        listHTML += `<li class="px-3 py-4 text-center text-xs text-slate-400 italic">Tiada data program</li>`;
+    }
+
+    listHTML += `</ul></div>`;
+    customDropdown.innerHTML = listHTML;
 }
+
+// Tutup custom dropdown apabila klik di luar kawasan
+document.addEventListener('click', (e) => {
+    const menu = document.getElementById('customProgramDropdownMenu');
+    if (menu && !menu.classList.contains('hidden')) {
+        menu.classList.add('hidden');
+    }
+});
 // ── SURGICAL EDIT END ──
 
 // --- INITIALIZATION ---
@@ -268,10 +317,7 @@ window.renderPencapaianTable = function() {
         currentDaerahFilter = 'ALL';
     }
 
-    const elProgram = document.getElementById('filterProgramPencapaian');
-    if(elProgram) {
-        currentProgramFilter = elProgram.value || 'ALL';
-    }
+    // Nota: currentProgramFilter kini diuruskan melalui toggle (multi-select), bukan elemen DOM
     // ── SURGICAL EDIT END ──
 
     const katFilter = currentKategoriFilter;
@@ -289,7 +335,9 @@ window.renderPencapaianTable = function() {
         if(sekFilter !== 'ALL' && i.kod_sekolah !== sekFilter) return false;
         if(katFilter !== 'ALL' && i.kategori !== katFilter) return false;
         if(jenisFilter !== 'ALL' && i.jenis_rekod !== jenisFilter) return false;
-        if(!ignoreProgram && currentProgramFilter !== 'ALL' && i.nama_pertandingan !== currentProgramFilter) return false;
+        
+        // Multi-select Program Filtering Logic
+        if(!ignoreProgram && currentProgramFilter.length > 0 && !currentProgramFilter.includes(i.nama_pertandingan)) return false;
         
         if(search) {
             let namaSekolah = senaraiKodPPD.includes(i.kod_sekolah) ? (APP_CONFIG.PPD_MAPPING[i.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[i.kod_sekolah]}` : 'PEJABAT PENDIDIKAN DAERAH') : 
@@ -541,7 +589,7 @@ function updateProgramCloud(data) {
         .sort((a, b) => a[0].localeCompare(b[0])); // Susun mengikut abjad mutlak (A-Z)
 
     container.innerHTML = sortedPrograms.map(([program, count]) => {
-        const isActive = currentProgramFilter === program;
+        const isActive = currentProgramFilter.includes(program);
         let sizeClass = "text-[10px]";
         if(count > 2) sizeClass = "text-[11px] font-bold";
         if(count > 5) sizeClass = "text-[12px] font-black";
@@ -559,7 +607,7 @@ function updateProgramCloud(data) {
 
     const btnReset = document.getElementById('btnResetProgram');
     if(btnReset) {
-        if (currentProgramFilter !== 'ALL') btnReset.classList.remove('hidden');
+        if (currentProgramFilter.length > 0) btnReset.classList.remove('hidden');
         else btnReset.classList.add('hidden');
     }
 }
@@ -637,32 +685,28 @@ window.filterPencapaianByJawatan = function(j) {
     window.renderPencapaianTable(); 
 };
 
-// ── SURGICAL EDIT START: Fungsi global tapisan daerah dan tajuk program Kemenjadian ──
+// ── SURGICAL EDIT START: Fungsi global tapisan daerah dan tajuk program Kemenjadian (Multi-Select) ──
 window.filterPencapaianByProgram = function(program) {
-    currentProgramFilter = (currentProgramFilter === program) ? 'ALL' : program;
-
-    const select = document.getElementById('filterProgramPencapaian');
-    if(select) select.value = currentProgramFilter;
-
-    const btnReset = document.getElementById('btnResetProgram');
-    if(btnReset) {
-        if (currentProgramFilter !== 'ALL') btnReset.classList.remove('hidden');
-        else btnReset.classList.add('hidden');
+    if (program === 'ALL') {
+        currentProgramFilter = [];
+    } else {
+        const index = currentProgramFilter.indexOf(program);
+        if (index > -1) {
+            currentProgramFilter.splice(index, 1); // Buang jika sudah ada
+        } else {
+            currentProgramFilter.push(program); // Tambah jika tiada
+        }
     }
-
     window.renderPencapaianTable();
 };
 
 window.setPencapaianDaerahFilter = function(daerah) {
     currentDaerahFilter = daerah || 'ALL';
-    currentProgramFilter = 'ALL';
+    currentProgramFilter = []; // Reset pilihan program
     currentJawatanFilter = 'ALL';
 
     const selectDaerah = document.getElementById('filterDaerahPencapaian');
     if(selectDaerah) selectDaerah.value = currentDaerahFilter;
-
-    const selectProgram = document.getElementById('filterProgramPencapaian');
-    if(selectProgram) selectProgram.value = 'ALL';
 
     const selectSekolah = document.getElementById('filterSekolahPencapaian');
     if(selectSekolah) selectSekolah.value = 'ALL';
@@ -694,7 +738,7 @@ window.resetPencapaianFilters = function() {
     currentJawatanFilter = 'ALL'; 
     currentKategoriFilter = 'ALL';
     // ── SURGICAL EDIT START: Reset filter daerah dan program Kemenjadian ──
-    currentProgramFilter = 'ALL';
+    currentProgramFilter = [];
     currentDaerahFilter = 'ALL';
     // ── SURGICAL EDIT END ──
     document.getElementById('searchPencapaianInput').value = '';
@@ -703,9 +747,6 @@ window.resetPencapaianFilters = function() {
     if(elSek) elSek.value = 'ALL';
 
     // ── SURGICAL EDIT START: Reset elemen UI daerah dan program ──
-    const elProgram = document.getElementById('filterProgramPencapaian');
-    if(elProgram) elProgram.value = 'ALL';
-
     const elDaerah = document.getElementById('filterDaerahPencapaian');
     if(elDaerah) elDaerah.value = 'ALL';
 
