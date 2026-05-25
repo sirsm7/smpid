@@ -128,12 +128,14 @@ function populateProgramFilter(data) {
         counts[program] = (counts[program] || 0) + 1;
     });
 
+// ── SURGICAL EDIT START: Susunan Abjad A-Z untuk Dropdown Program ──
     let options = '<option value="ALL">SEMUA PROGRAM</option>';
     Object.entries(counts)
-        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .sort((a, b) => a[0].localeCompare(b[0]))
         .forEach(([program, count]) => {
             options += `<option value="${escapeHtml(program)}">${escapeHtml(program)} (${count})</option>`;
         });
+// ── SURGICAL EDIT END ──
 
     select.innerHTML = options;
 
@@ -510,7 +512,7 @@ function updateCloud(data) {
         }).join('');
 }
 
-// ── SURGICAL EDIT START: Word cloud tajuk program Kemenjadian ──
+// ── SURGICAL EDIT START: Tapis Top 40 Program kemudian Susun Abjad A-Z untuk Word Cloud ──
 function updateProgramCloud(data) {
     const container = document.getElementById('programCloudContainer');
     const wrapper = document.getElementById('programCloudWrapper');
@@ -534,8 +536,9 @@ function updateProgramCloud(data) {
     });
 
     const sortedPrograms = Object.entries(counts)
-        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-        .slice(0, 40);
+        .sort((a, b) => b[1] - a[1]) // Ambil kekerapan tertinggi dahulu
+        .slice(0, 40)                // Had kepada 40 tertinggi
+        .sort((a, b) => a[0].localeCompare(b[0])); // Susun mengikut abjad mutlak (A-Z)
 
     container.innerHTML = sortedPrograms.map(([program, count]) => {
         const isActive = currentProgramFilter === program;
