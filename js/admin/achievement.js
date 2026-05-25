@@ -130,6 +130,16 @@ function populateProgramFilter(data) {
 
     const sortedPrograms = Object.entries(counts).sort((a, b) => a[0].localeCompare(b[0]));
 
+    // Simpan state terbuka/tertutup & nilai carian sebelum komponen di render semula
+    let isDropdownOpen = false;
+    let currentSearchValue = "";
+    const existingMenu = document.getElementById('customProgramDropdownMenu');
+    if (existingMenu) {
+        isDropdownOpen = !existingMenu.classList.contains('hidden');
+        const searchInput = document.getElementById('progSearchInput');
+        if (searchInput) currentSearchValue = searchInput.value;
+    }
+
     let customDropdown = document.getElementById('customProgramDropdown');
     if (!customDropdown) {
         // Sembunyikan elemen asal dan bina bekas dropdown tersuai
@@ -153,19 +163,32 @@ function populateProgramFilter(data) {
             <span class="truncate pr-2">${btnText}</span>
             <i class="fas fa-chevron-down opacity-50"></i>
         </button>
-        <div id="customProgramDropdownMenu" onclick="event.stopPropagation();" class="hidden absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-64 overflow-y-auto">
-            <div class="p-2 sticky top-0 bg-white border-b border-slate-100 z-10 flex justify-between items-center shadow-sm">
-                <span class="text-[10px] font-black text-slate-400 tracking-wider">PILIHAN BERBILANG</span>
-                ${currentProgramFilter.length > 0 ? `<button onclick="filterPencapaianByProgram('ALL')" class="text-[9px] font-bold bg-red-50 text-red-600 px-2.5 py-1 rounded-md hover:bg-red-100 transition">RESET</button>` : ''}
+        <div id="customProgramDropdownMenu" class="${isDropdownOpen ? '' : 'hidden'} absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl flex flex-col" style="max-height: 28rem;">
+            <div class="p-2 sticky top-0 bg-white border-b border-slate-100 z-10 flex flex-col gap-2 shadow-sm rounded-t-xl">
+                <div class="flex justify-between items-center px-1">
+                    <span class="text-[10px] font-black text-slate-400 tracking-wider">PILIHAN BERBILANG</span>
+                    ${currentProgramFilter.length > 0 ? `<button type="button" onclick="filterPencapaianByProgram('ALL')" class="text-[10px] font-bold bg-red-500 text-white px-3 py-1 rounded shadow-sm hover:bg-red-600 transition">RESET</button>` : ''}
+                </div>
+                <div class="relative">
+                    <i class="fas fa-search absolute left-2.5 top-2 text-slate-400 text-xs"></i>
+                    <input type="text" id="progSearchInput" placeholder="Cari nama program..." value="${escapeHtml(currentSearchValue)}" 
+                           class="w-full pl-7 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-700 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" 
+                           onkeyup="const v=this.value.toLowerCase(); document.querySelectorAll('.prog-item').forEach(el => el.style.display = el.getAttribute('data-search').includes(v) ? '' : 'none')">
+                </div>
             </div>
-            <ul class="p-1.5 flex flex-col gap-0.5">
+            <ul class="p-1.5 flex flex-col gap-0.5 overflow-y-auto">
     `;
+
+    const searchLower = currentSearchValue.toLowerCase();
 
     sortedPrograms.forEach(([program, count]) => {
         const isChecked = currentProgramFilter.includes(program);
         const safeProgStr = toInlineJsString(program);
+        const searchTarget = program.toLowerCase();
+        const displayStyle = searchTarget.includes(searchLower) ? '' : 'display: none;';
+        
         listHTML += `
-            <li>
+            <li class="prog-item" data-search="${escapeHtml(searchTarget)}" style="${displayStyle}">
                 <label class="flex items-start px-2 py-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-100 ${isChecked ? 'bg-indigo-50/50' : ''}">
                     <div class="flex items-center h-5">
                         <input type="checkbox" class="form-checkbox h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
@@ -192,8 +215,12 @@ function populateProgramFilter(data) {
 // Tutup custom dropdown apabila klik di luar kawasan
 document.addEventListener('click', (e) => {
     const menu = document.getElementById('customProgramDropdownMenu');
+    const dropdown = document.getElementById('customProgramDropdown');
     if (menu && !menu.classList.contains('hidden')) {
-        menu.classList.add('hidden');
+        // Pastikan hanya tertutup jika klik di luar komponen dropdown
+        if (dropdown && !dropdown.contains(e.target)) {
+            menu.classList.add('hidden');
+        }
     }
 });
 // ── SURGICAL EDIT END ──
@@ -607,8 +634,13 @@ function updateProgramCloud(data) {
 
     const btnReset = document.getElementById('btnResetProgram');
     if(btnReset) {
-        if (currentProgramFilter.length > 0) btnReset.classList.remove('hidden');
-        else btnReset.classList.add('hidden');
+        // Menyuntik kelas utiliti Tailwind secara dinamik untuk butang merah dan ke kanan (ml-auto)
+        btnReset.className = "hidden text-[10px] font-bold bg-red-500 text-white px-4 py-1.5 rounded-lg shadow-sm hover:bg-red-600 transition ml-auto flex-shrink-0 cursor-pointer flex items-center";
+        btnReset.innerHTML = '<i class="fas fa-times mr-1.5"></i> RESET PILIHAN';
+        
+        if (currentProgramFilter.length > 0) {
+            btnReset.classList.remove('hidden');
+        }
     }
 }
 // ── SURGICAL EDIT END ──
