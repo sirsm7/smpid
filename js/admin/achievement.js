@@ -140,6 +140,7 @@ function populateProgramFilter(data) {
         if (searchInput) currentSearchValue = searchInput.value;
     }
 
+// ── SURGICAL EDIT START: Betulkan kedudukan sisipan dropdown ──
     let customDropdown = document.getElementById('customProgramDropdown');
     if (!customDropdown) {
         // Sembunyikan elemen asal dan bina bekas dropdown tersuai
@@ -147,8 +148,9 @@ function populateProgramFilter(data) {
         customDropdown = document.createElement('div');
         customDropdown.id = 'customProgramDropdown';
         customDropdown.className = 'relative w-full mt-1';
-        parent.appendChild(customDropdown);
+        selectEl.after(customDropdown); // Sisip terus selepas elemen asal supaya tidak melompat ke hujung div
     }
+// ── SURGICAL EDIT END ──
 
     let btnText = "SEMUA PROGRAM";
     let btnClass = "text-slate-500 bg-slate-50 border-slate-200";
@@ -587,7 +589,7 @@ function updateCloud(data) {
         }).join('');
 }
 
-// ── SURGICAL EDIT START: Tapis Top 40 Program kemudian Susun Abjad A-Z untuk Word Cloud ──
+// ── SURGICAL EDIT START: Tapis Top 10 Program & Susun Mengikut Kekerapan (Word Cloud) ──
 function updateProgramCloud(data) {
     const container = document.getElementById('programCloudContainer');
     const wrapper = document.getElementById('programCloudWrapper');
@@ -611,9 +613,8 @@ function updateProgramCloud(data) {
     });
 
     const sortedPrograms = Object.entries(counts)
-        .sort((a, b) => b[1] - a[1]) // Ambil kekerapan tertinggi dahulu
-        .slice(0, 10)                // Had kepada 10 tertinggi
-        .sort((a, b) => a[0].localeCompare(b[0])); // Susun mengikut abjad mutlak (A-Z)
+        .sort((a, b) => b[1] - a[1]) // Susun kekerapan tertinggi ke terendah
+        .slice(0, 10);               // Had kepada 10 tertinggi sahaja
 
     container.innerHTML = sortedPrograms.map(([program, count]) => {
         const isActive = currentProgramFilter.includes(program);
