@@ -612,7 +612,7 @@ function updateProgramCloud(data) {
 
     const sortedPrograms = Object.entries(counts)
         .sort((a, b) => b[1] - a[1]) // Ambil kekerapan tertinggi dahulu
-        .slice(0, 40)                // Had kepada 40 tertinggi
+        .slice(0, 10)                // Had kepada 10 tertinggi
         .sort((a, b) => a[0].localeCompare(b[0])); // Susun mengikut abjad mutlak (A-Z)
 
     container.innerHTML = sortedPrograms.map(([program, count]) => {
