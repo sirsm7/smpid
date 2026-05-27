@@ -115,7 +115,7 @@ function getDaerahFilteredPencapaianSource() {
     return pencapaianList.filter(item => getPencapaianDaerah(item) === currentDaerahFilter);
 }
 
-// ── SURGICAL EDIT START: Susunan Abjad A-Z & Suntikan Multi-Select Dropdown ──
+// ── SURGICAL EDIT START: Menyimpan dan Memulihkan Posisi Skrol Dropdown Kemenjadian ──
 function populateProgramFilter(data) {
     const selectEl = document.getElementById('filterProgramPencapaian');
     if (!selectEl) return;
@@ -130,17 +130,19 @@ function populateProgramFilter(data) {
 
     const sortedPrograms = Object.entries(counts).sort((a, b) => a[0].localeCompare(b[0]));
 
-    // Simpan state terbuka/tertutup & nilai carian sebelum komponen di render semula
+    // Simpan state terbuka/tertutup, nilai carian, dan posisi skrol sebelum komponen di render semula
     let isDropdownOpen = false;
     let currentSearchValue = "";
+    let currentScrollPos = 0; // Tambahan state memori skrol
     const existingMenu = document.getElementById('customProgramDropdownMenu');
     if (existingMenu) {
         isDropdownOpen = !existingMenu.classList.contains('hidden');
         const searchInput = document.getElementById('progSearchInput');
         if (searchInput) currentSearchValue = searchInput.value;
+        const scrollContainer = document.getElementById('progDropdownList');
+        if (scrollContainer) currentScrollPos = scrollContainer.scrollTop;
     }
 
-// ── SURGICAL EDIT START: Betulkan kedudukan sisipan dropdown ──
     let customDropdown = document.getElementById('customProgramDropdown');
     if (!customDropdown) {
         // Sembunyikan elemen asal dan bina bekas dropdown tersuai
@@ -148,9 +150,8 @@ function populateProgramFilter(data) {
         customDropdown = document.createElement('div');
         customDropdown.id = 'customProgramDropdown';
         customDropdown.className = 'relative w-full mt-1';
-        selectEl.after(customDropdown); // Sisip terus selepas elemen asal supaya tidak melompat ke hujung div
+        selectEl.after(customDropdown); // Sisip terus selepas elemen asal supaya tidak melompat
     }
-// ── SURGICAL EDIT END ──
 
     let btnText = "SEMUA PROGRAM";
     let btnClass = "text-slate-500 bg-slate-50 border-slate-200";
@@ -178,7 +179,7 @@ function populateProgramFilter(data) {
                            onkeyup="const v=this.value.toLowerCase(); document.querySelectorAll('.prog-item').forEach(el => el.style.display = el.getAttribute('data-search').includes(v) ? '' : 'none')">
                 </div>
             </div>
-            <ul class="p-1.5 flex flex-col gap-0.5 overflow-y-auto">
+            <ul id="progDropdownList" class="p-1.5 flex flex-col gap-0.5 overflow-y-auto">
     `;
 
     const searchLower = currentSearchValue.toLowerCase();
@@ -212,7 +213,16 @@ function populateProgramFilter(data) {
 
     listHTML += `</ul></div>`;
     customDropdown.innerHTML = listHTML;
+
+    // Pulihkan posisi skrol dengan serta merta selepas DOM dikemaskini
+    const newScrollContainer = document.getElementById('progDropdownList');
+    if (newScrollContainer) {
+        setTimeout(() => {
+            newScrollContainer.scrollTop = currentScrollPos;
+        }, 0);
+    }
 }
+// ── SURGICAL EDIT END ──
 
 // Tutup custom dropdown apabila klik di luar kawasan
 document.addEventListener('click', (e) => {
@@ -225,7 +235,6 @@ document.addEventListener('click', (e) => {
         }
     }
 });
-// ── SURGICAL EDIT END ──
 
 // --- INITIALIZATION ---
 
