@@ -192,6 +192,9 @@
         <a href="#tempahan" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="tempahan-tab" onclick="switchAdminTab('tempahan', event)"><i class="fas fa-calendar-check"></i> Tempahan</a>
         <a href="#email" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="email-tab" onclick="switchAdminTab('email', event)"><i class="fas fa-paper-plane"></i> Blaster</a>
         <a href="#helpdesk" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="helpdesk-tab" onclick="switchAdminTab('helpdesk', event)"><i class="fas fa-headset"></i> Sokongan</a>
+        <!-- ── SURGICAL EDIT START: Menambah Tab Menu Libat Urus ── -->
+        <a href="#libat-urus" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="libat-urus-tab" onclick="switchAdminTab('libat-urus', event)"><i class="fas fa-handshake text-orange-600"></i> Libat Urus</a>
+        <!-- ── SURGICAL EDIT END ── -->
         <a href="#admin-users" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="admin-users-tab" onclick="switchAdminTab('admin-users', event)"><i class="fas fa-users-cog"></i> Akses</a>
         
         <!-- TAB IMPORT (Super Admin Sahaja) -->
@@ -223,6 +226,7 @@
         </div>
     </div>
 
+    <!-- TABS CONTAINER (Cleaned Single Source of Truth) -->
     <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden min-h-[500px]">
         
         <!-- TAB 1: DASHBOARD -->
@@ -529,6 +533,7 @@
                     </div>
                 </div>
             </div>
+
             <!-- ── SURGICAL EDIT START: Tambah word cloud tajuk program untuk tab Kemenjadian ── -->
             <div id="programCloudWrapper" class="mb-6 hidden animate-fade-up">
                 <div class="flex justify-between items-center mb-2">
@@ -538,6 +543,7 @@
                 <div id="programCloudContainer" class="p-4 bg-indigo-50/50 border-2 border-indigo-100 rounded-2xl flex flex-wrap justify-center"></div>
             </div>
             <!-- ── SURGICAL EDIT END ── -->
+            
             <div id="jawatanCloudWrapper" class="mb-6 hidden animate-fade-up">
                 <div class="flex justify-between items-center mb-2">
                     <h6 class="font-bold text-slate-400 text-[10px] uppercase tracking-widest"><i class="fas fa-tags mr-1"></i> Tapisan Jawatan Guru</h6>
@@ -696,7 +702,6 @@
             <!-- Panel Status ID Guru -->
             <div id="panelAdminGuru" class="hidden">
                 <div class="flex flex-col sm:flex-row justify-between mb-4 gap-2">
-                    <!-- ── SURGICAL EDIT START: Tambah Filter Lokasi Asal Guru & Flex Wrap ── -->
                     <div class="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
                         <div class="relative w-full sm:w-64">
                             <i class="fas fa-school absolute left-3 top-1/2 -translate-y-1/2 text-blue-400"></i>
@@ -712,16 +717,13 @@
                         </div>
                         <div class="relative w-full sm:w-48">
                             <i class="fas fa-map-marker-alt absolute left-3 top-1/2 -translate-y-1/2 text-blue-400"></i>
-                            <!-- ── SURGICAL EDIT START: Kemaskini Pilihan Lokasi Guru ── -->
                             <select id="filterLokasiGuruAdmin" class="w-full pl-9 pr-3 py-1.5 rounded-lg border-2 border-blue-100 bg-white text-slate-600 text-xs font-bold outline-none focus:border-blue-500" onchange="loadSenaraiDelimaAdmin('GURU')">
                                 <option value="ALL">Semua Lokasi</option>
                                 <option value="DALAM NEGERI">Dalam Negeri</option>
                                 <option value="LUAR NEGERI">Luar Negeri</option>
                             </select>
-                            <!-- ── SURGICAL EDIT END ── -->
                         </div>
                     </div>
-                    <!-- ── SURGICAL EDIT END ── -->
                     <select id="filterDelimaGuruAdmin" class="px-3 py-1.5 rounded-lg border-2 border-blue-100 bg-blue-50 text-blue-700 text-xs font-bold outline-none" onchange="loadSenaraiDelimaAdmin('GURU')">
                         <option value="ALL">Semua Status</option>
                         <option value="DALAM PROSES" selected>Dalam Proses</option>
@@ -766,7 +768,6 @@
             <!-- Panel Status ID Murid -->
             <div id="panelAdminMurid" class="hidden">
                 <div class="flex flex-col sm:flex-row justify-between mb-4 gap-2">
-                    <!-- ── SURGICAL EDIT START: Tambah Filter Lokasi Asal Murid & Flex Wrap ── -->
                     <div class="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
                         <div class="relative w-full sm:w-64">
                             <i class="fas fa-school absolute left-3 top-1/2 -translate-y-1/2 text-cyan-400"></i>
@@ -782,16 +783,13 @@
                         </div>
                         <div class="relative w-full sm:w-48">
                             <i class="fas fa-map-marker-alt absolute left-3 top-1/2 -translate-y-1/2 text-cyan-400"></i>
-                            <!-- ── SURGICAL EDIT START: Kemaskini Pilihan Lokasi Murid ── -->
                             <select id="filterLokasiMuridAdmin" class="w-full pl-9 pr-3 py-1.5 rounded-lg border-2 border-cyan-100 bg-white text-slate-600 text-xs font-bold outline-none focus:border-cyan-500" onchange="loadSenaraiDelimaAdmin('MURID')">
                                 <option value="ALL">Semua Lokasi</option>
                                 <option value="DALAM NEGERI">Dalam Negeri</option>
                                 <option value="LUAR NEGERI">Luar Negeri</option>
                             </select>
-                            <!-- ── SURGICAL EDIT END ── -->
                         </div>
                     </div>
-                    <!-- ── SURGICAL EDIT END ── -->
                     <select id="filterDelimaMuridAdmin" class="px-3 py-1.5 rounded-lg border-2 border-cyan-100 bg-cyan-50 text-cyan-700 text-xs font-bold outline-none" onchange="loadSenaraiDelimaAdmin('MURID')">
                         <option value="ALL">Semua Status</option>
                         <option value="DALAM PROSES" selected>Dalam Proses</option>
@@ -833,6 +831,103 @@
                 </div>
             </div>
         </div>
+
+        <!-- ── SURGICAL EDIT START: Menambah Rangka Antaramuka Tab Libat Urus Secara Dinamik (6 Kolum) ── -->
+        <!-- TAB 7B: LIBAT URUS -->
+        <div id="tab-libat-urus" class="hidden p-6 md:p-8 bg-slate-50/50">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-6">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                        <i class="fas fa-handshake text-orange-600"></i> Laporan Libat Urus DELIMa
+                    </h2>
+                    <p class="text-slate-500 text-sm font-medium mt-1">Pemantauan penglibatan komuniti, guru dan murid mengikut daerah & sekolah.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="if(window.eksportLibatUrusCSV) window.eksportLibatUrusCSV()" class="px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold transition shadow-lg flex items-center gap-2 transform active:scale-95">
+                        <i class="fas fa-file-csv"></i> Eksport Data
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dashboard Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center hover:-translate-y-1 transition">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Bulan Aktif</span>
+                    <h4 class="text-xl font-black text-slate-700 uppercase" id="statLuBulan">-</h4>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 shadow-sm flex flex-col items-center justify-center text-center hover:-translate-y-1 transition">
+                    <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Peserta Guru</span>
+                    <h4 class="text-2xl font-black text-blue-700" id="statLuGuru">0</h4>
+                </div>
+                <div class="bg-cyan-50 p-4 rounded-2xl border border-cyan-100 shadow-sm flex flex-col items-center justify-center text-center hover:-translate-y-1 transition">
+                    <span class="text-[10px] font-black text-cyan-600 uppercase tracking-widest mb-1">Peserta Murid</span>
+                    <h4 class="text-2xl font-black text-cyan-700" id="statLuMurid">0</h4>
+                </div>
+                <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 shadow-sm flex flex-col items-center justify-center text-center hover:-translate-y-1 transition">
+                    <span class="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Ibu-Bapa</span>
+                    <h4 class="text-2xl font-black text-emerald-700" id="statLuIbuBapa">0</h4>
+                </div>
+                <div class="bg-teal-50 p-4 rounded-2xl border border-teal-100 shadow-sm flex flex-col items-center justify-center text-center hover:-translate-y-1 transition">
+                    <span class="text-[10px] font-black text-teal-600 uppercase tracking-widest mb-1">Bersemuka</span>
+                    <h4 class="text-2xl font-black text-teal-700" id="luKpiBersemuka">0</h4>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-2xl border border-purple-100 shadow-sm flex flex-col items-center justify-center text-center hover:-translate-y-1 transition">
+                    <span class="text-[10px] font-black text-purple-600 uppercase tracking-widest mb-1">Dalam Talian</span>
+                    <h4 class="text-2xl font-black text-purple-700" id="luKpiDalamTalian">0</h4>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mb-6 flex flex-wrap gap-3 items-center">
+                <div id="luFilterDaerahWrapper" class="hidden relative grow md:grow-0 w-full md:w-48">
+                    <i class="fas fa-map-marker-alt absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <select id="filterLuDaerah" class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold outline-none focus:border-orange-500" onchange="if(window.filterLibatUrus) window.filterLibatUrus()">
+                        <option value="ALL">SEMUA DAERAH</option>
+                        <option value="ALOR GAJAH">ALOR GAJAH</option>
+                        <option value="JASIN">JASIN</option>
+                        <option value="MELAKA TENGAH">MELAKA TENGAH</option>
+                    </select>
+                </div>
+                <div class="relative grow md:grow-0 w-full md:w-64">
+                    <i class="fas fa-school absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <select id="filterLuSekolah" class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold outline-none focus:border-orange-500" onchange="if(window.filterLibatUrus) window.filterLibatUrus()">
+                        <option value="ALL">SEMUA SEKOLAH</option>
+                    </select>
+                </div>
+                <div class="relative grow md:grow-0 w-full md:w-40">
+                    <i class="far fa-calendar-alt absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <select id="filterLuBulan" class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold outline-none focus:border-orange-500" onchange="if(window.filterLibatUrus) window.filterLibatUrus()">
+                        <option value="ALL">SEMUA BULAN</option>
+                        <option value="JANUARI">JANUARI</option>
+                        <option value="FEBRUARI">FEBRUARI</option>
+                        <option value="MAC">MAC</option>
+                        <option value="APRIL">APRIL</option>
+                        <option value="MEI">MEI</option>
+                        <option value="JUN">JUN</option>
+                        <option value="JULAI">JULAI</option>
+                        <option value="OGOS">OGOS</option>
+                        <option value="SEPTEMBER">SEPTEMBER</option>
+                        <option value="OKTOBER">OKTOBER</option>
+                        <option value="NOVEMBER">NOVEMBER</option>
+                        <option value="DISEMBER">DISEMBER</option>
+                    </select>
+                </div>
+                <button onclick="if(window.loadAdminLibatUrus) window.loadAdminLibatUrus()" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-orange-600 hover:bg-orange-50 transition font-bold text-xs flex items-center justify-center gap-2 grow md:grow-0">
+                    <i class="fas fa-sync-alt"></i> Muat Semula
+                </button>
+            </div>
+
+            <!-- Gallery Data -->
+            <div id="luAdminGallery" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Data injected by JS -->
+            </div>
+            
+            <div id="luEmptyState" class="hidden py-12 text-center bg-white rounded-2xl border border-slate-200 border-dashed">
+                <i class="fas fa-folder-open text-4xl text-slate-300 mb-3"></i>
+                <p class="text-slate-500 font-medium">Tiada rekod libat urus ditemui berpandukan tapisan semasa.</p>
+            </div>
+        </div>
+        <!-- ── SURGICAL EDIT END ── -->
 
         <!-- TAB 8: ADMIN USERS -->
         <div id="tab-admin-users" class="hidden p-6 md:p-8">
@@ -1169,6 +1264,9 @@
   <script type="module" src="js/admin/booking_manager.js"></script>
   <script type="module" src="js/admin/settings.js"></script>
   <script type="module" src="js/admin/delima_manager.js"></script>
+<!-- ── SURGICAL EDIT START: Menambah kemasukan fail JS Libat Urus Admin ── -->
+  <script type="module" src="js/admin/libat_urus.js"></script>
+<!-- ── SURGICAL EDIT END ── -->
 
   <script>
       function switchAdminHelpdeskTab(type) {

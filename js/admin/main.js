@@ -106,8 +106,10 @@ function switchAdminTab(tabId, event) {
     // SEMAKAN KESELAMATAN (GATEKEEPER)
     // Pastikan peranan tidak boleh akses tab dilarang walaupun tukar hash manual
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
-    const forbiddenForUnit = ['dashboard', 'analisa', 'gallery', 'tempahan', 'email', 'helpdesk', 'import-data'];
+// ── SURGICAL EDIT START: Menambah larangan tab Libat Urus untuk PPD_UNIT ──
+    const forbiddenForUnit = ['dashboard', 'analisa', 'gallery', 'tempahan', 'email', 'helpdesk', 'import-data', 'libat-urus'];
     const forbiddenForMod = ['import-data']; // Hanya Super Admin boleh Import
+// ── SURGICAL EDIT END ──
 
     if (userRole === 'PPD_UNIT' && forbiddenForUnit.includes(tabId)) {
         // Redirect senyap ke pencapaian
@@ -179,6 +181,11 @@ function loadModuleData(tabId) {
         case 'admin-users':
             if (window.loadAdminList) window.loadAdminList();
             break;
+// ── SURGICAL EDIT START: Menambah panggilan fungsi init untuk Libat Urus ──
+        case 'libat-urus':
+            if (window.loadAdminLibatUrus) window.loadAdminLibatUrus();
+            break;
+// ── SURGICAL EDIT END ──
         // Tab import-data tidak mempunyai init automatik kerana ia adalah interaktif form manual
     }
 }
@@ -190,6 +197,7 @@ function loadModuleData(tabId) {
 function setupUnitView() {
     // Senarai ID butang navigasi yang perlu disembunyikan
     // Hanya 'pencapaian-tab' dan 'admin-users-tab' yang DIBIARKAN.
+// ── SURGICAL EDIT START: Menyembunyikan butang tab Libat Urus untuk mod Unit PPD ──
     const hideButtons = [
         'dashboard-tab', 
         'analisa-tab', 
@@ -197,8 +205,10 @@ function setupUnitView() {
         'tempahan-tab',
         'email-tab', 
         'helpdesk-tab',
-        'import-data-tab'
+        'import-data-tab',
+        'libat-urus-tab'
     ];
+// ── SURGICAL EDIT END ──
 
     hideButtons.forEach(btnId => {
         const el = document.getElementById(btnId);

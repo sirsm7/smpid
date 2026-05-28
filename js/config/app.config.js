@@ -14,12 +14,15 @@ export const APP_CONFIG = {
         KEY: typeof window !== 'undefined' && window.SUPABASE_KEY ? window.SUPABASE_KEY : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY'
     },
 
+// ── SURGICAL EDIT START: Menyuntik endpoint GAS baharu untuk muat naik laporan Libat Urus ──
     // Konfigurasi API & Endpoint (Deno Bot & GAS Microservices)
     API: {
         DENO_URL: typeof window !== 'undefined' && window.DENO_API_URL ? window.DENO_API_URL : 'https://smpid.ppdag.deno.net',
         GAS_UPLOAD_URL: 'https://script.google.com/macros/s/AKfycbyjmVnKMNa5KSSCdIWG00dmgrYFBsfRtkswlBXTZUL0cKJ8h15V3X71EsqGd4B1etdg/exec', // Gantikan dengan URL GAS Upload yang sah jika perlu
-        GAS_EMAIL_URL: 'https://script.google.com/macros/s/AKfycbwALQrAcEO156fXzNim_8New_iOFFUHvPL5wOhILpJDMxB80_-4BhiK1x3UbNeK6_IrCg/exec'   // Gantikan dengan URL GAS Email yang sah jika perlu
+        GAS_EMAIL_URL: 'https://script.google.com/macros/s/AKfycbwALQrAcEO156fXzNim_8New_iOFFUHvPL5wOhILpJDMxB80_-4BhiK1x3UbNeK6_IrCg/exec',   // Gantikan dengan URL GAS Email yang sah jika perlu
+        GAS_LIBAT_URUS_URL: 'https://script.google.com/macros/s/AKfycbyIXpHGIm5kdXl2ecRG4c-JE99vcfC5xjfbvZMko0ab2cKuBRL1HDb1CFGmTLOUBFLJ/exec'
     },
+// ── SURGICAL EDIT END ──
 
     // Kunci Sesi LocalStorage (Untuk Integriti Auth)
     SESSION: {
@@ -46,6 +49,7 @@ export const APP_CONFIG = {
         STATUS: 'active'
     },
 
+// ── SURGICAL EDIT START: Menambah konfigurasi jadual Supabase baharu untuk Libat Urus DELIMa ──
     // API & Database Configurations (Table definitions for Supabase)
     DB_TABLES: {
         USERS: 'smpid_users',
@@ -54,8 +58,10 @@ export const APP_CONFIG = {
         GALLERY: 'smpid_gallery',
         BOOKINGS: 'smpid_bookings',
         PENATARAN: 'smpid_penataran',
-        SETTINGS: 'smpid_settings'
+        SETTINGS: 'smpid_settings',
+        LIBAT_URUS: 'smpid_libat_urus'
     },
+// ── SURGICAL EDIT END ──
 
     // Pagination defaults for data tables and lists
     PAGINATION: {

@@ -15,6 +15,9 @@ import { SupportService } from './services/support.service.js';
 import { AchievementService } from './services/achievement.service.js';
 import { APP_CONFIG } from './config/app.config.js';
 import { populateDropdown } from './config/dropdowns.js';
+// ── SURGICAL EDIT START: Mengimport servis Libat Urus ──
+import { libatUrusService } from './services/libat_urus.service.js';
+// ── SURGICAL EDIT END ──
 
 // --- GLOBAL STATE ---
 let analisaChart = null;
@@ -107,7 +110,9 @@ window.showSection = function(section, event) {
         history.pushState(null, null, '#' + section);
     }
 
-    const sections = ['menu', 'profil', 'aduan', 'analisa', 'pencapaian'];
+// ── SURGICAL EDIT START: Menambah tab libat-urus ke dalam array sections ──
+    const sections = ['menu', 'profil', 'aduan', 'analisa', 'pencapaian', 'libat-urus'];
+// ── SURGICAL EDIT END ──
     sections.forEach(s => {
         const el = document.getElementById(`section-${s}`);
         if(el) el.classList.add('hidden');
@@ -133,10 +138,17 @@ window.showSection = function(section, event) {
         loadAnalisaSekolah();
         if(welcomeText) welcomeText.innerText = "ANALISA DIGITAL";
     }
+// ── SURGICAL EDIT START: Memuatkan data apabila tab Libat Urus dibuka ──
     if (section === 'pencapaian') {
         window.loadPencapaianSekolah();
         if(welcomeText) welcomeText.innerText = "REKOD PENCAPAIAN";
     }
+
+    if (section === 'libat-urus') {
+        window.loadLibatUrusSekolah();
+        if(welcomeText) welcomeText.innerText = "LAPORAN LIBAT URUS";
+    }
+// ── SURGICAL EDIT END ──
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
@@ -905,3 +917,159 @@ window.resetDataSekolah = async function() {
         Swal.fire('Akses Ditolak', 'Kata laluan keselamatan tidak sah.', 'error');
     }
 };
+
+// ── SURGICAL EDIT START: Logik Perniagaan Modul Libat Urus DELIMa ──
+// --- 8. LIBAT URUS DELIMa ---
+
+/**
+ * Menghantar laporan libat urus baharu
+ */
+window.submitLibatUrus = async function() {
+    const kod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+    const btn = document.getElementById('btnSubmitLU');
+    const form = document.getElementById('formLibatUrus');
+    
+    const kategori = document.getElementById('luKategori').value;
+    const tarikh = document.getElementById('luTarikh').value;
+    const peserta = document.getElementById('luPeserta').value;
+    const tempat = document.getElementById('luTempat').value.trim();
+    const fileInput = document.getElementById('luFile');
+    const file = fileInput.files[0];
+
+// ── SURGICAL EDIT START: Menangkap nilai mod pelaksanaan ──
+    const modPelaksanaanInput = document.querySelector('input[name="luModPelaksanaan"]:checked');
+    const modPelaksanaan = modPelaksanaanInput ? modPelaksanaanInput.value : 'BERSEMUKA';
+// ── SURGICAL EDIT END ──
+
+    if (!kategori || !tarikh || !peserta || !tempat || !file) {
+        return Swal.fire('Maklumat Tidak Lengkap', 'Sila isi semua ruangan bertanda termasuk muat naik fail.', 'warning');
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        return Swal.fire('Fail Terlalu Besar', 'Maksimum saiz fail adalah 5MB.', 'warning');
+    }
+
+    if(btn) { btn.disabled = true; btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MEMUAT NAIK FAIL...`; btn.classList.add('opacity-75'); }
+    toggleLoading(true);
+
+    try {
+        // 1. Muat naik fail melalui Servis
+        const uploadedUrl = await libatUrusService.uploadReportFile(file);
+
+        if(btn) btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MENYIMPAN LAPORAN...`;
+
+        // 2. Simpan rekod ke Supabase
+        const payload = {
+            kod_sekolah: kod,
+            kategori_sasar: kategori,
+            tarikh_laksana: tarikh,
+            tempat: tempat,
+            jumlah_peserta: peserta,
+            pautan_fail: uploadedUrl,
+// ── SURGICAL EDIT START: Menambah mod_pelaksanaan ke dalam objek payload ──
+            mod_pelaksanaan: modPelaksanaan
+// ── SURGICAL EDIT END ──
+        };
+
+        await libatUrusService.createLibatUrus(payload);
+        
+        toggleLoading(false);
+        if(btn) { btn.disabled = false; btn.innerHTML = `<i class="fas fa-paper-plane me-2"></i> HANTAR LAPORAN`; btn.classList.remove('opacity-75'); }
+        
+        Swal.fire({
+            icon: 'success',
+            title: 'Berjaya Dihantar',
+            text: 'Laporan Libat Urus telah direkodkan.',
+            confirmButtonColor: '#ea580c'
+        }).then(() => {
+            form.reset();
+            window.loadLibatUrusSekolah();
+        });
+    } catch (error) {
+        toggleLoading(false);
+        if(btn) { btn.disabled = false; btn.innerHTML = `<i class="fas fa-paper-plane me-2"></i> HANTAR LAPORAN`; btn.classList.remove('opacity-75'); }
+        Swal.fire('Ralat Sistem', error.message || 'Gagal menghantar laporan.', 'error');
+    }
+};
+
+/**
+ * Memuatkan senarai sejarah laporan libat urus bagi sekolah ini
+ */
+window.loadLibatUrusSekolah = async function() {
+    const kod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+    const tbody = document.getElementById('tbodyLibatUrus');
+    if(!tbody) return;
+
+    tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-slate-400 font-medium animate-pulse">Memuatkan laporan...</td></tr>`;
+
+    try {
+        const data = await libatUrusService.getReportsBySchool(kod);
+
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-slate-400 italic bg-slate-50 rounded-xl">Tiada rekod libat urus ditemui.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = data.map(item => {
+            const badgeColor = item.kategori_sasar === 'GURU' ? 'bg-blue-100 text-blue-700 border-blue-200' 
+                             : item.kategori_sasar === 'MURID' ? 'bg-amber-100 text-amber-700 border-amber-200' 
+                             : 'bg-green-100 text-green-700 border-green-200';
+
+// ── SURGICAL EDIT START: Tambah badge mod pelaksanaan ──
+            const modBadge = item.mod_pelaksanaan === 'DALAM TALIAN' 
+                           ? `<span class="inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase border bg-purple-50 text-purple-600 border-purple-200 ml-1"><i class="fas fa-video mr-1"></i> DALAM TALIAN</span>`
+                           : `<span class="inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase border bg-teal-50 text-teal-600 border-teal-200 ml-1"><i class="fas fa-users mr-1"></i> BERSEMUKA</span>`;
+// ── SURGICAL EDIT END ──
+
+            return `
+            <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0 group">
+                <td class="px-4 py-4">
+                    <div class="mb-1.5"><span class="inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase border ${badgeColor}">${item.kategori_sasar}</span>${modBadge}</div>
+                    <div class="font-bold text-slate-800 text-sm leading-snug uppercase">${item.tempat}</div>
+                    <div class="text-[10px] text-slate-500 font-mono font-bold mt-1"><i class="far fa-calendar-alt mr-1"></i> ${new Date(item.tarikh_laksana).toLocaleDateString('ms-MY')} (${item.bulan})</div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <div class="text-2xl font-black text-slate-700">${item.jumlah_peserta}</div>
+                    <div class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Peserta</div>
+                </td>
+                <td class="px-4 py-4 text-center">
+                    <div class="flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <a href="${item.pautan_fail}" target="_blank" class="p-2 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-500 hover:text-white transition shadow-sm" title="Lihat Laporan"><i class="fas fa-external-link-alt"></i></a>
+                        <button onclick="window.padamLibatUrus('${item.id}')" class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-500 hover:text-white transition shadow-sm" title="Padam Laporan"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    } catch (error) {
+        console.error(error);
+        tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-red-500 font-bold">Ralat memuatkan rekod.</td></tr>`;
+    }
+};
+
+/**
+ * Memadam laporan libat urus
+ */
+window.padamLibatUrus = async function(id) {
+    Swal.fire({ 
+        title: 'Padam Laporan?', 
+        text: "Tindakan ini tidak boleh dibatalkan semula. Laporan (One-Page Report) di Google Drive tidak akan dipadam.",
+        icon: 'warning', 
+        showCancelButton: true, 
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Ya, Padam',
+        cancelButtonText: 'Batal'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            toggleLoading(true);
+            try {
+                await libatUrusService.deleteReport(id);
+                toggleLoading(false);
+                Swal.fire('Berjaya', 'Laporan telah dipadam daripada pangkalan data.', 'success').then(() => window.loadLibatUrusSekolah());
+            } catch (e) {
+                toggleLoading(false); 
+                Swal.fire('Ralat', 'Gagal memadam laporan. Ralat pelayan.', 'error');
+            }
+        }
+    });
+};
+// ── SURGICAL EDIT END ──
