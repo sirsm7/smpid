@@ -47,10 +47,16 @@ window.loadAdminLibatUrus = async function() {
         });
 // ── SURGICAL EDIT END ──
         
+// ── SURGICAL EDIT START: Memanggil Cross Filters semasa pemuatan awal ──
         // Initialize filters and UI
         resetLibatUrusFilters();
-        populateSekolahDropdown(allLibatUrusData);
-        processAndRender(allLibatUrusData);
+        
+        // Membina opsyen tapisan berasaskan data yang sedia ada
+        updateCrossFilters('ALL', 'ALL', 'ALL');
+        
+        // Cetus tapisan untuk merender data dan metrik di dalam UI
+        window.filterLibatUrus();
+// ── SURGICAL EDIT END ──
         
     } catch (error) {
         console.error("Error loading Admin Libat Urus:", error);
@@ -73,27 +79,75 @@ function resetLibatUrusFilters() {
     if(fBulan) fBulan.value = "ALL";
 }
 
+// ── SURGICAL EDIT START: Melaksanakan Cross-Filtering (Tapisan Bersilang) dinamik ──
 /**
- * Dynamically extract unique schools from the dataset and populate the dropdown
- * @param {Array} data - Array of records
+ * Updates the options in each filter dropdown based on the intersection of the other filters.
+ * Prevents "Empty State" by only showing options that have associated data.
+ * @param {string} activeDaerah - Current selected district
+ * @param {string} activeSekolah - Current selected school
+ * @param {string} activeBulan - Current selected month
  */
-function populateSekolahDropdown(data) {
+function updateCrossFilters(activeDaerah, activeSekolah, activeBulan) {
+    const filterDaerah = document.getElementById('filterLuDaerah');
     const filterSekolah = document.getElementById('filterLuSekolah');
-    if (!filterSekolah) return;
+    const filterBulan = document.getElementById('filterLuBulan');
 
-    // Get unique schools and sort alphabetically
-    const uniqueSchools = [...new Set(data.map(item => item.school?.nama_sekolah || 'TIDAK DIKETAHUI'))].sort();
-    
-    let optionsHtml = `<option value="ALL">SEMUA SEKOLAH</option>`;
-    uniqueSchools.forEach(school => {
-        if(school !== 'TIDAK DIKETAHUI') {
-            optionsHtml += `<option value="${school}">${school}</option>`;
-        }
+    // 1. Data for Daerah (Filtered by Sekolah & Bulan)
+    const validDaerahRecords = allLibatUrusData.filter(item => {
+        const matchSekolah = activeSekolah === 'ALL' || (item.school?.nama_sekolah === activeSekolah);
+        const matchBulan = activeBulan === 'ALL' || (item.bulan === activeBulan);
+        return matchSekolah && matchBulan;
     });
-    
-    filterSekolah.innerHTML = optionsHtml;
-}
+    const uniqueDaerah = [...new Set(validDaerahRecords.map(item => item.school?.daerah || 'N/A'))].sort();
 
+    // 2. Data for Sekolah (Filtered by Daerah & Bulan)
+    const validSekolahRecords = allLibatUrusData.filter(item => {
+        const matchDaerah = activeDaerah === 'ALL' || (item.school?.daerah?.toUpperCase() === activeDaerah.toUpperCase());
+        const matchBulan = activeBulan === 'ALL' || (item.bulan === activeBulan);
+        return matchDaerah && matchBulan;
+    });
+    const uniqueSekolah = [...new Set(validSekolahRecords.map(item => item.school?.nama_sekolah || 'TIDAK DIKETAHUI'))].sort();
+
+    // 3. Data for Bulan (Filtered by Daerah & Sekolah)
+    const validBulanRecords = allLibatUrusData.filter(item => {
+        const matchDaerah = activeDaerah === 'ALL' || (item.school?.daerah?.toUpperCase() === activeDaerah.toUpperCase());
+        const matchSekolah = activeSekolah === 'ALL' || (item.school?.nama_sekolah === activeSekolah);
+        return matchDaerah && matchSekolah;
+    });
+    const uniqueBulan = [...new Set(validBulanRecords.map(item => item.bulan || 'N/A'))];
+    
+    // Sort Bulan properly by chronological order
+    const monthOrder = { "JANUARI":1, "FEBRUARI":2, "MAC":3, "APRIL":4, "MEI":5, "JUN":6, "JULAI":7, "OGOS":8, "SEPTEMBER":9, "OKTOBER":10, "NOVEMBER":11, "DISEMBER":12 };
+    uniqueBulan.sort((a, b) => (monthOrder[a] || 99) - (monthOrder[b] || 99));
+
+    // Rebuild HTML & preserve selection if it still exists in the new filtered array
+    if (filterDaerah) {
+        let optionsDaerah = `<option value="ALL">SEMUA DAERAH</option>`;
+        uniqueDaerah.forEach(d => { if(d !== 'N/A') optionsDaerah += `<option value="${d}">${d}</option>`; });
+        filterDaerah.innerHTML = optionsDaerah;
+        if (uniqueDaerah.includes(activeDaerah)) filterDaerah.value = activeDaerah;
+        else filterDaerah.value = 'ALL';
+    }
+
+    if (filterSekolah) {
+        let optionsSekolah = `<option value="ALL">SEMUA SEKOLAH</option>`;
+        uniqueSekolah.forEach(s => { if(s !== 'TIDAK DIKETAHUI') optionsSekolah += `<option value="${s}">${s}</option>`; });
+        filterSekolah.innerHTML = optionsSekolah;
+        if (uniqueSekolah.includes(activeSekolah)) filterSekolah.value = activeSekolah;
+        else filterSekolah.value = 'ALL';
+    }
+
+    if (filterBulan) {
+        let optionsBulan = `<option value="ALL">SEMUA BULAN</option>`;
+        uniqueBulan.forEach(b => { if(b !== 'N/A') optionsBulan += `<option value="${b}">${b}</option>`; });
+        filterBulan.innerHTML = optionsBulan;
+        if (uniqueBulan.includes(activeBulan)) filterBulan.value = activeBulan;
+        else filterBulan.value = 'ALL';
+    }
+}
+// ── SURGICAL EDIT END ──
+
+// ── SURGICAL EDIT START: Melaksanakan pemicu (trigger) Cross-Filtering ──
 /**
  * Filter mechanism triggered by onchange event in dropdowns
  */
@@ -101,6 +155,14 @@ window.filterLibatUrus = function() {
     const fDaerah = document.getElementById('filterLuDaerah')?.value || "ALL";
     const fSekolah = document.getElementById('filterLuSekolah')?.value || "ALL";
     const fBulan = document.getElementById('filterLuBulan')?.value || "ALL";
+
+    // 1. Kemaskini silang filter (dropdown) untuk mengelakkan empty state
+    updateCrossFilters(fDaerah, fSekolah, fBulan);
+
+    // 2. Dapatkan semula nilai yang telah diverifikasi (fallback kepada 'ALL' jika nilai terdahulu tidak sah)
+    const validDaerah = document.getElementById('filterLuDaerah')?.value || "ALL";
+    const validSekolah = document.getElementById('filterLuSekolah')?.value || "ALL";
+    const validBulan = document.getElementById('filterLuBulan')?.value || "ALL";
 
     filteredLibatUrusData = allLibatUrusData.filter(item => {
         let matchDaerah = true;
@@ -110,15 +172,16 @@ window.filterLibatUrus = function() {
         const schoolName = item.school?.nama_sekolah || "";
         const schoolDaerah = item.school?.daerah || "";
 
-        if (fDaerah !== "ALL") matchDaerah = schoolDaerah.toUpperCase() === fDaerah.toUpperCase();
-        if (fSekolah !== "ALL") matchSekolah = schoolName === fSekolah;
-        if (fBulan !== "ALL") matchBulan = item.bulan === fBulan;
+        if (validDaerah !== "ALL") matchDaerah = schoolDaerah.toUpperCase() === validDaerah.toUpperCase();
+        if (validSekolah !== "ALL") matchSekolah = schoolName === validSekolah;
+        if (validBulan !== "ALL") matchBulan = item.bulan === validBulan;
 
         return matchDaerah && matchSekolah && matchBulan;
     });
 
     processAndRender(filteredLibatUrusData);
 };
+// ── SURGICAL EDIT END ──
 
 /**
  * Process statistics and render the gallery
