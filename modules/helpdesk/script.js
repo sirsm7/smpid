@@ -149,6 +149,7 @@ window.toggleLokasiPindah = function(kategori) {
     });
 };
 
+/* SURGICAL EDIT START: Validate and retain full capability for CSV automated data loop appending */
 window.tambahBarisCalon = function(kategori) {
     const containerId = kategori === 'GURU' ? 'guruCalonContainer' : 'muridCalonContainer';
     const catatanId = kategori === 'GURU' ? 'guruCatatan' : 'muridCatatan';
@@ -185,6 +186,7 @@ window.tambahBarisCalon = function(kategori) {
     container.appendChild(div);
     updatePadamButtons(container);
 };
+/* SURGICAL EDIT END */
 
 window.padamBarisCalon = function(btn) {
     const row = btn.closest('.calon-row');
