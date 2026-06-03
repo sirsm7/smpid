@@ -126,24 +126,7 @@ export const BookingService = {
         const db = getDatabaseClient();
         const { tarikh, masa, kod_sekolah, nama_sekolah, tajuk_bengkel, nama_pic, no_tel_pic } = payload;
 
-        // Validasi 1: Hari Operasi yang Dibenarkan (Sel, Rab, Kha, Sab)
-        const day = new Date(tarikh).getDay();
-        const allowedDays = [2, 3, 4, 6];
-        
-        if (!allowedDays.includes(day)) {
-            throw new Error("Sesi bimbingan hanya dibenarkan pada hari Selasa, Rabu, Khamis dan Sabtu sahaja.");
-        }
-
-        // Validasi 2: Logik Spesifik Hari & Masa
-        // Sabtu: Hanya Pagi
-        if (day === 6 && masa !== 'Pagi') {
-            throw new Error("Maaf, sesi bimbingan pada hari Sabtu hanya dibuka untuk slot PAGI sahaja.");
-        }
-        // '1 HARI': Hanya Selasa (2), Rabu (3), Khamis (4)
-        if (masa === '1 HARI' && ![2, 3, 4].includes(day)) {
-            throw new Error("Opsyen '1 HARI' hanya tersedia untuk hari Selasa, Rabu, dan Khamis sahaja.");
-        }
-
+        // SURGICAL EDIT START: Menyusun semula pertanyaan daerah ke atas untuk validasi Isnin (Melaka Tengah) & Sabtu (Minggu ke-3)
         // --- RBAC DAERAH INJECTION UNTUK KAWALAN PERTINDIHAN (COLLISION) ---
         const { data: sData } = await db.from('smpid_sekolah_data').select('daerah').eq('kod_sekolah', kod_sekolah).maybeSingle();
         const daerah = sData && sData.daerah ? sData.daerah.toUpperCase() : 'ALOR GAJAH';
@@ -157,6 +140,46 @@ export const BookingService = {
         
         const { data: sList } = await db.from('smpid_sekolah_data').select('kod_sekolah').ilike('daerah', daerah);
         const validCodes = sList ? sList.map(x => x.kod_sekolah) : [kod_sekolah];
+
+        // Validasi 1: Hari Operasi yang Dibenarkan
+        const dateObj = new Date(tarikh);
+        const day = dateObj.getDay();
+        const dayOfMonth = dateObj.getDate();
+        const isMelakaTengah = (daerah === 'MELAKA TENGAH' || kod_sekolah === 'M020');
+
+        let isAllowedDay = false;
+        let errorMsg = "Sesi bimbingan tidak dibenarkan pada tarikh ini.";
+
+        if ([2, 3, 4].includes(day)) {
+            isAllowedDay = true;
+        } else if (day === 1) { // Isnin
+            if (isMelakaTengah) {
+                isAllowedDay = true;
+            } else {
+                errorMsg = "Hari Isnin hanya dibuka untuk tempahan PPD Melaka Tengah (M020) sahaja.";
+            }
+        } else if (day === 6) { // Sabtu
+            if (dayOfMonth >= 15 && dayOfMonth <= 21) {
+                isAllowedDay = true;
+            } else {
+                errorMsg = "Hari Sabtu hanya dibuka untuk tempahan pada minggu ke-3 (15hb - 21hb) setiap bulan sahaja.";
+            }
+        }
+
+        if (!isAllowedDay) {
+            throw new Error(errorMsg);
+        }
+
+        // Validasi 2: Logik Spesifik Hari & Masa
+        // Sabtu: Hanya Pagi
+        if (day === 6 && masa !== 'Pagi') {
+            throw new Error("Maaf, sesi bimbingan pada hari Sabtu hanya dibuka untuk slot PAGI sahaja.");
+        }
+        // '1 HARI': Hanya hari kerja biasa (Isnin - Khamis)
+        if (masa === '1 HARI' && ![1, 2, 3, 4].includes(day)) {
+            throw new Error("Opsyen '1 HARI' hanya tersedia untuk hari bekerja biasa (Isnin-Khamis) sahaja.");
+        }
+        // SURGICAL EDIT END
 
         // Validasi 3: Semak jika tarikh telah dikunci oleh Admin (Global atau Daerah ini menggunakan iLike)
         const { data: isLocked } = await db

@@ -26,7 +26,9 @@ let currentYear = todayDate.getFullYear();
 let activeWeek = Math.ceil(todayDate.getDate() / 7); 
 
 let selectedDateString = null; 
-let schoolInfo = { kod: '', nama: '' };
+// SURGICAL EDIT START: Tambah atribut daerah untuk rujukan state global
+let schoolInfo = { kod: '', nama: '', daerah: '' };
+// SURGICAL EDIT END
 
 // Day Configuration: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
 const ALLOWED_DAYS = [2, 3, 4, 6]; 
@@ -65,6 +67,10 @@ async function initBookingPortal() {
             if (!namaDaerah && APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[kod]) {
                 namaDaerah = APP_CONFIG.PPD_MAPPING[kod].toUpperCase();
             }
+
+            // SURGICAL EDIT START: Simpan data daerah ke dalam state global untuk rujukan penapis tarikh
+            schoolInfo.daerah = namaDaerah;
+            // SURGICAL EDIT END
             
             // Kemaskini DOM Header & Footer jika daerah berjaya dikesan
             if (namaDaerah) {
@@ -159,6 +165,30 @@ async function loadBookingHistory(kod) {
     }
 }
 
+// SURGICAL EDIT START: Fungsi berpusat untuk menentukan kelayakan hari menepati logik perniagaan baharu
+/**
+ * Menyemak sama ada sesuatu tarikh dibenarkan berdasarkan daerah dan logik minggu
+ * @param {Date} dateObj - Objek tarikh untuk disemak
+ * @returns {boolean} - True jika dibenarkan
+ */
+function checkIsAllowedDay(dateObj) {
+    const dayOfWeek = dateObj.getDay();
+    const dayOfMonth = dateObj.getDate();
+    const isMelakaTengah = (schoolInfo.daerah === 'MELAKA TENGAH' || schoolInfo.kod === 'M020');
+
+    // Selasa (2), Rabu (3), Khamis (4) sentiasa dibenarkan untuk semua
+    if ([2, 3, 4].includes(dayOfWeek)) return true;
+    
+    // Isnin (1) dibenarkan KHAS untuk MELAKA TENGAH / M020 sahaja
+    if (dayOfWeek === 1 && isMelakaTengah) return true;
+    
+    // Sabtu (6) dibenarkan HANYA pada minggu ke-3 setiap bulan (15hb - 21hb)
+    if (dayOfWeek === 6 && dayOfMonth >= 15 && dayOfMonth <= 21) return true;
+    
+    return false;
+}
+// SURGICAL EDIT END
+
 /**
  * Main Render: Grid-based Calendar Cards.
  */
@@ -213,7 +243,11 @@ window.renderCalendar = async function() {
             dateObj.setHours(0, 0, 0, 0);
 
             const dayOfWeek = dateObj.getDay();
-            const isAllowedDay = ALLOWED_DAYS.includes(dayOfWeek);
+            
+            // SURGICAL EDIT START: Gantikan rujukan statik dengan fungsi dinamik
+            const isAllowedDay = checkIsAllowedDay(dateObj);
+            // SURGICAL EDIT END
+
             const isLocked = lockedDetails.hasOwnProperty(dateString);
             const slotsTaken = bookedSlots[dateString] || [];
             
@@ -364,30 +398,29 @@ function handleCardSelection(dateStr, slotsTaken, element) {
         l.classList.remove('opacity-100', 'pointer-events-auto', 'grayscale-0');
     });
 
-    // 2. LOGIC ENABLE MENGIKUT KEKOSONGAN & HARI
+    // SURGICAL EDIT START: Logik kemas kini bergantung kepada fungsi checkIsAllowedDay
+    const isAllowedDay = checkIsAllowedDay(dateObj);
 
     // --- PAGI ---
-    // Aktif jika: Hari dibenarkan (2,3,4,6) DAN Slot Pagi belum diambil DAN Slot 1 Hari belum diambil
-    if (ALLOWED_DAYS.includes(dayOfWeek) && !slotsTaken.includes('Pagi') && !slotsTaken.includes('1 HARI')) {
+    if (isAllowedDay && !slotsTaken.includes('Pagi') && !slotsTaken.includes('1 HARI')) {
         radioPagi.disabled = false;
         labelPagi.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
     }
 
     // --- PETANG ---
-    // Aktif jika: Hari dibenarkan (2,3,4 sahaja - Sabtu TAK BOLEH) DAN Slot Petang belum diambil DAN Slot 1 Hari belum diambil
-    const isNormalDay = [2, 3, 4].includes(dayOfWeek);
-    if (isNormalDay && !slotsTaken.includes('Petang') && !slotsTaken.includes('1 HARI')) {
+    // Aktif jika: Hari Normal (1, 2, 3, 4) - Sabtu TAK BOLEH. 
+    const isNormalDay = [1, 2, 3, 4].includes(dayOfWeek); // Isnin (1) sekarang dikira hari normal
+    if (isNormalDay && isAllowedDay && !slotsTaken.includes('Petang') && !slotsTaken.includes('1 HARI')) {
         radioPetang.disabled = false;
         labelPetang.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
     }
 
     // --- 1 HARI (SEHARI) ---
-    // Aktif jika: Hari Normal (2,3,4) DAN TIADA SEBARANG SLOT DIAMBIL
-    // Jika Pagi dah ambil, tak boleh pilih Sehari. Jika Petang dah ambil, tak boleh pilih Sehari.
-    if (isNormalDay && slotsTaken.length === 0) {
+    if (isNormalDay && isAllowedDay && slotsTaken.length === 0) {
         radioSehari.disabled = false;
         labelSehari.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
     }
+    // SURGICAL EDIT END
 
     checkFormValidity();
     document.querySelectorAll('input[name="inputMasa"]').forEach(r => {

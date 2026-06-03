@@ -137,6 +137,31 @@ window.switchAdminWeek = function(weekNum) {
     window.renderAdminBookingCalendar();
 };
 
+// SURGICAL EDIT START: Tambah helper function untuk tentukan kelayakan hari (Paparan Admin)
+function checkIsAllowedDayAdmin(dateObj) {
+    const dayOfWeek = dateObj.getDay();
+    const dayOfMonth = dateObj.getDate();
+    const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE) || '';
+    const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || '';
+    
+    // Selasa (2), Rabu (3), Khamis (4) sentiasa dibenarkan untuk dikunci
+    if ([2, 3, 4].includes(dayOfWeek)) return true;
+    
+    // Isnin (1) - Dibenarkan jika SUPER_ADMIN, JPNMEL, atau ADMIN MELAKA TENGAH (M020)
+    if (dayOfWeek === 1) {
+        if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) return true;
+        const namaDaerah = (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[userKod]) ? APP_CONFIG.PPD_MAPPING[userKod].toUpperCase() : '';
+        if (namaDaerah === 'MELAKA TENGAH' || userKod === 'M020') return true;
+        return false; // Daerah lain tidak perlu berurusan dengan hari Isnin
+    }
+    
+    // Sabtu (6) - Dibenarkan HANYA pada minggu ke-3 setiap bulan (15hb - 21hb) untuk dikunci
+    if (dayOfWeek === 6 && dayOfMonth >= 15 && dayOfMonth <= 21) return true;
+    
+    return false;
+}
+// SURGICAL EDIT END
+
 /**
  * Membina Grid Kalendar (Admin Side) dengan Sokongan Pelbagai Skop Kunci
  */
@@ -194,7 +219,9 @@ window.renderAdminBookingCalendar = async function() {
             dateObj.setHours(0, 0, 0, 0);
 
             const dayOfWeek = dateObj.getDay(); 
-            const isAllowedDay = ALLOWED_DAYS.includes(dayOfWeek);
+            // SURGICAL EDIT START: Gantikan semakan statik kepada semakan dinamik
+            const isAllowedDay = checkIsAllowedDayAdmin(dateObj);
+            // SURGICAL EDIT END
             
             // Dapatkan kunci untuk tarikh ini (Kini sentiasa hanya maksimum 1 baris)
             const lockObj = activeMonthLocks.find(l => l.tarikh.split('T')[0] === dateString);
