@@ -178,17 +178,33 @@
                     
                     <!-- SUNTIKAN: Dropdown untuk Sijil Pra-tetap (Disembunyikan secara lalai) -->
                     <div id="wrapperPubSijil" class="hidden mb-3 relative animate-fade-up">
+                        <!-- [SINTAKS KOMEN] SURGICAL EDIT START: Menyelaraskan senarai dropdown sijil dengan penyediaMap baharu -->
                         <select id="pubSijilDropdown" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-brand-500 outline-none appearance-none transition-colors" onchange="if(window.handleSijilChange) window.handleSijilChange()">
                             <option value="" disabled selected>- PILIH SIJIL PROFESIONAL (PILIHAN) -</option>
+                            <!-- GOOGLE -->
                             <option value="GOOGLE CERTIFIED EDUCATOR LEVEL 1">GOOGLE CERTIFIED EDUCATOR LEVEL 1</option>
                             <option value="GOOGLE CERTIFIED EDUCATOR LEVEL 2">GOOGLE CERTIFIED EDUCATOR LEVEL 2</option>
                             <option value="GEMINI CERTIFIED EDUCATOR">GEMINI CERTIFIED EDUCATOR</option>
+                            <option value="GEMINI CERTIFIED STUDENT">GEMINI CERTIFIED STUDENT</option>
+                            <option value="GEMINI CERTIFIED FACULTY">GEMINI CERTIFIED FACULTY</option>
+                            <option value="GOOGLE CERTIFIED TRAINER">GOOGLE CERTIFIED TRAINER</option>
+                            <option value="GOOGLE CERTIFIED INNOVATOR">GOOGLE CERTIFIED INNOVATOR</option>
+                            <option value="GOOGLE CERTIFIED COACH">GOOGLE CERTIFIED COACH</option>
+                            <!-- APPLE -->
                             <option value="APPLE TEACHER">APPLE TEACHER</option>
                             <option value="APPLE LEARNING COACH">APPLE LEARNING COACH</option>
-                            <option value="MICROSOFT CERTIFIED EDUCATOR">MICROSOFT CERTIFIED EDUCATOR</option>
+                            <option value="APPLE TEACHER SWIFT PLAYGROUNDS">APPLE TEACHER SWIFT PLAYGROUNDS</option>
+                            <option value="APPLE TEACHER PORTFOLIO">APPLE TEACHER PORTFOLIO</option>
+                            <option value="APPLE PROFESSIONAL LEARNING SPECIALIST">APPLE PROFESSIONAL LEARNING SPECIALIST</option>
+                            <option value="APPLE DISTINGUISHED EDUCATOR">APPLE DISTINGUISHED EDUCATOR</option>
+                            <!-- MICROSOFT -->
+                            <option value="MICROSOFT INNOVATIVE EDUCATOR">MICROSOFT INNOVATIVE EDUCATOR</option>
                             <option value="MICROSOFT INNOVATIVE EDUCATOR EXPERT">MICROSOFT INNOVATIVE EDUCATOR EXPERT</option>
+                            <option value="MICROSOFT CERTIFIED EDUCATOR">MICROSOFT CERTIFIED EDUCATOR</option>
+                            <!-- LAIN-LAIN -->
                             <option value="LAIN-LAIN">LAIN-LAIN (SILA NYATAKAN NAMA SIJIL)</option>
                         </select>
+                        <!-- [SINTAKS KOMEN] SURGICAL EDIT END -->
                         <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
                     </div>
 
