@@ -1,16 +1,13 @@
 /**
  * ADMIN MODULE: ACHIEVEMENT (PRO WEB CASTER FULL EDITION - V3.0 SURGICAL EDIT)
- * Menguruskan rekod pencapaian dengan kawalan integriti data penuh.
- * --- UPDATE V3.0 (STANDARDIZE & BULK EDIT) ---
- * 1. Ditambah keupayaan menyaring (Standardize) 'Nama Program' dan 'Skor Pencapaian'.
- * 2. Ditambah fungsi 'Ubah Penyedia Pukal' menggunakan SweetAlert2.
+ * Menguruskan rekod pencapaian dengan kawalan integriti data penuh dan kalis ralat terbina.
  */
 
 import { AchievementService } from '../services/achievement.service.js';
 import { toggleLoading, uploadFileToDrive } from '../core/helpers.js';
 import { populateDropdown } from '../config/dropdowns.js';
 import { APP_CONFIG } from '../config/app.config.js';
-import { getDatabaseClient } from '../core/db.js'; // BARU: Tambahan untuk operasi komposit terus
+import { getDatabaseClient } from '../core/db.js'; 
 
 // --- STATE MANAGEMENT ---
 let pencapaianList = [];
@@ -18,24 +15,33 @@ let currentPencapaianFiltered = [];
 let currentCardFilter = 'ALL';
 let currentJawatanFilter = 'ALL';
 let currentKategoriFilter = 'ALL';
-// ── SURGICAL EDIT START: State tapisan daerah dan program Kemenjadian ──
-let currentProgramFilter = []; // Ditukar kepada tatasusunan (Array) untuk menyokong Multi-Select
+let currentProgramFilter = []; 
 let currentDaerahFilter = 'ALL';
-// ── SURGICAL EDIT END ──
 let sortState = { column: 'created_at', direction: 'desc' };
 
 // Cache untuk senarai nama/skor unik bagi tujuan penyeragaman
 let standardizationList = []; 
 let filteredStandardizationList = [];
 
-// ── SURGICAL EDIT START: Helper tapisan daerah dan program Kemenjadian ──
+// --- HELPER KALI RALAT (DEFENSIVE PROGRAMMING) ---
+function getSessionKey(type) {
+    try { return APP_CONFIG.SESSION[type]; } 
+    catch(e) { return type === 'USER_ROLE' ? 'user_role' : 'user_kod'; }
+}
+
 function getPpdCodeList() {
-    return APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+    try { return Object.keys(APP_CONFIG.PPD_MAPPING); } 
+    catch(e) { return ['M010', 'M020', 'M030']; }
+}
+
+function getPpdName(kod) {
+    try { return APP_CONFIG.PPD_MAPPING[kod]; } 
+    catch(e) { return null; }
 }
 
 function isSuperAdminRole() {
-    const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
-    return userRole === 'SUPER_ADMIN';
+    try { return localStorage.getItem(getSessionKey('USER_ROLE')) === 'SUPER_ADMIN'; } 
+    catch(e) { return false; }
 }
 
 function escapeHtml(value) {
@@ -47,11 +53,9 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
-// ── SURGICAL EDIT START: Membaiki isu sintaks HTML pada onclick word cloud dengan escapeHtml ──
 function toInlineJsString(value) {
     return escapeHtml(JSON.stringify(String(value ?? '')));
 }
-// ── SURGICAL EDIT END ──
 
 function getSchoolMetaByKod(kodSekolah) {
     if (!window.globalDashboardData || !kodSekolah) return null;
@@ -62,9 +66,8 @@ function getPencapaianDaerah(item) {
     const kodSekolah = item?.kod_sekolah;
     if (!kodSekolah) return '';
 
-    if (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[kodSekolah]) {
-        return APP_CONFIG.PPD_MAPPING[kodSekolah];
-    }
+    const ppdName = getPpdName(kodSekolah);
+    if (ppdName) return ppdName;
 
     const schoolMeta = getSchoolMetaByKod(kodSekolah);
     return schoolMeta?.daerah || '';
@@ -87,9 +90,11 @@ function populateDaerahFilter() {
     const oldVal = select.value || currentDaerahFilter || 'ALL';
     let daerahList = [];
 
-    if (APP_CONFIG.PPD_MAPPING) {
-        daerahList = Object.values(APP_CONFIG.PPD_MAPPING);
-    }
+    try {
+        if (APP_CONFIG && APP_CONFIG.PPD_MAPPING) {
+            daerahList = Object.values(APP_CONFIG.PPD_MAPPING);
+        }
+    } catch(e) {}
 
     if (window.globalDashboardData) {
         window.globalDashboardData.forEach(s => {
@@ -115,11 +120,9 @@ function getDaerahFilteredPencapaianSource() {
     return pencapaianList.filter(item => getPencapaianDaerah(item) === currentDaerahFilter);
 }
 
-// ── SURGICAL EDIT START: Menyimpan dan Memulihkan Posisi Skrol Dropdown Kemenjadian ──
 function populateProgramFilter(data) {
     const selectEl = document.getElementById('filterProgramPencapaian');
     if (!selectEl) return;
-    const parent = selectEl.parentElement;
 
     const counts = {};
     (data || []).forEach(item => {
@@ -130,31 +133,30 @@ function populateProgramFilter(data) {
 
     const sortedPrograms = Object.entries(counts).sort((a, b) => a[0].localeCompare(b[0]));
 
-    // Simpan state terbuka/tertutup, nilai carian, dan posisi skrol sebelum komponen di render semula
     let isDropdownOpen = false;
     let currentSearchValue = "";
-    let currentScrollPos = 0; // Tambahan state memori skrol
+    let currentScrollPos = 0; 
+    
     const existingMenu = document.getElementById('customProgramDropdownMenu');
     if (existingMenu) {
         isDropdownOpen = !existingMenu.classList.contains('hidden');
         const searchInput = document.getElementById('progSearchInput');
-        if (searchInput) currentSearchValue = searchInput.value;
+        if (searchInput) currentSearchValue = searchInput.value || "";
         const scrollContainer = document.getElementById('progDropdownList');
-        if (scrollContainer) currentScrollPos = scrollContainer.scrollTop;
+        if (scrollContainer) currentScrollPos = scrollContainer.scrollTop || 0;
     }
 
     let customDropdown = document.getElementById('customProgramDropdown');
     if (!customDropdown) {
-        // Sembunyikan elemen asal dan bina bekas dropdown tersuai
         selectEl.style.display = 'none';
         customDropdown = document.createElement('div');
         customDropdown.id = 'customProgramDropdown';
-        customDropdown.className = 'relative w-full mt-1';
-        selectEl.after(customDropdown); // Sisip terus selepas elemen asal supaya tidak melompat
+        customDropdown.className = 'relative w-full lg:col-span-2 mt-1 lg:mt-0'; // Responsive handling
+        selectEl.after(customDropdown); 
     }
 
     let btnText = "SEMUA PROGRAM";
-    let btnClass = "text-slate-500 bg-slate-50 border-slate-200";
+    let btnClass = "text-slate-500 bg-white border-slate-200";
     if (currentProgramFilter.length > 0) {
         btnText = `${currentProgramFilter.length} PROGRAM DIPILIH`;
         btnClass = "text-indigo-700 font-bold bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200";
@@ -162,7 +164,7 @@ function populateProgramFilter(data) {
 
     let listHTML = `
         <button type="button" onclick="document.getElementById('customProgramDropdownMenu').classList.toggle('hidden'); event.stopPropagation();"
-                class="w-full text-left px-3 py-2 border rounded-lg shadow-sm focus:outline-none flex justify-between items-center text-xs transition-all ${btnClass}">
+                class="w-full h-full text-left px-4 py-2.5 border rounded-xl shadow-sm focus:outline-none flex justify-between items-center text-sm font-semibold transition-all ${btnClass}">
             <span class="truncate pr-2">${btnText}</span>
             <i class="fas fa-chevron-down opacity-50"></i>
         </button>
@@ -182,7 +184,7 @@ function populateProgramFilter(data) {
             <ul id="progDropdownList" class="p-1.5 flex flex-col gap-0.5 overflow-y-auto">
     `;
 
-    const searchLower = currentSearchValue.toLowerCase();
+    const searchLower = String(currentSearchValue).toLowerCase();
 
     sortedPrograms.forEach(([program, count]) => {
         const isChecked = currentProgramFilter.includes(program);
@@ -214,22 +216,16 @@ function populateProgramFilter(data) {
     listHTML += `</ul></div>`;
     customDropdown.innerHTML = listHTML;
 
-    // Pulihkan posisi skrol dengan serta merta selepas DOM dikemaskini
     const newScrollContainer = document.getElementById('progDropdownList');
     if (newScrollContainer) {
-        setTimeout(() => {
-            newScrollContainer.scrollTop = currentScrollPos;
-        }, 0);
+        setTimeout(() => { newScrollContainer.scrollTop = currentScrollPos; }, 0);
     }
 }
-// ── SURGICAL EDIT END ──
 
-// Tutup custom dropdown apabila klik di luar kawasan
 document.addEventListener('click', (e) => {
     const menu = document.getElementById('customProgramDropdownMenu');
     const dropdown = document.getElementById('customProgramDropdown');
     if (menu && !menu.classList.contains('hidden')) {
-        // Pastikan hanya tertutup jika klik di luar komponen dropdown
         if (dropdown && !dropdown.contains(e.target)) {
             menu.classList.add('hidden');
         }
@@ -240,16 +236,40 @@ document.addEventListener('click', (e) => {
 
 window.populateTahunFilter = async function() {
     const select = document.getElementById('filterTahunPencapaian');
-    if (!select) return;
+    const tbody = document.getElementById('tbodyPencapaianMaster');
+    
+    // Pastikan status loading ditunjukkan walau apa berlaku pada await DB
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-10"><i class="fas fa-circle-notch fa-spin text-brand-500 text-3xl mb-3"></i><p class="font-bold text-slate-400">Menyemak pangkalan data...</p></td></tr>`;
+    }
+
+    if (!select) {
+        window.loadMasterPencapaian(); // Fallback terus ke master
+        return;
+    }
+    
+    // Elak populate berulang kali jika sudah wujud data
+    if (select.options.length > 1 && !select.innerHTML.includes('Memuatkan')) {
+        window.loadMasterPencapaian();
+        return;
+    }
+    
     try {
         const years = await AchievementService.getAvailableYears();
         select.innerHTML = '<option value="ALL">SEMUA TAHUN</option>';
         years.forEach(y => {
             select.innerHTML += `<option value="${y}">TAHUN ${y}</option>`;
         });
-        window.loadMasterPencapaian();
+        
+        const currentYear = new Date().getFullYear().toString();
+        if (years.includes(currentYear)) select.value = currentYear;
+        
     } catch (e) { 
-        console.error("[Achievement] Gagal muat tahun:", e); 
+        console.warn("[Achievement] Gagal muat senarai tahun, menggunakan default.", e); 
+        select.innerHTML = '<option value="ALL">SEMUA TAHUN</option>';
+    } finally {
+        // ALWAYS trigger loading mechanism
+        window.loadMasterPencapaian();
     }
 };
 
@@ -257,35 +277,35 @@ window.loadMasterPencapaian = async function() {
     const tbody = document.getElementById('tbodyPencapaianMaster');
     if(!tbody) return;
     
-    if (pencapaianList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-10"><i class="fas fa-circle-notch fa-spin text-brand-500 text-2xl"></i></td></tr>`;
-    }
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-10"><i class="fas fa-circle-notch fa-spin text-brand-500 text-3xl mb-3"></i><p class="font-bold text-slate-500">Memuat turun data Kemenjadian...</p></td></tr>`;
     
-    const tahun = document.getElementById('filterTahunPencapaian').value;
+    const tahunEl = document.getElementById('filterTahunPencapaian');
+    const tahun = tahunEl ? tahunEl.value : 'ALL';
     
     try {
         let dataRaw = await AchievementService.getAll(tahun);
         
         // --- RBAC FILTERING ---
-        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
-        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
+        const userRole = localStorage.getItem(getSessionKey('USER_ROLE'));
+        const userKod = localStorage.getItem(getSessionKey('USER_KOD'));
 
         if (['ADMIN', 'PPD_UNIT'].includes(userRole) && window.globalDashboardData) {
             const validSchoolCodes = window.globalDashboardData.map(s => s.kod_sekolah);
-            validSchoolCodes.push(userKod); // Benarkan rekod PPD mereka sendiri
+            validSchoolCodes.push(userKod);
             dataRaw = dataRaw.filter(p => validSchoolCodes.includes(p.kod_sekolah));
         }
         
-        pencapaianList = dataRaw;
-        // ── SURGICAL EDIT START: Muatkan filter daerah dan program Kemenjadian ──
+        pencapaianList = dataRaw || [];
+        
         populateDaerahFilter();
         const scopedData = getDaerahFilteredPencapaianSource();
         populateSekolahFilter(scopedData);
         populateProgramFilter(scopedData);
-        // ── SURGICAL EDIT END ──
+        
         window.renderPencapaianTable();
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-red-500 font-bold p-4">Gagal memuatkan data dari pangkalan data.</td></tr>`;
+        console.error("Master Load Error:", e);
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-red-500 font-bold p-4 bg-red-50 rounded-xl">Gagal memuatkan data dari pangkalan data pusat.</td></tr>`;
     }
 };
 
@@ -320,7 +340,8 @@ function populateSekolahFilter(data) {
         if(!seen.has(i.kod_sekolah)) {
             let label = i.kod_sekolah;
             if (senaraiKodPPD.includes(i.kod_sekolah)) {
-                label = APP_CONFIG.PPD_MAPPING[i.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[i.kod_sekolah]} (${i.kod_sekolah})` : `PEJABAT PENDIDIKAN DAERAH (${i.kod_sekolah})`;
+                const ppdName = getPpdName(i.kod_sekolah);
+                label = ppdName ? `PPD ${ppdName} (${i.kod_sekolah})` : `PEJABAT PENDIDIKAN DAERAH (${i.kod_sekolah})`;
             }
             else if(window.globalDashboardData) {
                 const s = window.globalDashboardData.find(x => x.kod_sekolah === i.kod_sekolah);
@@ -339,147 +360,147 @@ function populateSekolahFilter(data) {
 // --- RENDERING LOGIC ---
 
 window.renderPencapaianTable = function() {
-    const tbody = document.getElementById('tbodyPencapaianMaster');
-    if(!tbody) return;
-    
-    const elKat = document.getElementById('filterKategoriPencapaian');
-    if(elKat) {
-        currentKategoriFilter = elKat.value;
-    }
-
-    // ── SURGICAL EDIT START: Ambil nilai filter daerah dan program Kemenjadian ──
-    const elDaerah = document.getElementById('filterDaerahPencapaian');
-    if(elDaerah && isSuperAdminRole()) {
-        currentDaerahFilter = elDaerah.value || 'ALL';
-    } else {
-        currentDaerahFilter = 'ALL';
-    }
-
-    // Nota: currentProgramFilter kini diuruskan melalui toggle (multi-select), bukan elemen DOM
-    // ── SURGICAL EDIT END ──
-
-    const katFilter = currentKategoriFilter;
-    const sekFilter = document.getElementById('filterSekolahPencapaian').value;
-    const jenisFilter = document.getElementById('filterJenisPencapaian').value; 
-    const search = document.getElementById('searchPencapaianInput').value.toUpperCase();
-
-    const senaraiKodPPD = getPpdCodeList();
-
-    // ── SURGICAL EDIT START: Satukan logik filter supaya program cloud/dropdown kekal dinamik ──
-    const applyCoreFilters = (i, options = {}) => {
-        const ignoreProgram = options.ignoreProgram === true;
-
-        if(currentDaerahFilter !== 'ALL' && getPencapaianDaerah(i) !== currentDaerahFilter) return false;
-        if(sekFilter !== 'ALL' && i.kod_sekolah !== sekFilter) return false;
-        if(katFilter !== 'ALL' && i.kategori !== katFilter) return false;
-        if(jenisFilter !== 'ALL' && i.jenis_rekod !== jenisFilter) return false;
+    try {
+        const tbody = document.getElementById('tbodyPencapaianMaster');
+        if(!tbody) return;
         
-        // Multi-select Program Filtering Logic
-        if(!ignoreProgram && currentProgramFilter.length > 0 && !currentProgramFilter.includes(i.nama_pertandingan)) return false;
-        
-        if(search) {
-            let namaSekolah = senaraiKodPPD.includes(i.kod_sekolah) ? (APP_CONFIG.PPD_MAPPING[i.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[i.kod_sekolah]}` : 'PEJABAT PENDIDIKAN DAERAH') : 
-                (getSchoolMetaByKod(i.kod_sekolah)?.nama_sekolah || '');
-            const searchTarget = `${i.kod_sekolah} ${namaSekolah} ${i.nama_peserta} ${i.nama_pertandingan} ${i.pencapaian}`.toUpperCase();
-            if (!searchTarget.includes(search)) return false;
-        }
-        
-        if(currentCardFilter === 'KEBANGSAAN' && i.peringkat !== 'KEBANGSAAN') return false;
-        if(currentCardFilter === 'ANTARABANGSA' && !['ANTARABANGSA'].includes(i.peringkat) && i.jenis_rekod !== 'PENSIJILAN') return false;
-        if(['GOOGLE','APPLE','MICROSOFT'].includes(currentCardFilter) && i.penyedia !== currentCardFilter) return false;
-        if(currentCardFilter === 'LAIN-LAIN' && (i.jenis_rekod !== 'PENSIJILAN' || i.penyedia !== 'LAIN-LAIN')) return false;
-        
-        if(currentJawatanFilter !== 'ALL' && i.jawatan !== currentJawatanFilter) return false;
+        const elKat = document.getElementById('filterKategoriPencapaian');
+        if(elKat) currentKategoriFilter = elKat.value;
 
-        return true;
-    };
-
-    const dataForProgramFilter = pencapaianList.filter(i => applyCoreFilters(i, { ignoreProgram: true }));
-    populateProgramFilter(dataForProgramFilter);
-    updateProgramCloud(dataForProgramFilter);
-
-    let data = pencapaianList.filter(i => applyCoreFilters(i));
-    // ── SURGICAL EDIT END ──
-
-    updateStats(data);
-    updateCloud(data); 
-
-    data.sort((a,b) => {
-        let valA = a[sortState.column] || '';
-        let valB = b[sortState.column] || '';
-        if (sortState.column === 'nama_sekolah') valA = a.kod_sekolah; 
-        if (sortState.direction === 'asc') return valA > valB ? 1 : -1;
-        return valA < valB ? 1 : -1;
-    });
-
-    currentPencapaianFiltered = data;
-    renderTopSchools(data);
-
-    // RESET: Kotak semak pilihan pukal apabila jadual dimuat semula
-    const selectAllCb = document.getElementById('selectAllPencapaian');
-    if (selectAllCb) selectAllCb.checked = false;
-    window.checkBulkStatusPencapaian();
-
-    if(data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-10 text-slate-400 font-medium">Tiada rekod ditemui untuk kriteria ini.</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = data.map(i => {
-        let namaSekolah = i.kod_sekolah;
-        if(senaraiKodPPD.includes(i.kod_sekolah)) {
-            const namaPpd = APP_CONFIG.PPD_MAPPING[i.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[i.kod_sekolah]}` : 'PEJABAT PENDIDIKAN DAERAH';
-            namaSekolah = `<span class="text-indigo-600 font-black">${namaPpd}</span>`;
-        }
-        else if(window.globalDashboardData) {
-            const s = window.globalDashboardData.find(x => x.kod_sekolah === i.kod_sekolah);
-            if(s) namaSekolah = s.nama_sekolah;
-        }
-
-        let badgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
-        if (i.kategori === 'MURID') badgeClass = 'bg-blue-100 text-blue-700 border-blue-200';
-        else if (i.kategori === 'GURU') badgeClass = 'bg-amber-100 text-amber-700 border-amber-200';
-        else if (i.kategori === 'SEKOLAH') badgeClass = 'bg-green-100 text-green-700 border-green-200';
-        else if (i.kategori === 'PEGAWAI') badgeClass = 'bg-slate-800 text-white border-slate-700';
-        else if (i.kategori === 'PPD') badgeClass = 'bg-indigo-100 text-indigo-700 border-indigo-200';
-
-        let jenisBadge = '';
-        let penyediaBadge = '';
-        if (i.jenis_rekod === 'PENSIJILAN') {
-            jenisBadge = `<span class="bg-amber-50 text-amber-600 border border-amber-200 text-[9px] font-black px-1 rounded mr-1">SIJIL</span>`;
-            if(i.penyedia) {
-                penyediaBadge = `<span class="block text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-wider"><i class="fas fa-building mr-1"></i>${i.penyedia}</span>`;
-            }
+        const elDaerah = document.getElementById('filterDaerahPencapaian');
+        if(elDaerah && isSuperAdminRole()) {
+            currentDaerahFilter = elDaerah.value || 'ALL';
         } else {
-            jenisBadge = `<span class="bg-blue-50 text-blue-600 border border-blue-200 text-[9px] font-black px-1 rounded mr-1">PROG</span>`;
+            currentDaerahFilter = 'ALL';
         }
 
-        return `<tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
-            <td class="px-4 py-3 text-center border-r border-slate-100 w-12">
-                <input type="checkbox" class="cb-pencapaian w-4 h-4 accent-red-500 cursor-pointer rounded" value="${i.id}" onchange="window.checkBulkStatusPencapaian()">
-            </td>
-            <td class="px-6 py-4 font-mono text-xs font-bold text-slate-400 w-24">${i.kod_sekolah}</td>
-            <td class="px-6 py-4 text-xs font-semibold text-slate-700 leading-snug w-64 whitespace-normal">${namaSekolah}</td>
-            <td class="px-6 py-4 text-center"><span class="inline-block whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}">${i.kategori}</span></td>
-            <td class="px-6 py-4 whitespace-normal">
-                <div class="font-bold text-slate-800 text-sm mb-0.5">${i.nama_peserta}</div>
-                ${i.jawatan ? `<span class="text-[10px] text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">${i.jawatan}</span>` : ''}
-            </td>
-            <td class="px-6 py-4 whitespace-normal">
-                <div class="mb-1">${jenisBadge}</div>
-                <div class="text-brand-600 text-xs font-bold leading-tight">${i.nama_pertandingan}</div>
-                ${penyediaBadge}
-            </td>
-            <td class="px-6 py-4 text-center font-black text-slate-700 text-xs w-32 whitespace-normal bg-slate-50/50">${i.pencapaian}</td>
-            <td class="px-6 py-4 text-center w-24"><a href="${i.pautan_bukti}" target="_blank" class="p-2 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition" title="Lihat Bukti"><i class="fas fa-link"></i></a></td>
-            <td class="px-6 py-4 text-center w-32">
-                <div class="flex items-center justify-center gap-1">
-                    <button onclick="openEditPencapaian(${i.id})" class="p-2 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition" title="Edit"><i class="fas fa-edit"></i></button>
-                    <button onclick="hapusPencapaianAdmin(${i.id})" class="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition" title="Padam"><i class="fas fa-trash-alt"></i></button>
-                </div>
-            </td>
-        </tr>`;
-    }).join('');
+        const katFilter = currentKategoriFilter;
+        const elSek = document.getElementById('filterSekolahPencapaian');
+        const sekFilter = elSek ? elSek.value : 'ALL';
+        
+        const elJenis = document.getElementById('filterJenisPencapaian');
+        const jenisFilter = elJenis ? elJenis.value : 'ALL'; 
+        
+        const searchInput = document.getElementById('searchPencapaianInput');
+        const search = searchInput ? searchInput.value.toUpperCase() : '';
+
+        const senaraiKodPPD = getPpdCodeList();
+
+        const applyCoreFilters = (i, options = {}) => {
+            const ignoreProgram = options.ignoreProgram === true;
+
+            if(currentDaerahFilter !== 'ALL' && getPencapaianDaerah(i) !== currentDaerahFilter) return false;
+            if(sekFilter !== 'ALL' && i.kod_sekolah !== sekFilter) return false;
+            if(katFilter !== 'ALL' && i.kategori !== katFilter) return false;
+            if(jenisFilter !== 'ALL' && i.jenis_rekod !== jenisFilter) return false;
+            
+            if(!ignoreProgram && currentProgramFilter.length > 0 && !currentProgramFilter.includes(i.nama_pertandingan)) return false;
+            
+            if(search) {
+                let namaSekolah = senaraiKodPPD.includes(i.kod_sekolah) ? (getPpdName(i.kod_sekolah) ? `PPD ${getPpdName(i.kod_sekolah)}` : 'PEJABAT PENDIDIKAN DAERAH') : 
+                    (getSchoolMetaByKod(i.kod_sekolah)?.nama_sekolah || '');
+                const searchTarget = `${i.kod_sekolah} ${namaSekolah} ${i.nama_peserta} ${i.nama_pertandingan} ${i.pencapaian}`.toUpperCase();
+                if (!searchTarget.includes(search)) return false;
+            }
+            
+            if(currentCardFilter === 'KEBANGSAAN' && i.peringkat !== 'KEBANGSAAN') return false;
+            if(currentCardFilter === 'ANTARABANGSA' && !['ANTARABANGSA'].includes(i.peringkat) && i.jenis_rekod !== 'PENSIJILAN') return false;
+            if(['GOOGLE','APPLE','MICROSOFT'].includes(currentCardFilter) && i.penyedia !== currentCardFilter) return false;
+            if(currentCardFilter === 'LAIN-LAIN' && (i.jenis_rekod !== 'PENSIJILAN' || i.penyedia !== 'LAIN-LAIN')) return false;
+            
+            if(currentJawatanFilter !== 'ALL' && i.jawatan !== currentJawatanFilter) return false;
+
+            return true;
+        };
+
+        const dataForProgramFilter = pencapaianList.filter(i => applyCoreFilters(i, { ignoreProgram: true }));
+        populateProgramFilter(dataForProgramFilter);
+        updateProgramCloud(dataForProgramFilter);
+
+        let data = pencapaianList.filter(i => applyCoreFilters(i));
+
+        updateStats(data);
+        updateCloud(data); 
+
+        data.sort((a,b) => {
+            let valA = a[sortState.column] || '';
+            let valB = b[sortState.column] || '';
+            if (sortState.column === 'nama_sekolah') valA = a.kod_sekolah; 
+            if (sortState.direction === 'asc') return valA > valB ? 1 : -1;
+            return valA < valB ? 1 : -1;
+        });
+
+        currentPencapaianFiltered = data;
+        renderTopSchools(data);
+
+        const selectAllCb = document.getElementById('selectAllPencapaian');
+        if (selectAllCb) selectAllCb.checked = false;
+        if(window.checkBulkStatusPencapaian) window.checkBulkStatusPencapaian();
+
+        if(data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-10"><p class="text-slate-400 font-medium italic"><i class="fas fa-folder-open text-2xl mb-2 block text-slate-300"></i>Tiada rekod ditemui untuk kriteria semasa.</p></td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = data.map(i => {
+            let namaSekolah = i.kod_sekolah;
+            if(senaraiKodPPD.includes(i.kod_sekolah)) {
+                const ppdName = getPpdName(i.kod_sekolah);
+                const namaPpd = ppdName ? `PPD ${ppdName}` : 'PEJABAT PENDIDIKAN DAERAH';
+                namaSekolah = `<span class="text-indigo-600 font-black">${namaPpd}</span>`;
+            }
+            else if(window.globalDashboardData) {
+                const s = window.globalDashboardData.find(x => x.kod_sekolah === i.kod_sekolah);
+                if(s) namaSekolah = s.nama_sekolah;
+            }
+
+            let badgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
+            if (i.kategori === 'MURID') badgeClass = 'bg-blue-100 text-blue-700 border-blue-200';
+            else if (i.kategori === 'GURU') badgeClass = 'bg-amber-100 text-amber-700 border-amber-200';
+            else if (i.kategori === 'SEKOLAH') badgeClass = 'bg-green-100 text-green-700 border-green-200';
+            else if (i.kategori === 'PEGAWAI') badgeClass = 'bg-slate-800 text-white border-slate-700';
+            else if (i.kategori === 'PPD') badgeClass = 'bg-indigo-100 text-indigo-700 border-indigo-200';
+
+            let jenisBadge = '';
+            let penyediaBadge = '';
+            if (i.jenis_rekod === 'PENSIJILAN') {
+                jenisBadge = `<span class="bg-amber-50 text-amber-600 border border-amber-200 text-[9px] font-black px-1 rounded mr-1">SIJIL</span>`;
+                if(i.penyedia) {
+                    penyediaBadge = `<span class="block text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-wider"><i class="fas fa-building mr-1"></i>${i.penyedia}</span>`;
+                }
+            } else {
+                jenisBadge = `<span class="bg-blue-50 text-blue-600 border border-blue-200 text-[9px] font-black px-1 rounded mr-1">PROG</span>`;
+            }
+
+            return `<tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
+                <td class="px-4 py-3 text-center border-r border-slate-100 w-12">
+                    <input type="checkbox" class="cb-pencapaian w-4 h-4 accent-red-500 cursor-pointer rounded" value="${i.id}" onchange="window.checkBulkStatusPencapaian()">
+                </td>
+                <td class="px-6 py-4 font-mono text-xs font-bold text-slate-400 w-24">${i.kod_sekolah}</td>
+                <td class="px-6 py-4 text-xs font-semibold text-slate-700 leading-snug w-64 whitespace-normal">${namaSekolah}</td>
+                <td class="px-6 py-4 text-center"><span class="inline-block whitespace-nowrap px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}">${i.kategori}</span></td>
+                <td class="px-6 py-4 whitespace-normal">
+                    <div class="font-bold text-slate-800 text-sm mb-0.5">${i.nama_peserta}</div>
+                    ${i.jawatan ? `<span class="text-[10px] text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">${i.jawatan}</span>` : ''}
+                </td>
+                <td class="px-6 py-4 whitespace-normal">
+                    <div class="mb-1">${jenisBadge}</div>
+                    <div class="text-brand-600 text-xs font-bold leading-tight">${i.nama_pertandingan}</div>
+                    ${penyediaBadge}
+                </td>
+                <td class="px-6 py-4 text-center font-black text-slate-700 text-xs w-32 whitespace-normal bg-slate-50/50">${i.pencapaian}</td>
+                <td class="px-6 py-4 text-center w-24"><a href="${i.pautan_bukti}" target="_blank" class="p-2 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition" title="Lihat Bukti"><i class="fas fa-link"></i></a></td>
+                <td class="px-6 py-4 text-center w-32">
+                    <div class="flex items-center justify-center gap-1">
+                        <button onclick="openEditPencapaian(${i.id})" class="p-2 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition" title="Edit"><i class="fas fa-edit"></i></button>
+                        <button onclick="hapusPencapaianAdmin(${i.id})" class="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition" title="Padam"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    } catch(err) {
+        console.error("Render Table Error:", err);
+    }
 };
 
 function updateStats(data) {
@@ -493,7 +514,6 @@ function updateStats(data) {
         
         if(card) {
             const isActive = currentKategoriFilter === cat;
-            
             let classes = ["p-3", "rounded-xl", "border", "cursor-pointer", "transition-all"];
             
             if (cat === 'MURID') {
@@ -598,7 +618,6 @@ function updateCloud(data) {
         }).join('');
 }
 
-// ── SURGICAL EDIT START: Tapis Top 10 Program & Susun Mengikut Kekerapan (Word Cloud) ──
 function updateProgramCloud(data) {
     const container = document.getElementById('programCloudContainer');
     const wrapper = document.getElementById('programCloudWrapper');
@@ -622,8 +641,8 @@ function updateProgramCloud(data) {
     });
 
     const sortedPrograms = Object.entries(counts)
-        .sort((a, b) => b[1] - a[1]) // Susun kekerapan tertinggi ke terendah
-        .slice(0, 10);               // Had kepada 10 tertinggi sahaja
+        .sort((a, b) => b[1] - a[1]) 
+        .slice(0, 10);                
 
     container.innerHTML = sortedPrograms.map(([program, count]) => {
         const isActive = currentProgramFilter.includes(program);
@@ -644,7 +663,6 @@ function updateProgramCloud(data) {
 
     const btnReset = document.getElementById('btnResetProgram');
     if(btnReset) {
-        // Menyuntik kelas utiliti Tailwind secara dinamik untuk butang merah dan ke kanan (ml-auto)
         btnReset.className = "hidden text-[10px] font-bold bg-red-500 text-white px-4 py-1.5 rounded-lg shadow-sm hover:bg-red-600 transition ml-auto flex-shrink-0 cursor-pointer flex items-center";
         btnReset.innerHTML = '<i class="fas fa-times mr-1.5"></i> RESET PILIHAN';
         
@@ -653,7 +671,6 @@ function updateProgramCloud(data) {
         }
     }
 }
-// ── SURGICAL EDIT END ──
 
 function renderTopSchools(data) {
     const table = document.getElementById('tableTopContributors');
@@ -727,16 +744,15 @@ window.filterPencapaianByJawatan = function(j) {
     window.renderPencapaianTable(); 
 };
 
-// ── SURGICAL EDIT START: Fungsi global tapisan daerah dan tajuk program Kemenjadian (Multi-Select) ──
 window.filterPencapaianByProgram = function(program) {
     if (program === 'ALL') {
         currentProgramFilter = [];
     } else {
         const index = currentProgramFilter.indexOf(program);
         if (index > -1) {
-            currentProgramFilter.splice(index, 1); // Buang jika sudah ada
+            currentProgramFilter.splice(index, 1);
         } else {
-            currentProgramFilter.push(program); // Tambah jika tiada
+            currentProgramFilter.push(program); 
         }
     }
     window.renderPencapaianTable();
@@ -744,7 +760,7 @@ window.filterPencapaianByProgram = function(program) {
 
 window.setPencapaianDaerahFilter = function(daerah) {
     currentDaerahFilter = daerah || 'ALL';
-    currentProgramFilter = []; // Reset pilihan program
+    currentProgramFilter = []; 
     currentJawatanFilter = 'ALL';
 
     const selectDaerah = document.getElementById('filterDaerahPencapaian');
@@ -764,7 +780,6 @@ window.setPencapaianDaerahFilter = function(daerah) {
     populateProgramFilter(scopedData);
     window.renderPencapaianTable();
 };
-// ── SURGICAL EDIT END ──
 
 window.filterBySchoolFromTop5 = function(kod) { 
     const el = document.getElementById('filterSekolahPencapaian');
@@ -779,16 +794,21 @@ window.resetPencapaianFilters = function() {
     currentCardFilter = 'ALL'; 
     currentJawatanFilter = 'ALL'; 
     currentKategoriFilter = 'ALL';
-    // ── SURGICAL EDIT START: Reset filter daerah dan program Kemenjadian ──
     currentProgramFilter = [];
     currentDaerahFilter = 'ALL';
-    // ── SURGICAL EDIT END ──
-    document.getElementById('searchPencapaianInput').value = '';
     
+    const mainSearch = document.getElementById('searchPencapaianInput');
+    if(mainSearch) mainSearch.value = '';
+    
+    const progSearchInput = document.getElementById('progSearchInput');
+    if (progSearchInput) {
+        progSearchInput.value = '';
+        document.querySelectorAll('.prog-item').forEach(el => el.style.display = '');
+    }
+
     const elSek = document.getElementById('filterSekolahPencapaian');
     if(elSek) elSek.value = 'ALL';
 
-    // ── SURGICAL EDIT START: Reset elemen UI daerah dan program ──
     const elDaerah = document.getElementById('filterDaerahPencapaian');
     if(elDaerah) elDaerah.value = 'ALL';
 
@@ -797,7 +817,6 @@ window.resetPencapaianFilters = function() {
 
     const btnResetJawatan = document.getElementById('btnResetJawatan');
     if(btnResetJawatan) btnResetJawatan.classList.add('hidden');
-    // ── SURGICAL EDIT END ──
 
     const elKat = document.getElementById('filterKategoriPencapaian');
     if(elKat) elKat.value = 'ALL'; 
@@ -829,7 +848,7 @@ window.toggleSelectAllPencapaian = function(element) {
     checkboxes.forEach(cb => {
         cb.checked = element.checked;
     });
-    window.checkBulkStatusPencapaian();
+    if(window.checkBulkStatusPencapaian) window.checkBulkStatusPencapaian();
 };
 
 window.checkBulkStatusPencapaian = function() {
@@ -872,7 +891,6 @@ window.padamPukalPencapaianAdmin = async function() {
                 await AchievementService.deleteBulk(idsToDelete);
                 toggleLoading(false);
                 
-                // Reset UI states
                 const selectAllCb = document.getElementById('selectAllPencapaian');
                 if (selectAllCb) selectAllCb.checked = false;
                 window.checkBulkStatusPencapaian();
@@ -887,7 +905,6 @@ window.padamPukalPencapaianAdmin = async function() {
     });
 };
 
-// ── SURGICAL EDIT START: Fungsi Ubah Penyedia Pukal ──
 window.ubahPenyediaPukalAdmin = async function() {
     const checkboxes = document.querySelectorAll('.cb-pencapaian:checked');
     if (checkboxes.length === 0) return;
@@ -921,7 +938,6 @@ window.ubahPenyediaPukalAdmin = async function() {
             await AchievementService.batchUpdatePenyedia(idsToUpdate, newPenyedia);
             toggleLoading(false);
 
-            // Reset UI states
             const selectAllCb = document.getElementById('selectAllPencapaian');
             if (selectAllCb) selectAllCb.checked = false;
             window.checkBulkStatusPencapaian();
@@ -934,7 +950,6 @@ window.ubahPenyediaPukalAdmin = async function() {
         }
     }
 };
-// ── SURGICAL EDIT END ──
 
 // --- 5. EDIT MODAL OPERATIONS (HYBRID FILE LOGIC - ADMIN) ---
 
@@ -942,7 +957,6 @@ window.openEditPencapaian = function(id) {
     const item = pencapaianList.find(i => i.id === id);
     if(!item) return;
 
-    // Standardisasi Dropdown Modal Edit
     populateDropdown('editInputJawatan', 'JAWATAN', item.jawatan);
     populateDropdown('editInputPeringkat', 'PERINGKAT', item.peringkat);
     populateDropdown('editInputPenyedia', 'PENYEDIA', item.penyedia);
@@ -954,8 +968,7 @@ window.openEditPencapaian = function(id) {
     document.getElementById('editInputProgram').value = item.nama_pertandingan;
     document.getElementById('editInputPencapaian').value = item.pencapaian;
     
-    // Logik Hibrid Fail Admin
-    document.getElementById('editInputFileAdmin').value = ""; // Reset fail
+    document.getElementById('editInputFileAdmin').value = ""; 
     const currentProofLinkAdmin = document.getElementById('currentProofLinkAdmin');
     if (currentProofLinkAdmin) {
         currentProofLinkAdmin.href = item.pautan_bukti || "#";
@@ -1017,9 +1030,7 @@ window.simpanEditPencapaian = async function() {
     try {
         let finalUrl = "";
 
-        // Tentukan URL Fail: Guna fail baru atau fail lama
         if (file) {
-            // Validasi fail baru jika dimasukkan
             if (file.size > 5 * 1024 * 1024) {
                 toggleLoading(false);
                 if(btn) { btn.disabled = false; btn.classList.remove('opacity-75'); }
@@ -1028,7 +1039,6 @@ window.simpanEditPencapaian = async function() {
             if(btn) btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MEMUAT NAIK FAIL...`;
             finalUrl = await uploadFileToDrive(file);
         } else {
-            // Ambil URL lama dari senarai memori
             const item = pencapaianList.find(i => String(i.id) === String(id));
             finalUrl = item.pautan_bukti;
         }
@@ -1152,7 +1162,6 @@ window.simpanPencapaianPPD = async function() {
         return Swal.fire('Tidak Lengkap', 'Sila isi semua maklumat dan fail bukti.', 'warning');
     }
 
-    // Validasi Saiz Fail
     if (file.size > 5 * 1024 * 1024) {
         return Swal.fire('Fail Terlalu Besar', 'Maksimum saiz fail adalah 5MB.', 'warning');
     }
@@ -1160,10 +1169,9 @@ window.simpanPencapaianPPD = async function() {
     if(btn) { btn.disabled = true; btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MEMUAT NAIK FAIL...`; btn.classList.add('opacity-75'); }
     toggleLoading(true);
 
-    const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'M030';
+    const userKod = localStorage.getItem(getSessionKey('USER_KOD')) || 'M030';
 
     try {
-        // 1. Muat Naik Fail
         const uploadedUrl = await uploadFileToDrive(file);
         
         if(btn) btn.innerHTML = `<i class="fas fa-circle-notch fa-spin me-2"></i>MENYIMPAN REKOD PPD...`;
@@ -1181,7 +1189,6 @@ window.simpanPencapaianPPD = async function() {
             penyedia: penyedia
         };
 
-        // 2. Simpan DB
         await AchievementService.create(payload);
         
         toggleLoading(false);
@@ -1189,7 +1196,7 @@ window.simpanPencapaianPPD = async function() {
         
         document.getElementById('modalRekodPPD').classList.add('hidden');
         document.getElementById('formPencapaianPPD').reset();
-        document.getElementById('ppdInputFile').value = ""; // Reset fail
+        document.getElementById('ppdInputFile').value = ""; 
         
         Swal.fire('Berjaya', 'Rekod PPD telah disimpan.', 'success').then(() => window.loadMasterPencapaian());
     } catch(e) {
@@ -1237,7 +1244,8 @@ window.eksportPencapaian = function() {
         
         let namaSekolah = i.kod_sekolah;
         if(senaraiKodPPD.includes(i.kod_sekolah)) {
-            namaSekolah = APP_CONFIG.PPD_MAPPING[i.kod_sekolah] ? `PPD ${APP_CONFIG.PPD_MAPPING[i.kod_sekolah]}` : 'PEJABAT PENDIDIKAN DAERAH';
+            const ppdName = getPpdName(i.kod_sekolah);
+            namaSekolah = ppdName ? `PPD ${ppdName}` : 'PEJABAT PENDIDIKAN DAERAH';
         }
         else if(window.globalDashboardData) {
             const s = window.globalDashboardData.find(x => x.kod_sekolah === i.kod_sekolah);
@@ -1274,7 +1282,6 @@ window.refreshStandardizeUI = function() {
     standardizationList = [];
     filteredStandardizationList = [];
 
-    // Mengumpul kekerapan menggunakan kunci komposit (Program + Skor)
     pencapaianList.forEach(item => {
         const prog = item.nama_pertandingan || "TIADA NAMA";
         const skor = item.pencapaian || "TIADA SKOR";
@@ -1406,7 +1413,6 @@ window.executeStandardization = function(index, oldProg, oldSkor) {
         if (result.isConfirmed) {
             toggleLoading(true);
             try {
-                // Menggunakan getDatabaseClient secara terus untuk operasi komposit (Dual Update)
                 const db = getDatabaseClient();
                 const { error } = await db.from('smpid_pencapaian')
                     .update({ nama_pertandingan: newProg, pencapaian: newSkor })

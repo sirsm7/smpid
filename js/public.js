@@ -277,22 +277,92 @@ window.togglePubJenis = function() {
     const lblPencapaian = document.getElementById('lblPubPencapaian');
     const inpPencapaian = document.getElementById('pubPencapaian');
 
+    // ── SUNTIKAN ELEMEN SIJIL ──
+    const wrapperSijil = document.getElementById('wrapperPubSijil');
+    const dropdownSijil = document.getElementById('pubSijilDropdown');
+    const dropdownPenyedia = document.getElementById('pubPenyedia');
+
     document.getElementById('pubJenisRekod').value = isSijil ? 'PENSIJILAN' : 'PERTANDINGAN';
 
     if (isSijil && type === 'GURU') {
         if(divPenyedia) divPenyedia.classList.remove('hidden');
         if(colPeringkat) colPeringkat.classList.add('hidden'); 
         if(lblProgram) lblProgram.innerText = "NAMA SIJIL / PROGRAM";
-        if(inpProgram) inpProgram.placeholder = "CONTOH: GOOGLE CERTIFIED EDUCATOR L1";
+        
+        // Logik Dinamik Sijil
+        if(wrapperSijil) wrapperSijil.classList.remove('hidden');
+        if(dropdownSijil) dropdownSijil.value = ""; 
+        if(dropdownPenyedia) {
+            dropdownPenyedia.disabled = false;
+            dropdownPenyedia.value = "LAIN-LAIN";
+        }
+        if(inpProgram) {
+            inpProgram.placeholder = "NYATAKAN NAMA SIJIL (JIKA LAIN-LAIN)";
+            inpProgram.classList.add('hidden'); // Sembunyikan sehingga LAIN-LAIN dipilih
+            inpProgram.required = false;
+        }
+
         if(lblPencapaian) lblPencapaian.innerText = "TAHAP / SKOR / BAND";
         if(inpPencapaian) inpPencapaian.placeholder = "CONTOH: LULUS / BAND C2";
     } else {
         if(divPenyedia) divPenyedia.classList.add('hidden');
         if(colPeringkat) colPeringkat.classList.remove('hidden');
         if(lblProgram) lblProgram.innerText = "NAMA PERTANDINGAN";
-        if(inpProgram) inpProgram.placeholder = "CONTOH: DIGITAL COMPETENCY 2025";
+        
+        // Reset ke keadaan Pertandingan
+        if(wrapperSijil) wrapperSijil.classList.add('hidden');
+        if(dropdownPenyedia) dropdownPenyedia.disabled = false;
+        if(inpProgram) {
+            inpProgram.placeholder = "CONTOH: DIGITAL COMPETENCY 2025";
+            inpProgram.classList.remove('hidden');
+            inpProgram.required = true;
+            inpProgram.value = "";
+        }
+
         if(lblPencapaian) lblPencapaian.innerText = "KEPUTUSAN / PENCAPAIAN";
         if(inpPencapaian) inpPencapaian.placeholder = "CONTOH: JOHAN / EMAS / PENYERTAAN";
+    }
+};
+
+// ── FUNGSI BAHARU: KAWALAN PERTUKARAN SIJIL ──
+window.handleSijilChange = function() {
+    const dropdownSijil = document.getElementById('pubSijilDropdown');
+    const manualInput = document.getElementById('pubProgram');
+    const dropdownPenyedia = document.getElementById('pubPenyedia');
+    
+    if (!dropdownSijil || !manualInput || !dropdownPenyedia) return;
+    
+    const selectedVal = dropdownSijil.value;
+    
+    // Pemetaan Sijil ke Penyedia
+    const penyediaMap = {
+        "GOOGLE CERTIFIED EDUCATOR LEVEL 1": "GOOGLE",
+        "GOOGLE CERTIFIED EDUCATOR LEVEL 2": "GOOGLE",
+        "GEMINI CERTIFIED EDUCATOR": "GOOGLE",
+        "APPLE TEACHER": "APPLE",
+        "APPLE LEARNING COACH": "APPLE",
+        "MICROSOFT CERTIFIED EDUCATOR": "MICROSOFT",
+        "MICROSOFT INNOVATIVE EDUCATOR EXPERT": "MICROSOFT"
+    };
+    
+    if (selectedVal === "LAIN-LAIN") {
+        manualInput.classList.remove('hidden');
+        manualInput.value = "";
+        manualInput.required = true;
+        manualInput.focus();
+        
+        dropdownPenyedia.disabled = false;
+        dropdownPenyedia.value = "LAIN-LAIN";
+    } else if (selectedVal) {
+        manualInput.classList.add('hidden');
+        manualInput.value = selectedVal; // Simpan nilai secara tersembunyi untuk dihantar ke DB
+        manualInput.required = false;
+        
+        // Auto-lock dan isi penyedia
+        if (penyediaMap[selectedVal]) {
+            dropdownPenyedia.value = penyediaMap[selectedVal];
+            dropdownPenyedia.disabled = true;
+        }
     }
 };
 
@@ -424,6 +494,18 @@ window.resetBorang = function(fullReset = true) {
         document.getElementById('pubProgram').value = "";
         document.getElementById('pubPencapaian').value = "";
         document.getElementById('pubFile').value = ""; // Reset file input
+        
+        // ── SUNTIKAN KEMASKINI RESET UI SIJIL ──
+        const pubSijilDropdown = document.getElementById('pubSijilDropdown');
+        if (pubSijilDropdown) pubSijilDropdown.value = "";
+        
+        const pubPenyedia = document.getElementById('pubPenyedia');
+        if (pubPenyedia) pubPenyedia.disabled = false;
+        
+        const pubProgram = document.getElementById('pubProgram');
+        if (pubProgram && document.getElementById('pubJenisRekod').value === 'PENSIJILAN') {
+            pubProgram.classList.add('hidden');
+        }
         
         const cat = document.getElementById('pubKategori').value;
         if (cat !== 'SEKOLAH') {

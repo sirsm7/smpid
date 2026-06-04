@@ -165,7 +165,8 @@
                 <div id="divPubPenyedia" class="hidden">
                     <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">PENYEDIA / JENAMA</label>
                     <div class="relative">
-                        <select id="pubPenyedia" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-brand-500 outline-none appearance-none">
+                        <!-- UPDATE: Ditambah class disabled:bg-slate-100 disabled:opacity-75 supaya nampak terkunci -->
+                        <select id="pubPenyedia" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-brand-500 outline-none appearance-none disabled:bg-slate-100 disabled:opacity-75 transition-all">
                             <!-- Populated by JS -->
                         </select>
                         <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
@@ -174,6 +175,23 @@
 
                 <div>
                     <label id="lblPubProgram" class="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">NAMA PERTANDINGAN</label>
+                    
+                    <!-- SUNTIKAN: Dropdown untuk Sijil Pra-tetap (Disembunyikan secara lalai) -->
+                    <div id="wrapperPubSijil" class="hidden mb-3 relative animate-fade-up">
+                        <select id="pubSijilDropdown" class="w-full p-4 rounded-2xl bg-white border-2 border-slate-100 text-slate-700 font-bold focus:border-brand-500 outline-none appearance-none transition-colors" onchange="if(window.handleSijilChange) window.handleSijilChange()">
+                            <option value="" disabled selected>- PILIH SIJIL PROFESIONAL (PILIHAN) -</option>
+                            <option value="GOOGLE CERTIFIED EDUCATOR LEVEL 1">GOOGLE CERTIFIED EDUCATOR LEVEL 1</option>
+                            <option value="GOOGLE CERTIFIED EDUCATOR LEVEL 2">GOOGLE CERTIFIED EDUCATOR LEVEL 2</option>
+                            <option value="GEMINI CERTIFIED EDUCATOR">GEMINI CERTIFIED EDUCATOR</option>
+                            <option value="APPLE TEACHER">APPLE TEACHER</option>
+                            <option value="APPLE LEARNING COACH">APPLE LEARNING COACH</option>
+                            <option value="MICROSOFT CERTIFIED EDUCATOR">MICROSOFT CERTIFIED EDUCATOR</option>
+                            <option value="MICROSOFT INNOVATIVE EDUCATOR EXPERT">MICROSOFT INNOVATIVE EDUCATOR EXPERT</option>
+                            <option value="LAIN-LAIN">LAIN-LAIN (SILA NYATAKAN NAMA SIJIL)</option>
+                        </select>
+                        <i class="fas fa-chevron-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                    </div>
+
                     <input type="text" id="pubProgram" class="w-full p-4 rounded-2xl border-2 border-slate-100 focus:border-brand-500 outline-none uppercase-input font-bold text-slate-700" placeholder="CONTOH: DIGITAL COMPETENCY 2025" oninput="this.value = this.value.toUpperCase()" required>
                 </div>
 
