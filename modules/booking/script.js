@@ -518,12 +518,32 @@ window.handleBookingSubmit = async function() {
         const result = await BookingService.createBooking(payload);
         document.getElementById('loadingOverlay').classList.add('hidden');
         
+        // POPUP 1: Status Kejayaan
         await Swal.fire({
             icon: 'success',
             title: 'Tempahan Berjaya!',
             html: `Nombor Rujukan: <br><b class="text-xl font-mono text-brand-600 mt-2 block">${result.bookingId}</b><br><span class="text-sm text-slate-500 wrap-safe">Sila simpan nombor ini untuk rujukan urusan bimbingan.</span>`,
             confirmButtonColor: '#2563eb'
         });
+
+        // SURGICAL EDIT START: Tambahan POPUP_REMINDER berantai (chained)
+        // POPUP 2: Peringatan Makluman
+        await Swal.fire({
+            icon: 'info',
+            title: 'Tindakan Susulan',
+            html: `<div class="text-left text-sm space-y-3 mt-2 text-slate-700">
+                     <p>Tempahan anda telah direkodkan ke dalam sistem.</p>
+                     <p class="font-bold text-red-600">PERHATIAN PENTING:</p>
+                     <ul class="list-disc pl-5 space-y-1">
+                        <li>Sila hubungi <b>PIC DAERAH</b> untuk pengesahan segera.</li>
+                        <li>Anda juga diwajibkan untuk menghantar <b>surat makluman rasmi</b> kepada Pejabat Pendidikan Daerah (PPD).</li>
+                     </ul>
+                   </div>`,
+            confirmButtonText: 'Saya Faham & Akan Selesaikan',
+            confirmButtonColor: '#059669', // Warna hijau (emerald) untuk tanda setuju/faham
+            allowOutsideClick: false // Memaksa pengguna klik butang untuk mengelak mereka terlepas pandang
+        });
+        // SURGICAL EDIT END
 
         // Reset UI Form
         document.getElementById('bookingForm').reset();
