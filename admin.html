@@ -732,6 +732,7 @@
                 </div>
                 
                 <!-- KUMPULAN BUTANG TINDAKAN PUKAL GURU -->
+                <!-- [COMMENT SYNTAX] SURGICAL EDIT START: Menambah butang Buka Semula Pukal Guru -->
                 <div class="flex gap-2 w-full justify-end mb-4 hidden animate-fade-in" id="bulkActionsGuru">
                     <button id="btnEksportPukalGuru" onclick="window.eksportCsvPukal('GURU')" disabled class="px-4 py-2 bg-indigo-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:bg-indigo-600 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-500">
                         <i class="fas fa-file-csv"></i> Eksport CSV Terpilih
@@ -739,10 +740,14 @@
                     <button id="btnSalinPukalGuru" onclick="salinEmelPukal('GURU')" disabled class="px-4 py-2 bg-slate-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:bg-slate-800 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-700">
                         <i class="fas fa-copy"></i> Salin Emel Terpilih
                     </button>
+                    <button id="btnBukaSemulaPukalGuru" onclick="bukaSemulaPukal('GURU')" disabled class="px-4 py-2 bg-amber-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:bg-amber-600 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-amber-500">
+                        <i class="fas fa-undo"></i> Buka Semula Terpilih
+                    </button>
                     <button id="btnSelesaiPukalGuru" onclick="tandaSelesaiPukal('GURU')" disabled class="px-4 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:bg-emerald-600 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-500">
                         <i class="fas fa-check-double"></i> Selesai Terpilih (<span id="countPukalGuru">0</span>)
                     </button>
                 </div>
+                <!-- [COMMENT SYNTAX] SURGICAL EDIT END -->
 
                 <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                     <div class="overflow-x-auto max-h-[600px]">
@@ -798,6 +803,7 @@
                 </div>
                 
                 <!-- KUMPULAN BUTANG TINDAKAN PUKAL MURID -->
+                <!-- [COMMENT SYNTAX] SURGICAL EDIT START: Menambah butang Buka Semula Pukal Murid -->
                 <div class="flex gap-2 w-full justify-end mb-4 hidden animate-fade-in" id="bulkActionsMurid">
                     <button id="btnEksportPukalMurid" onclick="window.eksportCsvPukal('MURID')" disabled class="px-4 py-2 bg-indigo-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:bg-indigo-600 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-500">
                         <i class="fas fa-file-csv"></i> Eksport CSV Terpilih
@@ -805,10 +811,14 @@
                     <button id="btnSalinPukalMurid" onclick="salinEmelPukal('MURID')" disabled class="px-4 py-2 bg-slate-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:bg-slate-800 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-700">
                         <i class="fas fa-copy"></i> Salin Emel Terpilih
                     </button>
+                    <button id="btnBukaSemulaPukalMurid" onclick="bukaSemulaPukal('MURID')" disabled class="px-4 py-2 bg-amber-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:bg-amber-600 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-amber-500">
+                        <i class="fas fa-undo"></i> Buka Semula Terpilih
+                    </button>
                     <button id="btnSelesaiPukalMurid" onclick="tandaSelesaiPukal('MURID')" disabled class="px-4 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:bg-emerald-600 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-500">
                         <i class="fas fa-check-double"></i> Selesai Terpilih (<span id="countPukalMurid">0</span>)
                     </button>
                 </div>
+                <!-- [COMMENT SYNTAX] SURGICAL EDIT END -->
 
                 <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                     <div class="overflow-x-auto max-h-[600px]">
