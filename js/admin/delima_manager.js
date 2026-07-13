@@ -348,6 +348,10 @@ window.checkBulkStatus = function(kategori) {
         if (cb.dataset.status === 'SELESAI') hasSelesai = true;
     });
 
+    // Kenal pasti status penapis (filter) semasa untuk UI pintar
+    const statusFilterId = kategori === 'GURU' ? 'filterDelimaGuruAdmin' : 'filterDelimaMuridAdmin';
+    const currentFilter = document.getElementById(statusFilterId)?.value || 'ALL';
+
     if (count > 0) {
         if (bulkContainer) bulkContainer.classList.remove('hidden');
         if (btnSalin) btnSalin.disabled = false;
@@ -356,14 +360,35 @@ window.checkBulkStatus = function(kategori) {
 
         // Kawalan spesifik butang mengikut status yang ditanda
         if (btnSelesai) btnSelesai.disabled = !hasDalamProses;
-        if (btnBukaSemula) btnBukaSemula.disabled = !hasSelesai;
+        if (btnBukaSemula) {
+            btnBukaSemula.disabled = !hasSelesai;
+            
+            // [SUNTIKAN SURGICAL START] Sembunyikan "Buka Semula" jika penapis adalah "DALAM PROSES"
+            if (currentFilter === 'DALAM PROSES') {
+                btnBukaSemula.classList.add('hidden');
+            } else {
+                btnBukaSemula.classList.remove('hidden');
+            }
+            // [SUNTIKAN SURGICAL END]
+        }
     } else {
         if (bulkContainer) bulkContainer.classList.add('hidden');
         if (btnSalin) btnSalin.disabled = true;
         if (btnSelesai) btnSelesai.disabled = true;
-        if (btnBukaSemula) btnBukaSemula.disabled = true;
         if (btnEksport) btnEksport.disabled = true;
         if (countSpan) countSpan.innerText = '0';
+        
+        if (btnBukaSemula) {
+            btnBukaSemula.disabled = true;
+            
+            // [SUNTIKAN SURGICAL START] Kekalkan logik sembunyi UI walaupun tiada data ditanda supaya antaramuka tidak kelip
+            if (currentFilter === 'DALAM PROSES') {
+                btnBukaSemula.classList.add('hidden');
+            } else {
+                btnBukaSemula.classList.remove('hidden');
+            }
+            // [SUNTIKAN SURGICAL END]
+        }
         
         const selectAllCb = document.getElementById(`selectAll${capitalizedKategori}`);
         if (selectAllCb) selectAllCb.checked = false;
