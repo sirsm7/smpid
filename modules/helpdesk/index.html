@@ -161,6 +161,7 @@
                         <div>
                             <label class="form-label text-delima-700">Kategori Catatan (Pilih satu untuk semua calon di bawah)</label>
                             <div class="relative">
+                                <!-- [COMMENT SYNTAX] SURGICAL EDIT START: Menambah opsyen ID Berganda (OFFBOARD) -->
                                 <select id="guruCatatan" class="form-input appearance-none pr-10" required onchange="if(window.toggleLokasiPindah) window.toggleLokasiPindah('GURU')">
                                     <option value="" disabled selected>- Pilih Catatan -</option>
                                     <option value="Berpindah MASUK ke sekolah ini">Berpindah MASUK ke sekolah ini</option>
@@ -168,7 +169,9 @@
                                     <option value="Bersara">Bersara</option>
                                     <option value="Meninggal Dunia">Meninggal Dunia</option>
                                     <option value="Berhenti Kerja / Tukar Profesion">Berhenti Kerja / Tukar Profesion</option>
+                                    <option value="ID Berganda (OFFBOARD)">ID Berganda (OFFBOARD)</option>
                                 </select>
+                                <!-- [COMMENT SYNTAX] SURGICAL EDIT END -->
                                 <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                             </div>
                         </div>
@@ -259,6 +262,7 @@
                         <div>
                             <label class="form-label text-cyan-700">Kategori Catatan (Pilih satu untuk semua calon di bawah)</label>
                             <div class="relative">
+                                <!-- [COMMENT SYNTAX] SURGICAL EDIT START: Menambah opsyen ID Berganda (OFFBOARD) -->
                                 <select id="muridCatatan" class="form-input appearance-none pr-10 focus:border-cyan-500" required onchange="if(window.toggleLokasiPindah) window.toggleLokasiPindah('MURID')">
                                     <option value="" disabled selected>- Pilih Catatan -</option>
                                     <option value="Berpindah MASUK ke sekolah ini">Berpindah MASUK ke sekolah ini</option>
@@ -266,7 +270,9 @@
                                     <option value="Tamat Persekolahan">Tamat Persekolahan</option>
                                     <option value="Meninggal Dunia">Meninggal Dunia</option>
                                     <option value="Berhenti Sekolah">Berhenti Sekolah</option>
+                                    <option value="ID Berganda (OFFBOARD)">ID Berganda (OFFBOARD)</option>
                                 </select>
+                                <!-- [COMMENT SYNTAX] SURGICAL EDIT END -->
                                 <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                             </div>
                         </div>
