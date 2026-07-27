@@ -1,10 +1,13 @@
 /**
  * SMPID USER PORTAL MODULE (FULL PRODUCTION VERSION)
- * Menguruskan profil sekolah, analisa digital, helpdesk, 
+ * Menguruskan profil sekolah, analisa digital, helpdesk,
  * dan modul pencapaian kemenjadian sekolah.
  * * --- UPDATE V2.0 (FILE UPLOAD ENGINE) ---
  * Memindahkan logik input URL manual kepada muat naik fail
  * melalui Google Apps Script & Google Drive (Base64).
+ * * --- UPDATE V2.1 (DYNAMIC YEAR ANALYTICS) ---
+ * Membuang kod keras tahun 2023-2025 dan mendapatkan tahun 
+ * secara dinamik terus dari struktur pangkalan data Supabase.
  */
 
 import { toggleLoading, checkEmailDomain, autoFormatPhone, keluarSistem, formatSentenceCase, uploadFileToDrive } from './core/helpers.js';
@@ -277,20 +280,32 @@ async function loadAnalisaSekolah() {
             return;
         }
 
-// ── SURGICAL EDIT START: Membaiki pepijat DOM untuk elemen trendDcs ──
+// ── SURGICAL EDIT START: Membuang kod keras tahun 2023-2025 dan mendapatkan tahun secara dinamik dari kunci objek data ──
+        // Ekstrak semua tahun yang ada dari kekunci bermula dengan "dcs_"
+        const dataKeys = Object.keys(data);
+        const availableYears = dataKeys
+            .filter(key => key.startsWith('dcs_'))
+            .map(key => parseInt(key.replace('dcs_', '')))
+            .filter(year => !isNaN(year))
+            .sort((a, b) => b - a); // Susun menurun (Terkini -> Lama)
+
         // Tentukan data terkini dan terdahulu untuk analisis trend
         let dcsLatest = null;
         let dcsPrev = null;
-        
-        if (data.dcs_2025 != null) {
-            dcsLatest = data.dcs_2025;
-            dcsPrev = data.dcs_2024;
-        } else if (data.dcs_2024 != null) {
-            dcsLatest = data.dcs_2024;
-            dcsPrev = data.dcs_2023;
+        let latestYear = null;
+        let prevYear = null;
+
+        if (availableYears.length > 0) {
+            latestYear = availableYears[0];
+            dcsLatest = data[`dcs_${latestYear}`];
+            
+            if (availableYears.length > 1) {
+                prevYear = availableYears[1];
+                dcsPrev = data[`dcs_${prevYear}`];
+            }
         }
 
-        let aktifLatest = (data.peratus_aktif_2025 != null) ? data.peratus_aktif_2025 : data.peratus_aktif_2024;
+        let aktifLatest = (latestYear && data[`peratus_aktif_${latestYear}`] != null) ? data[`peratus_aktif_${latestYear}`] : (prevYear && data[`peratus_aktif_${prevYear}`] != null ? data[`peratus_aktif_${prevYear}`] : null);
         
         document.getElementById('valDcs').innerText = (dcsLatest != null) ? dcsLatest.toFixed(2) : "0.00";
         document.getElementById('valAktif').innerText = aktifLatest ? aktifLatest : "0";
@@ -314,19 +329,32 @@ async function loadAnalisaSekolah() {
         }
 // ── SURGICAL EDIT END ──
 
-        renderAnalisaTable(data);
-        renderDcsChart(data);
+        renderAnalisaTable(data, availableYears);
+        renderDcsChart(data, availableYears);
     } catch (err) { 
         console.error("[Analisa] Ralat:", err); 
     }
 }
 
-function renderAnalisaTable(data) {
+function renderAnalisaTable(data, availableYears) {
     const tableBody = document.getElementById('tableAnalisaBody');
     if(!tableBody) return;
-    const years = [2023, 2024, 2025];
+    
+    // Jika availableYears tidak dibekalkan, cuba ekstrak semula
+    let years = availableYears;
+    if (!years) {
+        years = Object.keys(data)
+            .filter(key => key.startsWith('dcs_'))
+            .map(key => parseInt(key.replace('dcs_', '')))
+            .filter(year => !isNaN(year))
+            .sort((a, b) => b - a); // Pastikan susunan menurun (Terkini ke Lama) untuk UI, atau biarkan menaik (Lama ke Terkini)
+    }
+
+    // Untuk paparan jadual, mungkin lebih baik memaparkan dari tahun terawal ke terkini (Menaik)
+    const sortedYearsAsc = [...years].sort((a,b) => a - b);
+    
     let rows = '';
-    years.forEach(year => {
+    sortedYearsAsc.forEach(year => {
         const dcs = data[`dcs_${year}`];
         const aktif = data[`peratus_aktif_${year}`];
         if (dcs !== null || aktif !== null) {
@@ -341,14 +369,29 @@ function renderAnalisaTable(data) {
     tableBody.innerHTML = rows || `<tr><td colspan="3" class="p-6 text-center text-slate-400 italic">Tiada sejarah data ditemui.</td></tr>`;
 }
 
-function renderDcsChart(data) {
+function renderDcsChart(data, availableYears) {
     const ctx = document.getElementById('chartAnalisa');
     if (!ctx) return;
     if (analisaChart) analisaChart.destroy();
     
-    const labels = ['2023', '2024', '2025'];
-    const dataDcs = [data.dcs_2023, data.dcs_2024, data.dcs_2025];
-    const dataAktif = [data.peratus_aktif_2023, data.peratus_aktif_2024, data.peratus_aktif_2025];
+    // Ekstrak tahun secara dinamik jika tidak dibekalkan
+    let years = availableYears;
+    if (!years) {
+        years = Object.keys(data)
+            .filter(key => key.startsWith('dcs_'))
+            .map(key => parseInt(key.replace('dcs_', '')))
+            .filter(year => !isNaN(year))
+            .sort((a, b) => a - b); // Susun menaik untuk graf (Lama -> Terkini)
+    } else {
+        years = [...availableYears].sort((a, b) => a - b); // Susun menaik untuk graf
+    }
+
+    // Hanya ambil 3 tahun kebelakangan untuk graf supaya tidak terlalu padat
+    const chartYears = years.slice(-3);
+    
+    const labels = chartYears.map(String);
+    const dataDcs = chartYears.map(year => data[`dcs_${year}`]);
+    const dataAktif = chartYears.map(year => data[`peratus_aktif_${year}`]);
 
     analisaChart = new Chart(ctx, {
         type: 'line',

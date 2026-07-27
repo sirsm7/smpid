@@ -732,7 +732,6 @@
                 </div>
                 
                 <!-- KUMPULAN BUTANG TINDAKAN PUKAL GURU -->
-                <!-- [COMMENT SYNTAX] SURGICAL EDIT START: Menambah butang Buka Semula Pukal Guru -->
                 <div class="flex gap-2 w-full justify-end mb-4 hidden animate-fade-in" id="bulkActionsGuru">
                     <button id="btnEksportPukalGuru" onclick="window.eksportCsvPukal('GURU')" disabled class="px-4 py-2 bg-indigo-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:bg-indigo-600 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-500">
                         <i class="fas fa-file-csv"></i> Eksport CSV Terpilih
@@ -747,7 +746,6 @@
                         <i class="fas fa-check-double"></i> Selesai Terpilih (<span id="countPukalGuru">0</span>)
                     </button>
                 </div>
-                <!-- [COMMENT SYNTAX] SURGICAL EDIT END -->
 
                 <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                     <div class="overflow-x-auto max-h-[600px]">
@@ -803,7 +801,6 @@
                 </div>
                 
                 <!-- KUMPULAN BUTANG TINDAKAN PUKAL MURID -->
-                <!-- [COMMENT SYNTAX] SURGICAL EDIT START: Menambah butang Buka Semula Pukal Murid -->
                 <div class="flex gap-2 w-full justify-end mb-4 hidden animate-fade-in" id="bulkActionsMurid">
                     <button id="btnEksportPukalMurid" onclick="window.eksportCsvPukal('MURID')" disabled class="px-4 py-2 bg-indigo-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:bg-indigo-600 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-500">
                         <i class="fas fa-file-csv"></i> Eksport CSV Terpilih
@@ -818,7 +815,6 @@
                         <i class="fas fa-check-double"></i> Selesai Terpilih (<span id="countPukalMurid">0</span>)
                     </button>
                 </div>
-                <!-- [COMMENT SYNTAX] SURGICAL EDIT END -->
 
                 <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                     <div class="overflow-x-auto max-h-[600px]">
@@ -842,7 +838,6 @@
             </div>
         </div>
 
-        <!-- ── SURGICAL EDIT START: Menambah Rangka Antaramuka Tab Libat Urus Secara Dinamik (6 Kolum) ── -->
         <!-- TAB 7B: LIBAT URUS -->
         <div id="tab-libat-urus" class="hidden p-6 md:p-8 bg-slate-50/50">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-6">
@@ -937,7 +932,6 @@
                 <p class="text-slate-500 font-medium">Tiada rekod libat urus ditemui berpandukan tapisan semasa.</p>
             </div>
         </div>
-        <!-- ── SURGICAL EDIT END ── -->
 
         <!-- TAB 8: ADMIN USERS -->
         <div id="tab-admin-users" class="hidden p-6 md:p-8">
@@ -973,24 +967,47 @@
                     </h2>
                     <p class="text-slate-500 text-sm font-medium mt-1">Muat naik fail CSV untuk mendaftar atau mengemas kini profil sekolah secara berkelompok.</p>
                 </div>
-                <div class="flex gap-2">
+                <div class="flex gap-2 flex-wrap">
                     <button onclick="muatTurunTemplatCSV()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition shadow-lg flex items-center gap-2">
-                        <i class="fas fa-download"></i> Muat Turun Templat CSV
+                        <i class="fas fa-download"></i> Muat Turun Templat Profil CSV
                     </button>
+<!-- [COMMENT SYNTAX] SURGICAL EDIT START: Butang muat turun templat analisa -->
+                    <button onclick="if(window.muatTurunTemplatAnalisaCSV) window.muatTurunTemplatAnalisaCSV()" class="px-4 py-2.5 rounded-xl bg-blue-800 hover:bg-blue-900 text-white text-xs font-bold transition shadow-lg flex items-center gap-2">
+                        <i class="fas fa-download"></i> Muat Turun Templat Analisa
+                    </button>
+<!-- [COMMENT SYNTAX] SURGICAL EDIT END -->
                 </div>
             </div>
 
-            <div class="bg-emerald-50 border-2 border-emerald-100 rounded-2xl p-6 md:p-8 text-center max-w-2xl mx-auto mt-8">
-                <i class="fas fa-cloud-upload-alt text-5xl text-emerald-400 mb-4"></i>
-                <h3 class="text-lg font-bold text-emerald-800 mb-2">Muat Naik Fail CSV</h3>
-                <p class="text-xs text-emerald-600 mb-6 leading-relaxed">Sistem menggunakan kaedah "Upsert". Jika kod sekolah wujud, data akan dikemas kini. Jika tidak, sekolah baharu akan didaftarkan.</p>
-                
-                <input type="file" id="csvFileInput" accept=".csv" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer bg-white border border-emerald-200 rounded-full shadow-sm mb-4">
-                
-                <button onclick="mulaImportCSV()" id="btnMulaImport" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-widest mt-4">
-                    <i class="fas fa-play"></i> Mulakan Proses Import
-                </button>
+<!-- [COMMENT SYNTAX] SURGICAL EDIT START: Memisahkan kepada grid dua ruang -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+                <!-- Panel 1: Profil Sekolah -->
+                <div class="bg-emerald-50 border-2 border-emerald-100 rounded-2xl p-6 md:p-8 text-center">
+                    <i class="fas fa-cloud-upload-alt text-5xl text-emerald-400 mb-4"></i>
+                    <h3 class="text-lg font-bold text-emerald-800 mb-2">Import Profil Sekolah</h3>
+                    <p class="text-xs text-emerald-600 mb-6 leading-relaxed">Sistem menggunakan kaedah "Upsert". Jika kod sekolah wujud, data akan dikemas kini. Jika tidak, sekolah baharu akan didaftarkan.</p>
+                    
+                    <input type="file" id="csvFileInput" accept=".csv" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer bg-white border border-emerald-200 rounded-full shadow-sm mb-4">
+                    
+                    <button onclick="mulaImportCSV()" id="btnMulaImport" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-widest mt-4">
+                        <i class="fas fa-play"></i> Mulakan Proses Import
+                    </button>
+                </div>
+
+                <!-- Panel 2: Analisa PPPDM / DCS -->
+                <div class="bg-blue-50 border-2 border-blue-100 rounded-2xl p-6 md:p-8 text-center">
+                    <i class="fas fa-chart-bar text-5xl text-blue-400 mb-4"></i>
+                    <h3 class="text-lg font-bold text-blue-800 mb-2">Import Analisa PPPDM & DCS</h3>
+                    <p class="text-xs text-blue-600 mb-6 leading-relaxed">Kemas kini data DCS dan peratus aktif sekolah mengikut tahun. Pastikan tajuk lajur CSV mengandungi <b>kod_sekolah, dcs_2026, peratus_aktif_2026</b>.</p>
+                    
+                    <input type="file" id="csvAnalisaInput" accept=".csv" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer bg-white border border-blue-200 rounded-full shadow-sm mb-4">
+                    
+                    <button onclick="if(window.mulaImportAnalisaCSV) window.mulaImportAnalisaCSV()" id="btnMulaImportAnalisa" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-widest mt-4">
+                        <i class="fas fa-play"></i> Import Data Analisa
+                    </button>
+                </div>
             </div>
+<!-- [COMMENT SYNTAX] SURGICAL EDIT END -->
 
             <!-- Log Import -->
             <div id="importLogContainer" class="hidden mt-8 max-w-3xl mx-auto bg-slate-900 rounded-2xl overflow-hidden shadow-xl border border-slate-800">
