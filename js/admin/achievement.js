@@ -172,7 +172,7 @@ function populateProgramFilter(data) {
             <div class="p-2 sticky top-0 bg-white border-b border-slate-100 z-10 flex flex-col gap-2 shadow-sm rounded-t-xl">
                 <div class="flex justify-between items-center px-1">
                     <span class="text-[10px] font-black text-slate-400 tracking-wider">PILIHAN BERBILANG</span>
-                    ${currentProgramFilter.length > 0 ? `<button type="button" onclick="filterPencapaianByProgram('ALL')" class="text-[10px] font-bold bg-red-500 text-white px-3 py-1 rounded shadow-sm hover:bg-red-600 transition">RESET</button>` : ''}
+                    ${currentProgramFilter.length > 0 ? `<button type="button" onclick="window.filterPencapaianByProgram('ALL')" class="text-[10px] font-bold bg-red-500 text-white px-3 py-1 rounded shadow-sm hover:bg-red-600 transition">RESET</button>` : ''}
                 </div>
                 <div class="relative">
                     <i class="fas fa-search absolute left-2.5 top-2 text-slate-400 text-xs"></i>
@@ -198,7 +198,7 @@ function populateProgramFilter(data) {
                     <div class="flex items-center h-5">
                         <input type="checkbox" class="form-checkbox h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
                                ${isChecked ? 'checked' : ''}
-                               onchange="filterPencapaianByProgram(${safeProgStr})">
+                               onchange="window.filterPencapaianByProgram(${safeProgStr})">
                     </div>
                     <div class="ml-2 flex-1 min-w-0">
                         <div class="text-xs font-bold leading-tight ${isChecked ? 'text-indigo-700' : 'text-slate-600'} whitespace-normal" title="${escapeHtml(program)}">${escapeHtml(program)}</div>
@@ -238,17 +238,15 @@ window.populateTahunFilter = async function() {
     const select = document.getElementById('filterTahunPencapaian');
     const tbody = document.getElementById('tbodyPencapaianMaster');
     
-    // Pastikan status loading ditunjukkan walau apa berlaku pada await DB
     if (tbody) {
         tbody.innerHTML = `<tr><td colspan="9" class="text-center py-10"><i class="fas fa-circle-notch fa-spin text-brand-500 text-3xl mb-3"></i><p class="font-bold text-slate-400">Menyemak pangkalan data...</p></td></tr>`;
     }
 
     if (!select) {
-        window.loadMasterPencapaian(); // Fallback terus ke master
+        window.loadMasterPencapaian();
         return;
     }
     
-    // Elak populate berulang kali jika sudah wujud data
     if (select.options.length > 1 && !select.innerHTML.includes('Memuatkan')) {
         window.loadMasterPencapaian();
         return;
@@ -268,7 +266,6 @@ window.populateTahunFilter = async function() {
         console.warn("[Achievement] Gagal muat senarai tahun, menggunakan default.", e); 
         select.innerHTML = '<option value="ALL">SEMUA TAHUN</option>';
     } finally {
-        // ALWAYS trigger loading mechanism
         window.loadMasterPencapaian();
     }
 };
@@ -492,8 +489,8 @@ window.renderPencapaianTable = function() {
                 <td class="px-6 py-4 text-center w-24"><a href="${i.pautan_bukti}" target="_blank" class="p-2 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition" title="Lihat Bukti"><i class="fas fa-link"></i></a></td>
                 <td class="px-6 py-4 text-center w-32">
                     <div class="flex items-center justify-center gap-1">
-                        <button onclick="openEditPencapaian(${i.id})" class="p-2 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button onclick="hapusPencapaianAdmin(${i.id})" class="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition" title="Padam"><i class="fas fa-trash-alt"></i></button>
+                        <button onclick="window.openEditPencapaian(${i.id})" class="p-2 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition" title="Edit"><i class="fas fa-edit"></i></button>
+                        <button onclick="window.hapusPencapaianAdmin(${i.id})" class="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition" title="Padam"><i class="fas fa-trash-alt"></i></button>
                     </div>
                 </td>
             </tr>`;
@@ -608,7 +605,7 @@ function updateCloud(data) {
             if(c > 5) sizeClass = "text-[12px] font-black";
 
             return `
-                <div onclick="filterPencapaianByJawatan('${j}')" 
+                <div onclick="window.filterPencapaianByJawatan('${j}')" 
                      class="inline-flex items-center px-3 py-1 rounded-full border cursor-pointer transition-all m-1 shadow-sm
                             ${isActive ? 'bg-indigo-600 text-white border-indigo-600 scale-105 shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-400 hover:text-indigo-600'}">
                     <span class="${sizeClass}">${j}</span>
@@ -651,7 +648,7 @@ function updateProgramCloud(data) {
         if(count > 5) sizeClass = "text-[12px] font-black";
 
         return `
-            <div onclick="filterPencapaianByProgram(${toInlineJsString(program)})" 
+            <div onclick="window.filterPencapaianByProgram(${toInlineJsString(program)})" 
                  title="${escapeHtml(program)}"
                  class="inline-flex items-center px-3 py-1.5 rounded-full border cursor-pointer transition-all m-1 shadow-sm max-w-full
                         ${isActive ? 'bg-indigo-600 text-white border-indigo-600 scale-105 shadow-md' : 'bg-white text-slate-600 border-indigo-100 hover:border-indigo-400 hover:text-indigo-600'}">
@@ -698,7 +695,7 @@ function renderTopSchools(data) {
         const s = window.globalDashboardData?.find(x => x.kod_sekolah === kod);
         if(s) nama = s.nama_sekolah;
         
-        return `<tr class="hover:bg-slate-50 transition border-b border-slate-50 last:border-0 cursor-pointer group" onclick="filterBySchoolFromTop5('${kod}')">
+        return `<tr class="hover:bg-slate-50 transition border-b border-slate-50 last:border-0 cursor-pointer group" onclick="window.filterBySchoolFromTop5('${kod}')">
             <td class="p-3">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
@@ -947,6 +944,53 @@ window.ubahPenyediaPukalAdmin = async function() {
         } catch (e) {
             toggleLoading(false);
             Swal.fire('Ralat', 'Gagal mengubah penyedia secara pukal.', 'error');
+        }
+    }
+};
+
+window.ubahKategoriPukalAdmin = async function() {
+    const checkboxes = document.querySelectorAll('.cb-pencapaian:checked');
+    if (checkboxes.length === 0) return;
+
+    const idsToUpdate = Array.from(checkboxes).map(cb => cb.value);
+
+    const { value: newKategori } = await Swal.fire({
+        title: 'Ubah Kategori (Pukal)',
+        html: `Sila pilih kategori baharu untuk <b>${idsToUpdate.length}</b> rekod yang ditandakan.<br><br><span class="text-xs text-red-500 font-bold">Amaran: Pastikan rekod yang dipilih benar-benar milik kategori baharu ini.</span>`,
+        input: 'select',
+        inputOptions: {
+            'MURID': 'MURID',
+            'GURU': 'GURU',
+            'SEKOLAH': 'SEKOLAH',
+            'PEGAWAI': 'PEGAWAI PPD',
+            'PPD': 'UNIT PPD'
+        },
+        inputPlaceholder: '- Sila Pilih Kategori -',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        confirmButtonText: 'Simpan Pukal',
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-3xl' },
+        inputValidator: (value) => {
+            if (!value) return 'Anda mesti memilih salah satu kategori!';
+        }
+    });
+
+    if (newKategori) {
+        toggleLoading(true);
+        try {
+            await AchievementService.batchUpdateKategori(idsToUpdate, newKategori);
+            toggleLoading(false);
+
+            const selectAllCb = document.getElementById('selectAllPencapaian');
+            if (selectAllCb) selectAllCb.checked = false;
+            window.checkBulkStatusPencapaian();
+
+            Swal.fire({ icon: 'success', title: 'Berjaya', text: `${idsToUpdate.length} rekod telah dikemaskini kategorinya.`, timer: 1500, showConfirmButton: false })
+            .then(() => window.loadMasterPencapaian());
+        } catch (e) {
+            toggleLoading(false);
+            Swal.fire('Ralat', 'Gagal mengubah kategori secara pukal.', 'error');
         }
     }
 };
@@ -1275,8 +1319,6 @@ window.eksportPencapaian = function() {
     link.click();
 };
 
-// ── SURGICAL EDIT START: Logik Penyeragaman Dinamik ──
-
 window.refreshStandardizeUI = function() {
     const counts = {};
     standardizationList = [];
@@ -1365,7 +1407,7 @@ window.renderStandardizeTable = function(list) {
                     </div>
                 </td>
                 <td class="text-center p-4 align-middle">
-                    <button onclick="executeStandardization('${safeId}', '${safeProg}', '${safeSkor}')" 
+                    <button onclick="window.executeStandardization('${safeId}', '${safeProg}', '${safeSkor}')" 
                             class="w-full px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-[10px] font-black shadow-md transition transform active:scale-95 flex flex-col items-center gap-1 justify-center">
                         <i class="fas fa-magic text-sm mb-0.5"></i> SET KEMASKINI
                     </button>
@@ -1432,4 +1474,3 @@ window.executeStandardization = function(index, oldProg, oldSkor) {
         }
     });
 };
-// ── SURGICAL EDIT END ──

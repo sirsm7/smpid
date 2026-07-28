@@ -170,6 +170,22 @@ export const AchievementService = {
 
         if (error) throw error;
         return { success: true };
-    }
+    },
     // ── SURGICAL EDIT END ──
+
+    // [COMMENT SYNTAX] SURGICAL EDIT START: Menambah fungsi batchUpdateKategori
+    /**
+     * Kemaskini Kategori secara Pukal berdasarkan IDs
+     * Digunakan untuk membetulkan kesilapan tanda kategori oleh sekolah
+     */
+    async batchUpdateKategori(ids, newKategori) {
+        const { error } = await db
+            .from('smpid_pencapaian')
+            .update({ kategori: newKategori })
+            .in('id', ids);
+
+        if (error) throw error;
+        return { success: true };
+    }
+    // [COMMENT SYNTAX] SURGICAL EDIT END
 };

@@ -13,9 +13,10 @@ import { toggleLoading } from '../core/helpers.js';
 import { APP_CONFIG } from '../config/app.config.js';
 
 let dcsDataList = [];
-let currentFilteredDcs = []; 
+let currentFilteredDcs = [];
 let charts = { donut: null, bar: null };
 
+/* STREAMING_CHUNK:Initializing sorting state */
 // State untuk pengisihan jadual (Sorting State)
 let analisaSortState = { column: '', direction: 'desc' };
 
@@ -29,6 +30,7 @@ window.loadDcsAdmin = async function() {
     try {
         let dataRaw = await DcsService.getAll();
 
+        /* STREAMING_CHUNK:Applying RBAC Filtering */
         // --- RBAC FILTERING ---
         const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
         const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
@@ -41,16 +43,17 @@ window.loadDcsAdmin = async function() {
         }
 
         dcsDataList = dataRaw;
-        
+
         initDistrictFilter(userRole); // Inisialisasi Filter Daerah Dinamik
         populateDcsYears();
         window.updateDashboardAnalisa();
-    } catch (err) { 
+    } catch (err) {
         console.error("Ralat memuatkan data DCS:", err);
         if (wrapper) wrapper.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500 font-bold">Gagal memuatkan data.</td></tr>`;
     }
 };
 
+/* STREAMING_CHUNK:Initializing District Filter UI */
 /**
  * PRO WEB CASTER: Bina UI Dropdown Daerah secara dinamik berdasarkan Role
  */
@@ -66,7 +69,7 @@ function initDistrictFilter(userRole) {
         filterSelect.id = 'filterDaerahAnalisa';
         filterSelect.className = 'ml-0 md:ml-3 mt-2 md:mt-0 p-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 font-semibold text-slate-600';
         filterSelect.innerHTML = `<option value="ALL">Semua Daerah (Negeri)</option>`;
-        
+
         // Guna mapping PPD dari APP_CONFIG
         const senaraiPPD = APP_CONFIG.PPD_MAPPING || { 'M010': 'ALOR GAJAH', 'M020': 'JASIN', 'M030': 'MELAKA TENGAH' };
         Object.keys(senaraiPPD).forEach(kod => {
@@ -78,11 +81,12 @@ function initDistrictFilter(userRole) {
 
         // Bind event untuk re-render semua panel dan jadual
         filterSelect.addEventListener('change', function() {
-            window.updateDashboardAnalisa(); 
+            window.updateDashboardAnalisa();
         });
     }
 }
 
+/* STREAMING_CHUNK:Helper function for getting filtered data */
 /**
  * PRO WEB CASTER: Helper untuk mendapatkan data tersaring (Global State)
  * FIXED: Menggunakan skema data Supabase sebenar (kolum 'daerah' dan 'kod_sekolah')
@@ -90,10 +94,10 @@ function initDistrictFilter(userRole) {
 function getBaseFilteredData() {
     let list = [...dcsDataList];
     const filterEl = document.getElementById('filterDaerahAnalisa');
-    
+
     if (filterEl && filterEl.value !== 'ALL') {
         const targetPPDCode = filterEl.value; // Cth: 'M030'
-        
+
         // Tukar kod PPD kepada nama daerah (Cth: 'ALOR GAJAH') merujuk kepada app.config.js
         const senaraiPPD = APP_CONFIG.PPD_MAPPING || {};
         const targetPPDName = senaraiPPD[targetPPDCode] ? senaraiPPD[targetPPDCode].toUpperCase() : targetPPDCode.toUpperCase();
@@ -108,14 +112,15 @@ function getBaseFilteredData() {
             if (d.daerah && d.daerah.toUpperCase() === targetPPDName) {
                 return true;
             }
-            
+
             return false; // Keluarkan dari senarai jika tiada padanan
         });
     }
-    
+
     return list;
 }
 
+/* STREAMING_CHUNK:Populating DCS years dropdown */
 /**
  * Isi dropdown tahun
  */
@@ -139,30 +144,32 @@ function populateDcsYears() {
     select.value = years[0];
 }
 
+/* STREAMING_CHUNK:Updating Main Analysis Dashboard */
 /**
  * Update Dashboard Utama
  */
 window.updateDashboardAnalisa = function() {
-    const currYear = parseInt(document.getElementById('pilihTahunAnalisa').value); 
+    const currYear = parseInt(document.getElementById('pilihTahunAnalisa').value);
     if (!currYear) return;
-    const prevYear = currYear - 1; 
+    const prevYear = currYear - 1;
 
     const lblDcs = document.getElementById('lblYearDcs');
     const lblAktif = document.getElementById('lblYearAktif');
-    
+
     // Label Header
     if(lblDcs) lblDcs.innerHTML = `<span class="opacity-70 font-normal ml-1 text-[10px]">(${currYear} vs ${prevYear})</span>`;
     if(lblAktif) lblAktif.innerHTML = `<span class="opacity-70 font-normal ml-1 text-[10px]">(${currYear} vs ${prevYear})</span>`;
-    
+
     const titleEl = document.getElementById('modalDcsYearTitle');
     if(titleEl) titleEl.innerText = currYear;
 
-    processDcsPanel(`dcs_${currYear}`); 
+    processDcsPanel(`dcs_${currYear}`);
     processActivePanel(`peratus_aktif_${currYear}`);
-    
+
     window.filterAnalisaTable(currYear, prevYear);
 };
 
+/* STREAMING_CHUNK:Helper for categorizing DCS scores */
 /**
  * Kategori Skor DCS
  */
@@ -175,28 +182,34 @@ function getKategoriDcs(score) {
     return { label: 'INNOVATOR', color: 'text-green-700', bg: 'bg-green-100 border-green-200' };
 }
 
+/* STREAMING_CHUNK:Processing DCS Panel logic */
 /**
  * Panel DCS (Tailwind)
  */
 function processDcsPanel(field) {
+    // [COMMENT SYNTAX] SURGICAL EDIT START: Menetapkan JPNMEL sebagai lalai jika tiada daerah khusus yang ditapis untuk melihat KPI Lensa Negeri
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
-    let targetPpdKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
-    
-    // Jika SUPER_ADMIN pilih filter daerah spesifik, paparkan KPI PPD tersebut
+    let targetPpdKod = 'JPNMEL';
+
+    // Jika SUPER_ADMIN pilih filter daerah spesifik, paparkan KPI PPD tersebut, jika ALL, kembali ke JPNMEL
     const filterEl = document.getElementById('filterDaerahAnalisa');
     if (filterEl && filterEl.value !== 'ALL') {
         targetPpdKod = filterEl.value;
+    } else if (['ADMIN', 'PPD_UNIT'].includes(userRole)) {
+        // Jika admin biasa, lihat PPD sendiri
+        targetPpdKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     }
+    // [COMMENT SYNTAX] SURGICAL EDIT END
 
     const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
     const activeDataList = getBaseFilteredData(); // Ambil senarai yang telah ditapis daerah
 
     const ppdData = dcsDataList.find(d => d.kod_sekolah === targetPpdKod);
     const ppdScore = ppdData?.[field] || 0;
-    
+
     const scoreEl = document.getElementById('kpiDcsScore');
     if(scoreEl) scoreEl.innerText = ppdScore.toFixed(2);
-    
+
     const cat = getKategoriDcs(ppdScore);
     const lbl = document.getElementById('kpiDcsLabel');
     if (lbl) {
@@ -204,13 +217,15 @@ function processDcsPanel(field) {
         lbl.className = `inline-block px-3 py-1 rounded-full text-xs font-bold mt-2 border ${cat.bg} ${cat.color}`;
     }
 
-    const schools = activeDataList.filter(d => !senaraiKodPPD.includes(d.kod_sekolah));
+    // [COMMENT SYNTAX] SURGICAL EDIT START: Pastikan JPNMEL dikecualikan daripada senarai sekolah di dalam carta dan top 5
+    const schools = activeDataList.filter(d => !senaraiKodPPD.includes(d.kod_sekolah) && d.kod_sekolah !== 'JPNMEL');
+    // [COMMENT SYNTAX] SURGICAL EDIT END
     let cats = { 'Beginner':0, 'Novice':0, 'Intermediate':0, 'Advance':0, 'Innovator':0 };
-    schools.forEach(d => { 
+    schools.forEach(d => {
         const score = d[field];
         if (score !== null && score !== undefined) {
             const catLabel = getKategoriDcs(score).label;
-            cats[catLabel.charAt(0) + catLabel.slice(1).toLowerCase()]++; 
+            cats[catLabel.charAt(0) + catLabel.slice(1).toLowerCase()]++;
         }
     });
 
@@ -222,6 +237,7 @@ function processDcsPanel(field) {
         cats['Innovator'] || 0
     ];
 
+    /* STREAMING_CHUNK:Rendering DCS Donut Chart */
     // Chart.js
     const ctx = document.getElementById('chartDcsDonut');
     if(charts.donut) charts.donut.destroy();
@@ -230,14 +246,14 @@ function processDcsPanel(field) {
             type: 'doughnut',
             data: {
                 labels: ['Beginner', 'Novice', 'Intermediate', 'Advance', 'Innovator'],
-                datasets: [{ 
-                    data: chartData, 
-                    backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#3b82f6', '#22c55e'], 
-                    borderWidth: 0 
+                datasets: [{
+                    data: chartData,
+                    backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#3b82f6', '#22c55e'],
+                    borderWidth: 0
                 }]
             },
-            options: { 
-                plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } }, 
+            options: {
+                plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } },
                 maintainAspectRatio: false,
                 cutout: '70%'
             }
@@ -258,17 +274,23 @@ function processDcsPanel(field) {
     }
 }
 
+/* STREAMING_CHUNK:Processing Active Panel logic */
 /**
  * Panel Aktif (Tailwind)
  */
 function processActivePanel(field) {
-    let targetPpdKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
-    
-    // Guna nilai PPD yang difilter jika SUPER_ADMIN
+    // [COMMENT SYNTAX] SURGICAL EDIT START: Menetapkan JPNMEL sebagai purata lalai Lensa Kuantiti Negeri
+    const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+    let targetPpdKod = 'JPNMEL';
+
+    // Guna nilai PPD yang difilter jika SUPER_ADMIN, atau kembali ke JPNMEL jika ALL
     const filterEl = document.getElementById('filterDaerahAnalisa');
     if (filterEl && filterEl.value !== 'ALL') {
         targetPpdKod = filterEl.value;
+    } else if (['ADMIN', 'PPD_UNIT'].includes(userRole)) {
+        targetPpdKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     }
+    // [COMMENT SYNTAX] SURGICAL EDIT END
 
     const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
     const activeDataList = getBaseFilteredData();
@@ -277,7 +299,9 @@ function processActivePanel(field) {
     const scoreEl = document.getElementById('kpiActiveScore');
     if(scoreEl) scoreEl.innerText = ppdData?.[field] || 0;
 
-    const schools = activeDataList.filter(d => !senaraiKodPPD.includes(d.kod_sekolah));
+    // [COMMENT SYNTAX] SURGICAL EDIT START: Mengecualikan JPNMEL dari senarai carta bar/Top 5
+    const schools = activeDataList.filter(d => !senaraiKodPPD.includes(d.kod_sekolah) && d.kod_sekolah !== 'JPNMEL');
+    // [COMMENT SYNTAX] SURGICAL EDIT END
     let ranges = { 'Tinggi (>80%)':0, 'Sederhana':0, 'Rendah':0 };
     schools.forEach(d => {
         const v = d[field];
@@ -286,21 +310,22 @@ function processActivePanel(field) {
         else if(v > 0) ranges['Rendah']++;
     });
 
+    /* STREAMING_CHUNK:Rendering Active Bar Chart */
     const ctx = document.getElementById('chartActiveBar');
     if(charts.bar) charts.bar.destroy();
     if(ctx) {
         charts.bar = new Chart(ctx, {
             type: 'bar',
-            data: { 
-                labels: Object.keys(ranges), 
-                datasets: [{ 
-                    data: Object.values(ranges), 
+            data: {
+                labels: Object.keys(ranges),
+                datasets: [{
+                    data: Object.values(ranges),
                     backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'],
                     borderRadius: 4
-                }] 
+                }]
             },
-            options: { 
-                plugins: { legend: { display: false } }, 
+            options: {
+                plugins: { legend: { display: false } },
                 maintainAspectRatio: false,
                 scales: { x: { grid: { display: false } }, y: { grid: { display: false } } }
             }
@@ -321,6 +346,7 @@ function processActivePanel(field) {
     }
 }
 
+/* STREAMING_CHUNK:Sorting logic implementation */
 /**
  * Logik Mengurus Penukaran Arah Susunan (Sort)
  */
@@ -331,11 +357,12 @@ window.sortAnalisa = function(col) {
         analisaSortState.column = col;
         analisaSortState.direction = (col === 'kod' || col === 'nama') ? 'asc' : 'desc';
     }
-    
+
     const currYear = parseInt(document.getElementById('pilihTahunAnalisa').value);
     window.filterAnalisaTable(currYear, currYear - 1);
 };
 
+/* STREAMING_CHUNK:Main table rendering and filtering */
 /**
  * Filter & Render Main Table
  */
@@ -344,32 +371,34 @@ window.filterAnalisaTable = function(currYear, prevYear) {
     if(!prevYear) prevYear = currYear - 1;
 
     const keyword = document.getElementById('searchAnalisa')?.value.toUpperCase() || '';
-    
+
     const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
     const activeDataList = getBaseFilteredData(); // Ambil list yang dipengaruhi District Filter
-    const listWithoutPPD = activeDataList.filter(d => !senaraiKodPPD.includes(d.kod_sekolah));
-    
+    // [COMMENT SYNTAX] SURGICAL EDIT START: Jangan paparkan rekod JPNMEL di dalam senarai jadual data
+    const listWithoutPPD = activeDataList.filter(d => !senaraiKodPPD.includes(d.kod_sekolah) && d.kod_sekolah !== 'JPNMEL');
+    // [COMMENT SYNTAX] SURGICAL EDIT END
+
     // 1. Tapis carian Teks
-    let list = keyword 
-        ? listWithoutPPD.filter(d => d.nama_sekolah.includes(keyword) || d.kod_sekolah.includes(keyword)) 
+    let list = keyword
+        ? listWithoutPPD.filter(d => d.nama_sekolah.includes(keyword) || d.kod_sekolah.includes(keyword))
         : [...listWithoutPPD];
-    
+
     // 2. Laksana logik susunan (Sorting)
     if (analisaSortState.column) {
         list.sort((a, b) => {
             let valA, valB;
-            
+
             if (analisaSortState.column === 'kod') {
-                valA = String(a.kod_sekolah || '').toUpperCase(); 
+                valA = String(a.kod_sekolah || '').toUpperCase();
                 valB = String(b.kod_sekolah || '').toUpperCase();
             } else if (analisaSortState.column === 'nama') {
-                valA = String(a.nama_sekolah || '').toUpperCase(); 
+                valA = String(a.nama_sekolah || '').toUpperCase();
                 valB = String(b.nama_sekolah || '').toUpperCase();
             } else if (analisaSortState.column === 'dcs') {
-                valA = parseFloat(a[`dcs_${currYear}`]) || 0; 
+                valA = parseFloat(a[`dcs_${currYear}`]) || 0;
                 valB = parseFloat(b[`dcs_${currYear}`]) || 0;
             } else if (analisaSortState.column === 'aktif') {
-                valA = parseFloat(a[`peratus_aktif_${currYear}`]) || 0; 
+                valA = parseFloat(a[`peratus_aktif_${currYear}`]) || 0;
                 valB = parseFloat(b[`peratus_aktif_${currYear}`]) || 0;
             }
 
@@ -400,7 +429,7 @@ window.filterAnalisaTable = function(currYear, prevYear) {
     // 4. Render ke jadual
     const wrapper = document.getElementById('tableAnalisaBody');
     if (!wrapper) return;
-    
+
     if(list.length === 0) return wrapper.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400">Tiada rekod sekolah dijumpai berdasarkan tapisan semasa.</td></tr>`;
 
     wrapper.innerHTML = list.map(d => {
@@ -410,7 +439,7 @@ window.filterAnalisaTable = function(currYear, prevYear) {
         const valActPrev = d[`peratus_aktif_${prevYear}`];
 
         const cat = getKategoriDcs(valDcsCurr);
-        
+
         let dcsTrend = '';
         if (valDcsCurr !== null && valDcsPrev !== null) {
             if (valDcsCurr > valDcsPrev) dcsTrend = '<i class="fas fa-arrow-up text-green-500 text-[10px] ml-1"></i>';
@@ -427,7 +456,7 @@ window.filterAnalisaTable = function(currYear, prevYear) {
             <tr class="hover:bg-slate-50 transition-colors">
                 <td class="px-6 py-4 border-b border-slate-100 font-mono text-xs font-bold text-slate-500">${d.kod_sekolah}</td>
                 <td class="px-6 py-4 border-b border-slate-100 font-semibold text-slate-700 text-xs md:text-sm leading-snug">${d.nama_sekolah}</td>
-                
+
                 <td class="px-6 py-4 border-b border-slate-100 text-center bg-blue-50/30">
                     <div class="flex flex-col items-center">
                         <div class="font-bold text-blue-700 text-sm">
@@ -456,6 +485,7 @@ window.filterAnalisaTable = function(currYear, prevYear) {
     }).join('');
 };
 
+/* STREAMING_CHUNK:Data saving and CSV export logic */
 /**
  * Buka Modal Edit (Tailwind)
  */
@@ -463,12 +493,12 @@ window.openEditDcs = function(kod) {
     const item = dcsDataList.find(d => d.kod_sekolah === kod);
     if (!item) return;
     const year = document.getElementById('pilihTahunAnalisa').value;
-    
+
     document.getElementById('editKodSekolah').value = kod;
     document.getElementById('displayEditNama').value = item.nama_sekolah;
     document.getElementById('editDcsVal').value = item[`dcs_${year}`] || '';
     document.getElementById('editAktifVal').value = item[`peratus_aktif_${year}`] || '';
-    
+
     const modal = document.getElementById('modalEditDcs');
     if (modal) modal.classList.remove('hidden');
 };
@@ -489,7 +519,7 @@ window.simpanDcs = async function() {
         toggleLoading(false);
         const modal = document.getElementById('modalEditDcs');
         if (modal) modal.classList.add('hidden');
-        
+
         Swal.fire({
             icon: 'success',
             title: 'Disimpan',
