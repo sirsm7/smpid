@@ -385,17 +385,17 @@ window.viewSchoolProfile = function(kod) {
 window.eksportDataTapis = function() {
     if (!currentFilteredList || currentFilteredList.length === 0) return Swal.fire('Tiada Data', '', 'info'); 
     
-    // Kemas kini tajuk CSV untuk merangkumi profil PGB dan GPK
-    let csvContent = "BIL,KOD,NAMA,JENIS,DAERAH,NAMA PGB,TEL PGB,NAMA GPK,TEL GPK,NAMA GPICT,TEL GPICT,NAMA ADMIN,TEL ADMIN,STATUS PENGISIAN\n";
+    // Kemas kini tajuk CSV untuk merangkumi profil PGB dan GPK berserta kolum Emel DELIMa
+    let csvContent = "BIL,KOD,NAMA,JENIS,DAERAH,NAMA PGB,TEL PGB,EMEL PGB,NAMA GPK,TEL GPK,EMEL GPK,NAMA GPICT,TEL GPICT,EMEL GPICT,NAMA ADMIN,TEL ADMIN,EMEL ADMIN,STATUS PENGISIAN\n";
     
     currentFilteredList.forEach((s, index) => {
         const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
         let row = [
             index + 1, clean(s.kod_sekolah), clean(s.nama_sekolah), clean(s.jenis), clean(s.daerah),
-            clean(s.nama_pgb), clean(s.no_telefon_pgb),
-            clean(s.nama_gpk), clean(s.no_telefon_gpk),
-            clean(s.nama_gpict), clean(s.no_telefon_gpict), 
-            clean(s.nama_admin_delima), clean(s.no_telefon_admin_delima),
+            clean(s.nama_pgb), clean(s.no_telefon_pgb), clean(s.emel_delima_pgb),
+            clean(s.nama_gpk), clean(s.no_telefon_gpk), clean(s.emel_delima_gpk),
+            clean(s.nama_gpict), clean(s.no_telefon_gpict), clean(s.emel_delima_gpict),
+            clean(s.nama_admin_delima), clean(s.no_telefon_admin_delima), clean(s.emel_delima_admin_delima),
             s.is_lengkap ? 'LENGKAP' : 'BELUM'
         ];
         csvContent += row.join(",") + "\n";
