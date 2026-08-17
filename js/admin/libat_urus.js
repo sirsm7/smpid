@@ -428,3 +428,71 @@ window.eksportLibatUrusCSV = function() {
     link.click();
     document.body.removeChild(link);
 };
+
+// ── SURGICAL EDIT START: Fungsi Eksport CSV Status Pengisian Libat Urus ──
+/**
+ * Export submission status (SUDAH/BELUM) of Libat Urus to CSV
+ * Compares current filtered data against globalDashboardData
+ */
+window.eksportStatusLibatUrusCSV = function() {
+    if (!window.globalDashboardData || window.globalDashboardData.length === 0) {
+        return Swal.fire('Ralat Data', 'Sistem belum bersedia atau data sekolah tidak wujud.', 'error');
+    }
+
+    const currentYear = new Date().getFullYear();
+    const fDaerah = document.getElementById('filterLuDaerah')?.value || "ALL";
+    const fBulan = document.getElementById('filterLuBulan')?.value || "ALL";
+
+    // Kumpul senarai KOD sekolah yang telibat berdasarkan tapisan (Kecuali PPD M030)
+    let baseSchoolData = window.globalDashboardData.filter(s => s.kod_sekolah !== 'M030');
+    
+    // Tapis sekolah berpandukan pilihan Daerah semasa
+    if (fDaerah !== 'ALL') {
+        baseSchoolData = baseSchoolData.filter(s => (s.daerah || '').toUpperCase() === fDaerah.toUpperCase());
+    }
+
+    // Ekstrak KOD sekolah yang ADA laporan (SUDAH HANTAR) pada tapisan semasa
+    const submittedCodes = new Set(filteredLibatUrusData.map(item => item.kod_sekolah));
+
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+    // CSV Header
+    csvContent += "BIL,KOD_SEKOLAH,NAMA_SEKOLAH,DAERAH,TAHUN_LAKSANA,BULAN,STATUS_PENGISIAN\r\n";
+
+    baseSchoolData.forEach((school, index) => {
+        const kod = school.kod_sekolah || '';
+        const namaSekolah = `"${(school.nama_sekolah || '').replace(/"/g, '""')}"`;
+        const daerah = school.daerah || '';
+        
+        // Tentukan status pengisian
+        const isSubmitted = submittedCodes.has(kod);
+        const statusPengisian = isSubmitted ? "SUDAH HANTAR" : "BELUM HANTAR";
+        
+        // Pilih Paparan Bulan: Jika ALL, guna "SEMUA BULAN", selainnya guna bulan terpilih
+        const displayBulan = (fBulan === "ALL") ? "KESELURUHAN TAHUN" : fBulan;
+
+        const row = [
+            index + 1,
+            kod,
+            namaSekolah,
+            daerah,
+            currentYear,
+            displayBulan,
+            statusPengisian
+        ].join(",");
+        
+        csvContent += row + "\r\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    
+    const dateMark = new Date().toISOString().slice(0,10).replace(/-/g,"");
+    const safeBulanName = (fBulan === "ALL") ? "SEMUA_BULAN" : fBulan;
+    const safeDaerahName = (fDaerah === "ALL") ? "SEMUA_DAERAH" : fDaerah;
+
+    link.setAttribute("download", `STATUS_PENGISIAN_LU_${safeDaerahName}_${safeBulanName}_${dateMark}.csv`);
+    document.body.appendChild(link); // Fix untuk Firefox
+    link.click();
+    document.body.removeChild(link);
+};
