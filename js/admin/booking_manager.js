@@ -1,9 +1,11 @@
 /**
- * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V8.3 STRICT DAY LOGIC)
+ * ADMIN MODULE: BOOKING MANAGER (PRO EDITION - V8.4 DASHBOARD ENHANCEMENT)
  * Fungsi: Menguruskan tempahan bimbingan bagi pihak PPD.
- * --- UPDATE V8.3 ---
- * 1. Mengemaskini checkIsAllowedDayAdmin supaya mengunci paparan Admin mengikut logik
- *    hari operasi sebenar bagi PPD Alor Gajah, Jasin, dan Melaka Tengah.
+ * --- UPDATE V8.4 ---
+ * 1. Mengemaskini renderAdminBookingDashboard untuk memaparkan jumlah UNIK 
+ *    sekolah yang memohon tempahan pada tahun semasa (mengikut filter daerah).
+ * 2. Mengemaskini pengiraan kunci tarikh untuk membezakan kunci peringkat negeri (ALL)
+ *    dan kunci daerah secara individu, serta memaparkan jumlah hari keseluruhan yang dikunci.
  */
 
 import { BookingService } from '../services/booking.service.js';
@@ -49,6 +51,51 @@ window.initAdminBooking = async function() {
                     <div class="flex bg-slate-100 p-1.5 rounded-2xl shadow-inner border-2 border-slate-200">
                         <button onclick="switchAdminBookingView('calendar')" id="btnViewCal" class="px-6 py-2 rounded-xl text-xs font-black bg-white text-brand-600 shadow-md border-2 border-slate-100 transition-all transform scale-105">KALENDAR</button>
                         <button onclick="switchAdminBookingView('list')" id="btnViewList" class="px-6 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-brand-600 border-2 border-transparent transition-all">SENARAI AKTIF</button>
+                    </div>
+                </div>
+                
+                <!-- SUNTIKAN DASHBOARD KPI MINI -->
+                <div id="adminBookingDashboardPanel" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-fade-up">
+                    
+                    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between group hover:border-emerald-300 transition-colors">
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sekolah Memohon</p>
+                            <h3 class="text-2xl font-black text-slate-800 leading-none" id="kpiSekolahMemohon">0</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                            <i class="fas fa-school"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between group hover:border-fuchsia-300 transition-colors">
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Kunci Negeri (ALL)</p>
+                            <h3 class="text-2xl font-black text-slate-800 leading-none" id="kpiKunciNegeri">0</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-fuchsia-50 text-fuchsia-600 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between group hover:border-purple-300 transition-colors">
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Kunci Daerah</p>
+                            <h3 class="text-2xl font-black text-slate-800 leading-none" id="kpiKunciDaerah">0</h3>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                    </div>
+                    
+                     <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 border border-slate-700 shadow-md flex items-center justify-between relative overflow-hidden group">
+                        <div class="absolute -right-4 -bottom-4 opacity-10 transform group-hover:scale-110 transition-transform">
+                            <i class="fas fa-calendar-times text-7xl"></i>
+                        </div>
+                        <div class="relative z-10">
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Jumlah Hari Dikunci</p>
+                            <h3 class="text-3xl font-black text-white leading-none" id="kpiJumlahHariKunci">0</h3>
+                            <p class="text-[9px] text-slate-400 mt-1 font-bold">Tahun <span id="kpiTahunSemasa">-</span></p>
+                        </div>
                     </div>
                 </div>
 
@@ -124,8 +171,12 @@ window.initAdminBooking = async function() {
     populateAdminBookingDaerah();
     // [COMMENT SYNTAX] SURGICAL EDIT END
 
+    // Paparkan tahun di KPI
+    document.getElementById('kpiTahunSemasa').innerText = new Date().getFullYear();
+
     window.renderAdminBookingCalendar();
     window.loadAdminBookingList();
+    window.renderAdminBookingDashboard();
 };
 
 // [COMMENT SYNTAX] SURGICAL EDIT START: Menambah Dropdown Daerah
@@ -159,8 +210,94 @@ window.setAdminBookingDaerah = function(daerahValue) {
     adminSelectedDates = [];
     updateMultiLockUI();
     window.renderAdminBookingCalendar();
+    window.renderAdminBookingDashboard();
 };
 // [COMMENT SYNTAX] SURGICAL EDIT END
+
+/**
+ * FUNGSI BAHARU: Mengira KPI Papan Pemuka bagi Tarikh yang Dikunci
+ */
+window.renderAdminBookingDashboard = async function() {
+    try {
+        const [locks, bookings] = await Promise.all([
+            BookingService.getAllLocks(),
+            BookingService.getAllActiveBookings()
+        ]);
+        
+        const currentYearString = new Date().getFullYear().toString();
+        const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD) || 'M030';
+        const viewTarget = ['SUPER_ADMIN', 'JPNMEL'].includes(userRole) ? adminDaerahFilter : userKod;
+        
+        // 1. KPI Sekolah Memohon (Unik)
+        const currentYearBookings = bookings.filter(b => b.tarikh.startsWith(currentYearString));
+        let relevantBookings = currentYearBookings;
+        
+        // Tapis tempahan jika memandang daerah spesifik
+        if (viewTarget !== 'ALL') {
+            // Kita perlukan akses kepada senarai sekolah untuk daerah target. 
+            // Secara ringkas, kita guna data globalDashboardData yang sepatutnya sudah ada.
+            if (window.globalDashboardData) {
+                const targetDaerahName = APP_CONFIG.PPD_MAPPING[viewTarget] || viewTarget;
+                const validSchoolCodesForDaerah = window.globalDashboardData
+                    .filter(s => s.daerah === targetDaerahName || s.kod_sekolah === viewTarget)
+                    .map(s => s.kod_sekolah);
+                relevantBookings = currentYearBookings.filter(b => validSchoolCodesForDaerah.includes(b.kod_sekolah));
+            }
+        }
+        
+        const uniqueSchools = new Set(relevantBookings.map(b => b.kod_sekolah));
+        document.getElementById('kpiSekolahMemohon').innerText = uniqueSchools.size;
+
+        // 2. KPI Kunci Tarikh
+        let countKunciNegeri = 0;
+        let countKunciDaerah = 0;
+        let uniqueDaysLocked = new Set();
+
+        const currentYearLocks = locks.filter(l => l.tarikh.startsWith(currentYearString));
+
+        currentYearLocks.forEach(lock => {
+            const dateOnly = lock.tarikh.split('T')[0];
+            const scopes = lock.kod_ppd ? lock.kod_ppd.split(',') : [];
+            let isRelevantToView = false;
+            let isStatewide = false;
+
+            for (const scope of scopes) {
+                let sCode = scope;
+                
+                if (scope.includes(':')) {
+                    sCode = scope.split(':')[0];
+                }
+
+                if (sCode === 'ALL') {
+                    isStatewide = true;
+                    isRelevantToView = true;
+                } else if (viewTarget === 'ALL' || sCode === viewTarget) {
+                    isRelevantToView = true;
+                }
+            }
+
+            if (isRelevantToView) {
+                uniqueDaysLocked.add(dateOnly); // Tambah tarikh unik yang terkesan
+                
+                if (isStatewide) {
+                    // Jika satu rekod kunci ada 'ALL', ia dikira kunci negeri
+                    countKunciNegeri++;
+                } else {
+                    // Jika tiada 'ALL' tetapi relevan dengan pandangan, ia kunci daerah
+                    countKunciDaerah++;
+                }
+            }
+        });
+
+        document.getElementById('kpiKunciNegeri').innerText = countKunciNegeri;
+        document.getElementById('kpiKunciDaerah').innerText = countKunciDaerah;
+        document.getElementById('kpiJumlahHariKunci').innerText = uniqueDaysLocked.size;
+
+    } catch (e) {
+        console.error("Gagal mengira KPI Dashboard Kunci:", e);
+    }
+};
 
 window.switchAdminBookingView = function(view) {
     const btnCal = document.getElementById('btnViewCal');
@@ -707,6 +844,7 @@ window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBook
                     updateMultiLockUI();
                     window.renderAdminBookingCalendar();
                     window.loadAdminBookingList();
+                    window.renderAdminBookingDashboard();
                     Swal.fire({ icon: 'success', title: 'Dibuka', timer: 1000, showConfirmButton: false });
                 } catch (err) {
                     toggleLoading(false);
@@ -736,6 +874,7 @@ window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBook
             updateMultiLockUI();
             window.renderAdminBookingCalendar();
             window.loadAdminBookingList();
+            window.renderAdminBookingDashboard();
             Swal.fire({ icon: 'success', title: 'Selesai!', text: `Berjaya mengemaskini ${datesToProcess.length} tarikh.`, timer: 1500, showConfirmButton: false });
         } catch (err) {
             toggleLoading(false);
@@ -936,6 +1075,7 @@ window.cancelBookingAdmin = async function(dbId, bookingId) {
 
             window.loadAdminBookingList();
             window.renderAdminBookingCalendar();
+            window.renderAdminBookingDashboard();
         } catch (e) {
             toggleLoading(false);
             Swal.fire({ icon: 'error', title: 'Ralat Pemadaman', text: 'Gagal memadam data dari pangkalan data.', customClass: { popup: 'rounded-[2rem]' } });
