@@ -147,12 +147,10 @@
                                 <span>MODUL BELAJAR AI</span>
                                 <i class="fas fa-chevron-right text-slate-300 group-hover:text-indigo-500"></i>
                             </a>
-                            <!-- ── SURGICAL EDIT START: Update Pautan Pensijilan Google ke GCE Luaran ── -->
                             <a href="https://gce.tech4ag.my/" target="_blank" class="py-2.5 px-3 bg-white hover:bg-purple-50 border border-slate-200 rounded-xl text-[9px] font-black text-purple-600 transition flex items-center justify-between group">
                                 <span>PENSIJILAN GOOGLE</span>
                                 <i class="fas fa-external-link-alt text-slate-300 group-hover:text-purple-500"></i>
                             </a>
-                            <!-- ── SURGICAL EDIT END ── -->
                         </div>
                     </div>
 
@@ -176,7 +174,6 @@
                         </div>
                     </div>
 
-<!-- ── SURGICAL EDIT START: Tambah Kad Menu Libat Urus ── -->
                     <!-- 7. LAPORAN LIBAT URUS -->
                     <a href="#libat-urus" onclick="showSection('libat-urus', event)" class="group p-4 bg-orange-50 hover:bg-orange-600 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-orange-100 hover:shadow-lg hover:shadow-orange-500/30 col-span-2 md:col-span-3">
                         <div class="w-12 h-12 bg-white text-orange-500 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-orange-600">
@@ -184,7 +181,6 @@
                         </div>
                         <span class="text-xs font-bold text-orange-900 group-hover:text-white uppercase tracking-wider">Laporan Libat Urus DELIMa</span>
                     </a>
-<!-- ── SURGICAL EDIT END ── -->
 
                 </div>
 
@@ -220,8 +216,19 @@
         <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-6 md:p-8">
             <form id="dataForm" onsubmit="event.preventDefault(); simpanProfil();" class="space-y-6">
                 <input type="hidden" id="hiddenKodSekolah">
+
+                <!-- SEKSYEN SEKOLAH (BAHARU) -->
+                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-building"></i> MAKLUMAT ASAS SEKOLAH</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">NO TELEFON SEKOLAH (PEJABAT)</label>
+                            <input type="tel" id="sekolahTel" class="w-full p-3 rounded-xl border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none font-bold text-slate-700" oninput="autoFormatPhone(this)" placeholder="+60...">
+                        </div>
+                    </div>
+                </div>
                 
-                <!-- SEKSYEN PGB (BAHARU) -->
+                <!-- SEKSYEN PGB -->
                 <div class="bg-purple-50 p-6 rounded-2xl border border-purple-100">
                     <h3 class="text-sm font-bold text-purple-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-user-tie"></i> MAKLUMAT PENGARAH KV / PENGETUA / GURU BESAR (PGB)</h3>
                     <div class="space-y-4">
@@ -242,7 +249,7 @@
                     </div>
                 </div>
 
-                <!-- SEKSYEN GPK PENTADBIRAN (BAHARU) -->
+                <!-- SEKSYEN GPK PENTADBIRAN -->
                 <div class="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
                     <h3 class="text-sm font-bold text-indigo-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-user-tag"></i> MAKLUMAT GPK PENTADBIRAN</h3>
                     <div class="space-y-4">
@@ -472,7 +479,6 @@
 
     </div>
 
-<!-- ── SURGICAL EDIT START: Menambah Borang dan Jadual Libat Urus ── -->
     <!-- SEKSYEN LIBAT URUS -->
     <div id="section-libat-urus" class="hidden animate-fade-up">
         <div class="flex items-center mb-6">
@@ -505,7 +511,6 @@
                     </div>
                 </div>
 
-                <!-- ── SURGICAL EDIT START: Menambah input Mod Pelaksanaan & Dinamik Tempat ── -->
                 <div class="mb-2">
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-2">MOD PELAKSANAAN</label>
                     <div class="grid grid-cols-2 gap-4">
@@ -541,7 +546,6 @@
                         }
                     }
                 </script>
-                <!-- ── SURGICAL EDIT END ── -->
 
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">MUAT NAIK ONE-PAGE REPORT (PDF/GAMBAR)</label>
@@ -573,7 +577,6 @@
             </div>
         </div>
     </div>
-<!-- ── SURGICAL EDIT END ── -->
 
     <!-- MODAL EDIT PENYERTAAN -->
     <div id="modalEditPencapaianUser" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
@@ -685,11 +688,9 @@
           // Listen for hash changes to support browser back/forward buttons
           window.addEventListener('hashchange', () => {
               const hash = window.location.hash.replace('#', '') || 'menu';
-// ── SURGICAL EDIT START: Menambah sokongan hash routing untuk libat urus ──
               if (['menu', 'profil', 'analisa', 'pencapaian', 'libat-urus'].includes(hash)) {
                   if (window.showSection) window.showSection(hash);
               }
-// ── SURGICAL EDIT END ──
           });
 
           // Check initial hash for deep linking

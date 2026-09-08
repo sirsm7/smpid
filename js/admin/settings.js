@@ -6,6 +6,8 @@
  * Logic: Menyuntik penapis awal (validation) untuk kata laluan.
  * Logic: Memastikan JPNMEL dan SUPER_ADMIN diberikan kod_sekolah 'ALL' untuk elak konflik RBAC.
  * Logic: Menangkap ralat spesifik Supabase untuk diagnosis 400 Bad Request.
+ * --- UPDATE V2.8 (SCHOOL PHONE NUMBER) ---
+ * Logic: Mengemas kini modul Import Data untuk menyokong lajur no_telefon_sekolah.
  */
 
 import { AuthService } from '../services/auth.service.js';
@@ -456,8 +458,9 @@ window.ubahKataLaluanSendiri = async function() {
  * Menjana templat CSV kosong dengan format lajur yang tepat berpandukan pangkalan data.
  */
 window.muatTurunTemplatCSV = function() {
+    // SUNTIKAN: Tambah "no_telefon_sekolah" kepada struktur templat (Selepas parlimen untuk aliran seragam)
     const headers = [
-        "kod_sekolah", "nama_sekolah", "jenis_sekolah", "daerah", "parlimen", 
+        "kod_sekolah", "nama_sekolah", "jenis_sekolah", "daerah", "parlimen", "no_telefon_sekolah",
         "nama_pgb", "no_telefon_pgb", "emel_delima_pgb", 
         "nama_gpk", "no_telefon_gpk", "emel_delima_gpk", 
         "nama_gpict", "no_telefon_gpict", "emel_delima_gpict", 
@@ -579,6 +582,7 @@ window.mulaImportCSV = async function() {
                     jenis_sekolah: row.jenis_sekolah?.trim().toUpperCase() || null,
                     daerah: row.daerah?.trim().toUpperCase() || 'ALOR GAJAH',
                     parlimen: row.parlimen?.trim().toUpperCase() || null,
+                    no_telefon_sekolah: row.no_telefon_sekolah?.trim() || null, // SUNTIKAN: Tambah parse data no tel sekolah
                     nama_pgb: row.nama_pgb?.trim().toUpperCase() || null,
                     no_telefon_pgb: row.no_telefon_pgb?.trim() || null,
                     emel_delima_pgb: row.emel_delima_pgb?.trim() || null,
@@ -667,7 +671,6 @@ window.mulaImportCSV = async function() {
     }
 };
 
-// [COMMENT SYNTAX] SURGICAL EDIT START: Membetulkan ralat HTTP 400 (Not-Null & Object Structure Mismatch)
 /**
  * Menjana templat CSV kosong dengan format lajur yang tepat berpandukan jadual analisa DCS.
  */
@@ -942,4 +945,3 @@ window.mulaImportAnalisaCSV = async function() {
         fileInput.value = ''; // Kosongkan pilihan fail
     }
 };
-// [COMMENT SYNTAX] SURGICAL EDIT END

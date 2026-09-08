@@ -8,6 +8,8 @@
  * * --- UPDATE V2.1 (DYNAMIC YEAR ANALYTICS) ---
  * Membuang kod keras tahun 2023-2025 dan mendapatkan tahun 
  * secara dinamik terus dari struktur pangkalan data Supabase.
+ * * --- UPDATE V2.2 (SCHOOL PHONE NUMBER) ---
+ * Menambah sokongan untuk membaca dan menyimpan no_telefon_sekolah.
  */
 
 import { toggleLoading, checkEmailDomain, autoFormatPhone, keluarSistem, formatSentenceCase, uploadFileToDrive } from './core/helpers.js';
@@ -168,8 +170,9 @@ async function loadProfil(kod) {
         document.getElementById('dispKodDaerah').innerText = `KOD: ${data.kod_sekolah} | DAERAH: ${data.daerah || '-'}`;
         document.getElementById('hiddenKodSekolah').value = data.kod_sekolah;
         
-        // Peta data DB ke input HTML termasuk PGB dan GPK
+        // Peta data DB ke input HTML termasuk PGB, GPK, dan no telefon sekolah
         const fields = {
+            'sekolahTel': data.no_telefon_sekolah, // SUNTIKAN: Tambah field no_telefon_sekolah
             'pgbNama': data.nama_pgb, 'pgbTel': data.no_telefon_pgb, 'pgbEmel': data.emel_delima_pgb,
             'gpkNama': data.nama_gpk, 'gpkTel': data.no_telefon_gpk, 'gpkEmel': data.emel_delima_gpk,
             'gpictNama': data.nama_gpict, 'gpictTel': data.no_telefon_gpict, 'gpictEmel': data.emel_delima_gpict,
@@ -224,6 +227,7 @@ window.simpanProfil = async function() {
     toggleLoading(true);
 
     const payload = {
+        no_telefon_sekolah: document.getElementById('sekolahTel').value, // SUNTIKAN: Tambah ke payload
         nama_pgb: document.getElementById('pgbNama').value.toUpperCase(),
         no_telefon_pgb: document.getElementById('pgbTel').value,
         emel_delima_pgb: emelPgb,

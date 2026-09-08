@@ -1,9 +1,12 @@
 /**
- * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPACT TABLE VIEW V3.5)
+ * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPACT TABLE VIEW V3.6)
  * Menguruskan senarai sekolah, filter berwarna, dan status data.
  * --- UPDATE V3.5 (SUPER ADMIN DAERAH FILTER) ---
  * 1. Menambah kotak pilihan (dropdown) Daerah khusus untuk SUPER_ADMIN dan JPNMEL.
  * 2. Mengintegrasikan penapisan daerah ke dalam senarai Telegram, tindakan pantas, dan paparan lencana (badges).
+ * --- UPDATE V3.6 (SCHOOL PHONE NUMBER) ---
+ * 1. Menambah paparan nombor telefon sekolah di bawah Nama Sekolah.
+ * 2. Mengemaskini format muat turun CSV untuk menyertakan No. Tel Sekolah.
  */
 
 import { SchoolService } from '../services/school.service.js';
@@ -306,7 +309,10 @@ function renderGrid(data) {
                 <span class="inline-block bg-brand-50 text-brand-700 font-mono font-black px-1.5 py-0.5 rounded border border-brand-200 shadow-sm">${s.kod_sekolah}</span>
             </td>
             
-            <td class="px-2 py-3 font-bold text-slate-800 leading-tight border-r border-slate-100 align-top">${s.nama_sekolah}</td>
+            <td class="px-2 py-3 font-bold text-slate-800 leading-tight border-r border-slate-100 align-top">
+                <div class="mb-1">${s.nama_sekolah}</div>
+                ${s.no_telefon_sekolah ? `<div class="text-[9px] font-mono text-slate-500 bg-slate-100 inline-block px-1.5 py-0.5 rounded border border-slate-200 shadow-sm mt-0.5"><i class="fas fa-phone-alt mr-1"></i>${s.no_telefon_sekolah}</div>` : ''}
+            </td>
             
             <td class="px-2 py-3 font-bold text-slate-500 border-r border-slate-100 align-top text-center uppercase tracking-wider">${s.daerah || 'AG'}</td>
             
@@ -385,13 +391,13 @@ window.viewSchoolProfile = function(kod) {
 window.eksportDataTapis = function() {
     if (!currentFilteredList || currentFilteredList.length === 0) return Swal.fire('Tiada Data', '', 'info'); 
     
-    // Kemas kini tajuk CSV untuk merangkumi profil PGB dan GPK berserta kolum Emel DELIMa
-    let csvContent = "BIL,KOD,NAMA,JENIS,DAERAH,NAMA PGB,TEL PGB,EMEL PGB,NAMA GPK,TEL GPK,EMEL GPK,NAMA GPICT,TEL GPICT,EMEL GPICT,NAMA ADMIN,TEL ADMIN,EMEL ADMIN,STATUS PENGISIAN\n";
+    // Kemas kini tajuk CSV untuk merangkumi profil PGB dan GPK berserta kolum Emel DELIMa & NO TEL SEKOLAH
+    let csvContent = "BIL,KOD,NAMA,JENIS,DAERAH,NO TEL SEKOLAH,NAMA PGB,TEL PGB,EMEL PGB,NAMA GPK,TEL GPK,EMEL GPK,NAMA GPICT,TEL GPICT,EMEL GPICT,NAMA ADMIN,TEL ADMIN,EMEL ADMIN,STATUS PENGISIAN\n";
     
     currentFilteredList.forEach((s, index) => {
         const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
         let row = [
-            index + 1, clean(s.kod_sekolah), clean(s.nama_sekolah), clean(s.jenis), clean(s.daerah),
+            index + 1, clean(s.kod_sekolah), clean(s.nama_sekolah), clean(s.jenis), clean(s.daerah), clean(s.no_telefon_sekolah),
             clean(s.nama_pgb), clean(s.no_telefon_pgb), clean(s.emel_delima_pgb),
             clean(s.nama_gpk), clean(s.no_telefon_gpk), clean(s.emel_delima_gpk),
             clean(s.nama_gpict), clean(s.no_telefon_gpict), clean(s.emel_delima_gpict),
