@@ -1,5 +1,5 @@
 /**
- * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPACT TABLE VIEW V3.6)
+ * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPACT TABLE VIEW V3.7)
  * Menguruskan senarai sekolah, filter berwarna, dan status data.
  * --- UPDATE V3.5 (SUPER ADMIN DAERAH FILTER) ---
  * 1. Menambah kotak pilihan (dropdown) Daerah khusus untuk SUPER_ADMIN dan JPNMEL.
@@ -7,6 +7,8 @@
  * --- UPDATE V3.6 (SCHOOL PHONE NUMBER) ---
  * 1. Menambah paparan nombor telefon sekolah di bawah Nama Sekolah.
  * 2. Mengemaskini format muat turun CSV untuk menyertakan No. Tel Sekolah.
+ * --- UPDATE V3.7 (CLICK-TO-COPY PHONE NUMBER) ---
+ * 1. Menambah keupayaan menyalin secara automatik (auto-copy) apabila No Telefon Sekolah diklik.
  */
 
 import { SchoolService } from '../services/school.service.js';
@@ -257,6 +259,55 @@ function renderWaBtn(nama, tel, label) {
     }
 }
 
+/**
+ * FUNGSI BANTUAN: Salin Teks ke Papan Keratan (Clipboard)
+ * Ditambah di scope global untuk dicapai oleh butang onlcick di dalam HTML jadual.
+ */
+window.copyTelSekolah = function(text, event) {
+    // Halang event propagation supaya ia tidak memicu butang edit/baris
+    if (event) event.stopPropagation();
+
+    if (!text || text === '-') return;
+
+    // Fallback eksekusi menggunakan textarea jika navigator.clipboard terhalang
+    const fallbackCopy = (str) => {
+        const el = document.createElement('textarea');
+        el.value = str;
+        document.body.appendChild(el);
+        el.select();
+        try {
+            document.execCommand('copy');
+            tunjukToastBerjaya(str);
+        } catch (err) {
+            console.error('Fallback copy gagal:', err);
+        }
+        document.body.removeChild(el);
+    };
+
+    const tunjukToastBerjaya = (str) => {
+        Swal.fire({
+            toast: true, 
+            position: 'top-end', 
+            icon: 'success', 
+            title: 'No. Telefon Disalin!', 
+            text: str,
+            showConfirmButton: false, 
+            timer: 2000, 
+            customClass: { popup: 'colored-toast' }
+        });
+    };
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+            tunjukToastBerjaya(text);
+        }).catch(err => {
+            fallbackCopy(text);
+        });
+    } else {
+        fallbackCopy(text);
+    }
+};
+
 function renderGrid(data) {
     const wrapper = document.getElementById('schoolGridWrapper');
     if (!wrapper) return;
@@ -311,7 +362,7 @@ function renderGrid(data) {
             
             <td class="px-2 py-3 font-bold text-slate-800 leading-tight border-r border-slate-100 align-top">
                 <div class="mb-1">${s.nama_sekolah}</div>
-                ${s.no_telefon_sekolah ? `<div class="text-[9px] font-mono text-slate-500 bg-slate-100 inline-block px-1.5 py-0.5 rounded border border-slate-200 shadow-sm mt-0.5"><i class="fas fa-phone-alt mr-1"></i>${s.no_telefon_sekolah}</div>` : ''}
+                ${s.no_telefon_sekolah ? `<div onclick="copyTelSekolah('${s.no_telefon_sekolah}', event)" class="text-[9px] font-mono text-slate-500 bg-slate-100 inline-block px-1.5 py-0.5 rounded border border-slate-200 shadow-sm mt-0.5 cursor-pointer hover:bg-slate-200 hover:text-brand-600 transition-colors" title="Klik untuk salin nombor"><i class="fas fa-phone-alt mr-1"></i>${s.no_telefon_sekolah}</div>` : ''}
             </td>
             
             <td class="px-2 py-3 font-bold text-slate-500 border-r border-slate-100 align-top text-center uppercase tracking-wider">${s.daerah || 'AG'}</td>
