@@ -1,5 +1,5 @@
 /**
- * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPACT TABLE VIEW V3.7)
+ * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPACT TABLE VIEW V3.8)
  * Menguruskan senarai sekolah, filter berwarna, dan status data.
  * --- UPDATE V3.5 (SUPER ADMIN DAERAH FILTER) ---
  * 1. Menambah kotak pilihan (dropdown) Daerah khusus untuk SUPER_ADMIN dan JPNMEL.
@@ -9,6 +9,10 @@
  * 2. Mengemaskini format muat turun CSV untuk menyertakan No. Tel Sekolah.
  * --- UPDATE V3.7 (CLICK-TO-COPY PHONE NUMBER) ---
  * 1. Menambah keupayaan menyalin secara automatik (auto-copy) apabila No Telefon Sekolah diklik.
+ * --- UPDATE V3.8 (SMART BOARD METRICS & KPI) ---
+ * 1. Memaparkan lencana (badge) ketersediaan Smart Board dalam jadual utama.
+ * 2. Menjana metrik KPI Smart Board yang bertindak balas terhadap tapisan sistem.
+ * 3. Menyertakan 5 lajur baharu berkaitan Smart Board dalam muat turun CSV.
  */
 
 import { SchoolService } from '../services/school.service.js';
@@ -113,7 +117,7 @@ function renderFilters() {
                 Berbeza <span id="cntBerbeza" class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px]">0</span>
             </button>
 
-            <!-- Butang TIADA PGB/GPK (Rose/Pink) - Ciri Tambahan V3.3 -->
+            <!-- Butang TIADA PGB/GPK (Rose/Pink) -->
             <button onclick="setFilter('TIADA_PENGURUSAN')" id="badgeTiadaPengurusan" class="filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-rose-200 text-rose-600 hover:bg-rose-50">
                 Tiada PGB/GPK <span id="cntTiadaPengurusan" class="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full text-[10px]">0</span>
             </button>
@@ -192,6 +196,7 @@ window.runFilter = function() {
     currentFilteredList = filtered;
     updateBadgeCounts();
     renderGrid(filtered);
+    renderSmartBoardKPI(filtered);
 };
 
 function updateBadgeCounts() {
@@ -247,6 +252,31 @@ function updateBadgeCounts() {
     setTxt('cntSama', context.filter(i => i.is_sama).length);
     setTxt('cntBerbeza', context.filter(i => i.is_berbeza).length);
     setTxt('cntTiadaPengurusan', context.filter(i => !i.nama_pgb || !i.nama_gpk).length);
+}
+
+// --- RENDERING KPI SMART BOARD ---
+function renderSmartBoardKPI(data) {
+    const kpiPanel = document.getElementById('smartBoardKpiPanel');
+    if (!kpiPanel) return;
+
+    let countSekolah = 0;
+    let totalUnit = 0;
+    let totalFungsi = 0;
+
+    data.forEach(s => {
+        if (s.sb_ada === 'YA') {
+            countSekolah++;
+            totalUnit += parseInt(s.sb_bil_semua) || 0;
+            totalFungsi += parseInt(s.sb_bil_fungsi) || 0;
+        }
+    });
+
+    document.getElementById('kpiSbSekolah').innerText = countSekolah;
+    document.getElementById('kpiSbUnit').innerText = totalUnit;
+    document.getElementById('kpiSbFungsi').innerText = totalFungsi;
+
+    // Tunjuk panel selepas data dikira
+    kpiPanel.classList.remove('hidden');
 }
 
 // --- RENDERING TABLE (ULTRA COMPACT VIEW INJECTION) ---
@@ -325,17 +355,18 @@ function renderGrid(data) {
             <thead class="text-[9px] text-slate-500 uppercase bg-slate-100 border-b-2 border-slate-200 sticky top-0 z-10 font-black tracking-widest">
                 <tr>
                     <th class="px-2 py-3 text-center border-r border-slate-200 w-[3%]">BIL</th>
-                    <th class="px-2 py-3 border-r border-slate-200 w-[5%]">JENIS</th>
-                    <th class="px-2 py-3 border-r border-slate-200 text-brand-600 w-[6%]">KOD</th>
-                    <th class="px-2 py-3 border-r border-slate-200 w-[15%]">NAMA SEKOLAH</th>
+                    <th class="px-2 py-3 border-r border-slate-200 w-[4%]">JENIS</th>
+                    <th class="px-2 py-3 border-r border-slate-200 text-brand-600 w-[5%]">KOD</th>
+                    <th class="px-2 py-3 border-r border-slate-200 w-[14%]">NAMA SEKOLAH</th>
                     <th class="px-2 py-3 border-r border-slate-200 text-center w-[5%]">DAERAH</th>
-                    <th class="px-2 py-3 border-r border-slate-200 w-[12%]">NAMA PGB</th>
-                    <th class="px-2 py-3 border-r border-slate-200 w-[12%]">NAMA GPK</th>
-                    <th class="px-2 py-3 border-r border-slate-200 w-[11%]">NAMA GPICT</th>
-                    <th class="px-2 py-3 border-r border-slate-200 w-[11%]">NAMA ADMIN</th>
-                    <th class="px-2 py-3 text-center border-r border-slate-200 w-[7%]">RESET</th>
+                    <th class="px-2 py-3 border-r border-slate-200 text-center text-teal-600 w-[4%]" title="Ketersediaan Smart Board"><i class="fas fa-tv"></i> SB</th>
+                    <th class="px-2 py-3 border-r border-slate-200 w-[11%]">NAMA PGB</th>
+                    <th class="px-2 py-3 border-r border-slate-200 w-[11%]">NAMA GPK</th>
+                    <th class="px-2 py-3 border-r border-slate-200 w-[10%]">NAMA GPICT</th>
+                    <th class="px-2 py-3 border-r border-slate-200 w-[10%]">NAMA ADMIN</th>
+                    <th class="px-2 py-3 text-center border-r border-slate-200 w-[6%]">RESET</th>
                     <th class="px-2 py-3 text-center border-r border-slate-200 w-[7%]">WHATSAPP</th>
-                    <th class="px-2 py-3 text-center w-[6%]">EDIT</th>
+                    <th class="px-2 py-3 text-center w-[5%]">EDIT</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -349,6 +380,24 @@ function renderGrid(data) {
         const btnWaADM = renderWaBtn(s.nama_admin_delima, s.no_telefon_admin_delima, 'ADM');
 
         const rowClass = s.is_lengkap ? "bg-white hover:bg-emerald-50/30" : "bg-red-50/10 hover:bg-red-50/50";
+
+        // Jana Lencana Smart Board
+        let sbBadge = `<span class="text-[10px] font-bold text-slate-300">-</span>`;
+        if (s.sb_ada === 'YA') {
+            const fungsi = parseInt(s.sb_bil_fungsi) || 0;
+            const semua = parseInt(s.sb_bil_semua) || 0;
+            // Penentuan Warna Lencana: Merah (Tiada fungsi), Kuning (Kurang daripada semua), Hijau (Semua berfungsi)
+            let sbColor = fungsi === 0 ? 'text-red-500 bg-red-50 border-red-200' : (fungsi < semua ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-teal-600 bg-teal-50 border-teal-200');
+            sbBadge = `
+            <div class="flex flex-col items-center justify-center gap-1" title="Kaedah: ${s.sb_kaedah || '-'}&#10;Lokasi: ${s.sb_lokasi || '-'}">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full border shadow-sm ${sbColor}">
+                    <i class="fas fa-tv text-[10px]"></i>
+                </span>
+                <span class="text-[9px] font-black text-slate-500">${fungsi}/${semua}</span>
+            </div>`;
+        } else if (s.sb_ada === 'TIDAK') {
+            sbBadge = `<span class="inline-flex items-center justify-center w-6 h-6 rounded-full border border-slate-200 bg-slate-100 text-slate-400 shadow-sm" title="Tiada Smart Board"><i class="fas fa-times text-[10px]"></i></span>`;
+        }
 
         tableHTML += `
         <tr class="${rowClass} transition-colors group">
@@ -367,6 +416,10 @@ function renderGrid(data) {
             
             <td class="px-2 py-3 font-bold text-slate-500 border-r border-slate-100 align-top text-center uppercase tracking-wider">${s.daerah || 'AG'}</td>
             
+            <td class="px-2 py-3 border-r border-slate-100 align-top text-center">
+                ${sbBadge}
+            </td>
+
             <td class="px-2 py-3 border-r border-slate-100 align-top">
                 <div class="font-bold text-slate-700 leading-tight">${s.nama_pgb || '<span class="text-slate-300 italic">Tiada Rekod</span>'}</div>
             </td>
@@ -442,13 +495,14 @@ window.viewSchoolProfile = function(kod) {
 window.eksportDataTapis = function() {
     if (!currentFilteredList || currentFilteredList.length === 0) return Swal.fire('Tiada Data', '', 'info'); 
     
-    // Kemas kini tajuk CSV untuk merangkumi profil PGB dan GPK berserta kolum Emel DELIMa & NO TEL SEKOLAH
-    let csvContent = "BIL,KOD,NAMA,JENIS,DAERAH,NO TEL SEKOLAH,NAMA PGB,TEL PGB,EMEL PGB,NAMA GPK,TEL GPK,EMEL GPK,NAMA GPICT,TEL GPICT,EMEL GPICT,NAMA ADMIN,TEL ADMIN,EMEL ADMIN,STATUS PENGISIAN\n";
+    // Kemas kini tajuk CSV untuk merangkumi profil PGB, GPK, No Tel Sekolah, dan 5 lajur Smart Board
+    let csvContent = "BIL,KOD,NAMA,JENIS,DAERAH,NO TEL SEKOLAH,SB ADA,SB KAEDAH,SB BIL SEMUA,SB BIL FUNGSI,SB LOKASI,NAMA PGB,TEL PGB,EMEL PGB,NAMA GPK,TEL GPK,EMEL GPK,NAMA GPICT,TEL GPICT,EMEL GPICT,NAMA ADMIN,TEL ADMIN,EMEL ADMIN,STATUS PENGISIAN\n";
     
     currentFilteredList.forEach((s, index) => {
         const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
         let row = [
             index + 1, clean(s.kod_sekolah), clean(s.nama_sekolah), clean(s.jenis), clean(s.daerah), clean(s.no_telefon_sekolah),
+            clean(s.sb_ada), clean(s.sb_kaedah), s.sb_bil_semua || 0, s.sb_bil_fungsi || 0, clean(s.sb_lokasi),
             clean(s.nama_pgb), clean(s.no_telefon_pgb), clean(s.emel_delima_pgb),
             clean(s.nama_gpk), clean(s.no_telefon_gpk), clean(s.emel_delima_gpk),
             clean(s.nama_gpict), clean(s.no_telefon_gpict), clean(s.emel_delima_gpict),

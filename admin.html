@@ -231,6 +231,34 @@
                 </div>
             </div>
 
+            <!-- PANEL KPI SMART BOARD -->
+            <div id="smartBoardKpiPanel" class="hidden mb-8 animate-fade-up bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><i class="fas fa-tv text-teal-500"></i> Metrik Papan Pintar (Berdasarkan Tapisan)</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-white p-4 rounded-xl border border-teal-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Sekolah Memiliki</p>
+                            <h4 class="text-2xl font-black text-teal-600" id="kpiSbSekolah">0</h4>
+                        </div>
+                        <div class="w-10 h-10 bg-teal-50 text-teal-500 rounded-lg flex items-center justify-center text-lg"><i class="fas fa-school"></i></div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-blue-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Jumlah Unit</p>
+                            <h4 class="text-2xl font-black text-blue-600" id="kpiSbUnit">0</h4>
+                        </div>
+                        <div class="w-10 h-10 bg-blue-50 text-blue-500 rounded-lg flex items-center justify-center text-lg"><i class="fas fa-cubes"></i></div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Berfungsi (Aktif)</p>
+                            <h4 class="text-2xl font-black text-emerald-600" id="kpiSbFungsi">0</h4>
+                        </div>
+                        <div class="w-10 h-10 bg-emerald-50 text-emerald-500 rounded-lg flex items-center justify-center text-lg"><i class="fas fa-check-circle"></i></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="relative mb-6">
                 <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
                 <input type="text" id="adminSearchInput" class="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none font-semibold text-slate-700 placeholder-slate-400" placeholder="Cari Nama Sekolah atau Kod..." oninput="handleSearch(this.value)">
