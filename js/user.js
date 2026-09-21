@@ -10,6 +10,8 @@
  * secara dinamik terus dari struktur pangkalan data Supabase.
  * * --- UPDATE V2.2 (SCHOOL PHONE NUMBER) ---
  * Menambah sokongan untuk membaca dan menyimpan no_telefon_sekolah.
+ * * --- UPDATE V2.3 (SMART BOARD INTEGRATION) ---
+ * Menambah modul pembacaan dan penyimpanan status aset Smart Board.
  */
 
 import { toggleLoading, checkEmailDomain, autoFormatPhone, keluarSistem, formatSentenceCase, uploadFileToDrive } from './core/helpers.js';
@@ -20,9 +22,7 @@ import { SupportService } from './services/support.service.js';
 import { AchievementService } from './services/achievement.service.js';
 import { APP_CONFIG } from './config/app.config.js';
 import { populateDropdown } from './config/dropdowns.js';
-// ── SURGICAL EDIT START: Mengimport servis Libat Urus ──
 import { libatUrusService } from './services/libat_urus.service.js';
-// ── SURGICAL EDIT END ──
 
 // --- GLOBAL STATE ---
 let analisaChart = null;
@@ -66,9 +66,7 @@ function initUserPortal() {
         
         if(btnLogout) {
             btnLogout.innerHTML = `<i class="fas fa-arrow-left"></i> Kembali ke Dashboard Admin`;
-            // ── SURGICAL EDIT START: Panggil fungsi pemulihan impersonation ──
             btnLogout.setAttribute('onclick', "window.kembaliKeAdmin()");
-            // ── SURGICAL EDIT END ──
             btnLogout.className = "w-full py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm";
         }
         
@@ -83,7 +81,6 @@ function initUserPortal() {
     loadProfil(kod);
 }
 
-// ── SURGICAL EDIT START: Logik Pemulihan Peranan Asal (Revert Impersonation) ──
 window.kembaliKeAdmin = function() {
     const realRole = localStorage.getItem('smpid_real_user_role');
     const realKod = localStorage.getItem('smpid_real_user_kod');
@@ -100,7 +97,6 @@ window.kembaliKeAdmin = function() {
     
     window.location.href = 'admin.html';
 };
-// ── SURGICAL EDIT END ──
 
 // --- 1. NAVIGATION LOGIC ---
 
@@ -115,9 +111,7 @@ window.showSection = function(section, event) {
         history.pushState(null, null, '#' + section);
     }
 
-// ── SURGICAL EDIT START: Menambah tab libat-urus ke dalam array sections ──
     const sections = ['menu', 'profil', 'aduan', 'analisa', 'pencapaian', 'libat-urus'];
-// ── SURGICAL EDIT END ──
     sections.forEach(s => {
         const el = document.getElementById(`section-${s}`);
         if(el) el.classList.add('hidden');
@@ -143,17 +137,14 @@ window.showSection = function(section, event) {
         loadAnalisaSekolah();
         if(welcomeText) welcomeText.innerText = "ANALISA DIGITAL";
     }
-// ── SURGICAL EDIT START: Memuatkan data apabila tab Libat Urus dibuka ──
     if (section === 'pencapaian') {
         window.loadPencapaianSekolah();
         if(welcomeText) welcomeText.innerText = "REKOD PENCAPAIAN";
     }
-
     if (section === 'libat-urus') {
         window.loadLibatUrusSekolah();
         if(welcomeText) welcomeText.innerText = "LAPORAN LIBAT URUS";
     }
-// ── SURGICAL EDIT END ──
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
@@ -172,7 +163,7 @@ async function loadProfil(kod) {
         
         // Peta data DB ke input HTML termasuk PGB, GPK, dan no telefon sekolah
         const fields = {
-            'sekolahTel': data.no_telefon_sekolah, // SUNTIKAN: Tambah field no_telefon_sekolah
+            'sekolahTel': data.no_telefon_sekolah,
             'pgbNama': data.nama_pgb, 'pgbTel': data.no_telefon_pgb, 'pgbEmel': data.emel_delima_pgb,
             'gpkNama': data.nama_gpk, 'gpkTel': data.no_telefon_gpk, 'gpkEmel': data.emel_delima_gpk,
             'gpictNama': data.nama_gpict, 'gpictTel': data.no_telefon_gpict, 'gpictEmel': data.emel_delima_gpict,
@@ -183,6 +174,31 @@ async function loadProfil(kod) {
             const el = document.getElementById(id);
             if(el) el.value = fields[id] || ""; 
         }
+
+        // Peta data DB ke input Smart Board
+        const sbAdaRadios = document.getElementsByName('sb_ada');
+        const dbSbAda = data.sb_ada || 'TIDAK'; // Default TIDAK jika tiada rekod
+        for (const radio of sbAdaRadios) {
+            if (radio.value === dbSbAda) radio.checked = true;
+        }
+
+        if (dbSbAda === 'YA') {
+            document.getElementById('sb_kaedah').value = data.sb_kaedah || "";
+            document.getElementById('sb_bil_semua').value = data.sb_bil_semua || "";
+            document.getElementById('sb_bil_fungsi').value = data.sb_bil_fungsi || "";
+
+            const lokasiArray = data.sb_lokasi ? data.sb_lokasi.split(',') : [];
+            const lokasiCheckboxes = document.getElementsByName('sb_lokasi');
+            for (const cb of lokasiCheckboxes) {
+                cb.checked = lokasiArray.includes(cb.value);
+            }
+        }
+        
+        // Pastikan UI Smart Board dikemaskini berdasarkan pilihan sedia ada
+        if (typeof window.toggleSmartboard === 'function') {
+            window.toggleSmartboard();
+        }
+
     } catch (err) { 
         console.error("[Profile] Gagal muat:", err); 
     }
@@ -223,11 +239,49 @@ window.simpanProfil = async function() {
         });
     }
 
+    // Ambil data Smart Board
+    const sbAdaRadio = document.querySelector('input[name="sb_ada"]:checked');
+    const sbAda = sbAdaRadio ? sbAdaRadio.value : 'TIDAK';
+    let sbKaedah = null;
+    let sbBilSemua = null;
+    let sbBilFungsi = null;
+    let sbLokasi = null;
+
+    if (sbAda === 'YA') {
+        sbKaedah = document.getElementById('sb_kaedah').value;
+        sbBilSemua = parseInt(document.getElementById('sb_bil_semua').value, 10);
+        sbBilFungsi = parseInt(document.getElementById('sb_bil_fungsi').value, 10);
+        
+        // Kumpul nilai checkbox yang ditanda
+        const lokasiCheckboxes = document.querySelectorAll('input[name="sb_lokasi"]:checked');
+        const lokasiValues = Array.from(lokasiCheckboxes).map(cb => cb.value);
+        
+        // Jika ada lokasi dipilih, gabung menjadi string dipisahkan koma
+        if (lokasiValues.length > 0) {
+             sbLokasi = lokasiValues.join(',');
+        }
+
+        // Validasi Asas Smart Board
+        if (!sbKaedah || isNaN(sbBilSemua) || isNaN(sbBilFungsi) || !sbLokasi) {
+            return Swal.fire({
+                icon: 'warning',
+                title: 'Data Smart Board Tidak Lengkap',
+                text: 'Sila lengkapkan semua ruangan maklumat Smart Board.',
+                confirmButtonColor: '#f59e0b'
+            });
+        }
+    }
+
     if(btnSubmit) { btnSubmit.disabled = true; btnSubmit.classList.add('opacity-75'); }
     toggleLoading(true);
 
     const payload = {
-        no_telefon_sekolah: document.getElementById('sekolahTel').value, // SUNTIKAN: Tambah ke payload
+        no_telefon_sekolah: document.getElementById('sekolahTel').value,
+        sb_ada: sbAda,
+        sb_kaedah: sbKaedah,
+        sb_bil_semua: sbBilSemua,
+        sb_bil_fungsi: sbBilFungsi,
+        sb_lokasi: sbLokasi,
         nama_pgb: document.getElementById('pgbNama').value.toUpperCase(),
         no_telefon_pgb: document.getElementById('pgbTel').value,
         emel_delima_pgb: emelPgb,
@@ -284,7 +338,6 @@ async function loadAnalisaSekolah() {
             return;
         }
 
-// ── SURGICAL EDIT START: Membuang kod keras tahun 2023-2025 dan mendapatkan tahun secara dinamik dari kunci objek data ──
         // Ekstrak semua tahun yang ada dari kekunci bermula dengan "dcs_"
         const dataKeys = Object.keys(data);
         const availableYears = dataKeys
@@ -331,7 +384,6 @@ async function loadAnalisaSekolah() {
                 trendEl.className = "inline-block bg-white/20 border border-white/30 text-white px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm";
             }
         }
-// ── SURGICAL EDIT END ──
 
         renderAnalisaTable(data, availableYears);
         renderDcsChart(data, availableYears);
@@ -965,7 +1017,6 @@ window.resetDataSekolah = async function() {
     }
 };
 
-// ── SURGICAL EDIT START: Logik Perniagaan Modul Libat Urus DELIMa ──
 // --- 8. LIBAT URUS DELIMa ---
 
 /**
@@ -983,10 +1034,8 @@ window.submitLibatUrus = async function() {
     const fileInput = document.getElementById('luFile');
     const file = fileInput.files[0];
 
-// ── SURGICAL EDIT START: Menangkap nilai mod pelaksanaan ──
     const modPelaksanaanInput = document.querySelector('input[name="luModPelaksanaan"]:checked');
     const modPelaksanaan = modPelaksanaanInput ? modPelaksanaanInput.value : 'BERSEMUKA';
-// ── SURGICAL EDIT END ──
 
     if (!kategori || !tarikh || !peserta || !tempat || !file) {
         return Swal.fire('Maklumat Tidak Lengkap', 'Sila isi semua ruangan bertanda termasuk muat naik fail.', 'warning');
@@ -1013,9 +1062,7 @@ window.submitLibatUrus = async function() {
             tempat: tempat,
             jumlah_peserta: peserta,
             pautan_fail: uploadedUrl,
-// ── SURGICAL EDIT START: Menambah mod_pelaksanaan ke dalam objek payload ──
             mod_pelaksanaan: modPelaksanaan
-// ── SURGICAL EDIT END ──
         };
 
         await libatUrusService.createLibatUrus(payload);
@@ -1062,11 +1109,9 @@ window.loadLibatUrusSekolah = async function() {
                              : item.kategori_sasar === 'MURID' ? 'bg-amber-100 text-amber-700 border-amber-200' 
                              : 'bg-green-100 text-green-700 border-green-200';
 
-// ── SURGICAL EDIT START: Tambah badge mod pelaksanaan ──
             const modBadge = item.mod_pelaksanaan === 'DALAM TALIAN' 
                            ? `<span class="inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase border bg-purple-50 text-purple-600 border-purple-200 ml-1"><i class="fas fa-video mr-1"></i> DALAM TALIAN</span>`
                            : `<span class="inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase border bg-teal-50 text-teal-600 border-teal-200 ml-1"><i class="fas fa-users mr-1"></i> BERSEMUKA</span>`;
-// ── SURGICAL EDIT END ──
 
             return `
             <tr class="hover:bg-slate-50 transition border-b border-slate-100 last:border-0 group">
@@ -1119,4 +1164,3 @@ window.padamLibatUrus = async function(id) {
         }
     });
 };
-// ── SURGICAL EDIT END ──

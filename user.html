@@ -227,6 +227,77 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- SEKSYEN SMART BOARD -->
+                <div class="bg-teal-50 p-6 rounded-2xl border border-teal-100">
+                    <h3 class="text-sm font-bold text-teal-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-tv"></i> MAKLUMAT SMART BOARD</h3>
+                    
+                    <!-- Soalan 1: Ada atau tidak -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-teal-600 uppercase mb-2">ADAKAH SEKOLAH MEMPUNYAI SMART BOARD BAGI TUJUAN PDP GURU DAN MURID DI SEKOLAH?</label>
+                        <div class="flex gap-6 mt-3">
+                            <label class="flex items-center gap-2 cursor-pointer bg-white px-4 py-2 rounded-xl border border-teal-200 shadow-sm hover:bg-teal-100 transition">
+                                <input type="radio" name="sb_ada" value="YA" class="w-4 h-4 accent-teal-600" onchange="window.toggleSmartboard()">
+                                <span class="text-xs font-bold text-teal-900">YA, KAMI ADA</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer bg-white px-4 py-2 rounded-xl border border-teal-200 shadow-sm hover:bg-teal-100 transition">
+                                <input type="radio" name="sb_ada" value="TIDAK" class="w-4 h-4 accent-teal-600" onchange="window.toggleSmartboard()" checked>
+                                <span class="text-xs font-bold text-teal-900">TIDAK ADA</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Hidden Container -->
+                    <div id="sbDetailsContainer" class="hidden space-y-5 pt-5 border-t border-teal-200">
+                        <!-- Kaedah Pembekalan -->
+                        <div>
+                            <label class="block text-xs font-bold text-teal-600 uppercase mb-1">KAEDAH PEMBEKALAN SMART BOARD DI SEKOLAH</label>
+                            <select id="sb_kaedah" class="w-full p-3 rounded-xl border border-teal-200 focus:border-teal-500 outline-none font-bold text-slate-700 bg-white">
+                                <option value="" disabled selected>- SILA PILIH -</option>
+                                <option value="SUMBANGAN PIBG/LPS/KUMPULAN TERTENTU">SUMBANGAN PIBG/LPS/KUMPULAN TERTENTU</option>
+                                <option value="SUMBANGAN INDIVIDU">SUMBANGAN INDIVIDU</option>
+                                <option value="SUMBANGAN AGENSI KERAJAAN">SUMBANGAN AGENSI KERAJAAN</option>
+                                <option value="SUMBANGAN KEMENTERIAN PENDIDIKAN">SUMBANGAN KEMENTERIAN PENDIDIKAN</option>
+                                <option value="LAIN-LAIN (PEMBELIAN SENDIRI)">LAIN-LAIN (PEMBELIAN SENDIRI)</option>
+                                <option value="TIDAK BERKENAAN">TIDAK BERKENAAN (JIKA TIADA SMART BOARD DI SEKOLAH)</option>
+                            </select>
+                        </div>
+
+                        <!-- Bilangan -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-teal-600 uppercase mb-1">BILANGAN SMART BOARD YANG ADA DI SEKOLAH *</label>
+                                <input type="number" id="sb_bil_semua" class="w-full p-3 rounded-xl border border-teal-200 focus:border-teal-500 outline-none font-bold text-slate-700" placeholder="Contoh: 2">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-teal-600 uppercase mb-1">BILANGAN SMART BOARD YANG BERFUNGSI *</label>
+                                <input type="number" id="sb_bil_fungsi" class="w-full p-3 rounded-xl border border-teal-200 focus:border-teal-500 outline-none font-bold text-slate-700" placeholder="Contoh: 1">
+                            </div>
+                        </div>
+
+                        <!-- Lokasi -->
+                        <div>
+                            <label class="block text-xs font-bold text-teal-600 uppercase mb-2">LOKASI PENEMPATAN SMART BOARD * (Boleh pilih >1)</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 bg-white p-4 rounded-xl border border-teal-200 shadow-sm">
+                                <label class="flex items-center gap-2 cursor-pointer hover:bg-teal-50 p-2 rounded-lg transition">
+                                    <input type="checkbox" name="sb_lokasi" value="DALAM KELAS" class="w-4 h-4 accent-teal-600"> <span class="text-xs font-bold text-slate-700">DALAM KELAS</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer hover:bg-teal-50 p-2 rounded-lg transition">
+                                    <input type="checkbox" name="sb_lokasi" value="PERPUSTAKAAN" class="w-4 h-4 accent-teal-600"> <span class="text-xs font-bold text-slate-700">PERPUSTAKAAN</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer hover:bg-teal-50 p-2 rounded-lg transition">
+                                    <input type="checkbox" name="sb_lokasi" value="MAKMAL KOMPUTER" class="w-4 h-4 accent-teal-600"> <span class="text-xs font-bold text-slate-700">MAKMAL KOMPUTER</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer hover:bg-teal-50 p-2 rounded-lg transition">
+                                    <input type="checkbox" name="sb_lokasi" value="LAIN-LAIN BILIK" class="w-4 h-4 accent-teal-600"> <span class="text-xs font-bold text-slate-700">LAIN-LAIN BILIK</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer hover:bg-teal-50 p-2 rounded-lg transition col-span-1 sm:col-span-2 lg:col-span-3 border-t border-slate-100 pt-2 mt-1">
+                                    <input type="checkbox" name="sb_lokasi" value="TIDAK BERKENAAN" class="w-4 h-4 accent-red-500" onchange="document.querySelectorAll('input[name=sb_lokasi]:not([value=\'TIDAK BERKENAAN\'])').forEach(cb => { if(this.checked) cb.checked = false; })"> <span class="text-xs font-bold text-red-600 italic">TIDAK BERKENAAN</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 
                 <!-- SEKSYEN PGB -->
                 <div class="bg-purple-50 p-6 rounded-2xl border border-purple-100">
@@ -676,6 +747,33 @@
   <script type="module" src="js/user.js"></script>
   
   <script>
+      // SCRIPT UI UNTUK SMART BOARD
+      window.toggleSmartboard = function() {
+          const ada = document.querySelector('input[name="sb_ada"]:checked').value;
+          const container = document.getElementById('sbDetailsContainer');
+          const inputs = container.querySelectorAll('input[type="number"], select, input[type="checkbox"]');
+          
+          if (ada === 'YA') {
+              container.classList.remove('hidden');
+              // Jadikan mandatory untuk select dan nombor
+              document.getElementById('sb_kaedah').required = true;
+              document.getElementById('sb_bil_semua').required = true;
+              document.getElementById('sb_bil_fungsi').required = true;
+          } else {
+              container.classList.add('hidden');
+              // Buang mandatory jika TIDAK
+              document.getElementById('sb_kaedah').required = false;
+              document.getElementById('sb_bil_semua').required = false;
+              document.getElementById('sb_bil_fungsi').required = false;
+              
+              // Reset nilai-nilai yang ada di dalam container
+              document.getElementById('sb_kaedah').value = "";
+              document.getElementById('sb_bil_semua').value = "";
+              document.getElementById('sb_bil_fungsi').value = "";
+              document.querySelectorAll('input[name="sb_lokasi"]').forEach(cb => cb.checked = false);
+          }
+      };
+
       // Hash-based Routing for User Portal (BUG FIX V2.2 - LOCALSTORAGE SYNC)
       document.addEventListener('DOMContentLoaded', () => {
           // UPDATE: Gunakan localStorage untuk konsistensi dengan Admin View
@@ -684,6 +782,9 @@
 
           // Basic security check here for consistency
           if (!userKod && !isAuth) { return; }
+
+          // Pastikan state smart board betul semasa muat awal
+          window.toggleSmartboard();
 
           // Listen for hash changes to support browser back/forward buttons
           window.addEventListener('hashchange', () => {
