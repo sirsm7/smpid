@@ -6,7 +6,31 @@ import { getDatabaseClient } from '../core/db.js';
 const todayDate = new Date();
 let adminCurrentMonth = todayDate.getMonth();
 let adminCurrentYear = todayDate.getFullYear();
-let adminActiveWeek = Math.ceil(todayDate.getDate() / 7);
+
+// FUNGSI BANTUAN MINGGU (ISNIN - AHAD)
+function getWeeksInMonth(year, month) {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const weeks = [];
+    let currentWeek = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateObj = new Date(year, month, d);
+        const dayOfWeek = (dateObj.getDay() + 6) % 7; // 0=Isnin, 6=Ahad
+        currentWeek.push(d);
+        if (dayOfWeek === 6 || d === daysInMonth) {
+            weeks.push(currentWeek);
+            currentWeek = [];
+        }
+    }
+    return weeks;
+}
+
+function getWeekNumberForDate(year, month, date) {
+    const weeks = getWeeksInMonth(year, month);
+    const index = weeks.findIndex(w => w.includes(date));
+    return index >= 0 ? index + 1 : 1;
+}
+
+let adminActiveWeek = getWeekNumberForDate(adminCurrentYear, adminCurrentMonth, todayDate.getDate());
 let activeBookings = [];
 let lockedDatesList = [];
 let adminSelectedDates = [];
@@ -418,7 +442,7 @@ window.renderAdminBookingCalendar = async function() {
     label.innerText = `${MALAY_MONTHS[adminCurrentMonth]} ${adminCurrentYear}`;
 
     try {
-        const daysInMonth = new Date(adminCurrentYear, adminCurrentMonth + 1, 0).getDate();
+        const weeks = getWeeksInMonth(adminCurrentYear, adminCurrentMonth);
         const pad = (n) => n.toString().padStart(2, '0');
         const monthPrefix = `${adminCurrentYear}-${pad(adminCurrentMonth + 1)}`;
 
@@ -432,7 +456,7 @@ window.renderAdminBookingCalendar = async function() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const totalWeeks = Math.ceil(daysInMonth / 7);
+        const totalWeeks = weeks.length;
         if (adminActiveWeek > totalWeeks) adminActiveWeek = 1;
 
         let tabsHtml = '';
@@ -443,13 +467,13 @@ window.renderAdminBookingCalendar = async function() {
         }
         tabsContainer.innerHTML = tabsHtml;
 
-        const startDay = (adminActiveWeek - 1) * 7 + 1;
-        const endDay = Math.min(adminActiveWeek * 7, daysInMonth);
+        const currentWeekDays = weeks[adminActiveWeek - 1];
 
         grid.innerHTML = "";
         let hasContent = false;
 
-        for (let d = startDay; d <= endDay; d++) {
+        for (let i = 0; i < currentWeekDays.length; i++) {
+            const d = currentWeekDays[i];
             const dateString = `${monthPrefix}-${pad(d)}`;
             const dateObj = new Date(adminCurrentYear, adminCurrentMonth, d);
             dateObj.setHours(0, 0, 0, 0);
@@ -548,7 +572,7 @@ window.renderAdminBookingCalendar = async function() {
             if (isLockedGlobal) {
                 existingScopes = (lockObj.kod_ppd || 'ALL').split(',');
                 const isAll = existingScopes.some(s => s.startsWith('ALL'));
-                const districtCodesOnly = existingScopes.map(s => s.split(':')[0]).filter((v, i, a) => a.indexOf(v) === i && v !== 'ALL');
+                const districtCodesOnly = existingScopes.map(s => s.split(':')[0]).filter((v, idx, a) => a.indexOf(v) === idx && v !== 'ALL');
                 
                 const scopeLabel = isAll ? 'KUNCI NEGERI' : `KUNCI DAERAH (${districtCodesOnly.join(', ')})`;
                 const scopeClass = isAll ? 'bg-fuchsia-600 text-white border-fuchsia-700' : 'bg-purple-200 text-purple-800 border-purple-300';
@@ -591,7 +615,7 @@ window.renderAdminBookingCalendar = async function() {
             if (!isPast && (isAllowedDay || isLockedGlobal)) {
                 card.onclick = (e) => {
                      if (adminSelectedDates.includes(dateString)) {
-                         adminSelectedDates = adminSelectedDates.filter(d => d !== dateString);
+                         adminSelectedDates = adminSelectedDates.filter(ds => ds !== dateString);
                      } else {
                          adminSelectedDates.push(dateString);
                      }
@@ -1029,7 +1053,7 @@ window.changeAdminMonth = function(offset) {
 
     const realToday = new Date();
     if (adminCurrentMonth === realToday.getMonth() && adminCurrentYear === realToday.getFullYear()) {
-        adminActiveWeek = Math.ceil(realToday.getDate() / 7);
+        adminActiveWeek = getWeekNumberForDate(adminCurrentYear, adminCurrentMonth, realToday.getDate());
     } else {
         adminActiveWeek = 1;
     }
