@@ -285,6 +285,18 @@ function updateImpakUmurDropdown(school) {
 window.setPublicType = function(type) {
     document.getElementById('pubKategori').value = type;
 
+    // SUNTIKAN: Memaparkan Swal.fire apabila tab IMPAK dipilih
+    if (type === 'IMPAK') {
+        Swal.fire({
+            title: 'Perhatian!',
+            html: `Borang ini <b>KHUSUS UNTUK DIISI OLEH MURID</b> sahaja.<br><br>Masa yang dicadangkan untuk mengisi adalah <b>selepas sesi PdPc (Pengajaran dan Pemudahcaraan)</b> selesai.`,
+            icon: 'info',
+            confirmButtonText: 'Baik, Saya Faham',
+            confirmButtonColor: '#4f46e5',
+            customClass: { popup: 'rounded-3xl' }
+        });
+    }
+
     // Kemaskini Visual Tab (Tailwind)
     const tabs = ['MURID', 'GURU', 'SEKOLAH', 'IMPAK'];
     tabs.forEach(t => {
