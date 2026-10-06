@@ -1,10 +1,9 @@
 /**
- * ADMIN MODULE: MAIN CONTROLLER & ROUTER (V2.5.1 - UI FIX)
+ * ADMIN MODULE: MAIN CONTROLLER & ROUTER (V2.6)
  * Fungsi: Menguruskan navigasi tab, keselamatan, dan peranan (RBAC).
- * --- UPDATE V2.5.1 ---
- * 1. Pembaikan Bug UI: Menggantikan manipulasi statik className kepada classList
- * bagi memastikan kelas 'hidden' untuk tab sekuriti (cth: Import) tidak tertimpa.
- * 2. Integrasi Modul Import Data Pukal & Sokongan JPNMEL.
+ * --- UPDATE V2.6 ---
+ * 1. Integrasi navigasi tab untuk Modul Impak BBM.
+ * 2. Mengemas kini sekatan navigasi (forbiddenForUnit) bagi Unit PPD.
  */
 
 import { AuthService } from '../services/auth.service.js';
@@ -106,10 +105,10 @@ function switchAdminTab(tabId, event) {
     // SEMAKAN KESELAMATAN (GATEKEEPER)
     // Pastikan peranan tidak boleh akses tab dilarang walaupun tukar hash manual
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
-// ── SURGICAL EDIT START: Menambah larangan tab Libat Urus untuk PPD_UNIT ──
-    const forbiddenForUnit = ['dashboard', 'analisa', 'gallery', 'tempahan', 'email', 'helpdesk', 'import-data', 'libat-urus'];
+    // SURGICAL EDIT START: Menambah larangan tab Impak BBM untuk PPD_UNIT
+    const forbiddenForUnit = ['dashboard', 'analisa', 'impact', 'gallery', 'tempahan', 'email', 'helpdesk', 'import-data', 'libat-urus'];
     const forbiddenForMod = ['import-data']; // Hanya Super Admin boleh Import
-// ── SURGICAL EDIT END ──
+    // SURGICAL EDIT END
 
     if (userRole === 'PPD_UNIT' && forbiddenForUnit.includes(tabId)) {
         // Redirect senyap ke pencapaian
@@ -163,6 +162,11 @@ function loadModuleData(tabId) {
         case 'analisa':
             if (window.loadDcsAdmin) window.loadDcsAdmin();
             break;
+        // SURGICAL EDIT START: Menambah panggilan lazy-load bagi Impak BBM
+        case 'impact':
+            if (window.loadImpactAdmin) window.loadImpactAdmin();
+            break;
+        // SURGICAL EDIT END
         case 'pencapaian':
             if (window.populateTahunFilter) window.populateTahunFilter();
             break;
@@ -181,11 +185,9 @@ function loadModuleData(tabId) {
         case 'admin-users':
             if (window.loadAdminList) window.loadAdminList();
             break;
-// ── SURGICAL EDIT START: Menambah panggilan fungsi init untuk Libat Urus ──
         case 'libat-urus':
             if (window.loadAdminLibatUrus) window.loadAdminLibatUrus();
             break;
-// ── SURGICAL EDIT END ──
         // Tab import-data tidak mempunyai init automatik kerana ia adalah interaktif form manual
     }
 }
@@ -197,10 +199,11 @@ function loadModuleData(tabId) {
 function setupUnitView() {
     // Senarai ID butang navigasi yang perlu disembunyikan
     // Hanya 'pencapaian-tab' dan 'admin-users-tab' yang DIBIARKAN.
-// ── SURGICAL EDIT START: Menyembunyikan butang tab Libat Urus untuk mod Unit PPD ──
+    // SURGICAL EDIT START: Menyembunyikan butang tab Impak BBM untuk mod Unit PPD
     const hideButtons = [
         'dashboard-tab', 
         'analisa-tab', 
+        'impact-tab',
         'gallery-tab',
         'tempahan-tab',
         'email-tab', 
@@ -208,7 +211,7 @@ function setupUnitView() {
         'import-data-tab',
         'libat-urus-tab'
     ];
-// ── SURGICAL EDIT END ──
+    // SURGICAL EDIT END
 
     hideButtons.forEach(btnId => {
         const el = document.getElementById(btnId);

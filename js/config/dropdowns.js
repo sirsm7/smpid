@@ -3,7 +3,8 @@
  * PUSAT DATA DROPDOWN SMPID (PPD ALOR GAJAH)
  * Fungsi: Membekalkan senarai jawatan, peringkat, penyedia, tahun, dan tajuk bengkel
  * merentas semua modul (Public, User, Admin).
- * --- UPDATE V1.4 ---
+ * --- UPDATE V1.5 ---
+ * Penambahan: Kumpulan Umur (Tahun 4-6, Tingkatan 1-5) dan Komponen BBM bagi modul Impak.
  * Penambahan: Kategori BENGKEL (Disusun mengikut abjad A-Z).
  * Integriti: Memastikan ejaan standard bagi tajuk bimbingan.
  */
@@ -34,7 +35,7 @@ export const DROPDOWN_DATA = {
         { val: "GURU ADMIN DELIMA", txt: "GURU ADMIN DELIMA" },
         { val: "GURU ICT & ADMIN DELIMA", txt: "GURU ICT & ADMIN DELIMA" },
         { val: "GURU PERPUSTAKAAN & MEDIA", txt: "GURU PERPUSTAKAAN & MEDIA" },
-		{ val: "ANGGOTA KUMPULAN PELAKSANA", txt: "ANGGOTA KUMPULAN PELAKSANA" }
+        { val: "ANGGOTA KUMPULAN PELAKSANA", txt: "ANGGOTA KUMPULAN PELAKSANA" }
     ],
 
     // Peringkat Pengiktirafan
@@ -64,11 +65,37 @@ export const DROPDOWN_DATA = {
         { val: "BENGKEL / BIMBINGAN ROBOTIK REKAEDUKIT", txt: "BENGKEL / BIMBINGAN ROBOTIK REKAEDUKIT" },
         { val: "BENGKEL / BIMBINGAN ROBOTIK RERO:MICRO", txt: "BENGKEL / BIMBINGAN ROBOTIK RERO:MICRO" },
         { val: "BENGKEL / BIMBINGAN APLIKASI AI TOOLS", txt: "BENGKEL / BIMBINGAN APLIKASI AI TOOLS" },
-		{ val: "BIMBINGAN ADMIN DELIMA (BAHARU)", txt: "BIMBINGAN ADMIN DELIMA (BAHARU)" },
+        { val: "BIMBINGAN ADMIN DELIMA (BAHARU)", txt: "BIMBINGAN ADMIN DELIMA (BAHARU)" },
         { val: "BIMBINGAN PENYELARAS ICT (BAHARU)", txt: "BIMBINGAN PENYELARAS ICT (BAHARU)" },
-		{ val: "BENGKEL PENSIJILAN APPLE TEACHER", txt: "BENGKEL PENSIJILAN APPLE TEACHER" },
-		{ val: "BENGKEL PENSIJILAN GEMINI / GOOGLE", txt: "BENGKEL PENSIJILAN GEMINI / GOOGLE" },
-		{ val: "BENGKEL KEMAHIRAN APLIKASI GOOGLE WORKSPACE", txt: "BENGKEL KEMAHIRAN APLIKASI GOOGLE WORKSPACE" }
+        { val: "BENGKEL PENSIJILAN APPLE TEACHER", txt: "BENGKEL PENSIJILAN APPLE TEACHER" },
+        { val: "BENGKEL PENSIJILAN GEMINI / GOOGLE", txt: "BENGKEL PENSIJILAN GEMINI / GOOGLE" },
+        { val: "BENGKEL KEMAHIRAN APLIKASI GOOGLE WORKSPACE", txt: "BENGKEL KEMAHIRAN APLIKASI GOOGLE WORKSPACE" }
+    ],
+
+    // --- BARU: KUMPULAN UMUR & KOMPONEN BBM UNTUK MODUL IMPAK BBM (V1.5) ---
+    UMUR_MURID: [
+        { val: "TAHUN 4", txt: "TAHUN 4" },
+        { val: "TAHUN 5", txt: "TAHUN 5" },
+        { val: "TAHUN 6", txt: "TAHUN 6" },
+        { val: "TINGKATAN 1", txt: "TINGKATAN 1" },
+        { val: "TINGKATAN 2", txt: "TINGKATAN 2" },
+        { val: "TINGKATAN 3", txt: "TINGKATAN 3" },
+        { val: "TINGKATAN 4", txt: "TINGKATAN 4" },
+        { val: "TINGKATAN 5", txt: "TINGKATAN 5" }
+    ],
+    
+    KOMPONEN_BBM: [
+        { val: "Gambar / ilustrasi", txt: "Gambar / ilustrasi" },
+        { val: "Video", txt: "Video" },
+        { val: "Animasi", txt: "Animasi" },
+        { val: "Penerangan", txt: "Penerangan" },
+        { val: "Contoh", txt: "Contoh" },
+        { val: "Aktiviti interaktif", txt: "Aktiviti interaktif" },
+        { val: "Permainan", txt: "Permainan" },
+        { val: "Latihan", txt: "Latihan" },
+        { val: "Soalan", txt: "Soalan" },
+        { val: "Nota / bahan bacaan", txt: "Nota / bahan bacaan" },
+        { val: "Lain-lain", txt: "Lain-lain" }
     ]
 };
 
@@ -100,7 +127,7 @@ export function populateDropdown(elementId, category, defaultValue = null) {
         placeholder.value = "";
         placeholder.disabled = true;
         placeholder.selected = true;
-        placeholder.innerText = `- PILIH ${category} -`;
+        placeholder.innerText = `- PILIH ${category.replace('_', ' ')} -`;
         select.appendChild(placeholder);
     }
 

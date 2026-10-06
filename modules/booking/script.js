@@ -1,11 +1,12 @@
 /**
- * BOOKING MODULE CONTROLLER (BB) - VERSION 6.3 (STRICT DISTRICT LOGIC)
+ * BOOKING MODULE CONTROLLER (BB) - VERSION 6.4 (STRICT DISTRICT LOGIC & REAL WEEK CALCULATION)
  * Fungsi: Menguruskan logik tempahan dengan paparan Grid Kad Interaktif.
  * --- UPDATE V6.3 ---
- * 1. Menapis kelayakan hari (Allowed Days) secara spesifik mengikut daerah:
- *    - JASIN (M010): Selasa, Rabu, Khamis sahaja.
- *    - ALOR GAJAH (M030): Selasa, Rabu, Khamis, dan Sabtu (Minggu ke-3).
- *    - MELAKA TENGAH (M020): Isnin, Selasa, Rabu, Khamis.
+ * 1. Menapis kelayakan hari (Allowed Days) secara spesifik mengikut daerah.
+ * --- UPDATE V6.4 ---
+ * 1. Menukar logik pengiraan tatasusunan minggu (`getWeeksInMonth`) supaya selari dengan 
+ *    kalendar dunia sebenar (bermula hari Isnin).
+ * 2. Memastikan `activeWeek` dijana dan dilaraskan mengikut tatasusunan kalendar sebenar.
  */
 
 import { BookingService } from '../../js/services/booking.service.js';
@@ -18,8 +19,34 @@ const todayDate = new Date();
 let currentMonth = todayDate.getMonth();
 let currentYear = todayDate.getFullYear();
 
-// LOGIK AUTO-MINGGU: Mengira minggu semasa berdasarkan tarikh hari ini
-let activeWeek = Math.ceil(todayDate.getDate() / 7); 
+// FUNGSI BANTUAN MINGGU (ISNIN - AHAD) [DIKEMASKINI DARI booking_manager.js]
+function getWeeksInMonth(year, month) {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const weeks = [];
+    let currentWeek = [];
+    
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateObj = new Date(year, month, d);
+        const dayOfWeek = (dateObj.getDay() + 6) % 7; // 0=Isnin, 6=Ahad
+        
+        currentWeek.push(d);
+        
+        if (dayOfWeek === 6 || d === daysInMonth) {
+            weeks.push(currentWeek);
+            currentWeek = [];
+        }
+    }
+    return weeks;
+}
+
+function getWeekNumberForDate(year, month, date) {
+    const weeks = getWeeksInMonth(year, month);
+    const index = weeks.findIndex(w => w.includes(date));
+    return index >= 0 ? index + 1 : 1;
+}
+
+// LOGIK AUTO-MINGGU DIKEMASKINI: Mengira minggu semasa berdasarkan kalendar sebenar
+let activeWeek = getWeekNumberForDate(currentYear, currentMonth, todayDate.getDate()); 
 
 let selectedDateString = null; 
 // SURGICAL EDIT START: Tambah atribut daerah untuk rujukan state global
@@ -27,7 +54,6 @@ let schoolInfo = { kod: '', nama: '', daerah: '' };
 // SURGICAL EDIT END
 
 // Day Configuration: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
-const ALLOWED_DAYS = [2, 3, 4, 6]; 
 const MALAY_MONTHS = ["Januari", "Februari", "Mac", "April", "Mei", "Jun", "Julai", "Ogos", "September", "Oktober", "November", "Disember"];
 const DAY_NAMES = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
 
@@ -161,7 +187,6 @@ async function loadBookingHistory(kod) {
     }
 }
 
-// SURGICAL EDIT START: Fungsi berpusat untuk menentukan kelayakan hari menepati logik perniagaan setiap daerah
 /**
  * Menyemak sama ada sesuatu tarikh dibenarkan berdasarkan daerah dan logik minggu
  * Jasin: Selasa, Rabu, Khamis sahaja
@@ -198,7 +223,6 @@ function checkIsAllowedDay(dateObj) {
 
     return false;
 }
-// SURGICAL EDIT END
 
 /**
  * Main Render: Grid-based Calendar Cards.
@@ -222,13 +246,14 @@ window.renderCalendar = async function() {
     try {
         const { bookedSlots, lockedDetails } = await BookingService.getMonthlyData(currentYear, currentMonth);
         
-        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        // PENGIRAAN MINGGU DIKEMASKINI 
+        const weeks = getWeeksInMonth(currentYear, currentMonth);
         const pad = (n) => n.toString().padStart(2, '0');
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // Render Week Tabs (M1-M5)
-        const totalWeeks = Math.ceil(daysInMonth / 7);
+        // Render Week Tabs (M1-M5/M6)
+        const totalWeeks = weeks.length;
         if (activeWeek > totalWeeks) activeWeek = 1;
 
         let tabsHtml = '';
@@ -242,23 +267,22 @@ window.renderCalendar = async function() {
         }
         tabsContainer.innerHTML = tabsHtml;
 
-        const startDay = (activeWeek - 1) * 7 + 1;
-        const endDay = Math.min(activeWeek * 7, daysInMonth);
+        // Dapatkan senarai hari untuk minggu yang sedang aktif
+        const currentWeekDays = weeks[activeWeek - 1];
 
         container.innerHTML = ""; 
         let hasContent = false;
 
-        for (let d = startDay; d <= endDay; d++) {
+        // Gelung HANYA untuk hari-hari dalam minggu aktif
+        for (let i = 0; i < currentWeekDays.length; i++) {
+            const d = currentWeekDays[i];
             const dateString = `${currentYear}-${pad(currentMonth + 1)}-${pad(d)}`;
             const dateObj = new Date(currentYear, currentMonth, d);
             dateObj.setHours(0, 0, 0, 0);
 
             const dayOfWeek = dateObj.getDay();
-            
-            // SURGICAL EDIT START: Gantikan rujukan statik dengan fungsi dinamik
             const isAllowedDay = checkIsAllowedDay(dateObj);
-            // SURGICAL EDIT END
-
+            
             const isLocked = lockedDetails.hasOwnProperty(dateString);
             const slotsTaken = bookedSlots[dateString] || [];
             
@@ -409,7 +433,6 @@ function handleCardSelection(dateStr, slotsTaken, element) {
         l.classList.remove('opacity-100', 'pointer-events-auto', 'grayscale-0');
     });
 
-    // SURGICAL EDIT START: Logik kemas kini bergantung kepada fungsi checkIsAllowedDay
     const isAllowedDay = checkIsAllowedDay(dateObj);
 
     // --- PAGI ---
@@ -431,7 +454,6 @@ function handleCardSelection(dateStr, slotsTaken, element) {
         radioSehari.disabled = false;
         labelSehari.classList.remove('opacity-40', 'pointer-events-none', 'grayscale');
     }
-    // SURGICAL EDIT END
 
     checkFormValidity();
     document.querySelectorAll('input[name="inputMasa"]').forEach(r => {
@@ -473,7 +495,7 @@ window.changeMonth = function(offset) {
     // Auto-calculate week only if it returns to the actual current real-time month
     const realToday = new Date();
     if (currentMonth === realToday.getMonth() && currentYear === realToday.getFullYear()) {
-        activeWeek = Math.ceil(realToday.getDate() / 7);
+        activeWeek = getWeekNumberForDate(currentYear, currentMonth, realToday.getDate());
     } else {
         activeWeek = 1; 
     }
@@ -537,7 +559,6 @@ window.handleBookingSubmit = async function() {
             confirmButtonColor: '#2563eb'
         });
 
-        // SURGICAL EDIT START: Tambahan POPUP_REMINDER berantai (chained)
         // POPUP 2: Peringatan Makluman
         await Swal.fire({
             icon: 'info',
@@ -554,7 +575,6 @@ window.handleBookingSubmit = async function() {
             confirmButtonColor: '#059669', // Warna hijau (emerald) untuk tanda setuju/faham
             allowOutsideClick: false // Memaksa pengguna klik butang untuk mengelak mereka terlepas pandang
         });
-        // SURGICAL EDIT END
 
         // Reset UI Form
         document.getElementById('bookingForm').reset();
