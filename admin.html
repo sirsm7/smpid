@@ -91,6 +91,12 @@
         .week-tab-admin-inactive {
             @apply bg-white text-slate-400 border-slate-200 hover:border-slate-400 hover:text-brand-600;
         }
+
+        /* Rank Badge Styles */
+        .rank-badge-1 { @apply bg-amber-100 text-amber-700 border-amber-300; }
+        .rank-badge-2 { @apply bg-slate-200 text-slate-700 border-slate-400; }
+        .rank-badge-3 { @apply bg-orange-100 text-orange-700 border-orange-300; }
+        .rank-badge-other { @apply bg-slate-50 text-slate-500 border-slate-200; }
     }
   </style>
 
@@ -638,6 +644,53 @@
                                 <tr><td class="p-4 text-center text-slate-400 text-xs">Mengira data...</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTAINER BAHARU: TOP PENSIJILAN -->
+            <div id="topPensijilanContainer" class="hidden mb-6 animate-fade-in">
+                <div class="flex items-center gap-2 mb-4 px-1 border-b border-slate-200 pb-2">
+                    <i class="fas fa-certificate text-amber-500"></i>
+                    <h3 class="text-sm font-black text-slate-700 uppercase tracking-widest">Analisis Terbaik Pensijilan Profesional Digital</h3>
+                    <span class="text-[9px] font-bold text-slate-400 ml-2 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">GOOGLE, APPLE & MICROSOFT</span>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Top PPD -->
+                    <div class="bg-white border-2 border-indigo-100 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+                        <div class="bg-indigo-50 px-4 py-3 border-b border-indigo-100 flex items-center justify-between">
+                            <h4 class="text-xs font-black text-indigo-800 uppercase tracking-wider"><i class="fas fa-building mr-1.5 text-indigo-400"></i> Prestasi PPD</h4>
+                        </div>
+                        <div class="flex-grow p-4 bg-white">
+                            <div id="topPensijilanPPDList" class="space-y-3">
+                                <div class="text-center text-xs text-slate-400 italic py-4">Mengira data...</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Top 3 Menengah -->
+                    <div class="bg-white border-2 border-fuchsia-100 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+                        <div class="bg-fuchsia-50 px-4 py-3 border-b border-fuchsia-100 flex items-center justify-between">
+                            <h4 class="text-xs font-black text-fuchsia-800 uppercase tracking-wider"><i class="fas fa-school mr-1.5 text-fuchsia-400"></i> Top 3 Menengah</h4>
+                        </div>
+                        <div class="flex-grow p-4 bg-white">
+                            <div id="topPensijilanSMList" class="space-y-3">
+                                <div class="text-center text-xs text-slate-400 italic py-4">Mengira data...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top 3 Rendah -->
+                    <div class="bg-white border-2 border-cyan-100 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+                        <div class="bg-cyan-50 px-4 py-3 border-b border-cyan-100 flex items-center justify-between">
+                            <h4 class="text-xs font-black text-cyan-800 uppercase tracking-wider"><i class="fas fa-child mr-1.5 text-cyan-400"></i> Top 3 Rendah</h4>
+                        </div>
+                        <div class="flex-grow p-4 bg-white">
+                            <div id="topPensijilanSRList" class="space-y-3">
+                                <div class="text-center text-xs text-slate-400 italic py-4">Mengira data...</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
