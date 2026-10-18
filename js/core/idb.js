@@ -1,21 +1,29 @@
 /**
  * js/core/idb.js
- * NADIM IndexedDB Cache Engine
+ * NADIM IndexedDB Cache Engine (Pro Web Caster - V2.0 Robust Edition)
  * Fungsi: Menguruskan storan pangkalan data tempatan pelayar web (IndexedDB)
- * untuk menyimpan data yang ditarik dari Supabase. Ini mengelakkan kelewatan 
- * muat turun dan mencegah masalah 'QuotaExceededError' localStorage (menyokong sehingga ratusan MB).
+ * untuk menyimpan data yang ditarik dari Supabase. Menyokong ciri Singleton 
+ * dan Active Background Garbage Collection untuk mengoptimumkan prestasi.
  */
 
 const DB_NAME = 'nadim_cache_db';
 const DB_VERSION = 1;
 const STORE_NAME = 'query_cache';
 
+// Singleton Instance Promise
+let dbPromise = null;
+
 export const IDBCache = {
     /**
-     * Memulakan atau menyambung ke pangkalan data IndexedDB
+     * Memulakan atau menyambung ke pangkalan data IndexedDB menggunakan corak Singleton
+     * bagi mengelakkan bukaan sambungan berulang (multiple connections).
      */
     async initDB() {
-        return new Promise((resolve, reject) => {
+        if (dbPromise) {
+            return dbPromise;
+        }
+
+        dbPromise = new Promise((resolve, reject) => {
             const request = indexedDB.open(DB_NAME, DB_VERSION);
 
             request.onupgradeneeded = (event) => {
@@ -27,14 +35,56 @@ export const IDBCache = {
             };
 
             request.onsuccess = () => {
-                resolve(request.result);
+                const db = request.result;
+                
+                // Mulakan pembersihan data usang (garbage collection) di latar belakang
+                // Penangguhan 1 saat supaya tidak mengganggu pergerakan UI serentak
+                setTimeout(() => {
+                    this._sweepStaleCache(db);
+                }, 1000);
+
+                resolve(db);
             };
 
             request.onerror = (event) => {
                 console.error('[IDB] Ralat memulakan pangkalan data:', event.target.error);
+                dbPromise = null; // Reset jika gagal supaya boleh cuba lagi
                 reject(event.target.error);
             };
         });
+
+        return dbPromise;
+    },
+
+    /**
+     * Fungsi Dalaman: Menyapu dan memadam cache yang telah melepasi tarikh luput 
+     * secara pukal di latar belakang (Non-blocking Garbage Collection).
+     * @param {IDBDatabase} db - Sambungan pangkalan data yang sedang aktif
+     */
+    async _sweepStaleCache(db) {
+        try {
+            const transaction = db.transaction(STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.openCursor();
+            const now = new Date().getTime();
+
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    if (now > cursor.value.expiry) {
+                        // Padam item luput
+                        cursor.delete();
+                    }
+                    // Teruskan semakan ke item seterusnya
+                    cursor.continue();
+                }
+            };
+
+            // Ralat semasa sapuan latar belakang tidak ditangkap ke console.error
+            // untuk mengelakkan pencemaran log (log spamming).
+        } catch (error) {
+            // Ignore (Silent fail for background operation)
+        }
     },
 
     /**
@@ -45,7 +95,7 @@ export const IDBCache = {
     async getCache(key) {
         try {
             const db = await this.initDB();
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 const transaction = db.transaction(STORE_NAME, 'readonly');
                 const store = transaction.objectStore(STORE_NAME);
                 const request = store.get(key);
@@ -59,7 +109,8 @@ export const IDBCache = {
                     // Semak jika cap masa telah tamat tempoh (TTL)
                     const now = new Date().getTime();
                     if (now > result.expiry) {
-                        this.removeCache(key); // Bersihkan cache lama secara senyap
+                        // Walaupun ada background sweeper, double check di sini lebih selamat
+                        this.removeCache(key);
                         return resolve(null);
                     }
 
@@ -86,7 +137,7 @@ export const IDBCache = {
     async setCache(key, data, ttlMinutes = 30) {
         try {
             const db = await this.initDB();
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 const transaction = db.transaction(STORE_NAME, 'readwrite');
                 const store = transaction.objectStore(STORE_NAME);
                 
@@ -100,13 +151,15 @@ export const IDBCache = {
                     timestamp: now
                 };
 
-                const request = store.put(payload);
+                store.put(payload);
 
-                request.onsuccess = () => resolve(true);
-                request.onerror = () => {
+                // Menggunakan transaction events untuk hasil yang lebih tepat
+                transaction.oncomplete = () => resolve(true);
+                transaction.onerror = () => {
                     console.warn(`[IDB] Gagal menyimpan cache untuk ${key}`);
                     resolve(false);
                 };
+                transaction.onabort = () => resolve(false);
             });
         } catch (error) {
             console.warn('[IDB] Kegagalan enjin simpanan:', error);
@@ -124,10 +177,11 @@ export const IDBCache = {
             return new Promise((resolve) => {
                 const transaction = db.transaction(STORE_NAME, 'readwrite');
                 const store = transaction.objectStore(STORE_NAME);
-                const request = store.delete(key);
+                store.delete(key);
 
-                request.onsuccess = () => resolve(true);
-                request.onerror = () => resolve(false);
+                transaction.oncomplete = () => resolve(true);
+                transaction.onerror = () => resolve(false);
+                transaction.onabort = () => resolve(false);
             });
         } catch (error) {
             return false;
@@ -154,12 +208,12 @@ export const IDBCache = {
                             cursor.delete();
                         }
                         cursor.continue();
-                    } else {
-                        resolve(true); // Selesai
                     }
                 };
 
-                request.onerror = () => resolve(false);
+                transaction.oncomplete = () => resolve(true);
+                transaction.onerror = () => resolve(false);
+                transaction.onabort = () => resolve(false);
             });
         } catch (error) {
             return false;
@@ -175,10 +229,11 @@ export const IDBCache = {
             return new Promise((resolve) => {
                 const transaction = db.transaction(STORE_NAME, 'readwrite');
                 const store = transaction.objectStore(STORE_NAME);
-                const request = store.clear();
+                store.clear();
 
-                request.onsuccess = () => resolve(true);
-                request.onerror = () => resolve(false);
+                transaction.oncomplete = () => resolve(true);
+                transaction.onerror = () => resolve(false);
+                transaction.onabort = () => resolve(false);
             });
         } catch (error) {
             return false;
