@@ -1,24 +1,41 @@
 /**
- * ACHIEVEMENT SERVICE
+ * ACHIEVEMENT SERVICE (V2.0 - IDB CACHE EDITION)
  * Menguruskan rekod pencapaian (kemenjadian), galeri, dan tapisan.
+ * Kemaskini: Integrasi IndexedDB Cache untuk prestasi pemuatan yang lebih laju
+ * dan memintas had memori pada data yang bersaiz besar.
  */
 
 import { getDatabaseClient } from '../core/db.js';
+import { IDBCache } from '../core/idb.js';
 
 const db = getDatabaseClient();
 
 export const AchievementService = {
     /**
-     * Dapatkan senarai tahun yang ada dalam database
+     * Dapatkan senarai tahun yang ada dalam database (Dengan Stale-While-Revalidate)
      */
     async getAvailableYears() {
+        const cacheKey = 'achievement_years';
+        const cached = await IDBCache.getCache(cacheKey);
+
+        if (cached) {
+            this._fetchAvailableYears(cacheKey).catch(e => console.warn("[AchievementService] Background sync failed:", e));
+            return cached;
+        }
+
+        return await this._fetchAvailableYears(cacheKey);
+    },
+
+    async _fetchAvailableYears(cacheKey) {
         const { data, error } = await db
             .from('smpid_pencapaian')
             .select('tahun');
             
         if (error) throw error;
-        // Kembalikan tahun unik, susunan menurun
-        return [...new Set(data.map(item => item.tahun))].sort((a, b) => b - a);
+        const years = [...new Set(data.map(item => item.tahun))].sort((a, b) => b - a);
+        
+        await IDBCache.setCache(cacheKey, years, 60);
+        return years;
     },
 
     /**
@@ -26,6 +43,18 @@ export const AchievementService = {
      * @param {string} tahun - 'ALL' atau tahun spesifik
      */
     async getAll(tahun = 'ALL') {
+        const cacheKey = `achievement_all_${tahun}`;
+        const cached = await IDBCache.getCache(cacheKey);
+
+        if (cached) {
+            this._fetchAll(tahun, cacheKey).catch(e => console.warn("[AchievementService] Background sync failed:", e));
+            return cached;
+        }
+
+        return await this._fetchAll(tahun, cacheKey);
+    },
+
+    async _fetchAll(tahun, cacheKey) {
         let query = db.from('smpid_pencapaian').select('*');
         
         if (tahun !== 'ALL') {
@@ -34,6 +63,8 @@ export const AchievementService = {
         
         const { data, error } = await query.order('created_at', { ascending: false });
         if (error) throw error;
+
+        await IDBCache.setCache(cacheKey, data, 60);
         return data;
     },
 
@@ -41,6 +72,18 @@ export const AchievementService = {
      * Dapatkan pencapaian mengikut sekolah (Untuk Portal Sekolah & Galeri)
      */
     async getBySchool(kodSekolah) {
+        const cacheKey = `achievement_school_${kodSekolah}`;
+        const cached = await IDBCache.getCache(cacheKey);
+
+        if (cached) {
+            this._fetchBySchool(kodSekolah, cacheKey).catch(e => console.warn("[AchievementService] Background sync failed:", e));
+            return cached;
+        }
+
+        return await this._fetchBySchool(kodSekolah, cacheKey);
+    },
+
+    async _fetchBySchool(kodSekolah, cacheKey) {
         const { data, error } = await db
             .from('smpid_pencapaian')
             .select('*')
@@ -48,6 +91,8 @@ export const AchievementService = {
             .order('created_at', { ascending: false });
 
         if (error) throw error;
+
+        await IDBCache.setCache(cacheKey, data, 60);
         return data;
     },
 
@@ -60,6 +105,8 @@ export const AchievementService = {
             .insert([payload]);
 
         if (error) throw error;
+
+        await IDBCache.invalidateByPrefix('achievement_');
         return { success: true };
     },
 
@@ -67,7 +114,6 @@ export const AchievementService = {
      * Kemaskini rekod sedia ada
      */
     async update(id, payload) {
-        // 1. Update rekod utama
         const { error } = await db
             .from('smpid_pencapaian')
             .update(payload)
@@ -75,12 +121,11 @@ export const AchievementService = {
 
         if (error) throw error;
 
-        // 2. Logic Khas: Auto-Sync Jawatan Guru
-        // Jika nama guru dan jawatan dikemaskini, selaraskan rekod lain untuk guru yang sama
         if (payload.kategori === 'GURU' && payload.jawatan && payload.nama_peserta) {
             await this.syncTeacherPosition(payload.nama_peserta, payload.jawatan, id);
         }
 
+        await IDBCache.invalidateByPrefix('achievement_');
         return { success: true };
     },
 
@@ -94,12 +139,13 @@ export const AchievementService = {
             .eq('id', id);
 
         if (error) throw error;
+
+        await IDBCache.invalidateByPrefix('achievement_');
         return { success: true };
     },
 
     /**
      * Padam rekod secara pukal (Bulk Delete)
-     * Menggunakan operator .in() untuk prestasi maksimum dalam satu transaksi API
      */
     async deleteBulk(ids) {
         const { error } = await db
@@ -108,6 +154,8 @@ export const AchievementService = {
             .in('id', ids);
 
         if (error) throw error;
+
+        await IDBCache.invalidateByPrefix('achievement_');
         return { success: true };
     },
 
@@ -121,7 +169,7 @@ export const AchievementService = {
                 .update({ jawatan: jawatanBaru })
                 .eq('nama_peserta', namaGuru)
                 .eq('kategori', 'GURU')
-                .neq('id', excludeId); // Jangan update rekod yang sedang diedit (sebab dah update)
+                .neq('id', excludeId); 
             
             if (error) console.warn("[Service] Auto-sync jawatan gagal:", error);
         } catch (e) {
@@ -131,7 +179,6 @@ export const AchievementService = {
 
     /**
      * Kemaskini Pukal Nama Program (Standardization)
-     * Mengubah semua rekod yang mempunyai 'oldName' kepada 'newName'
      */
     async batchUpdateProgramName(oldName, newName) {
         const { error } = await db
@@ -140,13 +187,13 @@ export const AchievementService = {
             .eq('nama_pertandingan', oldName);
 
         if (error) throw error;
+
+        await IDBCache.invalidateByPrefix('achievement_');
         return { success: true };
     },
 
-    // ── SURGICAL EDIT START: Menambah sokongan Penyeragaman Skor & Ubah Penyedia Pukal ──
     /**
      * Kemaskini Pukal Skor / Pencapaian (Standardization)
-     * Mengubah semua rekod yang mempunyai 'oldSkor' kepada 'newSkor'
      */
     async batchUpdateSkor(oldSkor, newSkor) {
         const { error } = await db
@@ -155,12 +202,13 @@ export const AchievementService = {
             .eq('pencapaian', oldSkor);
 
         if (error) throw error;
+
+        await IDBCache.invalidateByPrefix('achievement_');
         return { success: true };
     },
 
     /**
      * Kemaskini Penyedia (Provider) secara Pukal berdasarkan IDs
-     * Digunakan untuk membetulkan Sijil Profesional secara berkelompok
      */
     async batchUpdatePenyedia(ids, newPenyedia) {
         const { error } = await db
@@ -169,14 +217,13 @@ export const AchievementService = {
             .in('id', ids);
 
         if (error) throw error;
+
+        await IDBCache.invalidateByPrefix('achievement_');
         return { success: true };
     },
-    // ── SURGICAL EDIT END ──
 
-    // [COMMENT SYNTAX] SURGICAL EDIT START: Menambah fungsi batchUpdateKategori
     /**
      * Kemaskini Kategori secara Pukal berdasarkan IDs
-     * Digunakan untuk membetulkan kesilapan tanda kategori oleh sekolah
      */
     async batchUpdateKategori(ids, newKategori) {
         const { error } = await db
@@ -185,7 +232,8 @@ export const AchievementService = {
             .in('id', ids);
 
         if (error) throw error;
+
+        await IDBCache.invalidateByPrefix('achievement_');
         return { success: true };
     }
-    // [COMMENT SYNTAX] SURGICAL EDIT END
 };

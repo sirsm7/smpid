@@ -1,18 +1,42 @@
 /**
- * SCHOOL SERVICE
+ * SCHOOL SERVICE (V2.0 - IDB CACHE EDITION)
  * Menguruskan data profil sekolah dan dashboard.
  * Refactored: Lazy DB Loading (Safe against startup crash).
+ * Kemaskini: Integrasi IndexedDB Cache untuk menangani saiz data yang besar
+ * berpandukan rujukan dari fail "Data Supabase.docx" bagi mengelak UI 'tergantung'.
  */
 
 import { requireDb } from '../core/db.js';
 import { cleanPhone } from '../core/helpers.js';
 import { APP_CONFIG } from '../config/app.config.js';
+import { IDBCache } from '../core/idb.js';
 
 export const SchoolService = {
     /**
-     * Dapatkan semua data sekolah
+     * Dapatkan semua data sekolah (Corak Cache-First / Stale-While-Revalidate)
      */
     async getAll() {
+        const cacheKey = 'school_data_ALL';
+        
+        // 1. Cuba tarik dari cache (IndexedDB)
+        const cachedData = await IDBCache.getCache(cacheKey);
+
+        if (cachedData) {
+            // 2. Jika cache wujud, pulangkan terus kepada UI supaya laman dimuatkan tanpa lengah.
+            // Di latar belakang (background), semak Supabase untuk kemas kini cache sesi seterusnya.
+            this._fetchAndCacheAll(cacheKey).catch(e => console.warn("[SchoolService] Background sync failed:", e));
+            return cachedData;
+        }
+
+        // 3. Jika tiada cache (pengguna pertama kali), tunggu panggilan ke Supabase
+        return await this._fetchAndCacheAll(cacheKey);
+    },
+
+    /**
+     * Fungsi dalaman: Tarik dari pangkalan data dan simpan ke Cache
+     * @private
+     */
+    async _fetchAndCacheAll(cacheKey) {
         const db = requireDb(); // Lazy Load
         const { data, error } = await db
             .from('smpid_sekolah_data')
@@ -21,7 +45,7 @@ export const SchoolService = {
 
         if (error) throw error;
 
-        return data.map(item => {
+        const processedData = data.map(item => {
             const requiredFields = [
                 item.nama_gpict, item.no_telefon_gpict, item.emel_delima_gpict,
                 item.nama_admin_delima, item.no_telefon_admin_delima, item.emel_delima_admin_delima
@@ -40,8 +64,16 @@ export const SchoolService = {
                 is_berbeza: (telG && telA) && !isSama
             };
         });
+
+        // Simpan ke IndexedDB dengan jangka hayat 60 minit
+        await IDBCache.setCache(cacheKey, processedData, 60);
+
+        return processedData;
     },
 
+    /**
+     * Tarik data profil satu sekolah (Direct Query)
+     */
     async getByCode(kodSekolah) {
         const db = requireDb(); // Lazy Load
         const { data, error } = await db
@@ -68,9 +100,12 @@ export const SchoolService = {
 
         if (error) throw error;
 
-        // 2. Hantar Notifikasi ke Deno API (Optimistic)
+        // 2. Invalidate Cache (Buang cache sekolah utama supaya tarikan seterusnya menggunakan data segar)
+        await IDBCache.removeCache('school_data_ALL');
+
+        // 3. Hantar Notifikasi ke Deno API (Optimistic)
         if (APP_CONFIG.API.DENO_URL) {
-            const sessionAuth = sessionStorage.getItem(APP_CONFIG.SESSION.AUTH_FLAG) === 'true';
+            const sessionAuth = localStorage.getItem(APP_CONFIG.SESSION.AUTH_FLAG) === 'true';
             const updater = sessionAuth ? 'PENTADBIR PPD' : 'PIHAK SEKOLAH';
             const domNama = document.getElementById('dispNamaSekolah')?.innerText || kodSekolah;
 
@@ -88,6 +123,9 @@ export const SchoolService = {
         return { success: true };
     },
 
+    /**
+     * Padam data (Reset Data Sekolah)
+     */
     async resetData(kodSekolah) {
         const db = requireDb(); // Lazy Load
         const payload = {
@@ -101,6 +139,10 @@ export const SchoolService = {
             .eq('kod_sekolah', kodSekolah);
 
         if (error) throw error;
+
+        // Invalidate Cache
+        await IDBCache.removeCache('school_data_ALL');
+
         return { success: true };
     }
 };
