@@ -179,6 +179,24 @@ export const AchievementService = {
     },
 
     /**
+     * Kemaskini Pukal Nama Program & Skor Serentak (Standardization Komposit)
+     * BAHARU: Ditambah bagi memastikan cache dibersihkan apabila pengguna
+     * menggunakan fungsi penyeragaman dari paparan Admin.
+     */
+    async batchUpdateStandardize(oldProg, oldSkor, newProg, newSkor) {
+        const { error } = await db
+            .from('smpid_pencapaian')
+            .update({ nama_pertandingan: newProg, pencapaian: newSkor })
+            .eq('nama_pertandingan', oldProg)
+            .eq('pencapaian', oldSkor);
+
+        if (error) throw error;
+
+        await IDBCache.invalidateByPrefix('achievement_');
+        return { success: true };
+    },
+
+    /**
      * Kemaskini Pukal Nama Program (Standardization)
      */
     async batchUpdateProgramName(oldName, newName) {

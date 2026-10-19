@@ -1575,13 +1575,8 @@ window.executeStandardization = function(index, oldProg, oldSkor) {
         if (result.isConfirmed) {
             toggleLoading(true);
             try {
-                const db = getDatabaseClient();
-                const { error } = await db.from('smpid_pencapaian')
-                    .update({ nama_pertandingan: newProg, pencapaian: newSkor })
-                    .eq('nama_pertandingan', oldProg)
-                    .eq('pencapaian', oldSkor);
-
-                if (error) throw error;
+                // Menggunakan Service Layer untuk memastikan Cache dibersihkan
+                await AchievementService.batchUpdateStandardize(oldProg, oldSkor, newProg, newSkor);
                 
                 toggleLoading(false);
                 await Swal.fire({ title: 'Berjaya!', text: 'Data gabungan telah diseragamkan.', icon: 'success', timer: 1500, showConfirmButton: false });
