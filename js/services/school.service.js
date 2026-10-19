@@ -1,9 +1,9 @@
 /**
- * SCHOOL SERVICE (V2.0 - IDB CACHE EDITION)
+ * SCHOOL SERVICE (V2.1 - STRICT CACHE EDITION)
  * Menguruskan data profil sekolah dan dashboard.
- * Refactored: Lazy DB Loading (Safe against startup crash).
- * Kemaskini: Integrasi IndexedDB Cache untuk menangani saiz data yang besar
- * berpandukan rujukan dari fail "Data Supabase.docx" bagi mengelak UI 'tergantung'.
+ * Kemaskini: Membuang background sync (Stale-While-Revalidate) untuk
+ * menjimatkan bacaan (reads) Supabase. Cache hanya dikemaskini bila luput
+ * atau selepas operasi mutasi (Update/Reset).
  */
 
 import { requireDb } from '../core/db.js';
@@ -13,7 +13,7 @@ import { IDBCache } from '../core/idb.js';
 
 export const SchoolService = {
     /**
-     * Dapatkan semua data sekolah (Corak Cache-First / Stale-While-Revalidate)
+     * Dapatkan semua data sekolah (Strict Cache-First)
      */
     async getAll() {
         const cacheKey = 'school_data_ALL';
@@ -22,13 +22,12 @@ export const SchoolService = {
         const cachedData = await IDBCache.getCache(cacheKey);
 
         if (cachedData) {
-            // 2. Jika cache wujud, pulangkan terus kepada UI supaya laman dimuatkan tanpa lengah.
-            // Di latar belakang (background), semak Supabase untuk kemas kini cache sesi seterusnya.
-            this._fetchAndCacheAll(cacheKey).catch(e => console.warn("[SchoolService] Background sync failed:", e));
+            // 2. Jika cache wujud dan belum luput, pulangkan terus kepada UI.
+            // TIADA LAGI panggilan background ke Supabase di sini.
             return cachedData;
         }
 
-        // 3. Jika tiada cache (pengguna pertama kali), tunggu panggilan ke Supabase
+        // 3. Jika tiada cache (pengguna pertama kali atau cache luput), tunggu panggilan ke Supabase
         return await this._fetchAndCacheAll(cacheKey);
     },
 

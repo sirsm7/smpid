@@ -1,8 +1,9 @@
 /**
- * ACHIEVEMENT SERVICE (V2.0 - IDB CACHE EDITION)
+ * ACHIEVEMENT SERVICE (V2.1 - STRICT CACHE EDITION)
  * Menguruskan rekod pencapaian (kemenjadian), galeri, dan tapisan.
- * Kemaskini: Integrasi IndexedDB Cache untuk prestasi pemuatan yang lebih laju
- * dan memintas had memori pada data yang bersaiz besar.
+ * Kemaskini: Membuang logik background sync (Stale-While-Revalidate) untuk
+ * menjimatkan operasi bacaan (reads) di Supabase. Cache akan dikemaskini 
+ * apabila tamat tempoh hayat atau selepas operasi mutasi (Create/Update/Delete).
  */
 
 import { getDatabaseClient } from '../core/db.js';
@@ -12,14 +13,14 @@ const db = getDatabaseClient();
 
 export const AchievementService = {
     /**
-     * Dapatkan senarai tahun yang ada dalam database (Dengan Stale-While-Revalidate)
+     * Dapatkan senarai tahun yang ada dalam database (Strict Cache-First)
      */
     async getAvailableYears() {
         const cacheKey = 'achievement_years';
         const cached = await IDBCache.getCache(cacheKey);
 
         if (cached) {
-            this._fetchAvailableYears(cacheKey).catch(e => console.warn("[AchievementService] Background sync failed:", e));
+            // Panggilan latar belakang (background sync) dihapuskan
             return cached;
         }
 
@@ -39,7 +40,7 @@ export const AchievementService = {
     },
 
     /**
-     * Dapatkan semua pencapaian (Admin Master List)
+     * Dapatkan semua pencapaian (Admin Master List - Strict Cache-First)
      * @param {string} tahun - 'ALL' atau tahun spesifik
      */
     async getAll(tahun = 'ALL') {
@@ -47,7 +48,7 @@ export const AchievementService = {
         const cached = await IDBCache.getCache(cacheKey);
 
         if (cached) {
-            this._fetchAll(tahun, cacheKey).catch(e => console.warn("[AchievementService] Background sync failed:", e));
+            // Panggilan latar belakang (background sync) dihapuskan
             return cached;
         }
 
@@ -76,7 +77,7 @@ export const AchievementService = {
         const cached = await IDBCache.getCache(cacheKey);
 
         if (cached) {
-            this._fetchBySchool(kodSekolah, cacheKey).catch(e => console.warn("[AchievementService] Background sync failed:", e));
+            // Panggilan latar belakang (background sync) dihapuskan
             return cached;
         }
 
