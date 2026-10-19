@@ -194,7 +194,7 @@
         <a href="#admin-users" class="tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="admin-users-tab" onclick="switchAdminTab('admin-users', event)"><i class="fas fa-users-cog"></i> Akses</a>
         
         <!-- TAB IMPORT (Super Admin Sahaja) -->
-        <a href="#import-data" class="hidden tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="import-data-tab" onclick="switchAdminTab('import-data', event)"><i class="fas fa-file-import text-emerald-600"></i> Import</a>
+        <a href="#import-data" class="hidden tab-inactive px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="import-data-tab" onclick="switchAdminTab('import-data', event)"><i class="fas fa-file-import text-emerald-600"></i> Import & Backup</a>
         
         <!-- DROPDOWN PAUTAN MODULE -->
         <div class="relative group cursor-pointer">
@@ -1117,9 +1117,9 @@
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-6">
                 <div>
                     <h2 class="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-                        <i class="fas fa-file-import text-emerald-600"></i> Import Data Pukal
+                        <i class="fas fa-file-import text-emerald-600"></i> Import Data & Sandaran
                     </h2>
-                    <p class="text-slate-500 text-sm font-medium mt-1">Muat naik fail CSV untuk mendaftar atau mengemas kini profil sekolah secara berkelompok.</p>
+                    <p class="text-slate-500 text-sm font-medium mt-1">Muat naik fail CSV untuk mendaftar atau mengemas kini profil sekolah secara berkelompok, serta urus sandaran JSON.</p>
                 </div>
                 <div class="flex gap-2 flex-wrap">
                     <button onclick="muatTurunTemplatCSV()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition shadow-lg flex items-center gap-2">
@@ -1154,6 +1154,31 @@
                     <button onclick="if(window.mulaImportAnalisaCSV) window.mulaImportAnalisaCSV()" id="btnMulaImportAnalisa" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-widest mt-4">
                         <i class="fas fa-play"></i> Import Data Analisa
                     </button>
+                </div>
+            </div>
+
+            <!-- NEW: BATCH BACKUP & RESTORE SECTION -->
+            <div class="mt-8 bg-slate-900 rounded-3xl p-6 md:p-8 border border-slate-800 shadow-2xl relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-500 opacity-10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+                
+                <div class="relative z-10 flex flex-col lg:flex-row gap-8 items-center justify-between">
+                    <div class="text-left lg:w-1/2">
+                        <h3 class="text-xl font-black text-white mb-2 flex items-center gap-3"><i class="fas fa-server text-emerald-400"></i> Pengurusan Sandaran Sistem (Backup & Restore)</h3>
+                        <p class="text-sm text-slate-400 leading-relaxed mb-6">Fungsi ini membenarkan anda memuat turun keseluruhan pangkalan data ke dalam satu fail JSON. Anda juga boleh memulihkan (restore) sistem menggunakan fail tersebut pada bila-bila masa.</p>
+                        
+                        <button onclick="muatTurunBackupKeseluruhan()" class="px-6 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold transition shadow-lg shadow-emerald-500/30 flex items-center gap-2 transform active:scale-95">
+                            <i class="fas fa-download"></i> Muat Turun Backup Keseluruhan
+                        </button>
+                    </div>
+                    
+                    <div class="lg:w-1/2 w-full bg-slate-800 p-6 rounded-2xl border border-slate-700">
+                        <label class="block text-xs font-bold text-slate-300 uppercase tracking-widest mb-3"><i class="fas fa-upload text-amber-400 mr-2"></i>Pulihkan Sistem (Restore)</label>
+                        <input type="file" id="jsonBackupInput" accept=".json" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600 cursor-pointer bg-slate-900 border border-slate-700 rounded-xl shadow-inner mb-4 transition-colors">
+                        
+                        <button onclick="mulaRestoreKeseluruhan()" id="btnMulaRestore" class="w-full bg-red-500 hover:bg-red-600 text-white font-black py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-widest transform active:scale-95">
+                            <i class="fas fa-sync"></i> Mulakan Pemulihan Data
+                        </button>
+                    </div>
                 </div>
             </div>
 

@@ -1,19 +1,14 @@
 /**
  * ADMIN MODULE: SETTINGS (STRICT RBAC & BATCH IMPORT EDITION)
  * Menguruskan pangkalan data pengguna pentadbir, kawalan akses sistem,
- * dan modul Import Data Pukal (Super Admin).
- * --- UPDATE V2.7 (DB CONSTRAINT & ERROR HANDLING FIX) ---
- * Logic: Menyuntik penapis awal (validation) untuk kata laluan.
- * Logic: Memastikan JPNMEL dan SUPER_ADMIN diberikan kod_sekolah 'ALL' untuk elak konflik RBAC.
- * Logic: Menangkap ralat spesifik Supabase untuk diagnosis 400 Bad Request.
- * --- UPDATE V2.8 (SCHOOL PHONE NUMBER) ---
- * Logic: Mengemas kini modul Import Data untuk menyokong lajur no_telefon_sekolah.
+ * modul Import Data Pukal (Super Admin), dan Backup/Restore Keseluruhan Sistem.
  */
 
 import { AuthService } from '../services/auth.service.js';
 import { toggleLoading, keluarSistem } from '../core/helpers.js';
 import { APP_CONFIG } from '../config/app.config.js';
 import { getDatabaseClient } from '../core/db.js'; // Disuntik untuk operasi Import Pukal
+import { BackupService } from '../services/backup.service.js'; // Perkhidmatan Backup/Restore
 
 // --- 1. PENGURUSAN PENGGUNA (ADMIN LIST) ---
 
@@ -945,3 +940,181 @@ window.mulaImportAnalisaCSV = async function() {
         fileInput.value = ''; // Kosongkan pilihan fail
     }
 };
+
+// --- 5. BATCH BACKUP & RESTORE DATA (SUPER ADMIN) ---
+
+/**
+ * Memuat turun keseluruhan data pangkalan data ke dalam satu fail JSON.
+ */
+window.muatTurunBackupKeseluruhan = async function() {
+    const currentUserRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+    if (currentUserRole !== 'SUPER_ADMIN') {
+        return Swal.fire('Akses Dihalang', 'Operasi kritikal ini dikhaskan untuk Super Admin sahaja.', 'error');
+    }
+
+    toggleLoading(true);
+    try {
+        const backupData = await BackupService.exportAllData();
+        const jsonString = JSON.stringify(backupData, null, 2);
+        
+        // Cipta objek Blob untuk muat turun
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Backup_Penuh_SMPID_${new Date().toISOString().slice(0,10)}.json`;
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        URL.revokeObjectURL(url);
+        toggleLoading(false);
+        
+        Swal.fire({
+            icon: 'success',
+            title: 'Berjaya',
+            text: 'Fail sandaran (backup) keseluruhan sistem berjaya dimuat turun.',
+            confirmButtonColor: '#059669'
+        });
+    } catch (error) {
+        toggleLoading(false);
+        Swal.fire('Ralat Backup', error.message || 'Gagal mengeksport data.', 'error');
+    }
+};
+
+/**
+ * Memulihkan keseluruhan data dari fail JSON sandaran (Restore).
+ */
+window.mulaRestoreKeseluruhan = async function() {
+    const currentUserRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
+    if (currentUserRole !== 'SUPER_ADMIN') {
+        return Swal.fire('Akses Dihalang', 'Operasi kritikal ini dikhaskan untuk Super Admin sahaja.', 'error');
+    }
+
+    const fileInput = document.getElementById('jsonBackupInput');
+    const file = fileInput?.files[0];
+    
+    if (!file) {
+        return Swal.fire('Tiada Fail', 'Sila pilih fail Backup JSON terlebih dahulu.', 'warning');
+    }
+
+    if (file.type !== "application/json" && !file.name.endsWith('.json')) {
+        return Swal.fire('Format Salah', 'Sila pastikan anda memuat naik fail berformat .json', 'error');
+    }
+
+    Swal.fire({
+        title: 'Amaran Kritikal!',
+        html: 'Tindakan ini akan <b>MENIMPA (UPSERT)</b> data sedia ada di pangkalan data dengan data dari fail sandaran (backup) ini.<br><br>Adakah anda pasti mahu meneruskan?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Mulakan Restore',
+        cancelButtonText: 'Batal',
+        customClass: { popup: 'rounded-3xl' }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            executeRestore(file);
+        }
+    });
+};
+
+/**
+ * Logik pelaksanaan bacaan fail dan pemulihan data (Internal).
+ */
+async function executeRestore(file) {
+    const btn = document.getElementById('btnMulaRestore');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sedang Memulihkan...';
+    }
+
+    const logContainer = document.getElementById('importLogContainer');
+    const terminal = document.getElementById('importTerminalInner');
+    const progressBar = document.getElementById('importProgressBar');
+    const progressText = document.getElementById('importProgressText');
+    
+    if (logContainer) logContainer.classList.remove('hidden');
+    if (terminal) terminal.innerHTML = '';
+    if (progressBar) progressBar.style.width = '0%';
+    if (progressText) progressText.innerText = 'Menyediakan fail...';
+
+    function logMsg(msg, type='info') {
+        if (!terminal) return;
+        const time = new Date().toLocaleTimeString('ms-MY');
+        let color = 'text-slate-300';
+        if (type === 'success') color = 'text-emerald-400';
+        if (type === 'error') color = 'text-red-400';
+        if (type === 'warn') color = 'text-amber-400';
+        
+        terminal.innerHTML += `<div class="${color}">[${time}] ${msg}</div>`;
+        const termContainer = document.getElementById('importTerminal');
+        if (termContainer) termContainer.scrollTop = termContainer.scrollHeight;
+    }
+
+    logMsg('Membaca fail sandaran JSON...', 'info');
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            logMsg('Menganalisis dan menyahkod struktur JSON...', 'info');
+            const jsonContent = JSON.parse(e.target.result);
+            
+            if (!jsonContent.data) {
+                throw new Error("Struktur fail JSON tidak sah. Elemen 'data' tidak ditemui.");
+            }
+
+            if (progressBar) progressBar.style.width = '30%';
+            if (progressText) progressText.innerText = 'Memproses Pangkalan Data...';
+            logMsg('Fail disahkan. Memulakan proses muat naik berkelompok (batch upsert) ke pangkalan data...', 'warn');
+
+            // Panggil BackupService untuk memproses muat naik
+            const results = await BackupService.restoreAllData(jsonContent);
+
+            if (progressBar) progressBar.style.width = '90%';
+
+            // Log keputusan
+            results.success.forEach(msg => logMsg(msg, 'success'));
+            results.errors.forEach(msg => logMsg(msg, 'error'));
+
+            if (progressBar) progressBar.style.width = '100%';
+            if (progressText) progressText.innerText = 'Selesai';
+            logMsg('<b>OPERASI PEMULIHAN TAMAT.</b>', results.errors.length === 0 ? 'success' : 'warn');
+
+            Swal.fire({
+                icon: results.errors.length === 0 ? 'success' : 'warning',
+                title: 'Pemulihan Selesai',
+                text: `Jadual Berjaya: ${results.success.length}. Jadual Gagal: ${results.errors.length}. Sila semak log untuk butiran lanjut.`,
+                confirmButtonColor: '#059669',
+                customClass: { popup: 'rounded-3xl' }
+            });
+
+        } catch (error) {
+            logMsg(`Ralat Pemprosesan: ${error.message}`, 'error');
+            Swal.fire('Ralat Pemulihan', error.message, 'error');
+            if (progressBar) progressBar.style.width = '100%';
+            if (progressBar) progressBar.classList.replace('bg-emerald-500', 'bg-red-500');
+            if (progressText) progressText.innerText = 'Gagal';
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-play"></i> Mulakan Proses Restore';
+            }
+            const fileInput = document.getElementById('jsonBackupInput');
+            if (fileInput) fileInput.value = ''; // Reset input fail
+        }
+    };
+    
+    reader.onerror = function() {
+        logMsg('Gagal membaca fail dari peranti anda.', 'error');
+        Swal.fire('Ralat', 'Gagal membaca fail.', 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-play"></i> Mulakan Proses Restore';
+        }
+    };
+
+    reader.readAsText(file);
+}
