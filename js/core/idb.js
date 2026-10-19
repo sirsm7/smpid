@@ -1,9 +1,11 @@
 /**
  * js/core/idb.js
- * NADIM IndexedDB Cache Engine (Pro Web Caster - V2.0 Robust Edition)
+ * NADIM IndexedDB Cache Engine (Pro Web Caster - V2.1 Robust Edition)
  * Fungsi: Menguruskan storan pangkalan data tempatan pelayar web (IndexedDB)
  * untuk menyimpan data yang ditarik dari Supabase. Menyokong ciri Singleton 
  * dan Active Background Garbage Collection untuk mengoptimumkan prestasi.
+ * KEMASKINI: Logik pemadaman (invalidate) ditukar dari Cursor ke getAllKeys 
+ * untuk jaminan 100% pembersihan cache lama merentas semua pelayar.
  */
 
 const DB_NAME = 'nadim_cache_db';
@@ -190,7 +192,8 @@ export const IDBCache = {
 
     /**
      * Memadam cache yang bermula dengan kata kunci tertentu (Cth: 'pencapaian_')
-     * Sangat berguna untuk 'Invalidation' selepas rekod baharu ditambah
+     * Sangat berguna untuk 'Invalidation' selepas rekod baharu ditambah.
+     * Menggunakan pendekatan getAllKeys untuk kebolehpercayaan maksimum.
      * @param {string} prefix Permulaan kunci cache
      */
     async invalidateByPrefix(prefix) {
@@ -199,15 +202,18 @@ export const IDBCache = {
             return new Promise((resolve) => {
                 const transaction = db.transaction(STORE_NAME, 'readwrite');
                 const store = transaction.objectStore(STORE_NAME);
-                const request = store.openCursor();
+                
+                // Ambil semua kunci dahulu untuk mengelakkan ralat 'cursor timeout/skip'
+                const request = store.getAllKeys();
 
                 request.onsuccess = (event) => {
-                    const cursor = event.target.result;
-                    if (cursor) {
-                        if (cursor.key.startsWith(prefix)) {
-                            cursor.delete();
-                        }
-                        cursor.continue();
+                    const keys = event.target.result;
+                    if (keys && keys.length > 0) {
+                        keys.forEach(key => {
+                            if (typeof key === 'string' && key.startsWith(prefix)) {
+                                store.delete(key);
+                            }
+                        });
                     }
                 };
 
@@ -216,6 +222,7 @@ export const IDBCache = {
                 transaction.onabort = () => resolve(false);
             });
         } catch (error) {
+            console.error('[IDB] Ralat ketika memadam cache berkumpulan:', error);
             return false;
         }
     },
