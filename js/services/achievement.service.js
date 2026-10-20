@@ -1,113 +1,112 @@
 /**
- * ACHIEVEMENT SERVICE (V2.1 - STRICT CACHE EDITION)
+ * ACHIEVEMENT SERVICE (V3.0 - SWR & RBAC CACHE EDITION)
  * Menguruskan rekod pencapaian (kemenjadian), galeri, dan tapisan.
- * Kemaskini: Membuang logik background sync (Stale-While-Revalidate) untuk
- * menjimatkan operasi bacaan (reads) di Supabase. Cache akan dikemaskini 
- * apabila tamat tempoh hayat atau selepas operasi mutasi (Create/Update/Delete).
+ * Kemaskini: 
+ * 1. Menggunakan Stale-While-Revalidate (SWR) untuk pemuatan UI pantas.
+ * 2. Menggunakan penjanaan kunci cache pintar (RBAC Key) dari IDBCache.
+ * 3. Pembersihan cache (invalidasi) dilakukan secara bersasar tanpa mengganggu cache yang tidak berkaitan.
  */
 
 import { getDatabaseClient } from '../core/db.js';
 import { IDBCache } from '../core/idb.js';
 
-const db = getDatabaseClient();
-
 export const AchievementService = {
     /**
-     * Dapatkan senarai tahun yang ada dalam database (Strict Cache-First)
+     * Dapatkan senarai tahun yang ada dalam database.
+     * Menggunakan SWR kerana ia dipaparkan pada Admin dan Awam.
      */
     async getAvailableYears() {
-        const cacheKey = 'achievement_years';
-        const cached = await IDBCache.getCache(cacheKey);
+        const cacheKey = IDBCache.generateSecureKey('achievement_years', true);
 
-        if (cached) {
-            // Panggilan latar belakang (background sync) dihapuskan
-            return cached;
-        }
+        const fetchFactory = async () => {
+            const db = getDatabaseClient();
+            const { data, error } = await db
+                .from('smpid_pencapaian')
+                .select('tahun');
+                
+            if (error) throw error;
+            return [...new Set(data.map(item => item.tahun))].sort((a, b) => b - a);
+        };
 
-        return await this._fetchAvailableYears(cacheKey);
-    },
-
-    async _fetchAvailableYears(cacheKey) {
-        const { data, error } = await db
-            .from('smpid_pencapaian')
-            .select('tahun');
-            
-        if (error) throw error;
-        const years = [...new Set(data.map(item => item.tahun))].sort((a, b) => b - a);
-        
-        await IDBCache.setCache(cacheKey, years, 60);
-        return years;
+        return await IDBCache.staleWhileRevalidate(cacheKey, fetchFactory, null, 60);
     },
 
     /**
-     * Dapatkan semua pencapaian (Admin Master List - Strict Cache-First)
-     * @param {string} tahun - 'ALL' atau tahun spesifik
+     * Dapatkan semua pencapaian (Admin Master List)
+     * Menggunakan SWR dengan kunci berasaskan identiti supaya data antara admin tidak bercampur.
      */
     async getAll(tahun = 'ALL') {
-        const cacheKey = `achievement_all_${tahun}`;
-        const cached = await IDBCache.getCache(cacheKey);
+        const cacheKey = IDBCache.generateSecureKey(`achievement_all_${tahun}`, false);
 
-        if (cached) {
-            // Panggilan latar belakang (background sync) dihapuskan
-            return cached;
-        }
+        const fetchFactory = async () => {
+            const db = getDatabaseClient();
+            let query = db.from('smpid_pencapaian').select('*');
+            
+            if (tahun !== 'ALL') {
+                query = query.eq('tahun', parseInt(tahun));
+            }
+            
+            const { data, error } = await query.order('created_at', { ascending: false });
+            if (error) throw error;
 
-        return await this._fetchAll(tahun, cacheKey);
-    },
+            return data;
+        };
 
-    async _fetchAll(tahun, cacheKey) {
-        let query = db.from('smpid_pencapaian').select('*');
-        
-        if (tahun !== 'ALL') {
-            query = query.eq('tahun', parseInt(tahun));
-        }
-        
-        const { data, error } = await query.order('created_at', { ascending: false });
-        if (error) throw error;
-
-        await IDBCache.setCache(cacheKey, data, 60);
-        return data;
+        return await IDBCache.staleWhileRevalidate(cacheKey, fetchFactory, null, 60);
     },
 
     /**
      * Dapatkan pencapaian mengikut sekolah (Untuk Portal Sekolah & Galeri)
+     * Kunci ini dianggap global untuk sekolah terbabit, supaya Galeri (Awam) dan Portal Sekolah kongsi cache.
      */
     async getBySchool(kodSekolah) {
-        const cacheKey = `achievement_school_${kodSekolah}`;
-        const cached = await IDBCache.getCache(cacheKey);
+        const cacheKey = IDBCache.generateSecureKey(`achievement_school_${kodSekolah}`, true);
 
-        if (cached) {
-            // Panggilan latar belakang (background sync) dihapuskan
-            return cached;
-        }
+        const fetchFactory = async () => {
+            const db = getDatabaseClient();
+            const { data, error } = await db
+                .from('smpid_pencapaian')
+                .select('*')
+                .eq('kod_sekolah', kodSekolah)
+                .order('created_at', { ascending: false });
 
-        return await this._fetchBySchool(kodSekolah, cacheKey);
+            if (error) throw error;
+            return data;
+        };
+
+        return await IDBCache.staleWhileRevalidate(cacheKey, fetchFactory, null, 60);
     },
 
-    async _fetchBySchool(kodSekolah, cacheKey) {
-        const { data, error } = await db
-            .from('smpid_pencapaian')
-            .select('*')
-            .eq('kod_sekolah', kodSekolah)
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        await IDBCache.setCache(cacheKey, data, 60);
-        return data;
+    /**
+     * Fungsi Bantuan: Invalidasi Bersasar (Surgical Invalidation)
+     * Hanya memadam cache senarai penuh admin dan senarai profil sekolah yang terlibat.
+     * Tidak memadam cache `achievement_years` melainkan perlu (untuk jimat query).
+     */
+    async _invalidateTargetedCache(kodSekolah = null) {
+        // Padam semua cache 'achievement_all' untuk semua jenis role/tahun (sebab senarai admin merangkumi semua)
+        await IDBCache.invalidateByPrefix('achievement_all_'); 
+        
+        if (kodSekolah) {
+            // Padam cache spesifik untuk sekolah tersebut (bagi galeri dan profil pengguna sekolah)
+            await IDBCache.invalidateByPrefix(`GLOBAL_achievement_school_${kodSekolah}`);
+        }
+        
+        // Padam cache senarai tahun sekiranya ada tahun baharu (Boleh diperhalusi kelak, tapi untuk selamat kita invalidate)
+        await IDBCache.invalidateByPrefix('GLOBAL_achievement_years');
     },
 
     /**
      * Tambah rekod pencapaian baru
      */
     async create(payload) {
+        const db = getDatabaseClient();
         const { error } = await db
             .from('smpid_pencapaian')
             .insert([payload]);
 
         if (error) throw error;
 
-        await IDBCache.invalidateByPrefix('achievement_');
+        await this._invalidateTargetedCache(payload.kod_sekolah);
         return { success: true };
     },
 
@@ -115,6 +114,11 @@ export const AchievementService = {
      * Kemaskini rekod sedia ada
      */
     async update(id, payload) {
+        const db = getDatabaseClient();
+        
+        // Perlu tahu kod sekolah rekod ini untuk invalidasi bersasar
+        const { data: record } = await db.from('smpid_pencapaian').select('kod_sekolah').eq('id', id).single();
+        
         const { error } = await db
             .from('smpid_pencapaian')
             .update(payload)
@@ -126,7 +130,7 @@ export const AchievementService = {
             await this.syncTeacherPosition(payload.nama_peserta, payload.jawatan, id);
         }
 
-        await IDBCache.invalidateByPrefix('achievement_');
+        await this._invalidateTargetedCache(record ? record.kod_sekolah : null);
         return { success: true };
     },
 
@@ -134,6 +138,11 @@ export const AchievementService = {
      * Padam rekod
      */
     async delete(id) {
+        const db = getDatabaseClient();
+        
+        // Perlu tahu kod sekolah rekod ini untuk invalidasi bersasar
+        const { data: record } = await db.from('smpid_pencapaian').select('kod_sekolah').eq('id', id).single();
+
         const { error } = await db
             .from('smpid_pencapaian')
             .delete()
@@ -141,7 +150,7 @@ export const AchievementService = {
 
         if (error) throw error;
 
-        await IDBCache.invalidateByPrefix('achievement_');
+        await this._invalidateTargetedCache(record ? record.kod_sekolah : null);
         return { success: true };
     },
 
@@ -149,6 +158,11 @@ export const AchievementService = {
      * Padam rekod secara pukal (Bulk Delete)
      */
     async deleteBulk(ids) {
+        const db = getDatabaseClient();
+        
+        // Ambil senarai sekolah yang terjejas untuk invalidasi
+        const { data: records } = await db.from('smpid_pencapaian').select('kod_sekolah').in('id', ids);
+
         const { error } = await db
             .from('smpid_pencapaian')
             .delete()
@@ -156,7 +170,17 @@ export const AchievementService = {
 
         if (error) throw error;
 
-        await IDBCache.invalidateByPrefix('achievement_');
+        // Invalidate senarai penuh admin
+        await IDBCache.invalidateByPrefix('achievement_all_'); 
+        
+        // Invalidate setiap sekolah yang terjejas
+        if (records) {
+            const uniqueSchools = [...new Set(records.map(r => r.kod_sekolah))];
+            for (const kod of uniqueSchools) {
+                await IDBCache.invalidateByPrefix(`GLOBAL_achievement_school_${kod}`);
+            }
+        }
+
         return { success: true };
     },
 
@@ -165,6 +189,7 @@ export const AchievementService = {
      */
     async syncTeacherPosition(namaGuru, jawatanBaru, excludeId) {
         try {
+            const db = getDatabaseClient();
             const { error } = await db
                 .from('smpid_pencapaian')
                 .update({ jawatan: jawatanBaru })
@@ -180,10 +205,11 @@ export const AchievementService = {
 
     /**
      * Kemaskini Pukal Nama Program & Skor Serentak (Standardization Komposit)
-     * BAHARU: Ditambah bagi memastikan cache dibersihkan apabila pengguna
-     * menggunakan fungsi penyeragaman dari paparan Admin.
      */
     async batchUpdateStandardize(oldProg, oldSkor, newProg, newSkor) {
+        const db = getDatabaseClient();
+        
+        // Kerana operasi pukal mungkin menyentuh pelbagai sekolah, kita invalidate secara umum
         const { error } = await db
             .from('smpid_pencapaian')
             .update({ nama_pertandingan: newProg, pencapaian: newSkor })
@@ -192,37 +218,8 @@ export const AchievementService = {
 
         if (error) throw error;
 
-        await IDBCache.invalidateByPrefix('achievement_');
-        return { success: true };
-    },
-
-    /**
-     * Kemaskini Pukal Nama Program (Standardization)
-     */
-    async batchUpdateProgramName(oldName, newName) {
-        const { error } = await db
-            .from('smpid_pencapaian')
-            .update({ nama_pertandingan: newName })
-            .eq('nama_pertandingan', oldName);
-
-        if (error) throw error;
-
-        await IDBCache.invalidateByPrefix('achievement_');
-        return { success: true };
-    },
-
-    /**
-     * Kemaskini Pukal Skor / Pencapaian (Standardization)
-     */
-    async batchUpdateSkor(oldSkor, newSkor) {
-        const { error } = await db
-            .from('smpid_pencapaian')
-            .update({ pencapaian: newSkor })
-            .eq('pencapaian', oldSkor);
-
-        if (error) throw error;
-
-        await IDBCache.invalidateByPrefix('achievement_');
+        await IDBCache.invalidateByPrefix('GLOBAL_achievement_school_');
+        await IDBCache.invalidateByPrefix('achievement_all_');
         return { success: true };
     },
 
@@ -230,6 +227,7 @@ export const AchievementService = {
      * Kemaskini Penyedia (Provider) secara Pukal berdasarkan IDs
      */
     async batchUpdatePenyedia(ids, newPenyedia) {
+        const db = getDatabaseClient();
         const { error } = await db
             .from('smpid_pencapaian')
             .update({ penyedia: newPenyedia })
@@ -237,7 +235,8 @@ export const AchievementService = {
 
         if (error) throw error;
 
-        await IDBCache.invalidateByPrefix('achievement_');
+        await IDBCache.invalidateByPrefix('GLOBAL_achievement_school_');
+        await IDBCache.invalidateByPrefix('achievement_all_');
         return { success: true };
     },
 
@@ -245,6 +244,7 @@ export const AchievementService = {
      * Kemaskini Kategori secara Pukal berdasarkan IDs
      */
     async batchUpdateKategori(ids, newKategori) {
+        const db = getDatabaseClient();
         const { error } = await db
             .from('smpid_pencapaian')
             .update({ kategori: newKategori })
@@ -252,7 +252,8 @@ export const AchievementService = {
 
         if (error) throw error;
 
-        await IDBCache.invalidateByPrefix('achievement_');
+        await IDBCache.invalidateByPrefix('GLOBAL_achievement_school_');
+        await IDBCache.invalidateByPrefix('achievement_all_');
         return { success: true };
     }
 };

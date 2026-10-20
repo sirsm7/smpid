@@ -1,9 +1,10 @@
 /**
- * SCHOOL SERVICE (V2.1 - STRICT CACHE EDITION)
+ * SCHOOL SERVICE (V3.0 - SWR & RBAC CACHE EDITION)
  * Menguruskan data profil sekolah dan dashboard.
- * Kemaskini: Membuang background sync (Stale-While-Revalidate) untuk
- * menjimatkan bacaan (reads) Supabase. Cache hanya dikemaskini bila luput
- * atau selepas operasi mutasi (Update/Reset).
+ * Kemaskini: 
+ * 1. Menggunakan Stale-While-Revalidate (SWR) untuk pemuatan UI pantas dan penyegaran latar belakang.
+ * 2. Menggunakan penjanaan kunci cache (RBAC Key) dari IDBCache.
+ * 3. Cache individu (getByCode) diaktifkan bagi mempercepatkan pembukaan profil.
  */
 
 import { requireDb } from '../core/db.js';
@@ -13,76 +14,67 @@ import { IDBCache } from '../core/idb.js';
 
 export const SchoolService = {
     /**
-     * Dapatkan semua data sekolah (Strict Cache-First)
+     * Dapatkan semua data sekolah menggunakan Stale-While-Revalidate (SWR)
      */
     async getAll() {
-        const cacheKey = 'school_data_ALL';
+        // Data ini dikongsi oleh semua admin, jadi gunakan kunci GLOBAL
+        const cacheKey = IDBCache.generateSecureKey('school_data_ALL', true);
         
-        // 1. Cuba tarik dari cache (IndexedDB)
-        const cachedData = await IDBCache.getCache(cacheKey);
+        const fetchFactory = async () => {
+            const db = requireDb(); // Lazy Load
+            const { data, error } = await db
+                .from('smpid_sekolah_data')
+                .select('*')
+                .order('kod_sekolah', { ascending: true });
 
-        if (cachedData) {
-            // 2. Jika cache wujud dan belum luput, pulangkan terus kepada UI.
-            // TIADA LAGI panggilan background ke Supabase di sini.
-            return cachedData;
-        }
+            if (error) throw error;
 
-        // 3. Jika tiada cache (pengguna pertama kali atau cache luput), tunggu panggilan ke Supabase
-        return await this._fetchAndCacheAll(cacheKey);
+            return data.map(item => {
+                const requiredFields = [
+                    item.nama_gpict, item.no_telefon_gpict, item.emel_delima_gpict,
+                    item.nama_admin_delima, item.no_telefon_admin_delima, item.emel_delima_admin_delima
+                ];
+                
+                const isDataComplete = requiredFields.every(f => f && f.trim() !== "");
+                const telG = cleanPhone(item.no_telefon_gpict);
+                const telA = cleanPhone(item.no_telefon_admin_delima);
+                const isSama = (telG && telA) && (telG === telA);
+
+                return {
+                    ...item,
+                    jenis: item.jenis_sekolah || 'LAIN-LAIN',
+                    is_lengkap: isDataComplete,
+                    is_sama: isSama,
+                    is_berbeza: (telG && telA) && !isSama
+                };
+            });
+        };
+
+        // Guna SWR: Kembalikan cache segera jika ada, dan kemas kini senyap di latar belakang. TTL: 60 minit.
+        return await IDBCache.staleWhileRevalidate(cacheKey, fetchFactory, null, 60);
     },
 
     /**
-     * Fungsi dalaman: Tarik dari pangkalan data dan simpan ke Cache
-     * @private
-     */
-    async _fetchAndCacheAll(cacheKey) {
-        const db = requireDb(); // Lazy Load
-        const { data, error } = await db
-            .from('smpid_sekolah_data')
-            .select('*')
-            .order('kod_sekolah', { ascending: true });
-
-        if (error) throw error;
-
-        const processedData = data.map(item => {
-            const requiredFields = [
-                item.nama_gpict, item.no_telefon_gpict, item.emel_delima_gpict,
-                item.nama_admin_delima, item.no_telefon_admin_delima, item.emel_delima_admin_delima
-            ];
-            
-            const isDataComplete = requiredFields.every(f => f && f.trim() !== "");
-            const telG = cleanPhone(item.no_telefon_gpict);
-            const telA = cleanPhone(item.no_telefon_admin_delima);
-            const isSama = (telG && telA) && (telG === telA);
-
-            return {
-                ...item,
-                jenis: item.jenis_sekolah || 'LAIN-LAIN',
-                is_lengkap: isDataComplete,
-                is_sama: isSama,
-                is_berbeza: (telG && telA) && !isSama
-            };
-        });
-
-        // Simpan ke IndexedDB dengan jangka hayat 60 minit
-        await IDBCache.setCache(cacheKey, processedData, 60);
-
-        return processedData;
-    },
-
-    /**
-     * Tarik data profil satu sekolah (Direct Query)
+     * Tarik data profil satu sekolah menggunakan SWR
      */
     async getByCode(kodSekolah) {
-        const db = requireDb(); // Lazy Load
-        const { data, error } = await db
-            .from('smpid_sekolah_data')
-            .select('*')
-            .eq('kod_sekolah', kodSekolah)
-            .single();
+        // Cache profil spesifik untuk kelajuan pembukaan menu (mengurangkan direct DB query berulang)
+        const cacheKey = IDBCache.generateSecureKey(`school_profile_${kodSekolah}`, true);
 
-        if (error) throw error;
-        return data;
+        const fetchFactory = async () => {
+            const db = requireDb(); // Lazy Load
+            const { data, error } = await db
+                .from('smpid_sekolah_data')
+                .select('*')
+                .eq('kod_sekolah', kodSekolah)
+                .single();
+
+            if (error) throw error;
+            return data;
+        };
+
+        // Guna SWR dengan TTL yang lebih pendek (30 minit)
+        return await IDBCache.staleWhileRevalidate(cacheKey, fetchFactory, null, 30);
     },
 
     /**
@@ -99,8 +91,10 @@ export const SchoolService = {
 
         if (error) throw error;
 
-        // 2. Invalidate Cache (Buang cache sekolah utama supaya tarikan seterusnya menggunakan data segar)
-        await IDBCache.removeCache('school_data_ALL');
+        // 2. Surgical Invalidate Cache
+        // Buang cache senarai penuh dan cache spesifik sekolah ini sahaja
+        await IDBCache.invalidateByPrefix('GLOBAL_school_data_ALL');
+        await IDBCache.invalidateByPrefix(`GLOBAL_school_profile_${kodSekolah}`);
 
         // 3. Hantar Notifikasi ke Deno API (Optimistic)
         if (APP_CONFIG.API.DENO_URL) {
@@ -139,8 +133,9 @@ export const SchoolService = {
 
         if (error) throw error;
 
-        // Invalidate Cache
-        await IDBCache.removeCache('school_data_ALL');
+        // Surgical Invalidate Cache
+        await IDBCache.invalidateByPrefix('GLOBAL_school_data_ALL');
+        await IDBCache.invalidateByPrefix(`GLOBAL_school_profile_${kodSekolah}`);
 
         return { success: true };
     }

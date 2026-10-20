@@ -2,12 +2,14 @@
  * @file libat_urus.service.js
  * @description Service class handling Supabase and GAS integration for Libat Urus DELIMa module.
  * @module LibatUrusService
+ * KEMASKINI V3.0 (SWR CACHE EDITION): 
+ * Menerapkan cache IndexedDB Stale-While-Revalidate untuk tarikan data yang berat,
+ * meminimumkan pertanyaan pangkalan data yang berulang.
  */
 
 import { APP_CONFIG } from '../config/app.config.js';
-// ── SURGICAL EDIT START: Membetulkan ralat import dan menggunakan getInstance pattern untuk keselamatan Anti-Crash ──
 import { getDatabaseClient } from '../core/db.js';
-// ── SURGICAL EDIT END ──
+import { IDBCache } from '../core/idb.js'; // Disuntik untuk keupayaan SWR Cache
 
 class LibatUrusService {
     constructor() {
@@ -15,11 +17,6 @@ class LibatUrusService {
         this.gasUrl = APP_CONFIG.API.GAS_LIBAT_URUS_URL;
     }
 
-    /**
-     * Uploads the One-Page Report file to Google Drive via GAS endpoint
-     * @param {File} file - The file object from the input element
-     * @returns {Promise<string>} - Returns the shared URL of the uploaded file
-     */
     async uploadReportFile(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -60,19 +57,7 @@ class LibatUrusService {
         });
     }
 
-    /**
-     * Creates a new Libat Urus record in Supabase
-     * @param {Object} data - The report payload
-     * @param {string} data.kod_sekolah - School code
-     * @param {string} data.kategori_sasar - Target category (GURU, MURID, IBU-BAPA)
-     * @param {string} data.tarikh_laksana - ISO Date string (YYYY-MM-DD)
-     * @param {string} data.tempat - Meeting room link or physical location
-     * @param {number} data.jumlah_peserta - Number of participants
-     * @param {string} data.pautan_fail - Google Drive sharing URL from uploadReportFile
-     * @returns {Promise<Object>} - Inserted record payload
-     */
     async createLibatUrus(data) {
-        // Auto generate month name in Malay based on tarikh_laksana
         const dateObj = new Date(data.tarikh_laksana);
         const monthsInMalay = [
             'JANUARI', 'FEBRUARI', 'MAC', 'APRIL', 'MEI', 'JUN',
@@ -80,7 +65,6 @@ class LibatUrusService {
         ];
         const bulan = monthsInMalay[dateObj.getMonth()];
 
-// ── SURGICAL EDIT START: Memastikan mod_pelaksanaan dimasukkan ke dalam payload pangkalan data ──
         const payload = {
             kod_sekolah: data.kod_sekolah,
             kategori_sasar: data.kategori_sasar,
@@ -91,9 +75,7 @@ class LibatUrusService {
             pautan_fail: data.pautan_fail,
             mod_pelaksanaan: data.mod_pelaksanaan
         };
-// ── SURGICAL EDIT END ──
 
-// ── SURGICAL EDIT START: Menggunakan db instance yang sah dan memeriksa sambungan ──
         const db = getDatabaseClient();
         if (!db) throw new Error("Sambungan pangkalan data disekat. Sila matikan pelanjutan AdBlocker atau Brave Shields anda.");
 
@@ -101,137 +83,132 @@ class LibatUrusService {
             .from(this.tableName)
             .insert([payload])
             .select();
-// ── SURGICAL EDIT END ──
 
         if (error) {
             console.error('Error inserting Libat Urus record:', error);
             throw new Error(error.message);
         }
 
+        // Cache Invalidation (Surgical)
+        await IDBCache.invalidateByPrefix('GLOBAL_lu_all'); // Buang senarai penuh untuk Admin
+        await IDBCache.invalidateByPrefix(`GLOBAL_lu_school_${data.kod_sekolah}`); // Buang senarai sekolah khusus ini
+
         return insertedData[0];
     }
 
     /**
-     * Retrieves all Libat Urus records for JPN/Super Admin view with Optional District filters
-     * Joined with school details to aggregate school name, district, and user roles.
-     * @param {string} [daerahFilter] - Optional filter by district name
-     * @returns {Promise<Array>} - List of records with joined details
+     * Mengambil laporan penuh (Admin View) menggunakan SWR Cache
      */
     async getAllReports(daerahFilter = null) {
-// ── SURGICAL EDIT START: Melaksanakan In-Memory Join bagi mengelakkan ralat Foreign Key Supabase ──
-        const db = getDatabaseClient();
-        if (!db) throw new Error("Sambungan pangkalan data disekat. Sila matikan pelanjutan AdBlocker atau Brave Shields anda.");
+        // Jana kunci unik, abaikan daerahFilter dari kunci kerana tapisan daerah 
+        // dilakukan di atas data penuh (client-side) di fail `libat_urus.js`. 
+        // Kita simpan SATU salinan penuh pangkalan data di cache.
+        const cacheKey = IDBCache.generateSecureKey('lu_all', true);
 
-        // 1. Ambil data Libat Urus secara bebas tanpa rantaian
-        const { data: libatUrusData, error: libatUrusError } = await db
-            .from(this.tableName)
-            .select('*')
-            .order('tarikh_laksana', { ascending: false });
+        const fetchFactory = async () => {
+            const db = getDatabaseClient();
+            if (!db) throw new Error("Sambungan pangkalan data disekat.");
 
-        if (libatUrusError) {
-            console.error('Error fetching all Libat Urus reports:', libatUrusError);
-            throw new Error(libatUrusError.message);
-        }
+            // 1. Ambil data Libat Urus
+            const { data: libatUrusData, error: libatUrusError } = await db
+                .from(this.tableName)
+                .select('*')
+                .order('tarikh_laksana', { ascending: false });
 
-        // 2. Ambil data rujukan sekolah untuk cantuman
-        // ── SURGICAL EDIT START: Menetapkan nama jadual sebenar 'smpid_sekolah_data' ──
-        const { data: schoolData, error: schoolError } = await db
-            .from('smpid_sekolah_data')
-            .select('kod_sekolah, nama_sekolah, daerah');
-        // ── SURGICAL EDIT END ──
+            if (libatUrusError) throw new Error(libatUrusError.message);
 
-        if (schoolError) {
-            console.error('Error fetching schools data for mapping:', schoolError);
-            throw new Error(schoolError.message);
-        }
+            // 2. Ambil data rujukan sekolah untuk cantuman
+            const { data: schoolData, error: schoolError } = await db
+                .from('smpid_sekolah_data')
+                .select('kod_sekolah, nama_sekolah, daerah');
 
-        // 3. Bina pemetaan berindeks (Hash Map) untuk carian pantas O(1)
-        const schoolMap = {};
-        if (schoolData) {
-            schoolData.forEach(s => {
-                schoolMap[s.kod_sekolah] = { nama_sekolah: s.nama_sekolah, daerah: s.daerah };
-            });
-        }
+            if (schoolError) throw new Error(schoolError.message);
 
-        // 4. Cantumkan secara In-Memory
-        const mappedData = libatUrusData.map(item => ({
-            ...item,
-            school: schoolMap[item.kod_sekolah] || null
-        }));
+            // 3. Bina pemetaan berindeks (Hash Map)
+            const schoolMap = {};
+            if (schoolData) {
+                schoolData.forEach(s => {
+                    schoolMap[s.kod_sekolah] = { nama_sekolah: s.nama_sekolah, daerah: s.daerah };
+                });
+            }
 
-        // 5. Post-filter by district if specified
+            // 4. Cantumkan secara In-Memory
+            return libatUrusData.map(item => ({
+                ...item,
+                school: schoolMap[item.kod_sekolah] || null
+            }));
+        };
+
+        // Tunggu data diproses oleh SWR
+        const allData = await IDBCache.staleWhileRevalidate(cacheKey, fetchFactory, null, 60);
+
+        // Lakukan post-filter (sekiranya dipanggil dengan daerahFilter) selepas mendapat data
         if (daerahFilter) {
             const normalizedDaerah = daerahFilter.trim().toUpperCase();
-            return mappedData.filter(item => 
+            return allData.filter(item => 
                 item.school && item.school.daerah && item.school.daerah.toUpperCase() === normalizedDaerah
             );
         }
 
-        return mappedData;
-// ── SURGICAL EDIT END ──
+        return allData;
     }
 
     /**
-     * Retrieves Libat Urus records submitted by a specific school
-     * @param {string} kodSekolah - School code
-     * @returns {Promise<Array>}
+     * Mengambil laporan sekolah menggunakan SWR Cache
      */
     async getReportsBySchool(kodSekolah) {
-// ── SURGICAL EDIT START: Melaksanakan In-Memory Join bagi mengelakkan ralat Foreign Key Supabase ──
-        const db = getDatabaseClient();
-        if (!db) throw new Error("Sambungan pangkalan data disekat. Sila matikan pelanjutan AdBlocker atau Brave Shields anda.");
+        const cacheKey = IDBCache.generateSecureKey(`lu_school_${kodSekolah}`, true);
 
-        // 1. Ambil data Libat Urus untuk sekolah tertentu tanpa rantaian
-        const { data: libatUrusData, error: libatUrusError } = await db
-            .from(this.tableName)
-            .select('*')
-            .eq('kod_sekolah', kodSekolah)
-            .order('tarikh_laksana', { ascending: false });
+        const fetchFactory = async () => {
+            const db = getDatabaseClient();
+            if (!db) throw new Error("Sambungan pangkalan data disekat.");
 
-        if (libatUrusError) {
-            console.error(`Error fetching reports for school ${kodSekolah}:`, libatUrusError);
-            throw new Error(libatUrusError.message);
-        }
+            const { data: libatUrusData, error: libatUrusError } = await db
+                .from(this.tableName)
+                .select('*')
+                .eq('kod_sekolah', kodSekolah)
+                .order('tarikh_laksana', { ascending: false });
 
-        // 2. Ambil data spesifik nama dan daerah sekolah tersebut
-        // ── SURGICAL EDIT START: Menetapkan nama jadual sebenar 'smpid_sekolah_data' ──
-        const { data: schoolData, error: schoolError } = await db
-            .from('smpid_sekolah_data')
-            .select('nama_sekolah, daerah')
-            .eq('kod_sekolah', kodSekolah)
-            .single();
-        // ── SURGICAL EDIT END ──
+            if (libatUrusError) throw new Error(libatUrusError.message);
 
-        // 3. Jika ralat (cth: kod sekolah tiada), biar nilai schoolObj menjadi null untuk mengelak crash
-        const schoolObj = (!schoolError && schoolData) ? schoolData : null;
+            const { data: schoolData, error: schoolError } = await db
+                .from('smpid_sekolah_data')
+                .select('nama_sekolah, daerah')
+                .eq('kod_sekolah', kodSekolah)
+                .single();
 
-        // 4. Cantum dan kembalikan tatasusunan data
-        return libatUrusData.map(item => ({
-            ...item,
-            school: schoolObj
-        }));
-// ── SURGICAL EDIT END ──
+            const schoolObj = (!schoolError && schoolData) ? schoolData : null;
+
+            return libatUrusData.map(item => ({
+                ...item,
+                school: schoolObj
+            }));
+        };
+
+        return await IDBCache.staleWhileRevalidate(cacheKey, fetchFactory, null, 60);
     }
 
-    /**
-     * Delete a specific Libat Urus report record
-     * @param {number} id - Record ID
-     * @returns {Promise<boolean>}
-     */
     async deleteReport(id) {
-// ── SURGICAL EDIT START: Menggunakan db instance yang sah dan memeriksa sambungan ──
         const db = getDatabaseClient();
-        if (!db) throw new Error("Sambungan pangkalan data disekat. Sila matikan pelanjutan AdBlocker atau Brave Shields anda.");
+        if (!db) throw new Error("Sambungan pangkalan data disekat.");
+
+        // Sebelum padam, ambil kod sekolah rekod ini untuk invalidasi
+        const { data: record } = await db.from(this.tableName).select('kod_sekolah').eq('id', id).single();
 
         const { error } = await db
             .from(this.tableName)
-// ── SURGICAL EDIT END ──
             .delete()
             .eq('id', id);
 
         if (error) {
             console.error(`Error deleting report with ID ${id}:`, error);
             throw new Error(error.message);
+        }
+
+        // Cache Invalidation (Surgical)
+        await IDBCache.invalidateByPrefix('GLOBAL_lu_all'); 
+        if (record && record.kod_sekolah) {
+            await IDBCache.invalidateByPrefix(`GLOBAL_lu_school_${record.kod_sekolah}`);
         }
 
         return true;
