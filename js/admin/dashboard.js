@@ -1,5 +1,5 @@
 /**
- * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPACT TABLE VIEW V3.8)
+ * ADMIN MODULE: DASHBOARD (TAILWIND EDITION - COMPACT TABLE VIEW V3.9 - 50 ROWS LIMIT)
  * Menguruskan senarai sekolah, filter berwarna, dan status data.
  * --- UPDATE V3.5 (SUPER ADMIN DAERAH FILTER) ---
  * 1. Menambah kotak pilihan (dropdown) Daerah khusus untuk SUPER_ADMIN dan JPNMEL.
@@ -13,18 +13,22 @@
  * 1. Memaparkan lencana (badge) ketersediaan Smart Board dalam jadual utama.
  * 2. Menjana metrik KPI Smart Board yang bertindak balas terhadap tapisan sistem.
  * 3. Menyertakan 5 lajur baharu berkaitan Smart Board dalam muat turun CSV.
+ * --- UPDATE V3.9 (PERFORMANCE: 50 ROWS VIEW LIMIT) ---
+ * 1. Mengehadkan bilangan baris paparan DOM jadual kepada 50 rekod pertama berpandukan APP_CONFIG.ADMIN_TABLE_LIMIT.
+ * 2. Menambah bar maklumat had paparan visual di bahagian bawah jadual.
+ * 3. Mengekalkan pengiraan KPI, penapisan pantas, dan eksport CSV untuk 100% data penuh.
  */
 
 import { SchoolService } from '../services/school.service.js';
 import { toggleLoading, generateWhatsAppLink } from '../core/helpers.js';
 import { APP_CONFIG } from '../config/app.config.js';
-import { getDatabaseClient } from '../core/db.js'; // Disuntik untuk direct DB query
+import { getDatabaseClient } from '../core/db.js';
 
 let dashboardData = [];
 let currentFilteredList = [];
 let activeStatus = 'ALL';
 let activeType = 'ALL';
-let activeDaerah = 'ALL'; // Tambahan state untuk filter daerah
+let activeDaerah = 'ALL';
 let searchTerm = ''; 
 let reminderQueue = [];
 let qIndex = 0;
@@ -42,10 +46,8 @@ window.fetchDashboardData = async function() {
         // Jika pengguna adalah ADMIN PPD atau UNIT PPD, tapis ikut daerah
         if (['ADMIN', 'PPD_UNIT'].includes(userRole) && userKod && APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[userKod]) {
             const daerahDibenarkan = APP_CONFIG.PPD_MAPPING[userKod];
-            // Tapis sekolah dalam daerah yang sama ATAU kod PPD itu sendiri
             data = data.filter(item => item.daerah === daerahDibenarkan || item.kod_sekolah === userKod);
         }
-        // -------------------------------------------
 
         window.globalDashboardData = data; 
         
@@ -58,7 +60,9 @@ window.fetchDashboardData = async function() {
 
     } catch (err) { 
         console.error("Dashboard Error:", err);
-        Swal.fire('Ralat', 'Gagal memuatkan data dashboard.', 'error'); 
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Ralat', 'Gagal memuatkan data dashboard.', 'error'); 
+        }
     } finally {
         toggleLoading(false); 
     }
@@ -77,7 +81,6 @@ function renderFilters() {
     if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
         let daerahOpts = `<option value="ALL">SEMUA DAERAH</option>`;
         if (APP_CONFIG.PPD_MAPPING) {
-            // Gunakan nama daerah (values) sebagai filter memandangkan DB simpan nama daerah
             const uniqueDaerahs = [...new Set(Object.values(APP_CONFIG.PPD_MAPPING))].sort();
             uniqueDaerahs.forEach(d => {
                 daerahOpts += `<option value="${d}">${d}</option>`;
@@ -87,7 +90,7 @@ function renderFilters() {
     }
     
     const container = document.getElementById('filterContainer');
-    if(container) {
+    if (container) {
         container.innerHTML = `
         <div class="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
           <div class="flex flex-wrap gap-2 justify-center md:justify-start">
@@ -146,11 +149,9 @@ window.resetDashboardFilters = function() {
     activeDaerah = 'ALL';
     searchTerm = '';
     
-    // Kosongkan kotak carian jika wujud
     const searchInput = document.getElementById('adminSearchInput');
     if (searchInput) searchInput.value = '';
     
-    // Kembalikan pilihan dropdown ke 'ALL'
     const typeSelect = document.getElementById('filterTypeSelect');
     if (typeSelect) typeSelect.value = 'ALL';
     
@@ -159,15 +160,16 @@ window.resetDashboardFilters = function() {
     
     window.runFilter();
     
-    // Notifikasi senyap kecil
-    Swal.fire({
-        icon: 'success',
-        title: 'Filter Direset',
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 1000
-    });
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'success',
+            title: 'Filter Direset',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 1000
+        });
+    }
 };
 
 window.runFilter = function() {
@@ -183,7 +185,6 @@ window.runFilter = function() {
         
         const daerahMatch = (activeDaerah === 'ALL') || (i.daerah === activeDaerah);
         
-        // Carian Super: Merangkumi Nama Sekolah, Kod, PGB dan GPK
         const searchMatch = !searchTerm || 
                             i.kod_sekolah.includes(searchTerm) || 
                             i.nama_sekolah.includes(searchTerm) ||
@@ -202,12 +203,12 @@ window.runFilter = function() {
 function updateBadgeCounts() {
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.classList.remove('ring-2', 'ring-offset-1', 'shadow-md', 'scale-105');
-        if(btn.id === 'badgeAll') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200";
-        if(btn.id === 'badgeLengkap') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-emerald-200 text-emerald-600 hover:bg-emerald-50";
-        if(btn.id === 'badgeBelum') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-red-200 text-red-600 hover:bg-red-50";
-        if(btn.id === 'badgeSama') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-purple-200 text-purple-600 hover:bg-purple-50";
-        if(btn.id === 'badgeBerbeza') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-amber-200 text-amber-600 hover:bg-amber-50";
-        if(btn.id === 'badgeTiadaPengurusan') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-rose-200 text-rose-600 hover:bg-rose-50";
+        if (btn.id === 'badgeAll') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200";
+        if (btn.id === 'badgeLengkap') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-emerald-200 text-emerald-600 hover:bg-emerald-50";
+        if (btn.id === 'badgeBelum') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-red-200 text-red-600 hover:bg-red-50";
+        if (btn.id === 'badgeSama') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-purple-200 text-purple-600 hover:bg-purple-50";
+        if (btn.id === 'badgeBerbeza') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-amber-200 text-amber-600 hover:bg-amber-50";
+        if (btn.id === 'badgeTiadaPengurusan') btn.className = "filter-btn px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-white border-rose-200 text-rose-600 hover:bg-rose-50";
     });
 
     const map = { 
@@ -222,15 +223,15 @@ function updateBadgeCounts() {
     if (activeId) {
         const btn = document.getElementById(activeId);
         if (btn) {
-            if(activeStatus === 'ALL') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-slate-600 text-white border-slate-600 shadow-md scale-105";
-            if(activeStatus === 'LENGKAP') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-emerald-500 text-white border-emerald-500 shadow-md scale-105";
-            if(activeStatus === 'BELUM') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-red-500 text-white border-red-500 shadow-md scale-105";
-            if(activeStatus === 'SAMA') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-purple-500 text-white border-purple-500 shadow-md scale-105";
-            if(activeStatus === 'BERBEZA') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-amber-500 text-white border-amber-500 shadow-md scale-105";
-            if(activeStatus === 'TIADA_PENGURUSAN') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-rose-500 text-white border-rose-500 shadow-md scale-105";
+            if (activeStatus === 'ALL') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-slate-600 text-white border-slate-600 shadow-md scale-105";
+            if (activeStatus === 'LENGKAP') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-emerald-500 text-white border-emerald-500 shadow-md scale-105";
+            if (activeStatus === 'BELUM') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-red-500 text-white border-red-500 shadow-md scale-105";
+            if (activeStatus === 'SAMA') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-purple-500 text-white border-purple-500 shadow-md scale-105";
+            if (activeStatus === 'BERBEZA') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-amber-500 text-white border-amber-500 shadow-md scale-105";
+            if (activeStatus === 'TIADA_PENGURUSAN') btn.className = "filter-btn active px-4 py-2 rounded-full text-xs font-bold border transition-all flex items-center gap-2 bg-rose-500 text-white border-rose-500 shadow-md scale-105";
             
             const span = btn.querySelector('span');
-            if(span) span.className = "bg-white/20 text-white px-2 py-0.5 rounded-full text-[10px]";
+            if (span) span.className = "bg-white/20 text-white px-2 py-0.5 rounded-full text-[10px]";
         }
     }
     
@@ -245,7 +246,7 @@ function updateBadgeCounts() {
         return typeMatch && searchMatch && daerahMatch;
     });
     
-    const setTxt = (id, count) => { if(document.getElementById(id)) document.getElementById(id).innerText = count; };
+    const setTxt = (id, count) => { if (document.getElementById(id)) document.getElementById(id).innerText = count; };
     setTxt('cntAll', context.length);
     setTxt('cntLengkap', context.filter(i => i.is_lengkap).length);
     setTxt('cntBelum', context.filter(i => !i.is_lengkap).length);
@@ -275,11 +276,10 @@ function renderSmartBoardKPI(data) {
     document.getElementById('kpiSbUnit').innerText = totalUnit;
     document.getElementById('kpiSbFungsi').innerText = totalFungsi;
 
-    // Tunjuk panel selepas data dikira
     kpiPanel.classList.remove('hidden');
 }
 
-// --- RENDERING TABLE (ULTRA COMPACT VIEW INJECTION) ---
+// --- RENDERING TABLE (PENGOPTIMUMAN HAD 50 BARIS & COMPACT VIEW) ---
 function renderWaBtn(nama, tel, label) {
     const link = generateWhatsAppLink(nama, tel, true);
     if (link) {
@@ -289,17 +289,11 @@ function renderWaBtn(nama, tel, label) {
     }
 }
 
-/**
- * FUNGSI BANTUAN: Salin Teks ke Papan Keratan (Clipboard)
- * Ditambah di scope global untuk dicapai oleh butang onlcick di dalam HTML jadual.
- */
 window.copyTelSekolah = function(text, event) {
-    // Halang event propagation supaya ia tidak memicu butang edit/baris
     if (event) event.stopPropagation();
 
     if (!text || text === '-') return;
 
-    // Fallback eksekusi menggunakan textarea jika navigator.clipboard terhalang
     const fallbackCopy = (str) => {
         const el = document.createElement('textarea');
         el.value = str;
@@ -315,16 +309,18 @@ window.copyTelSekolah = function(text, event) {
     };
 
     const tunjukToastBerjaya = (str) => {
-        Swal.fire({
-            toast: true, 
-            position: 'top-end', 
-            icon: 'success', 
-            title: 'No. Telefon Disalin!', 
-            text: str,
-            showConfirmButton: false, 
-            timer: 2000, 
-            customClass: { popup: 'colored-toast' }
-        });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true, 
+                position: 'top-end', 
+                icon: 'success', 
+                title: 'No. Telefon Disalin!', 
+                text: str,
+                showConfirmButton: false, 
+                timer: 2000, 
+                customClass: { popup: 'colored-toast' }
+            });
+        }
     };
 
     if (navigator.clipboard && window.isSecureContext) {
@@ -348,7 +344,10 @@ function renderGrid(data) {
         return; 
     }
 
-    // Pembungkus dengan overflow fallback, whitespace-normal untuk paksa muat
+    // PENGOPTIMUMAN PRESTASI: Hadkan paparan baris ke 50 rekod
+    const limit = APP_CONFIG.ADMIN_TABLE_LIMIT || 50;
+    const displayData = data.slice(0, limit);
+
     let tableHTML = `
     <div class="col-span-full bg-white rounded-3xl border border-slate-200 shadow-xl overflow-x-auto relative">
         <table class="w-full text-[10px] text-left whitespace-normal break-words table-fixed min-w-[1000px]">
@@ -372,8 +371,7 @@ function renderGrid(data) {
             <tbody class="divide-y divide-slate-100">
     `;
 
-    data.forEach((s, index) => {
-        // Jana butang WhatsApp mikro
+    displayData.forEach((s, index) => {
         const btnWaPGB = renderWaBtn(s.nama_pgb, s.no_telefon_pgb, 'PGB');
         const btnWaGPK = renderWaBtn(s.nama_gpk, s.no_telefon_gpk, 'GPK');
         const btnWaICT = renderWaBtn(s.nama_gpict, s.no_telefon_gpict, 'ICT');
@@ -381,12 +379,10 @@ function renderGrid(data) {
 
         const rowClass = s.is_lengkap ? "bg-white hover:bg-emerald-50/30" : "bg-red-50/10 hover:bg-red-50/50";
 
-        // Jana Lencana Smart Board
         let sbBadge = `<span class="text-[10px] font-bold text-slate-300">-</span>`;
         if (s.sb_ada === 'YA') {
             const fungsi = parseInt(s.sb_bil_fungsi) || 0;
             const semua = parseInt(s.sb_bil_semua) || 0;
-            // Penentuan Warna Lencana: Merah (Tiada fungsi), Kuning (Kurang daripada semua), Hijau (Semua berfungsi)
             let sbColor = fungsi === 0 ? 'text-red-500 bg-red-50 border-red-200' : (fungsi < semua ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-teal-600 bg-teal-50 border-teal-200');
             sbBadge = `
             <div class="flex flex-col items-center justify-center gap-1" title="Kaedah: ${s.sb_kaedah || '-'}&#10;Lokasi: ${s.sb_lokasi || '-'}">
@@ -459,43 +455,50 @@ function renderGrid(data) {
 
     tableHTML += `
             </tbody>
-        </table>
-    </div>
-    `;
+        </table>`;
 
+    // Bar Maklumat Had Paparan Visual (Jika data melebihi had)
+    if (data.length > limit) {
+        tableHTML += `
+        <div class="p-3 bg-amber-50 border-t border-amber-200 flex flex-col sm:flex-row justify-between items-center px-6 gap-2">
+            <span class="text-xs font-bold text-amber-800 flex items-center gap-2">
+                <i class="fas fa-info-circle text-amber-500 text-sm"></i>
+                Memaparkan <b>${limit}</b> daripada <b>${data.length}</b> sekolah. Gunakan carian untuk sekolah spesifik.
+            </span>
+            <span class="text-[10px] font-black text-amber-700 uppercase bg-amber-100 px-3 py-1 rounded-full border border-amber-300">
+                Eksport CSV Menyimpan 100% Data (${data.length} Rekod)
+            </span>
+        </div>`;
+    }
+
+    tableHTML += `</div>`;
     wrapper.innerHTML = tableHTML;
 }
 
 // --- UTILS & EXPORTS ---
-
-/**
- * FIXED: Menghalakan pandangan admin ke profil sekolah yang dipilih.
- * Menggunakan localStorage untuk integriti data silang modul.
- */
-// ── SURGICAL EDIT START: Menyuntik logik 'Impersonation' ──
 window.viewSchoolProfile = function(kod) {
     const currentRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     const currentKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     
-    // Jika admin masuk ke paparan sekolah, simpan peranan mutlak ke memori sandaran
     if (currentRole && currentRole !== 'SEKOLAH') {
         localStorage.setItem('smpid_real_user_role', currentRole);
         if (currentKod) {
             localStorage.setItem('smpid_real_user_kod', currentKod);
         }
-        // Paksa sistem bertindak sebagai peranan SEKOLAH (Impersonation)
         localStorage.setItem(APP_CONFIG.SESSION.USER_ROLE, 'SEKOLAH');
     }
 
     localStorage.setItem(APP_CONFIG.SESSION.USER_KOD, kod);
     window.location.href = 'user.html'; 
 };
-// ── SURGICAL EDIT END ──
 
 window.eksportDataTapis = function() {
-    if (!currentFilteredList || currentFilteredList.length === 0) return Swal.fire('Tiada Data', '', 'info'); 
+    if (!currentFilteredList || currentFilteredList.length === 0) {
+        if (typeof Swal !== 'undefined') Swal.fire('Tiada Data', '', 'info'); 
+        return;
+    }
     
-    // Kemas kini tajuk CSV untuk merangkumi profil PGB, GPK, No Tel Sekolah, dan 5 lajur Smart Board
+    // Eksport CSV tetap mengekalkan 100% data penuh yang ditapis tanpa had 50 baris
     let csvContent = "BIL,KOD,NAMA,JENIS,DAERAH,NO TEL SEKOLAH,SB ADA,SB KAEDAH,SB BIL SEMUA,SB BIL FUNGSI,SB LOKASI,NAMA PGB,TEL PGB,EMEL PGB,NAMA GPK,TEL GPK,EMEL GPK,NAMA GPICT,TEL GPICT,EMEL GPICT,NAMA ADMIN,TEL ADMIN,EMEL ADMIN,STATUS PENGISIAN\n";
     
     currentFilteredList.forEach((s, index) => {
@@ -518,7 +521,6 @@ window.eksportDataTapis = function() {
 };
 
 window.janaSenaraiTelegram = function() {
-    // Patuhi penapisan pandangan semasa termasuk daerah yang diaktifkan
     let list = dashboardData.filter(i => {
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
         const daerahMatch = (activeDaerah === 'ALL') || (i.daerah === activeDaerah);
@@ -528,7 +530,6 @@ window.janaSenaraiTelegram = function() {
     let txt = '';
     let pending = [];
 
-    // Sokongan dinamik untuk menjana senarai berbeza mengikut butang penapis yang ditekan
     if (activeStatus === 'TIADA_PENGURUSAN') {
         txt = `**SENARAI TIADA PGB/GPK (${activeType})**\n\n`;
         pending = list.filter(i => !i.nama_pgb || !i.nama_gpk);
@@ -537,16 +538,20 @@ window.janaSenaraiTelegram = function() {
         pending = list.filter(i => !i.is_lengkap);
     }
     
-    if(pending.length === 0) return Swal.fire('Hebat', 'Semua lengkap!', 'success'); 
+    if (pending.length === 0) {
+        if (typeof Swal !== 'undefined') Swal.fire('Hebat', 'Semua lengkap!', 'success'); 
+        return;
+    }
     
     pending.forEach(i => txt += `- ${i.kod_sekolah} ${i.nama_sekolah}\n`);
     txt += `\nMohon tindakan segera.`;
-    navigator.clipboard.writeText(txt).then(() => Swal.fire('Disalin!', 'Senarai disalin.', 'success'));
+    navigator.clipboard.writeText(txt).then(() => {
+        if (typeof Swal !== 'undefined') Swal.fire('Disalin!', 'Senarai disalin.', 'success');
+    });
 };
 
 // --- QUEUE SYSTEM (MODAL CONTROL) ---
 window.mulaTindakanPantas = function() {
-    // Patuhi penapisan pandangan semasa termasuk daerah yang diaktifkan
     let list = dashboardData.filter(i => {
         const typeMatch = (activeType === 'ALL') || (i.jenis === activeType);
         const daerahMatch = (activeDaerah === 'ALL') || (i.daerah === activeDaerah);
@@ -564,7 +569,10 @@ window.mulaTindakanPantas = function() {
         }
     });
     
-    if (reminderQueue.length === 0) return Swal.fire('Tiada Sasaran', 'Tiada data untuk disusuli.', 'info'); 
+    if (reminderQueue.length === 0) {
+        if (typeof Swal !== 'undefined') Swal.fire('Tiada Sasaran', 'Tiada data untuk disusuli.', 'info'); 
+        return;
+    }
     qIndex = 0; 
     document.getElementById('queueModal').classList.remove('hidden'); 
     renderQueue();
@@ -573,7 +581,7 @@ window.mulaTindakanPantas = function() {
 function renderQueue() {
     if (qIndex >= reminderQueue.length) { 
         document.getElementById('queueModal').classList.add('hidden'); 
-        Swal.fire('Selesai', 'Semakan tamat.', 'success'); 
+        if (typeof Swal !== 'undefined') Swal.fire('Selesai', 'Semakan tamat.', 'success'); 
         return; 
     }
     const item = reminderQueue[qIndex];
@@ -596,4 +604,4 @@ function renderQueue() {
 }
 
 window.nextQueue = function() { qIndex++; renderQueue(); }
-window.prevQueue = function() { if(qIndex > 0) qIndex--; renderQueue(); }
+window.prevQueue = function() { if (qIndex > 0) qIndex--; renderQueue(); }

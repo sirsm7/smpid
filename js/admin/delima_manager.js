@@ -184,7 +184,7 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
         }
 
         // =========================================================
-        // PROSES PAPARAN ANTARAMUKA (UI RENDER)
+        // PROSES PAPARAN ANTARAMUKA (PENGOPTIMUMAN HAD 50 BARIS)
         // =========================================================
 
         const capitalizedKategori = kategori.charAt(0).toUpperCase() + kategori.slice(1).toLowerCase();
@@ -199,13 +199,17 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
             return;
         }
 
-        // Tunjukkan Select All jika ada data (Tidak terhad pada status DALAM PROSES lagi)
+        // Tunjukkan Select All jika ada data
         if (selectAllCb) selectAllCb.classList.remove('hidden');
+
+        // PENGOPTIMUMAN PRESTASI: Hadkan rendering DOM kepada 50 rekod pertama
+        const limit = APP_CONFIG.ADMIN_TABLE_LIMIT || 50;
+        const displayData = filteredData.slice(0, limit);
 
         const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
         let html = '';
 
-        filteredData.forEach((item, index) => {
+        displayData.forEach((item, index) => {
             const dateObj = new Date(item.created_at);
             const formatTarikh = dateObj.toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric' });
             const formatMasa = dateObj.toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' });
@@ -246,7 +250,6 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
                 : '';
 
             // SUNTIKAN ROW CHECKBOX UNTUK TINDAKAN PUKAL
-            // KEMASKINI: Kotak semak kini dibuka untuk semua status, ditambah data-status untuk pengesanan pintar
             let checkboxHtml = `<input type="checkbox" class="cb-delima-${kategori} w-4 h-4 accent-${colorTheme}-600 cursor-pointer rounded mb-2" value="${item.id}" data-email="${item.id_delima || ''}" data-status="${item.status_proses}" onchange="checkBulkStatus('${kategori}')">`;
 
             html += `
@@ -288,18 +291,38 @@ window.loadSenaraiDelimaAdmin = async function(kategori, forceRefresh = true) {
             `;
         });
 
+        // Bar Maklumat Had Paparan Visual jika rekod melebihi 50 baris
+        if (filteredData.length > limit) {
+            html += `
+            <tr class="bg-amber-50/80 border-t-2 border-amber-200">
+                <td colspan="4" class="p-3 px-6 text-center text-xs font-bold text-amber-800">
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-2">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fas fa-info-circle text-amber-500 text-sm"></i>
+                            Memaparkan <b>${limit}</b> daripada <b>${filteredData.length}</b> permohonan. Gunakan tapisan untuk melihat permohonan spesifik.
+                        </span>
+                        <span class="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1 rounded-full font-black uppercase tracking-wider">
+                            Eksport CSV Mengandungi 100% Data (${filteredData.length} Rekod)
+                        </span>
+                    </div>
+                </td>
+            </tr>`;
+        }
+
         tbody.innerHTML = html;
         window.resetBulkState(kategori);
 
     } catch (error) {
         console.error('Ralat Admin DELIMa (loadSenaraiDelimaAdmin):', error);
-        Swal.fire({
-            icon: 'error',
-            title: 'Ralat Pangkalan Data',
-            text: 'Gagal menarik data permohonan DELIMa atau Kod OU.',
-            confirmButtonColor: '#3085d6',
-            confirmButtonText: 'Tutup'
-        });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Ralat Pangkalan Data',
+                text: 'Gagal menarik data permohonan DELIMa atau Kod OU.',
+                confirmButtonColor: '#3085d6',
+                confirmButtonText: 'Tutup'
+            });
+        }
     }
 };
 
@@ -335,7 +358,7 @@ window.checkBulkStatus = function(kategori) {
     const bulkContainer = document.getElementById(`bulkActions${capitalizedKategori}`);
     const btnSalin = document.getElementById(`btnSalinPukal${capitalizedKategori}`);
     const btnSelesai = document.getElementById(`btnSelesaiPukal${capitalizedKategori}`);
-    const btnBukaSemula = document.getElementById(`btnBukaSemulaPukal${capitalizedKategori}`); // DOM baharu
+    const btnBukaSemula = document.getElementById(`btnBukaSemulaPukal${capitalizedKategori}`);
     const btnEksport = document.getElementById(`btnEksportPukal${capitalizedKategori}`);
     const countSpan = document.getElementById(`countPukal${capitalizedKategori}`);
 
@@ -348,7 +371,6 @@ window.checkBulkStatus = function(kategori) {
         if (cb.dataset.status === 'SELESAI') hasSelesai = true;
     });
 
-    // Kenal pasti status penapis (filter) semasa untuk UI pintar
     const statusFilterId = kategori === 'GURU' ? 'filterDelimaGuruAdmin' : 'filterDelimaMuridAdmin';
     const currentFilter = document.getElementById(statusFilterId)?.value || 'ALL';
 
@@ -358,18 +380,15 @@ window.checkBulkStatus = function(kategori) {
         if (btnEksport) btnEksport.disabled = false;
         if (countSpan) countSpan.innerText = count;
 
-        // Kawalan spesifik butang mengikut status yang ditanda
         if (btnSelesai) btnSelesai.disabled = !hasDalamProses;
         if (btnBukaSemula) {
             btnBukaSemula.disabled = !hasSelesai;
             
-            // [SUNTIKAN SURGICAL START] Sembunyikan "Buka Semula" jika penapis adalah "DALAM PROSES"
             if (currentFilter === 'DALAM PROSES') {
                 btnBukaSemula.classList.add('hidden');
             } else {
                 btnBukaSemula.classList.remove('hidden');
             }
-            // [SUNTIKAN SURGICAL END]
         }
     } else {
         if (bulkContainer) bulkContainer.classList.add('hidden');
@@ -381,13 +400,11 @@ window.checkBulkStatus = function(kategori) {
         if (btnBukaSemula) {
             btnBukaSemula.disabled = true;
             
-            // [SUNTIKAN SURGICAL START] Kekalkan logik sembunyi UI walaupun tiada data ditanda supaya antaramuka tidak kelip
             if (currentFilter === 'DALAM PROSES') {
                 btnBukaSemula.classList.add('hidden');
             } else {
                 btnBukaSemula.classList.remove('hidden');
             }
-            // [SUNTIKAN SURGICAL END]
         }
         
         const selectAllCb = document.getElementById(`selectAll${capitalizedKategori}`);
@@ -396,7 +413,7 @@ window.checkBulkStatus = function(kategori) {
 };
 
 /**
- * EKSPORT CSV BERKELOMPOK BAHARU (Mengekstrak rekod yang ditandakan sahaja)
+ * EKSPORT CSV BERKELOMPOK (Mengekstrak rekod yang ditandakan sahaja)
  */
 window.eksportCsvPukal = function(kategori) {
     const checkboxes = document.querySelectorAll(`.cb-delima-${kategori}:checked`);
@@ -407,7 +424,9 @@ window.eksportCsvPukal = function(kategori) {
     const recordsToExport = dataPool.filter(item => selectedIds.includes(String(item.id)));
 
     if (recordsToExport.length === 0) {
-        Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Tiada Data', text: 'Tiada rekod sah untuk dieksport.', showConfirmButton: false, timer: 2000 });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Tiada Data', text: 'Tiada rekod sah untuk dieksport.', showConfirmButton: false, timer: 2000 });
+        }
         return;
     }
 
@@ -441,9 +460,11 @@ window.eksportCsvPukal = function(kategori) {
     link.click();
     document.body.removeChild(link);
 
-    Swal.fire({ 
-        toast: true, position: 'top-end', icon: 'success', title: 'Berjaya Dieksport!', text: `${recordsToExport.length} rekod dimuat turun.`, showConfirmButton: false, timer: 2000, customClass: { popup: 'colored-toast' } 
-    });
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({ 
+            toast: true, position: 'top-end', icon: 'success', title: 'Berjaya Dieksport!', text: `${recordsToExport.length} rekod dimuat turun.`, showConfirmButton: false, timer: 2000, customClass: { popup: 'colored-toast' } 
+        });
+    }
 };
 
 window.salinEmelPukal = function(kategori) {
@@ -458,7 +479,9 @@ window.salinEmelPukal = function(kategori) {
     });
 
     if (emails.length === 0) {
-        Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Tiada Emel Sah', text: 'Pilihan anda tidak mengandungi emel yang sah.', showConfirmButton: false, timer: 2000 });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Tiada Emel Sah', text: 'Pilihan anda tidak mengandungi emel yang sah.', showConfirmButton: false, timer: 2000 });
+        }
         return;
     }
 
@@ -480,10 +503,12 @@ window.salinEmelPukal = function(kategori) {
     };
 
     const tunjukToastBerjaya = () => {
-        Swal.fire({
-            toast: true, position: 'top-end', icon: 'success', title: 'Berjaya Disalin!', text: 'Senarai emel sedia ditampal di Excel (Satu lajur).',
-            showConfirmButton: false, timer: 2000, customClass: { popup: 'colored-toast' }
-        });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'success', title: 'Berjaya Disalin!', text: 'Senarai emel sedia ditampal di Excel (Satu lajur).',
+                showConfirmButton: false, timer: 2000, customClass: { popup: 'colored-toast' }
+            });
+        }
     };
 
     if (navigator.clipboard && window.isSecureContext) {
@@ -502,16 +527,17 @@ window.tandaSelesaiPukal = async function(kategori) {
     const db = getDatabaseClient();
     if (!db) return;
 
-    // Pastikan kita hanya ambil checkbox Dalam Proses yang bertanda sahaja
     const checkboxes = document.querySelectorAll(`.cb-delima-${kategori}:checked[data-status="DALAM PROSES"]`);
     if (checkboxes.length === 0) return;
 
     const capitalizedKategori = kategori.charAt(0).toUpperCase() + kategori.slice(1).toLowerCase();
     const btnSelesai = document.getElementById(`btnSelesaiPukal${capitalizedKategori}`);
-    const originalHtml = btnSelesai.innerHTML;
+    const originalHtml = btnSelesai ? btnSelesai.innerHTML : '';
 
-    btnSelesai.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-2"></i>Memproses...`;
-    btnSelesai.disabled = true;
+    if (btnSelesai) {
+        btnSelesai.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-2"></i>Memproses...`;
+        btnSelesai.disabled = true;
+    }
 
     const idsToUpdate = [];
     const rowsToRemove = [];
@@ -529,13 +555,15 @@ window.tandaSelesaiPukal = async function(kategori) {
 
         if (error) throw error;
 
-        Swal.fire({
-            toast: true, position: 'top-end', icon: 'success', title: 'Selesai Pukal!',
-            text: `${idsToUpdate.length} permohonan dikemaskini.`, showConfirmButton: false, timer: 2000,
-            customClass: { popup: 'colored-toast' }
-        });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'success', title: 'Selesai Pukal!',
+                text: `${idsToUpdate.length} permohonan dikemaskini.`, showConfirmButton: false, timer: 2000,
+                customClass: { popup: 'colored-toast' }
+            });
+        }
 
-        // KEMASKINI CACHE: Jangan filter out rekod (nanti hilang dari memori), tukar sahaja statusnya
+        // KEMASKINI CACHE
         let dataArray = kategori === 'GURU' ? rawDataGuru : rawDataMurid;
         idsToUpdate.forEach(id => {
             const index = dataArray.findIndex(item => String(item.id) === String(id));
@@ -547,7 +575,6 @@ window.tandaSelesaiPukal = async function(kategori) {
         const statusFilterId = kategori === 'GURU' ? 'filterDelimaGuruAdmin' : 'filterDelimaMuridAdmin';
         const statusFilter = document.getElementById(statusFilterId)?.value || 'ALL';
 
-        // Hanya hapuskan baris dan animasikan jika filter BUKAN "ALL"
         if (statusFilter !== 'ALL') {
             rowsToRemove.forEach(row => {
                 row.style.transition = 'all 0.3s ease-out';
@@ -569,29 +596,31 @@ window.tandaSelesaiPukal = async function(kategori) {
                 }
             }, 300);
         } else {
-            // Jika filter adalah ALL, muat semula jadual untuk kemaskini badge
             loadSenaraiDelimaAdmin(kategori, false);
         }
 
     } catch (error) {
         console.error('Ralat kemaskini pukal:', error);
-        btnSelesai.innerHTML = originalHtml;
-        btnSelesai.disabled = false;
-        Swal.fire({
-            toast: true, position: 'top-end', icon: 'error', title: 'Ralat Rangkaian',
-            text: 'Gagal memproses tindakan pukal.', showConfirmButton: false, timer: 2500
-        });
+        if (btnSelesai) {
+            btnSelesai.innerHTML = originalHtml;
+            btnSelesai.disabled = false;
+        }
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'error', title: 'Ralat Rangkaian',
+                text: 'Gagal memproses tindakan pukal.', showConfirmButton: false, timer: 2500
+            });
+        }
     }
 };
 
 // =========================================================
-// FUNGSI BAHARU: BUKA SEMULA PUKAL
+// BUKA SEMULA PUKAL
 // =========================================================
 window.bukaSemulaPukal = async function(kategori) {
     const db = getDatabaseClient();
     if (!db) return;
 
-    // Pastikan kita hanya ambil checkbox Selesai yang bertanda sahaja
     const checkboxes = document.querySelectorAll(`.cb-delima-${kategori}:checked[data-status="SELESAI"]`);
     if (checkboxes.length === 0) return;
 
@@ -620,13 +649,14 @@ window.bukaSemulaPukal = async function(kategori) {
 
         if (error) throw error;
 
-        Swal.fire({
-            toast: true, position: 'top-end', icon: 'success', title: 'Berjaya!',
-            text: `${idsToUpdate.length} permohonan dibuka semula.`, showConfirmButton: false, timer: 2000,
-            customClass: { popup: 'colored-toast' }
-        });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'success', title: 'Berjaya!',
+                text: `${idsToUpdate.length} permohonan dibuka semula.`, showConfirmButton: false, timer: 2000,
+                customClass: { popup: 'colored-toast' }
+            });
+        }
 
-        // KEMASKINI CACHE (Sync state)
         let dataArray = kategori === 'GURU' ? rawDataGuru : rawDataMurid;
         idsToUpdate.forEach(id => {
             const index = dataArray.findIndex(item => String(item.id) === String(id));
@@ -638,7 +668,6 @@ window.bukaSemulaPukal = async function(kategori) {
         const statusFilterId = kategori === 'GURU' ? 'filterDelimaGuruAdmin' : 'filterDelimaMuridAdmin';
         const statusFilter = document.getElementById(statusFilterId)?.value || 'ALL';
 
-        // Jika filter sekarang adalah SELESAI, animasikan pemadaman baris ke Dalam Proses
         if (statusFilter !== 'ALL') {
             rowsToRemove.forEach(row => {
                 row.style.transition = 'all 0.3s ease-out';
@@ -660,7 +689,6 @@ window.bukaSemulaPukal = async function(kategori) {
                 }
             }, 300);
         } else {
-            // Jika filter adalah ALL, render semula jadual untuk kemaskini UI butang & badge
             loadSenaraiDelimaAdmin(kategori, false);
         }
 
@@ -670,10 +698,12 @@ window.bukaSemulaPukal = async function(kategori) {
             btnBukaSemula.innerHTML = originalHtml;
             btnBukaSemula.disabled = false;
         }
-        Swal.fire({
-            toast: true, position: 'top-end', icon: 'error', title: 'Ralat Rangkaian',
-            text: 'Gagal memproses tindakan pukal.', showConfirmButton: false, timer: 2500
-        });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'error', title: 'Ralat Rangkaian',
+                text: 'Gagal memproses tindakan pukal.', showConfirmButton: false, timer: 2500
+            });
+        }
     }
 };
 
@@ -708,11 +738,13 @@ window.kemaskiniStatusDelima = async function(id, statusBaru, kategori, btnEleme
             dataArray[index].status_proses = statusBaru;
         }
 
-        Swal.fire({
-            toast: true, position: 'top-end', icon: 'success', title: 'Selesai!',
-            text: `Status ditala ke ${statusBaru}`, timer: 1500, showConfirmButton: false,
-            customClass: { popup: 'colored-toast' }
-        });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'success', title: 'Selesai!',
+                text: `Status ditala ke ${statusBaru}`, timer: 1500, showConfirmButton: false,
+                customClass: { popup: 'colored-toast' }
+            });
+        }
 
         const statusFilterId = kategori === 'GURU' ? 'filterDelimaGuruAdmin' : 'filterDelimaMuridAdmin';
         const statusFilter = document.getElementById(statusFilterId)?.value || 'ALL';
@@ -743,7 +775,9 @@ window.kemaskiniStatusDelima = async function(id, statusBaru, kategori, btnEleme
         btnElement.disabled = false;
         btnElement.classList.remove('opacity-70', 'cursor-not-allowed');
 
-        Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Ralat Keselamatan', text: 'Gagal mengemas kini status.', showConfirmButton: false, timer: 2500 });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Ralat Keselamatan', text: 'Gagal mengemas kini status.', showConfirmButton: false, timer: 2500 });
+        }
     }
 };
 
@@ -763,7 +797,7 @@ window.salinIdDelimaAdmin = function(emel) {
 
         try {
             const successful = document.execCommand('copy');
-            if (successful) {
+            if (successful && typeof Swal !== 'undefined') {
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Disalin!', text: text, showConfirmButton: false, timer: 2000, customClass: { popup: 'colored-toast' } });
             }
         } catch (err) {}
@@ -772,7 +806,9 @@ window.salinIdDelimaAdmin = function(emel) {
 
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(emel).then(() => {
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Disalin!', text: emel, showConfirmButton: false, timer: 2000, customClass: { popup: 'colored-toast' } });
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Disalin!', text: emel, showConfirmButton: false, timer: 2000, customClass: { popup: 'colored-toast' } });
+            }
         }).catch(err => {
             fallbackCopy(emel);
         });
@@ -785,6 +821,8 @@ window.padamRekodDelima = async function(id, kategori) {
     const db = getDatabaseClient();
     if (!db) return;
     try {
+        if (typeof Swal === 'undefined') return;
+
         const confirm = await Swal.fire({
             title: 'Padam Rekod?',
             text: 'Tindakan ini tidak boleh diundur. Rekod permohonan akan dihapuskan sepenuhnya.',
@@ -809,6 +847,8 @@ window.padamRekodDelima = async function(id, kategori) {
 
     } catch (error) {
         console.error('Ralat padam rekod DELIMa:', error);
-        Swal.fire({ icon: 'error', title: 'Akses Ditolak', text: 'Ralat berlaku semasa cuba memadam rekod pangkalan data.', confirmButtonColor: '#ef4444' });
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ icon: 'error', title: 'Akses Ditolak', text: 'Ralat berlaku semasa cuba memadam rekod pangkalan data.', confirmButtonColor: '#ef4444' });
+        }
     }
 };

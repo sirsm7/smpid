@@ -1,10 +1,14 @@
 /**
- * ADMIN MODULE: IMPACT ANALYSIS (MODUL PENILAIAN IMPAK BBM BERBANTUKAN AI)
+ * ADMIN MODULE: IMPACT ANALYSIS (V2.0 - 50 ROWS LIMIT & HIGH PERFORMANCE)
  * Fungsi: Menguruskan pemuatan data analitik, penjanaan carta, 
  * pengiraan agregat (Indeks Impak), visualisasi Suara Murid dan kemudahan Reset.
- * --- KEMASKINI UI ---
- * Menyokong format baharu data Q12 (Tunggal) dan Q13 (Berbilang) yang diubah ke
- * representasi visual (Doughnut & Bar Charts) menggunakan Chart.js. Menambah kawalan Reset Data.
+ * 
+ * Pengoptimuman V2.0:
+ * 1. Mengehadkan paparan baris pada jadual status pematuhan impak sekolah (`#tbodyImpactAdmin`)
+ *    kepada 50 rekod pertama berpandukan konfigurasi `APP_CONFIG.ADMIN_TABLE_LIMIT`.
+ * 2. Menambah bar maklumat had paparan visual di bahagian bawah jadual apabila sekolah melebihi 50 baris.
+ * 3. Mengekalkan pemprosesan 100% data penuh bagi metrik kad KPI, laporan Likert, carta komponen BBM,
+ *    dan muat turun CSV data mentah.
  */
 
 import { ImpactService } from '../services/impact.service.js';
@@ -38,7 +42,7 @@ window.loadImpactAdmin = async function() {
         // Jika ADMIN/PPD, hanya tunjukkan data untuk senarai sekolah mereka
         if (['ADMIN', 'PPD_UNIT'].includes(userRole) && window.globalDashboardData) {
             const validSchoolCodes = window.globalDashboardData.map(s => s.kod_sekolah);
-            validSchoolCodes.push(userKod); // Benarkan diri sendiri juga
+            validSchoolCodes.push(userKod);
             rawImpactData = rawImpactData.filter(d => validSchoolCodes.includes(d.kod_sekolah));
         }
 
@@ -49,7 +53,9 @@ window.loadImpactAdmin = async function() {
     } catch (e) {
         console.error("Gagal memuatkan data impak:", e);
         tbody.innerHTML = `<tr><td colspan="6" class="p-10 text-center text-red-500 font-bold bg-red-50 rounded-xl">Gagal memuatkan pangkalan data analitik.</td></tr>`;
-        Swal.fire('Ralat Rangkaian', 'Sistem tidak dapat berhubung dengan pangkalan data.', 'error');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Ralat Rangkaian', 'Sistem tidak dapat berhubung dengan pangkalan data.', 'error');
+        }
     } finally {
         toggleLoading(false);
     }
@@ -63,7 +69,7 @@ function calculateImpactDashboard(data) {
     let sekolahSet = new Set();
     let muridCount = 0;
     
-    // Hanya ambil respons yang sah (Q14 valid subject string) untuk analisis teras
+    // Hanya ambil respons yang sah untuk analisis teras
     const validData = data.filter(d => d.is_valid === true);
     
     // B. Pengiraan Komponen BBM (Q11)
@@ -78,15 +84,13 @@ function calculateImpactDashboard(data) {
         muridCount++;
 
         // Kiraan Komponen BBM
-        // Supabase JSONB memulangkan Array JS biasa
         if (Array.isArray(item.q11_komponen_bbm)) {
             item.q11_komponen_bbm.forEach(komp => {
                 componentCounts[komp] = (componentCounts[komp] || 0) + 1;
             });
         }
 
-        // Kiraan Sentimen (Menganggap "Sangat Setuju", "Setuju" sebagai positif untuk Skala Baharu)
-        // Sokong juga data legacy lama (Sangat membantu, Membantu)
+        // Kiraan Sentimen
         const isPosOverall = ['Sangat Setuju', 'Setuju', 'Sangat membantu', 'Membantu'].includes(item.q8_keseluruhan);
         if (isPosOverall) {
             totalPositiveResponses++;
@@ -111,14 +115,19 @@ function calculateImpactDashboard(data) {
     }
 
     // E. Paparan Teks KPI
-    document.getElementById('impactKpiSekolah').innerText = sekolahTercapaiCount;
-    document.getElementById('impactKpiMurid').innerText = muridCount;
+    const kpiSekolahEl = document.getElementById('impactKpiSekolah');
+    const kpiMuridEl = document.getElementById('impactKpiMurid');
+    const kpiPositifEl = document.getElementById('impactKpiPositif');
+    const kpiUjianEl = document.getElementById('impactKpiUjian');
+
+    if (kpiSekolahEl) kpiSekolahEl.innerText = sekolahTercapaiCount;
+    if (kpiMuridEl) kpiMuridEl.innerText = muridCount;
 
     const percentPositive = muridCount > 0 ? Math.round((totalPositiveResponses / muridCount) * 100) : 0;
     const percentUjian = muridCount > 0 ? Math.round((totalUjianPositive / muridCount) * 100) : 0;
     
-    document.getElementById('impactKpiPositif').innerText = `${percentPositive}%`;
-    document.getElementById('impactKpiUjian').innerText = `${percentUjian}%`;
+    if (kpiPositifEl) kpiPositifEl.innerText = `${percentPositive}%`;
+    if (kpiUjianEl) kpiUjianEl.innerText = `${percentUjian}%`;
 
     // F. Janaan Carta Bar (Chart.js) untuk Komponen BBM (Q11)
     renderBBMChart(componentCounts);
@@ -141,14 +150,12 @@ function renderLikertBars(validData) {
 
     const total = validData.length;
     
-    // Helper function untuk kira peratusan respons positif menyokong kedua-dua format lama dan baharu
     const calculatePositivePercent = (questionKey) => {
         const positiveKeywords = ['Sangat Setuju', 'Setuju', 'Sangat membantu', 'Membantu', 'Lebih berminat', 'Sedikit lebih berminat', 'Sangat yakin', 'Yakin'];
         const count = validData.filter(d => positiveKeywords.includes(d[questionKey])).length;
         return Math.round((count / total) * 100);
     };
 
-    // Analisis Soalan Kritikal
     const metrics = [
         { 
             label: "Kefahaman Topik", 
@@ -215,10 +222,11 @@ function renderBBMChart(componentCounts) {
         if (emptyMsg) emptyMsg.classList.add('hidden');
     }
 
-    // Sort descending
-    const sortedEntries = Object.entries(componentCounts).sort((a, b) => b[1] - a[1]).slice(0, 5); // Ambil Top 5
+    const sortedEntries = Object.entries(componentCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
     const labels = sortedEntries.map(e => e[0]);
     const data = sortedEntries.map(e => e[1]);
+
+    if (typeof Chart === 'undefined') return;
 
     impactChartInstance = new Chart(ctx, {
         type: 'bar',
@@ -227,14 +235,14 @@ function renderBBMChart(componentCounts) {
             datasets: [{
                 label: 'Kekerapan Pilihan Murid',
                 data: data,
-                backgroundColor: 'rgba(16, 185, 129, 0.2)', // Emerald 500
+                backgroundColor: 'rgba(16, 185, 129, 0.2)',
                 borderColor: 'rgba(16, 185, 129, 1)',
                 borderWidth: 1,
                 borderRadius: 4
             }]
         },
         options: {
-            indexAxis: 'y', // Menjadikan bar horizontal
+            indexAxis: 'y',
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
@@ -262,7 +270,7 @@ function renderBBMChart(componentCounts) {
 }
 
 /**
- * Menjana Jadual Status Pelaksanaan Mengikut Sekolah beserta butang Reset.
+ * PENGOPTIMUMAN PRESTASI: Menjana Jadual Status Pelaksanaan Mengikut Sekolah (Had 50 baris)
  */
 function renderImpactTable(data) {
     const tbody = document.getElementById('tbodyImpactAdmin');
@@ -278,7 +286,6 @@ function renderImpactTable(data) {
     const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
 
     data.forEach(item => {
-        // Abaikan rekod PPD
         if (senaraiKodPPD.includes(item.kod_sekolah)) return;
 
         if (!schoolAggregates[item.kod_sekolah]) {
@@ -304,8 +311,12 @@ function renderImpactTable(data) {
 
     const aggregateArray = Object.values(schoolAggregates).sort((a, b) => b.valid_count - a.valid_count);
 
+    // PENGOPTIMUMAN: Hadkan baris DOM kepada 50 rekod pertama
+    const limit = APP_CONFIG.ADMIN_TABLE_LIMIT || 50;
+    const displayList = aggregateArray.slice(0, limit);
+
     // 2. Render HTML
-    tbody.innerHTML = aggregateArray.map((s, index) => {
+    let tableRowsHTML = displayList.map((s, index) => {
         const isReached = s.valid_count >= 10;
         
         let statusBadge = isReached 
@@ -314,7 +325,6 @@ function renderImpactTable(data) {
             
         const rowClass = isReached ? 'bg-slate-50/50 grayscale-[0.2]' : 'bg-white hover:bg-slate-50';
 
-        // Hanya SUPER_ADMIN dibenarkan mereset/memadam rekod impak bagi sekolah secara berasingan (elak terpadam rekod sah sekolah lain)
         const currentUserRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
         let btnReset = '';
         if (currentUserRole === 'SUPER_ADMIN') {
@@ -345,12 +355,34 @@ function renderImpactTable(data) {
             </td>
         </tr>`;
     }).join('');
+
+    // Bar Maklumat Had Paparan Visual jika rekod melebihi 50 baris
+    if (aggregateArray.length > limit) {
+        tableRowsHTML += `
+        <tr class="bg-amber-50/80 border-t-2 border-amber-200">
+            <td colspan="6" class="p-3 px-6 text-center text-xs font-bold text-amber-800">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-2">
+                    <span class="flex items-center gap-1.5">
+                        <i class="fas fa-info-circle text-amber-500 text-sm"></i>
+                        Memaparkan <b>${limit}</b> daripada <b>${aggregateArray.length}</b> sekolah.
+                    </span>
+                    <span class="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1 rounded-full font-black uppercase tracking-wider">
+                        Eksport CSV Mengandungi 100% Data (${rawImpactData.length} Respons Mentah)
+                    </span>
+                </div>
+            </td>
+        </tr>`;
+    }
+
+    tbody.innerHTML = tableRowsHTML;
 }
 
 /**
  * Logik pemadaman (reset) data impak sebuah sekolah
  */
 window.resetImpactDataAdmin = async function(kodSekolah) {
+    if (typeof Swal === 'undefined') return;
+
     Swal.fire({
         title: `Padam Jadual Tinjauan Impak?`,
         html: `Anda pasti mahu memadam <b>SEMUA</b> rekod respons Impak BBM untuk sekolah <b>${kodSekolah}</b>?<br><br>Tindakan ini tidak boleh dibatalkan.`,
@@ -368,7 +400,6 @@ window.resetImpactDataAdmin = async function(kodSekolah) {
                 toggleLoading(false);
                 Swal.fire({ icon: 'success', title: 'Data Direset', text: 'Jadual maklum balas sekolah ini telah dikosongkan.', timer: 1500, showConfirmButton: false });
                 
-                // Refresh data list
                 window.loadImpactAdmin();
             } catch (e) {
                 toggleLoading(false);
@@ -387,10 +418,9 @@ window.viewImpactDetail = function(kodSekolah, namaSekolah) {
         subtitle.innerText = `${namaSekolah} (${kodSekolah})`;
     }
 
-    // Tapis rekod untuk sekolah berkenaan sahaja (Hanya yang SAH)
     const schoolData = rawImpactData.filter(d => d.kod_sekolah === kodSekolah && d.is_valid === true);
 
-    // KIRAAN Q12 (PERKARA DIPELAJARI - RADIO BUTTON TUNGGAL)
+    // KIRAAN Q12 (PERKARA DIPELAJARI)
     let q12Counts = {};
     schoolData.forEach(item => {
         if (item.q12_perkara_dipelajari) {
@@ -399,7 +429,7 @@ window.viewImpactDetail = function(kodSekolah, namaSekolah) {
         }
     });
 
-    // KIRAAN Q13 (CADANGAN - CHECKBOX ARRAY)
+    // KIRAAN Q13 (CADANGAN)
     let q13Counts = {};
     schoolData.forEach(item => {
         if (Array.isArray(item.q13_cadangan)) {
@@ -409,11 +439,11 @@ window.viewImpactDetail = function(kodSekolah, namaSekolah) {
         }
     });
 
-    // Render Carta Chart.js
     renderQ12Chart(q12Counts);
     renderQ13Chart(q13Counts);
 
-    document.getElementById('modalImpactDetail').classList.remove('hidden');
+    const modal = document.getElementById('modalImpactDetail');
+    if (modal) modal.classList.remove('hidden');
 };
 
 /**
@@ -427,8 +457,9 @@ function renderQ12Chart(dataObj) {
     const labels = Object.keys(dataObj);
     const dataValues = Object.values(dataObj);
 
+    if (typeof Chart === 'undefined') return;
+
     if (labels.length === 0) {
-        // Fallback jika tiada data
         chartQ12Instance = new Chart(ctx, {
             type: 'doughnut',
             data: { labels: ['Tiada Rekod'], datasets: [{ data: [1], backgroundColor: ['#e2e8f0'] }] },
@@ -479,13 +510,13 @@ function renderQ13Chart(dataObj) {
     if (!ctx) return;
     if (chartQ13Instance) chartQ13Instance.destroy();
 
-    // Sort Descending
     const sortedEntries = Object.entries(dataObj).sort((a, b) => b[1] - a[1]);
     const labels = sortedEntries.map(e => e[0]);
     const dataValues = sortedEntries.map(e => e[1]);
 
+    if (typeof Chart === 'undefined') return;
+
     if (labels.length === 0) {
-        // Fallback
         chartQ13Instance = new Chart(ctx, {
             type: 'bar',
             data: { labels: ['Tiada Cadangan'], datasets: [{ data: [0], backgroundColor: '#e2e8f0' }] },
@@ -501,7 +532,7 @@ function renderQ13Chart(dataObj) {
             datasets: [{
                 label: 'Kekerapan Cadangan',
                 data: dataValues,
-                backgroundColor: 'rgba(245, 158, 11, 0.2)', // Amber
+                backgroundColor: 'rgba(245, 158, 11, 0.2)',
                 borderColor: 'rgba(245, 158, 11, 1)',
                 borderWidth: 1,
                 borderRadius: 4
@@ -539,22 +570,23 @@ function renderQ13Chart(dataObj) {
 
 /**
  * Mengeksport data mentah Impak BBM ke dalam format CSV
+ * Kekal mengeksport 100% data penuh tanpa had baris
  */
 window.eksportImpactData = function() {
     if (rawImpactData.length === 0) {
-        return Swal.fire('Tiada Data', 'Tiada rekod untuk dieksport.', 'info');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Tiada Data', 'Tiada rekod untuk dieksport.', 'info');
+        }
+        return;
     }
 
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-    
-    // Header Column
     csvContent += "KOD_SEKOLAH,TARIKH,SAH,JANTINA,UMUR,Q1_KEFAHAMAN,Q2_PENGUASAAN,Q3_INGATAN,Q4_MINAT,Q5_IDEA,Q6_KEYAKINAN,Q7_PERSEDIAAN_UJIAN,Q8_KESELURUHAN,Q9_PENGLIBATAN,Q10_PENERANGAN_GURU,Q11_KOMPONEN_BBM,Q12_DIPELAJARI,Q13_CADANGAN,Q14_SUBJEK\n";
 
     rawImpactData.forEach(item => {
         const clean = (str) => `"${(str || '').toString().replace(/"/g, '""')}"`;
         const tarikh = new Date(item.created_at).toLocaleDateString('ms-MY');
         
-        // Pembersihan Array ke Teks (Q11, Q13)
         let komponenBBM = Array.isArray(item.q11_komponen_bbm) ? item.q11_komponen_bbm.join(', ') : item.q11_komponen_bbm;
         let cadanganBBM = Array.isArray(item.q13_cadangan) ? item.q13_cadangan.join(', ') : item.q13_cadangan;
 

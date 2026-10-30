@@ -1,7 +1,14 @@
 /**
  * @file libat_urus.js
- * @description Controller for the Admin Libat Urus DELIMa Dashboard.
+ * @description Controller for the Admin Libat Urus DELIMa Dashboard (V2.0 - 50 CARDS LIMIT & HIGH PERFORMANCE).
  * Handles data fetching, statistical aggregation, filtering, and gallery rendering.
+ * 
+ * Pengoptimuman V2.0:
+ * 1. Mengehadkan bilangan kad laporan yang dirender di dalam galeri (`#luAdminGallery`) kepada 50 kad laporan
+ *    terkini berpandukan konfigurasi `APP_CONFIG.ADMIN_TABLE_LIMIT` bagi mengurangkan beban pemprosesan
+ *    bingkai prapapar (iframe preview Google Drive) dan memori pelayar.
+ * 2. Menyuntik bar maklumat visual had paparan apabila bilangan laporan melebihi 50 rekod.
+ * 3. Mengekalkan pemprosesan 100% data penuh untuk metrik kad KPI, tapisan bersilang, dan eksport CSV.
  */
 
 import { APP_CONFIG } from '../config/app.config.js';
@@ -21,20 +28,19 @@ window.loadAdminLibatUrus = async function() {
     
     try {
         const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
-        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD); // PPD Code like M030
+        const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
         
         let daerahFilter = null;
         const daerahWrapper = document.getElementById('luFilterDaerahWrapper');
         
         // RBAC: Set strict filtering based on roles
         if (userRole === 'SUPER_ADMIN' || userRole === 'JPNMEL') {
-            if(daerahWrapper) daerahWrapper.classList.remove('hidden');
+            if (daerahWrapper) daerahWrapper.classList.remove('hidden');
         } else if (userRole === 'ADMIN') {
-            if(daerahWrapper) daerahWrapper.classList.add('hidden');
+            if (daerahWrapper) daerahWrapper.classList.add('hidden');
             daerahFilter = APP_CONFIG.PPD_MAPPING[userKod] || null;
         }
 
-// ── SURGICAL EDIT START: Memuat turun data dan menapis hanya rekod tahun semasa ──
         // Fetch data from database via service
         const rawData = await libatUrusService.getAllReports(daerahFilter);
         const currentYear = new Date().getFullYear();
@@ -45,9 +51,7 @@ window.loadAdminLibatUrus = async function() {
             const itemYear = new Date(item.tarikh_laksana).getFullYear();
             return itemYear === currentYear;
         });
-// ── SURGICAL EDIT END ──
         
-// ── SURGICAL EDIT START: Memanggil Cross Filters semasa pemuatan awal ──
         // Initialize filters and UI
         resetLibatUrusFilters();
         
@@ -56,11 +60,12 @@ window.loadAdminLibatUrus = async function() {
         
         // Cetus tapisan untuk merender data dan metrik di dalam UI
         window.filterLibatUrus();
-// ── SURGICAL EDIT END ──
         
     } catch (error) {
         console.error("Error loading Admin Libat Urus:", error);
-        Swal.fire('Ralat Sistem', 'Sistem tidak dapat memuat turun data libat urus. Sila semak sambungan internet atau hubungi pembangun.', 'error');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Ralat Sistem', 'Sistem tidak dapat memuat turun data libat urus. Sila semak sambungan internet atau hubungi pembangun.', 'error');
+        }
     }
     
     toggleLoading(false);
@@ -74,12 +79,11 @@ function resetLibatUrusFilters() {
     const fSekolah = document.getElementById('filterLuSekolah');
     const fBulan = document.getElementById('filterLuBulan');
     
-    if(fDaerah) fDaerah.value = "ALL";
-    if(fSekolah) fSekolah.value = "ALL";
-    if(fBulan) fBulan.value = "ALL";
+    if (fDaerah) fDaerah.value = "ALL";
+    if (fSekolah) fSekolah.value = "ALL";
+    if (fBulan) fBulan.value = "ALL";
 }
 
-// ── SURGICAL EDIT START: Melaksanakan Cross-Filtering (Tapisan Bersilang) dinamik ──
 /**
  * Updates the options in each filter dropdown based on the intersection of the other filters.
  * Prevents "Empty State" by only showing options that have associated data.
@@ -123,7 +127,7 @@ function updateCrossFilters(activeDaerah, activeSekolah, activeBulan) {
     // Rebuild HTML & preserve selection if it still exists in the new filtered array
     if (filterDaerah) {
         let optionsDaerah = `<option value="ALL">SEMUA DAERAH</option>`;
-        uniqueDaerah.forEach(d => { if(d !== 'N/A') optionsDaerah += `<option value="${d}">${d}</option>`; });
+        uniqueDaerah.forEach(d => { if (d !== 'N/A') optionsDaerah += `<option value="${d}">${d}</option>`; });
         filterDaerah.innerHTML = optionsDaerah;
         if (uniqueDaerah.includes(activeDaerah)) filterDaerah.value = activeDaerah;
         else filterDaerah.value = 'ALL';
@@ -131,7 +135,7 @@ function updateCrossFilters(activeDaerah, activeSekolah, activeBulan) {
 
     if (filterSekolah) {
         let optionsSekolah = `<option value="ALL">SEMUA SEKOLAH</option>`;
-        uniqueSekolah.forEach(s => { if(s !== 'TIDAK DIKETAHUI') optionsSekolah += `<option value="${s}">${s}</option>`; });
+        uniqueSekolah.forEach(s => { if (s !== 'TIDAK DIKETAHUI') optionsSekolah += `<option value="${s}">${s}</option>`; });
         filterSekolah.innerHTML = optionsSekolah;
         if (uniqueSekolah.includes(activeSekolah)) filterSekolah.value = activeSekolah;
         else filterSekolah.value = 'ALL';
@@ -139,15 +143,13 @@ function updateCrossFilters(activeDaerah, activeSekolah, activeBulan) {
 
     if (filterBulan) {
         let optionsBulan = `<option value="ALL">SEMUA BULAN</option>`;
-        uniqueBulan.forEach(b => { if(b !== 'N/A') optionsBulan += `<option value="${b}">${b}</option>`; });
+        uniqueBulan.forEach(b => { if (b !== 'N/A') optionsBulan += `<option value="${b}">${b}</option>`; });
         filterBulan.innerHTML = optionsBulan;
         if (uniqueBulan.includes(activeBulan)) filterBulan.value = activeBulan;
         else filterBulan.value = 'ALL';
     }
 }
-// ── SURGICAL EDIT END ──
 
-// ── SURGICAL EDIT START: Melaksanakan pemicu (trigger) Cross-Filtering ──
 /**
  * Filter mechanism triggered by onchange event in dropdowns
  */
@@ -159,7 +161,7 @@ window.filterLibatUrus = function() {
     // 1. Kemaskini silang filter (dropdown) untuk mengelakkan empty state
     updateCrossFilters(fDaerah, fSekolah, fBulan);
 
-    // 2. Dapatkan semula nilai yang telah diverifikasi (fallback kepada 'ALL' jika nilai terdahulu tidak sah)
+    // 2. Dapatkan semula nilai yang telah diverifikasi
     const validDaerah = document.getElementById('filterLuDaerah')?.value || "ALL";
     const validSekolah = document.getElementById('filterLuSekolah')?.value || "ALL";
     const validBulan = document.getElementById('filterLuBulan')?.value || "ALL";
@@ -181,7 +183,6 @@ window.filterLibatUrus = function() {
 
     processAndRender(filteredLibatUrusData);
 };
-// ── SURGICAL EDIT END ──
 
 /**
  * Process statistics and render the gallery
@@ -200,31 +201,24 @@ function calculateDashboardStats(data) {
     let sumGuru = 0;
     let sumMurid = 0;
     let sumIbuBapa = 0;
-// ── SURGICAL EDIT START: Menambah pembolehubah kiraan mod pelaksanaan ──
     let sumBersemuka = 0;
     let sumDalamTalian = 0;
-// ── SURGICAL EDIT END ──
     
     const monthFrequency = {};
     let topMonth = '-';
     let maxFrequency = 0;
 
     data.forEach(item => {
-        // Tally participants based on categories
         const cat = (item.kategori_sasar || '').toUpperCase();
         const pax = parseInt(item.jumlah_peserta) || 0;
-// ── SURGICAL EDIT START: Menjumlahkan nilai peserta mengikut mod pelaksanaan ──
         const mod = (item.mod_pelaksanaan || 'BERSEMUKA').toUpperCase();
-// ── SURGICAL EDIT END ──
         
         if (cat === 'GURU') sumGuru += pax;
         else if (cat === 'MURID') sumMurid += pax;
         else if (cat === 'IBU-BAPA (PIBG & PIBKS)' || cat.includes('IBU')) sumIbuBapa += pax;
 
-// ── SURGICAL EDIT START: Logik agihan metrik peserta mod pelaksanaan ──
         if (mod === 'DALAM TALIAN') sumDalamTalian += pax;
-        else sumBersemuka += pax; // Defaulting to Bersemuka for legacy/null records
-// ── SURGICAL EDIT END ──
+        else sumBersemuka += pax;
 
         // Calculate Month Frequency
         if (item.bulan) {
@@ -242,22 +236,20 @@ function calculateDashboardStats(data) {
     const statLuMurid = document.getElementById('statLuMurid');
     const statLuIbuBapa = document.getElementById('statLuIbuBapa');
 
-    if(statLuBulan) statLuBulan.innerText = topMonth;
-    if(statLuGuru) statLuGuru.innerText = sumGuru.toLocaleString('ms-MY');
-    if(statLuMurid) statLuMurid.innerText = sumMurid.toLocaleString('ms-MY');
-    if(statLuIbuBapa) statLuIbuBapa.innerText = sumIbuBapa.toLocaleString('ms-MY');
+    if (statLuBulan) statLuBulan.innerText = topMonth;
+    if (statLuGuru) statLuGuru.innerText = sumGuru.toLocaleString('ms-MY');
+    if (statLuMurid) statLuMurid.innerText = sumMurid.toLocaleString('ms-MY');
+    if (statLuIbuBapa) statLuIbuBapa.innerText = sumIbuBapa.toLocaleString('ms-MY');
 
-// ── SURGICAL EDIT START: Kemaskini metrik ke DOM ID Kad KPI yang baharu dicipta ──
     const statLuBersemuka = document.getElementById('luKpiBersemuka');
     const statLuDalamTalian = document.getElementById('luKpiDalamTalian');
 
-    if(statLuBersemuka) statLuBersemuka.innerText = sumBersemuka.toLocaleString('ms-MY');
-    if(statLuDalamTalian) statLuDalamTalian.innerText = sumDalamTalian.toLocaleString('ms-MY');
-// ── SURGICAL EDIT END ──
+    if (statLuBersemuka) statLuBersemuka.innerText = sumBersemuka.toLocaleString('ms-MY');
+    if (statLuDalamTalian) statLuDalamTalian.innerText = sumDalamTalian.toLocaleString('ms-MY');
 }
 
 /**
- * Generate and display HTML cards for each record
+ * PENGOPTIMUMAN PRESTASI: Generate and display HTML cards for each record (Had 50 kad)
  * @param {Array} data - Records to render
  */
 function renderLibatUrusGallery(data) {
@@ -274,15 +266,15 @@ function renderLibatUrusGallery(data) {
 
     emptyState.classList.add('hidden');
     
-// ── SURGICAL EDIT START: Reka bentuk semula jubin (minimalis), suntikan lakaran kecil (thumbnail), & Ringkasan Sekolah ──
-    // Kemaskini grid secara dinamik untuk memaksa ketumpatan kad lebih tinggi (sehingga 5 lajur)
     galleryContainer.className = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-10 relative";
 
-    // Pengiraan untuk ringkasan jumlah sekolah unik
     const uniqueSchoolsCount = new Set(data.map(item => item.kod_sekolah)).size;
     const currentYear = new Date().getFullYear();
 
-    // Mengubah Penyerahan kepada Laporan & menjadikan ia "Sticky" (Kekal Terapung)
+    // PENGOPTIMUMAN: Hadkan penjanaan kad DOM kepada 50 rekod pertama
+    const limit = APP_CONFIG.ADMIN_TABLE_LIMIT || 50;
+    const displayData = data.slice(0, limit);
+
     const summaryHeader = `
         <div class="col-span-full flex flex-col md:flex-row md:items-end justify-between gap-4 pb-3 mb-2 border-b-2 border-slate-200/60 sticky top-0 z-30 bg-[#f8fafc]/95 backdrop-blur-md pt-4 -mt-4 rounded-b-xl px-1 shadow-[0_4px_6px_-6px_rgba(0,0,0,0.1)]">
             <div>
@@ -301,7 +293,7 @@ function renderLibatUrusGallery(data) {
         </div>
     `;
 
-    const htmlCards = data.map(item => {
+    const htmlCards = displayData.map(item => {
         const cat = (item.kategori_sasar || '').toUpperCase();
         const dateStr = new Date(item.tarikh_laksana).toLocaleDateString('ms-MY', { day: 'numeric', month: 'short', year: 'numeric' });
         const schoolName = item.school?.nama_sekolah || item.kod_sekolah;
@@ -323,7 +315,6 @@ function renderLibatUrusGallery(data) {
         let previewHtml = '';
         if (item.pautan_fail && item.pautan_fail.includes('drive.google.com')) {
             const previewUrl = item.pautan_fail.replace(/\/view.*/, '/preview');
-            // iframe diset pointer-events-none untuk prestasi DOM optimum
             previewHtml = `<div class="h-28 w-full overflow-hidden bg-slate-100 relative group-hover:opacity-90 transition-opacity">
                 <iframe src="${previewUrl}" class="w-full h-48 -mt-10 pointer-events-none border-0 transform scale-[1.02]" aria-hidden="true" tabindex="-1" loading="lazy"></iframe>
                 <div class="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
@@ -334,7 +325,6 @@ function renderLibatUrusGallery(data) {
             </div>`;
         }
 
-        // Susun atur kad yang lebih kompak (padding lebih kecil, saiz fon optimum)
         return `
         <div class="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-orange-300 transition-all duration-300 flex flex-col overflow-hidden relative transform hover:-translate-y-1">
             ${previewHtml}
@@ -375,23 +365,38 @@ function renderLibatUrusGallery(data) {
         `;
     }).join('');
 
-    galleryContainer.innerHTML = summaryHeader + htmlCards;
-// ── SURGICAL EDIT END ──
+    // Bar Maklumat Had Paparan Visual jika laporan melebihi had 50 kad
+    let noticeHtml = '';
+    if (data.length > limit) {
+        noticeHtml = `
+        <div class="col-span-full p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl flex flex-col sm:flex-row justify-between items-center px-6 gap-3 mt-4 shadow-sm">
+            <span class="text-xs font-bold text-amber-800 flex items-center gap-2">
+                <i class="fas fa-info-circle text-amber-500 text-sm"></i>
+                Memaparkan <b>${limit}</b> daripada <b>${data.length}</b> laporan libat urus terkini bagi menjamin kelancaran sistem. Gunakan tapisan untuk melihat laporan spesifik.
+            </span>
+            <span class="text-[10px] font-black text-amber-700 uppercase bg-amber-100 px-3 py-1 rounded-full border border-amber-300">
+                Eksport CSV Menyimpan 100% Data (${data.length} Laporan)
+            </span>
+        </div>`;
+    }
+
+    galleryContainer.innerHTML = summaryHeader + htmlCards + noticeHtml;
 }
 
 /**
  * Export current filtered data to CSV
+ * Kekal mengeksport 100% data penuh tanpa had 50 baris
  */
 window.eksportLibatUrusCSV = function() {
     if (filteredLibatUrusData.length === 0) {
-        return Swal.fire('Tiada Data', 'Sila pastikan jadual mempunyai data sebelum muat turun.', 'warning');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Tiada Data', 'Sila pastikan jadual mempunyai data sebelum muat turun.', 'warning');
+        }
+        return;
     }
 
     let csvContent = "data:text/csv;charset=utf-8,";
-    // Header
-// ── SURGICAL EDIT START: Menambah lajur MOD_PELAKSANAAN ──
     csvContent += "ID_REKOD,KOD_SEKOLAH,NAMA_SEKOLAH,DAERAH,KATEGORI_SASAR,MOD_PELAKSANAAN,TARIKH_LAKSANA,BULAN,TEMPAT,JUMLAH_PESERTA,PAUTAN_FAIL\r\n";
-// ── SURGICAL EDIT END ──
 
     filteredLibatUrusData.forEach(item => {
         const id = item.id || '';
@@ -399,18 +404,14 @@ window.eksportLibatUrusCSV = function() {
         const namaSekolah = `"${(item.school?.nama_sekolah || '').replace(/"/g, '""')}"`;
         const daerah = item.school?.daerah || '';
         const kategori = `"${(item.kategori_sasar || '').replace(/"/g, '""')}"`;
-// ── SURGICAL EDIT START: Membaca dan menapis ralat (escape characters) mod pelaksanaan ──
         const modPelaksanaan = `"${(item.mod_pelaksanaan || 'BERSEMUKA').replace(/"/g, '""')}"`;
-// ── SURGICAL EDIT END ──
         const tarikh = item.tarikh_laksana || '';
         const bulan = item.bulan || '';
         const tempat = `"${(item.tempat || '').replace(/"/g, '""')}"`;
         const jumlah = item.jumlah_peserta || 0;
         const pautan = `"${(item.pautan_fail || '').replace(/"/g, '""')}"`;
 
-// ── SURGICAL EDIT START: Kemasukan data baris selari dengan kedudukan Header baharu ──
         const row = [id, kod, namaSekolah, daerah, kategori, modPelaksanaan, tarikh, bulan, tempat, jumlah, pautan].join(",");
-// ── SURGICAL EDIT END ──
         csvContent += row + "\r\n";
     });
 
@@ -418,44 +419,42 @@ window.eksportLibatUrusCSV = function() {
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
     
-    // Naming logic based on filters
     const fDaerah = document.getElementById('filterLuDaerah')?.value || "SEMUA_DAERAH";
     const fBulan = document.getElementById('filterLuBulan')?.value || "SEMUA_BULAN";
     const dateMark = new Date().toISOString().slice(0,10).replace(/-/g,"");
     
     link.setAttribute("download", `LAPORAN_LIBAT_URUS_${fDaerah}_${fBulan}_${dateMark}.csv`);
-    document.body.appendChild(link); // Required for FF
+    document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 };
 
-// ── SURGICAL EDIT START: Fungsi Eksport CSV Status Pengisian Libat Urus ──
 /**
  * Export submission status (SUDAH/BELUM) of Libat Urus to CSV
  * Compares current filtered data against globalDashboardData
  */
 window.eksportStatusLibatUrusCSV = function() {
     if (!window.globalDashboardData || window.globalDashboardData.length === 0) {
-        return Swal.fire('Ralat Data', 'Sistem belum bersedia atau data sekolah tidak wujud.', 'error');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Ralat Data', 'Sistem belum bersedia atau data sekolah tidak wujud.', 'error');
+        }
+        return;
     }
 
     const currentYear = new Date().getFullYear();
     const fDaerah = document.getElementById('filterLuDaerah')?.value || "ALL";
     const fBulan = document.getElementById('filterLuBulan')?.value || "ALL";
 
-    // Kumpul senarai KOD sekolah yang telibat berdasarkan tapisan (Kecuali PPD M030)
-    let baseSchoolData = window.globalDashboardData.filter(s => s.kod_sekolah !== 'M030');
+    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
+    let baseSchoolData = window.globalDashboardData.filter(s => !senaraiKodPPD.includes(s.kod_sekolah));
     
-    // Tapis sekolah berpandukan pilihan Daerah semasa
     if (fDaerah !== 'ALL') {
         baseSchoolData = baseSchoolData.filter(s => (s.daerah || '').toUpperCase() === fDaerah.toUpperCase());
     }
 
-    // Ekstrak KOD sekolah yang ADA laporan (SUDAH HANTAR) pada tapisan semasa
     const submittedCodes = new Set(filteredLibatUrusData.map(item => item.kod_sekolah));
 
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-    // CSV Header
     csvContent += "BIL,KOD_SEKOLAH,NAMA_SEKOLAH,DAERAH,TAHUN_LAKSANA,BULAN,STATUS_PENGISIAN\r\n";
 
     baseSchoolData.forEach((school, index) => {
@@ -463,11 +462,9 @@ window.eksportStatusLibatUrusCSV = function() {
         const namaSekolah = `"${(school.nama_sekolah || '').replace(/"/g, '""')}"`;
         const daerah = school.daerah || '';
         
-        // Tentukan status pengisian
         const isSubmitted = submittedCodes.has(kod);
         const statusPengisian = isSubmitted ? "SUDAH HANTAR" : "BELUM HANTAR";
         
-        // Pilih Paparan Bulan: Jika ALL, guna "SEMUA BULAN", selainnya guna bulan terpilih
         const displayBulan = (fBulan === "ALL") ? "KESELURUHAN TAHUN" : fBulan;
 
         const row = [
@@ -492,7 +489,7 @@ window.eksportStatusLibatUrusCSV = function() {
     const safeDaerahName = (fDaerah === "ALL") ? "SEMUA_DAERAH" : fDaerah;
 
     link.setAttribute("download", `STATUS_PENGISIAN_LU_${safeDaerahName}_${safeBulanName}_${dateMark}.csv`);
-    document.body.appendChild(link); // Fix untuk Firefox
+    document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 };

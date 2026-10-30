@@ -1,3 +1,14 @@
+/**
+ * ADMIN MODULE: BOOKING MANAGER (V8.8 - 50 ROWS LIMIT & HIGH PERFORMANCE)
+ * Menguruskan sistem tempahan bimbingan, kunci tarikh daerah/negeri, dan semakan audit.
+ * 
+ * Pengoptimuman V8.8:
+ * 1. Mengehadkan paparan senarai tempahan aktif (`#adminBookingTableBody`) kepada 50 rekod pertama.
+ * 2. Mengehadkan paparan jadual semakan audit (`#auditTableBody`) kepada 50 rekod pertama (APP_CONFIG.ADMIN_TABLE_LIMIT).
+ * 3. Menambah bar maklumat visual di bahagian bawah jadual apabila rekod melebihi 50 baris.
+ * 4. Mengekalkan pemprosesan 100% data penuh bagi metrik KPI, kalendar interaktif, dan eksport CSV audit.
+ */
+
 import { BookingService } from '../services/booking.service.js';
 import { toggleLoading } from '../core/helpers.js';
 import { APP_CONFIG } from '../config/app.config.js';
@@ -218,7 +229,8 @@ window.initAdminBooking = async function() {
     }
 
     populateAdminBookingDaerah();
-    document.getElementById('kpiTahunSemasa').innerText = new Date().getFullYear();
+    const tahunSemasaEl = document.getElementById('kpiTahunSemasa');
+    if (tahunSemasaEl) tahunSemasaEl.innerText = new Date().getFullYear();
     window.renderAdminBookingCalendar();
     window.loadAdminBookingList();
     window.renderAdminBookingDashboard();
@@ -232,8 +244,8 @@ function populateAdminBookingDaerah() {
     const auditSelect = document.getElementById('auditDaerahFilter');
 
     if (['SUPER_ADMIN', 'JPNMEL'].includes(userRole)) {
-        if(wrapper) wrapper.classList.remove('hidden');
-        if(auditWrapper) auditWrapper.classList.remove('hidden');
+        if (wrapper) wrapper.classList.remove('hidden');
+        if (auditWrapper) auditWrapper.classList.remove('hidden');
 
         let html = `<option value="ALL">SEMUA DAERAH</option>`;
         if (APP_CONFIG.PPD_MAPPING) {
@@ -241,17 +253,17 @@ function populateAdminBookingDaerah() {
                 html += `<option value="${kod}">${nama}</option>`;
             }
         }
-        if(select) {
+        if (select) {
             select.innerHTML = html;
             select.value = adminDaerahFilter;
         }
-        if(auditSelect) {
+        if (auditSelect) {
             auditSelect.innerHTML = html;
             auditSelect.value = auditDaerahFilter;
         }
     } else {
-        if(wrapper) wrapper.classList.add('hidden');
-        if(auditWrapper) auditWrapper.classList.add('hidden');
+        if (wrapper) wrapper.classList.add('hidden');
+        if (auditWrapper) auditWrapper.classList.add('hidden');
     }
 }
 
@@ -299,7 +311,8 @@ window.renderAdminBookingDashboard = async function() {
         }
 
         const uniqueSchools = new Set(relevantBookings.map(b => b.kod_sekolah));
-        document.getElementById('kpiSekolahMemohon').innerText = uniqueSchools.size;
+        const kpiSekolahEl = document.getElementById('kpiSekolahMemohon');
+        if (kpiSekolahEl) kpiSekolahEl.innerText = uniqueSchools.size;
 
         let countKunciNegeri = 0;
         let countKunciDaerah = 0;
@@ -336,9 +349,13 @@ window.renderAdminBookingDashboard = async function() {
             }
         });
 
-        document.getElementById('kpiKunciNegeri').innerText = countKunciNegeri;
-        document.getElementById('kpiKunciDaerah').innerText = countKunciDaerah;
-        document.getElementById('kpiJumlahHariKunci').innerText = uniqueDaysLocked.size;
+        const kpiKunciNegeriEl = document.getElementById('kpiKunciNegeri');
+        const kpiKunciDaerahEl = document.getElementById('kpiKunciDaerah');
+        const kpiJumlahHariEl = document.getElementById('kpiJumlahHariKunci');
+
+        if (kpiKunciNegeriEl) kpiKunciNegeriEl.innerText = countKunciNegeri;
+        if (kpiKunciDaerahEl) kpiKunciDaerahEl.innerText = countKunciDaerah;
+        if (kpiJumlahHariEl) kpiJumlahHariEl.innerText = uniqueDaysLocked.size;
 
     } catch (e) {
         console.error("Gagal mengira KPI Dashboard Kunci:", e);
@@ -481,10 +498,9 @@ window.renderAdminBookingCalendar = async function() {
             const dayOfWeek = dateObj.getDay();
             const isAllowedDay = checkIsAllowedDayAdmin(dateObj);
 
-            // Pengesanan Kekunci
             const lockObj = activeMonthLocks.find(l => l.tarikh.split('T')[0] === dateString);
             const isLockedGlobal = !!lockObj;
-            let lockedSlots = []; // ['Pagi', 'Petang', '1 HARI']
+            let lockedSlots = [];
 
             if (isLockedGlobal) {
                 const scopes = lockObj.kod_ppd ? lockObj.kod_ppd.split(',') : [];
@@ -495,7 +511,7 @@ window.renderAdminBookingCalendar = async function() {
 
                      let scopeCode = scope;
                      let scopeSlot = '1 HARI';
-                     if(scope.includes(':')) {
+                     if (scope.includes(':')) {
                          const parts = scope.split(':');
                          scopeCode = parts[0];
                          scopeSlot = parts[1];
@@ -550,7 +566,7 @@ window.renderAdminBookingCalendar = async function() {
                 statusIcon = 'fa-users-slash';
             }
             else if (filledCount > 0) {
-                if(lockedSlots.length > 0) {
+                if (lockedSlots.length > 0) {
                     status = 'locked';
                     statusText = 'KUNCI SEPARA';
                     statusIcon = 'fa-lock';
@@ -589,7 +605,6 @@ window.renderAdminBookingCalendar = async function() {
             }
 
             const isSelected = adminSelectedDates.includes(dateString);
-            const hasBookings = (slotsTaken.length > 0);
 
             const card = document.createElement('div');
             card.className = `day-card card-${status} ${isSelected ? 'card-active ring-4 ring-purple-500 transform scale-105' : ''} transition-all duration-200`;
@@ -613,7 +628,7 @@ window.renderAdminBookingCalendar = async function() {
             `;
 
             if (!isPast && (isAllowedDay || isLockedGlobal)) {
-                card.onclick = (e) => {
+                card.onclick = () => {
                      if (adminSelectedDates.includes(dateString)) {
                          adminSelectedDates = adminSelectedDates.filter(ds => ds !== dateString);
                      } else {
@@ -650,7 +665,7 @@ window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBook
     const datesToProcess = Array.isArray(isoArray) ? isoArray : [isoArray];
     const displayDatesText = datesToProcess.length > 1 ? `${datesToProcess.length} Tarikh Dipilih` : datesToProcess[0];
 
-    if (!currentlyLocked && hasBookings && datesToProcess.length === 1) {
+    if (!currentlyLocked && hasBookings && datesToProcess.length === 1 && typeof Swal !== 'undefined') {
         Swal.fire({
             icon: 'warning',
             title: 'Tempahan Aktif Wujud',
@@ -665,7 +680,7 @@ window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBook
 
     let existingScopeArray = Array.isArray(existingScopesParam) ? existingScopesParam : (typeof existingScopesParam === 'string' ? existingScopesParam.split(',') : ['ALL']);
     let parsedScopes = existingScopeArray.map(s => {
-        if(s.includes(':')) {
+        if (s.includes(':')) {
             const p = s.split(':');
             return { kod: p[0], slot: p[1] };
         }
@@ -730,6 +745,8 @@ window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBook
 
     let capturedScopes = [];
 
+    if (typeof Swal === 'undefined') return;
+
     const result = await Swal.fire({
         title: titleText,
         html: `
@@ -745,10 +762,10 @@ window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBook
             ${scopeHtml}
         `,
         didOpen: () => {
-             if(currentlyLocked && parsedScopes.length > 0) {
+             if (currentlyLocked && parsedScopes.length > 0) {
                  const firstSlot = parsedScopes[0].slot;
                  const slotEl = document.getElementById('swal-slot-selection');
-                 if(slotEl) slotEl.value = firstSlot;
+                 if (slotEl) slotEl.value = firstSlot;
              }
         },
         showCancelButton: true,
@@ -854,6 +871,9 @@ window.handleAdminDateAction = async function(isoArray, currentlyLocked, hasBook
     }
 };
 
+/**
+ * PENGOPTIMUMAN PRESTASI: Memuatkan senarai tempahan aktif (Had 50 baris)
+ */
 window.loadAdminBookingList = async function() {
     const tbody = document.getElementById('adminBookingTableBody');
     if (!tbody) return;
@@ -896,7 +916,11 @@ window.loadAdminBookingList = async function() {
             return;
         }
 
-        tbody.innerHTML = masterList.map(item => {
+        // PENGOPTIMUMAN: Hadkan paparan baris DOM kepada 50 rekod pertama
+        const limit = APP_CONFIG.ADMIN_TABLE_LIMIT || 50;
+        const displayList = masterList.slice(0, limit);
+
+        let tableRowsHTML = displayList.map(item => {
             const dateStr = new Date(item.tarikh).toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric' });
 
             if (item.type === 'BOOKING') {
@@ -939,14 +963,14 @@ window.loadAdminBookingList = async function() {
                 item.kod_ppd.forEach(scope => {
                      let districtName = scope;
                      let slotName = 'SEHARI';
-                     if(scope.includes(':')) {
+                     if (scope.includes(':')) {
                          const parts = scope.split(':');
-                         if(parts[0] !== 'ALL') {
+                         if (parts[0] !== 'ALL') {
                              districtName = parts[0];
                          } else {
                              districtName = 'NEGERI';
                          }
-                         if(parts[1] !== 'ALL') slotName = parts[1];
+                         if (parts[1] !== 'ALL') slotName = parts[1];
                      }
                      scopesDisplay.push(`${districtName}(${slotName})`);
                 });
@@ -986,6 +1010,19 @@ window.loadAdminBookingList = async function() {
             }
         }).join('');
 
+        // Bar Maklumat Had Paparan Visual jika senarai aktif melebihi had
+        if (masterList.length > limit) {
+            tableRowsHTML += `
+            <tr class="bg-amber-50/80 border-t-2 border-amber-200">
+                <td colspan="4" class="p-3 px-6 text-center text-xs font-bold text-amber-800">
+                    <i class="fas fa-info-circle text-amber-500 mr-1.5"></i>
+                    Memaparkan <b>${limit}</b> daripada <b>${masterList.length}</b> permohonan aktif & kunci tarikh terkini.
+                </td>
+            </tr>`;
+        }
+
+        tbody.innerHTML = tableRowsHTML;
+
     } catch (e) {
         console.error("[AdminBooking] List Load Error:", e);
         tbody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-red-500 font-bold bg-red-50 border-2 border-red-100">Gagal memproses senarai tempahan dari pelayan.</td></tr>`;
@@ -993,6 +1030,8 @@ window.loadAdminBookingList = async function() {
 };
 
 window.cancelBookingAdmin = async function(dbId, bookingId) {
+    if (typeof Swal === 'undefined') return;
+
     const { isConfirmed } = await Swal.fire({
         title: 'Padam Tempahan?',
         html: `<div class="text-center p-5 bg-red-50 rounded-2xl border-2 border-red-100 mb-4 shadow-inner">
@@ -1071,7 +1110,6 @@ window.loadAdminBookingAudit = async function() {
         const db = getDatabaseClient();
         if (!db) throw new Error("Pangkalan data tidak tersedia.");
 
-        // Tarik rekod secara serentak
         const [resTempahan, resKunci] = await Promise.all([
             db.from('smpid_bb_tempahan').select('*').order('tarikh', { ascending: false }),
             db.from('smpid_bb_kunci').select('*').order('tarikh', { ascending: false })
@@ -1086,7 +1124,6 @@ window.loadAdminBookingAudit = async function() {
         let rawTempahan = resTempahan.data || [];
         let rawKunci = resKunci.data || [];
 
-        // Laksana RBAC
         if (['ADMIN', 'PPD_UNIT'].includes(userRole) && window.globalDashboardData) {
             const validSchoolCodes = window.globalDashboardData.map(s => s.kod_sekolah);
             validSchoolCodes.push(userKod);
@@ -1098,13 +1135,12 @@ window.loadAdminBookingAudit = async function() {
                 if (foundKey) targetPPD = foundKey;
             }
             rawKunci = rawKunci.filter(k => {
-               if(!k.kod_ppd) return false;
+               if (!k.kod_ppd) return false;
                const scopes = k.kod_ppd.split(',');
                return scopes.some(s => s.startsWith('ALL') || s.startsWith(targetPPD));
             });
         }
 
-        // Peta data tempahan
         const mappedTempahan = rawTempahan.map(b => {
             let daerah = 'ALOR GAJAH';
             if (window.globalDashboardData) {
@@ -1116,16 +1152,14 @@ window.loadAdminBookingAudit = async function() {
             return { ...b, type: 'BOOKING', daerah: daerah.toUpperCase() };
         });
 
-        // Peta data kunci (Locks)
         const mappedKunci = rawKunci.map(k => {
-            const isAll = k.kod_ppd && k.kod_ppd.includes('ALL');
             let parsedDaerah = [];
             
-            if(k.kod_ppd) {
+            if (k.kod_ppd) {
                 const scopes = k.kod_ppd.split(',');
                 scopes.forEach(s => {
                     const dKod = s.split(':')[0];
-                    if(dKod === 'ALL') parsedDaerah.push('NEGERI');
+                    if (dKod === 'ALL') parsedDaerah.push('NEGERI');
                     else if (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[dKod]) parsedDaerah.push(APP_CONFIG.PPD_MAPPING[dKod]);
                     else parsedDaerah.push(dKod);
                 });
@@ -1148,7 +1182,6 @@ window.loadAdminBookingAudit = async function() {
             };
         });
 
-        // Gabung & susun mengikut tarikh
         globalAuditBookings = [...mappedTempahan, ...mappedKunci].sort((a, b) => new Date(b.tarikh) - new Date(a.tarikh));
         window.filterAudit();
 
@@ -1180,7 +1213,6 @@ window.filterAudit = function() {
 
         if (daerahTarget !== 'ALL') {
             const targetName = (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[daerahTarget]) ? APP_CONFIG.PPD_MAPPING[daerahTarget] : daerahTarget;
-            // Padanan tambahan bagi LOCK yang mengandungi NEGERI
             matchDaerah = b.daerah.includes(targetName.toUpperCase()) || b.daerah.includes('NEGERI');
         }
 
@@ -1199,6 +1231,9 @@ window.filterAudit = function() {
     renderAuditTable();
 };
 
+/**
+ * PENGOPTIMUMAN PRESTASI: Memaparkan rekod audit (Had 50 baris)
+ */
 function renderAuditTable() {
     const tbody = document.getElementById('auditTableBody');
     if (!tbody) return;
@@ -1208,7 +1243,11 @@ function renderAuditTable() {
         return;
     }
 
-    tbody.innerHTML = filteredAuditBookings.map((item, index) => {
+    // PENGOPTIMUMAN: Hadkan paparan baris DOM kepada 50 rekod pertama
+    const limit = APP_CONFIG.ADMIN_TABLE_LIMIT || 50;
+    const displayList = filteredAuditBookings.slice(0, limit);
+
+    let tableRowsHTML = displayList.map((item, index) => {
         const dateObj = new Date(item.tarikh);
         const dateStr = dateObj.toLocaleDateString('ms-MY', { day: '2-digit', month: 'short', year: 'numeric' });
 
@@ -1242,7 +1281,6 @@ function renderAuditTable() {
             `;
         }
 
-        // Render biasa untuk BOOKING
         let statusBadge = `<span class="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded text-[10px] font-black tracking-widest border border-emerald-200 shadow-sm">AKTIF</span>`;
         if (item.status !== 'AKTIF') {
             statusBadge = `<span class="bg-red-100 text-red-700 px-2.5 py-1 rounded text-[10px] font-black tracking-widest border border-red-200 shadow-sm">BATAL</span>`;
@@ -1276,11 +1314,36 @@ function renderAuditTable() {
             </tr>
         `;
     }).join('');
+
+    // Bar Maklumat Had Paparan Visual jika senarai audit melebihi had
+    if (filteredAuditBookings.length > limit) {
+        tableRowsHTML += `
+        <tr class="bg-amber-50/80 border-t-2 border-amber-200">
+            <td colspan="6" class="p-3 px-6 text-center text-xs font-bold text-amber-800">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-2">
+                    <span class="flex items-center gap-1.5">
+                        <i class="fas fa-info-circle text-amber-500 text-sm"></i>
+                        Memaparkan <b>${limit}</b> daripada <b>${filteredAuditBookings.length}</b> rekod audit. Gunakan carian untuk melihat rekod spesifik.
+                    </span>
+                    <span class="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1 rounded-full font-black uppercase tracking-wider">
+                        Eksport CSV Menyimpan 100% Data (${filteredAuditBookings.length} Rekod)
+                    </span>
+                </div>
+            </td>
+        </tr>`;
+    }
+
+    tbody.innerHTML = tableRowsHTML;
 }
 
+/**
+ * Eksport CSV Semakan Audit (Kekal mengeksport 100% data penuh tanpa had 50 baris)
+ */
 window.eksportAuditCSV = function() {
     if (filteredAuditBookings.length === 0) {
-        Swal.fire('Tiada Data', 'Tiada rekod untuk dieksport berdasarkan tapisan semasa.', 'warning');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Tiada Data', 'Tiada rekod untuk dieksport berdasarkan tapisan semasa.', 'warning');
+        }
         return;
     }
 

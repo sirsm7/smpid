@@ -1,11 +1,15 @@
 /**
- * ADMIN MODULE: ANALYSIS (TAILWIND EDITION - SORTING ENABLED)
+ * ADMIN MODULE: ANALYSIS (TAILWIND EDITION - SORTING ENABLED & 50 ROWS LIMIT)
  * Menguruskan laporan DCS dan DELIMa dengan UI Tailwind.
  * Menambah fungsi pengisihan dinamik (Dynamic Sorting) pada jadual terperinci.
  * --- UPDATE V2.2 (PRO WEB CASTER - RBAC DAERAH DINAMIK) ---
  * 1. Tapisan Global (Data Filtering) mengikut daerah admin.
  * 2. Pembuangan Hardcode PPD M030 untuk menyokong kepelbagaian PPD.
  * 3. Filter Daerah Dinamik disegerakkan dengan Carta & KPI untuk SUPER_ADMIN/JPNMEL.
+ * --- UPDATE V2.3 (PERFORMANCE OPTIMIZATION: 50 ROWS LIMIT) ---
+ * 1. Mengehadkan paparan visual jadual terperinci kepada 50 rekod pertama (APP_CONFIG.ADMIN_TABLE_LIMIT).
+ * 2. Menyediakan penunjuk visual mesra pengguna apabila data yang ditapis melebihi had 50 baris.
+ * 3. Mengekalkan pengiraan carta (Donut & Bar), skor purata negeri/daerah, dan eksport CSV untuk 100% data penuh.
  */
 
 import { DcsService } from '../services/dcs.service.js';
@@ -16,7 +20,6 @@ let dcsDataList = [];
 let currentFilteredDcs = [];
 let charts = { donut: null, bar: null };
 
-/* STREAMING_CHUNK:Initializing sorting state */
 // State untuk pengisihan jadual (Sorting State)
 let analisaSortState = { column: '', direction: 'desc' };
 
@@ -30,7 +33,6 @@ window.loadDcsAdmin = async function() {
     try {
         let dataRaw = await DcsService.getAll();
 
-        /* STREAMING_CHUNK:Applying RBAC Filtering */
         // --- RBAC FILTERING ---
         const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
         const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
@@ -53,7 +55,6 @@ window.loadDcsAdmin = async function() {
     }
 };
 
-/* STREAMING_CHUNK:Initializing District Filter UI */
 /**
  * PRO WEB CASTER: Bina UI Dropdown Daerah secara dinamik berdasarkan Role
  */
@@ -86,7 +87,6 @@ function initDistrictFilter(userRole) {
     }
 }
 
-/* STREAMING_CHUNK:Helper function for getting filtered data */
 /**
  * PRO WEB CASTER: Helper untuk mendapatkan data tersaring (Global State)
  * FIXED: Menggunakan skema data Supabase sebenar (kolum 'daerah' dan 'kod_sekolah')
@@ -113,14 +113,13 @@ function getBaseFilteredData() {
                 return true;
             }
 
-            return false; // Keluarkan dari senarai jika tiada padanan
+            return false;
         });
     }
 
     return list;
 }
 
-/* STREAMING_CHUNK:Populating DCS years dropdown */
 /**
  * Isi dropdown tahun
  */
@@ -144,7 +143,6 @@ function populateDcsYears() {
     select.value = years[0];
 }
 
-/* STREAMING_CHUNK:Updating Main Analysis Dashboard */
 /**
  * Update Dashboard Utama
  */
@@ -157,11 +155,11 @@ window.updateDashboardAnalisa = function() {
     const lblAktif = document.getElementById('lblYearAktif');
 
     // Label Header
-    if(lblDcs) lblDcs.innerHTML = `<span class="opacity-70 font-normal ml-1 text-[10px]">(${currYear} vs ${prevYear})</span>`;
-    if(lblAktif) lblAktif.innerHTML = `<span class="opacity-70 font-normal ml-1 text-[10px]">(${currYear} vs ${prevYear})</span>`;
+    if (lblDcs) lblDcs.innerHTML = `<span class="opacity-70 font-normal ml-1 text-[10px]">(${currYear} vs ${prevYear})</span>`;
+    if (lblAktif) lblAktif.innerHTML = `<span class="opacity-70 font-normal ml-1 text-[10px]">(${currYear} vs ${prevYear})</span>`;
 
     const titleEl = document.getElementById('modalDcsYearTitle');
-    if(titleEl) titleEl.innerText = currYear;
+    if (titleEl) titleEl.innerText = currYear;
 
     processDcsPanel(`dcs_${currYear}`);
     processActivePanel(`peratus_aktif_${currYear}`);
@@ -169,7 +167,6 @@ window.updateDashboardAnalisa = function() {
     window.filterAnalisaTable(currYear, prevYear);
 };
 
-/* STREAMING_CHUNK:Helper for categorizing DCS scores */
 /**
  * Kategori Skor DCS
  */
@@ -182,33 +179,28 @@ function getKategoriDcs(score) {
     return { label: 'INNOVATOR', color: 'text-green-700', bg: 'bg-green-100 border-green-200' };
 }
 
-/* STREAMING_CHUNK:Processing DCS Panel logic */
 /**
  * Panel DCS (Tailwind)
  */
 function processDcsPanel(field) {
-    // [COMMENT SYNTAX] SURGICAL EDIT START: Menetapkan JPNMEL sebagai lalai jika tiada daerah khusus yang ditapis untuk melihat KPI Lensa Negeri
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     let targetPpdKod = 'JPNMEL';
 
-    // Jika SUPER_ADMIN pilih filter daerah spesifik, paparkan KPI PPD tersebut, jika ALL, kembali ke JPNMEL
     const filterEl = document.getElementById('filterDaerahAnalisa');
     if (filterEl && filterEl.value !== 'ALL') {
         targetPpdKod = filterEl.value;
     } else if (['ADMIN', 'PPD_UNIT'].includes(userRole)) {
-        // Jika admin biasa, lihat PPD sendiri
         targetPpdKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     }
-    // [COMMENT SYNTAX] SURGICAL EDIT END
 
     const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
-    const activeDataList = getBaseFilteredData(); // Ambil senarai yang telah ditapis daerah
+    const activeDataList = getBaseFilteredData();
 
     const ppdData = dcsDataList.find(d => d.kod_sekolah === targetPpdKod);
     const ppdScore = ppdData?.[field] || 0;
 
     const scoreEl = document.getElementById('kpiDcsScore');
-    if(scoreEl) scoreEl.innerText = ppdScore.toFixed(2);
+    if (scoreEl) scoreEl.innerText = ppdScore.toFixed(2);
 
     const cat = getKategoriDcs(ppdScore);
     const lbl = document.getElementById('kpiDcsLabel');
@@ -217,9 +209,7 @@ function processDcsPanel(field) {
         lbl.className = `inline-block px-3 py-1 rounded-full text-xs font-bold mt-2 border ${cat.bg} ${cat.color}`;
     }
 
-    // [COMMENT SYNTAX] SURGICAL EDIT START: Pastikan JPNMEL dikecualikan daripada senarai sekolah di dalam carta dan top 5
     const schools = activeDataList.filter(d => !senaraiKodPPD.includes(d.kod_sekolah) && d.kod_sekolah !== 'JPNMEL');
-    // [COMMENT SYNTAX] SURGICAL EDIT END
     let cats = { 'Beginner':0, 'Novice':0, 'Intermediate':0, 'Advance':0, 'Innovator':0 };
     schools.forEach(d => {
         const score = d[field];
@@ -237,11 +227,10 @@ function processDcsPanel(field) {
         cats['Innovator'] || 0
     ];
 
-    /* STREAMING_CHUNK:Rendering DCS Donut Chart */
     // Chart.js
     const ctx = document.getElementById('chartDcsDonut');
-    if(charts.donut) charts.donut.destroy();
-    if(ctx) {
+    if (charts.donut) charts.donut.destroy();
+    if (ctx) {
         charts.donut = new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -263,7 +252,7 @@ function processDcsPanel(field) {
     // Top 5 Table (Tailwind)
     const top5 = [...schools].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0,5);
     const tbody = document.getElementById('tableTopDcs');
-    if(tbody) {
+    if (tbody) {
         tbody.innerHTML = top5.length ? top5.map((d,i) => `
             <tr class="border-b border-blue-50 last:border-0">
                 <td class="p-3 font-bold text-slate-500 w-8">${i+1}</td>
@@ -274,46 +263,39 @@ function processDcsPanel(field) {
     }
 }
 
-/* STREAMING_CHUNK:Processing Active Panel logic */
 /**
  * Panel Aktif (Tailwind)
  */
 function processActivePanel(field) {
-    // [COMMENT SYNTAX] SURGICAL EDIT START: Menetapkan JPNMEL sebagai purata lalai Lensa Kuantiti Negeri
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     let targetPpdKod = 'JPNMEL';
 
-    // Guna nilai PPD yang difilter jika SUPER_ADMIN, atau kembali ke JPNMEL jika ALL
     const filterEl = document.getElementById('filterDaerahAnalisa');
     if (filterEl && filterEl.value !== 'ALL') {
         targetPpdKod = filterEl.value;
     } else if (['ADMIN', 'PPD_UNIT'].includes(userRole)) {
         targetPpdKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
     }
-    // [COMMENT SYNTAX] SURGICAL EDIT END
 
     const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
     const activeDataList = getBaseFilteredData();
 
     const ppdData = dcsDataList.find(d => d.kod_sekolah === targetPpdKod);
     const scoreEl = document.getElementById('kpiActiveScore');
-    if(scoreEl) scoreEl.innerText = ppdData?.[field] || 0;
+    if (scoreEl) scoreEl.innerText = ppdData?.[field] || 0;
 
-    // [COMMENT SYNTAX] SURGICAL EDIT START: Mengecualikan JPNMEL dari senarai carta bar/Top 5
     const schools = activeDataList.filter(d => !senaraiKodPPD.includes(d.kod_sekolah) && d.kod_sekolah !== 'JPNMEL');
-    // [COMMENT SYNTAX] SURGICAL EDIT END
     let ranges = { 'Tinggi (>80%)':0, 'Sederhana':0, 'Rendah':0 };
     schools.forEach(d => {
         const v = d[field];
-        if(v >= 80) ranges['Tinggi (>80%)']++;
-        else if(v >= 50) ranges['Sederhana']++;
-        else if(v > 0) ranges['Rendah']++;
+        if (v >= 80) ranges['Tinggi (>80%)']++;
+        else if (v >= 50) ranges['Sederhana']++;
+        else if (v > 0) ranges['Rendah']++;
     });
 
-    /* STREAMING_CHUNK:Rendering Active Bar Chart */
     const ctx = document.getElementById('chartActiveBar');
-    if(charts.bar) charts.bar.destroy();
-    if(ctx) {
+    if (charts.bar) charts.bar.destroy();
+    if (ctx) {
         charts.bar = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -335,7 +317,7 @@ function processActivePanel(field) {
     // Top 5 Active (Tailwind)
     const top5 = [...schools].sort((a,b) => (b[field]||0) - (a[field]||0)).slice(0,5);
     const tbody = document.getElementById('tableTopActive');
-    if(tbody) {
+    if (tbody) {
         tbody.innerHTML = top5.length ? top5.map((d,i) => `
             <tr class="border-b border-green-50 last:border-0">
                 <td class="p-3 font-bold text-slate-500 w-8">${i+1}</td>
@@ -346,7 +328,6 @@ function processActivePanel(field) {
     }
 }
 
-/* STREAMING_CHUNK:Sorting logic implementation */
 /**
  * Logik Mengurus Penukaran Arah Susunan (Sort)
  */
@@ -362,21 +343,18 @@ window.sortAnalisa = function(col) {
     window.filterAnalisaTable(currYear, currYear - 1);
 };
 
-/* STREAMING_CHUNK:Main table rendering and filtering */
 /**
- * Filter & Render Main Table
+ * Filter & Render Main Table (PENGOPTIMUMAN HAD 50 BARIS)
  */
 window.filterAnalisaTable = function(currYear, prevYear) {
-    if(!currYear) currYear = parseInt(document.getElementById('pilihTahunAnalisa').value);
-    if(!prevYear) prevYear = currYear - 1;
+    if (!currYear) currYear = parseInt(document.getElementById('pilihTahunAnalisa').value);
+    if (!prevYear) prevYear = currYear - 1;
 
     const keyword = document.getElementById('searchAnalisa')?.value.toUpperCase() || '';
 
     const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
-    const activeDataList = getBaseFilteredData(); // Ambil list yang dipengaruhi District Filter
-    // [COMMENT SYNTAX] SURGICAL EDIT START: Jangan paparkan rekod JPNMEL di dalam senarai jadual data
+    const activeDataList = getBaseFilteredData();
     const listWithoutPPD = activeDataList.filter(d => !senaraiKodPPD.includes(d.kod_sekolah) && d.kod_sekolah !== 'JPNMEL');
-    // [COMMENT SYNTAX] SURGICAL EDIT END
 
     // 1. Tapis carian Teks
     let list = keyword
@@ -408,15 +386,16 @@ window.filterAnalisaTable = function(currYear, prevYear) {
         });
     }
 
+    // Kekalkan keseluruhan data penuh untuk eksport CSV
     currentFilteredDcs = list;
 
     // 3. Kemaskini UI Ikon (Anak Panah Sort)
     const columns = ['kod', 'nama', 'dcs', 'aktif'];
     columns.forEach(c => {
         const th = document.getElementById(`th-analisa-${c}`);
-        if(th) {
+        if (th) {
             const icon = th.querySelector('i.fas');
-            if(icon) {
+            if (icon) {
                 icon.className = 'fas fa-sort ml-1 opacity-50';
                 if (analisaSortState.column === c) {
                     const arrowDir = analisaSortState.direction === 'asc' ? 'up' : 'down';
@@ -430,9 +409,13 @@ window.filterAnalisaTable = function(currYear, prevYear) {
     const wrapper = document.getElementById('tableAnalisaBody');
     if (!wrapper) return;
 
-    if(list.length === 0) return wrapper.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400">Tiada rekod sekolah dijumpai berdasarkan tapisan semasa.</td></tr>`;
+    if (list.length === 0) return wrapper.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400">Tiada rekod sekolah dijumpai berdasarkan tapisan semasa.</td></tr>`;
 
-    wrapper.innerHTML = list.map(d => {
+    // PENGOPTIMUMAN PRESTASI: Hadkan paparan baris DOM kepada 50 rekod pertama
+    const limit = APP_CONFIG.ADMIN_TABLE_LIMIT || 50;
+    const displayList = list.slice(0, limit);
+
+    let rowsHTML = displayList.map(d => {
         const valDcsCurr = d[`dcs_${currYear}`];
         const valActCurr = d[`peratus_aktif_${currYear}`];
         const valDcsPrev = d[`dcs_${prevYear}`];
@@ -483,9 +466,28 @@ window.filterAnalisaTable = function(currYear, prevYear) {
                 </td>
             </tr>`;
     }).join('');
+
+    // Bar Maklumat Had Paparan Visual jika data melebihi 50 baris
+    if (list.length > limit) {
+        rowsHTML += `
+        <tr class="bg-amber-50/80 border-t-2 border-amber-200">
+            <td colspan="5" class="p-3 px-6 text-center text-xs font-bold text-amber-800">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-2">
+                    <span class="flex items-center gap-1.5">
+                        <i class="fas fa-info-circle text-amber-500 text-sm"></i>
+                        Memaparkan <b>${limit}</b> daripada <b>${list.length}</b> sekolah. Gunakan carian untuk melihat sekolah spesifik.
+                    </span>
+                    <span class="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1 rounded-full font-black uppercase tracking-wider">
+                        Eksport CSV Menyimpan 100% Data (${list.length} Rekod)
+                    </span>
+                </div>
+            </td>
+        </tr>`;
+    }
+
+    wrapper.innerHTML = rowsHTML;
 };
 
-/* STREAMING_CHUNK:Data saving and CSV export logic */
 /**
  * Buka Modal Edit (Tailwind)
  */

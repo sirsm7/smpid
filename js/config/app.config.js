@@ -2,11 +2,19 @@
  * @file app.config.js
  * @description Core application configuration constants and default values.
  * @module AppConfig
+ * 
+ * Kemaskini V3.2:
+ * - Menambah pembolehubah had paparan berpusat `ADMIN_TABLE_LIMIT: 50` 
+ *   bagi membatasi bilangan baris rendering DOM pada semua jadual pentadbir,
+ *   sekali gus mempercepatkan masa muat turun (load times) dan tindak balas UI.
  */
 
 export const APP_CONFIG = {
     APP_NAME: 'Nadi Analitik, Digital & Inovasi Melaka (NADIM)',
     APP_VERSION: '2.5.0',
+    
+    // Had Berpusat Paparan Baris Jadual Pentadbir (Maksimum 50 baris untuk render DOM pantas)
+    ADMIN_TABLE_LIMIT: 50,
     
     // Konfigurasi Pangkalan Data Supabase (Data dirujuk dari utils.js sebagai fallback)
     SUPABASE: {
@@ -14,15 +22,13 @@ export const APP_CONFIG = {
         KEY: typeof window !== 'undefined' && window.SUPABASE_KEY ? window.SUPABASE_KEY : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY'
     },
 
-// ── SURGICAL EDIT START: Menyuntik endpoint GAS baharu untuk muat naik laporan Libat Urus ──
     // Konfigurasi API & Endpoint (Deno Bot & GAS Microservices)
     API: {
         DENO_URL: typeof window !== 'undefined' && window.DENO_API_URL ? window.DENO_API_URL : 'https://smpid.ppdag.deno.net',
-        GAS_UPLOAD_URL: 'https://script.google.com/macros/s/AKfycbyjmVnKMNa5KSSCdIWG00dmgrYFBsfRtkswlBXTZUL0cKJ8h15V3X71EsqGd4B1etdg/exec', // Gantikan dengan URL GAS Upload yang sah jika perlu
-        GAS_EMAIL_URL: 'https://script.google.com/macros/s/AKfycbwALQrAcEO156fXzNim_8New_iOFFUHvPL5wOhILpJDMxB80_-4BhiK1x3UbNeK6_IrCg/exec',   // Gantikan dengan URL GAS Email yang sah jika perlu
+        GAS_UPLOAD_URL: 'https://script.google.com/macros/s/AKfycbyjmVnKMNa5KSSCdIWG00dmgrYFBsfRtkswlBXTZUL0cKJ8h15V3X71EsqGd4B1etdg/exec',
+        GAS_EMAIL_URL: 'https://script.google.com/macros/s/AKfycbwALQrAcEO156fXzNim_8New_iOFFUHvPL5wOhILpJDMxB80_-4BhiK1x3UbNeK6_IrCg/exec',
         GAS_LIBAT_URUS_URL: 'https://script.google.com/macros/s/AKfycbyIXpHGIm5kdXl2ecRG4c-JE99vcfC5xjfbvZMko0ab2cKuBRL1HDb1CFGmTLOUBFLJ/exec'
     },
-// ── SURGICAL EDIT END ──
 
     // Kunci Sesi LocalStorage (Untuk Integriti Auth)
     SESSION: {
@@ -49,7 +55,6 @@ export const APP_CONFIG = {
         STATUS: 'active'
     },
 
-// ── SURGICAL EDIT START: Menambah konfigurasi jadual Supabase baharu untuk Libat Urus DELIMa ──
     // API & Database Configurations (Table definitions for Supabase)
     DB_TABLES: {
         USERS: 'smpid_users',
@@ -61,12 +66,12 @@ export const APP_CONFIG = {
         SETTINGS: 'smpid_settings',
         LIBAT_URUS: 'smpid_libat_urus'
     },
-// ── SURGICAL EDIT END ──
 
     // Pagination defaults for data tables and lists
     PAGINATION: {
         ITEMS_PER_PAGE: 10,
-        MAX_PAGES_SHOWN: 5
+        MAX_PAGES_SHOWN: 5,
+        ADMIN_TABLE_LIMIT: 50
     },
 
     // File upload limits and security parameters

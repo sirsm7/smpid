@@ -1,5 +1,5 @@
 /**
- * ADMIN MODULE: PENATARAN DIGITAL
+ * ADMIN MODULE: PENATARAN DIGITAL (V2.3 - 50 ROWS LIMIT & HIGH PERFORMANCE)
  * Menguruskan penarikan data jadual, paparan analitik ringkas daerah,
  * carian sekolah, pemadaman rekod (reset), dan eksport CSV.
  * --- UPDATE V2.1 (RBAC DAERAH) ---
@@ -8,6 +8,10 @@
  * --- UPDATE V2.2 (PENAPISAN DINAMIK KAD KPI & JADUAL) ---
  * 1. Membenarkan penapisan data melalui klik kad KPI (Semua, 5 Bintang, Atas Purata).
  * 2. Menyuntik dropdown daerah khas untuk peranan SUPER_ADMIN / JPNMEL.
+ * --- UPDATE V2.3 (PERFORMANCE OPTIMIZATION: 50 ROWS LIMIT) ---
+ * 1. Mengehadkan paparan visual jadual laporan penataran kepada 50 rekod pertama (APP_CONFIG.ADMIN_TABLE_LIMIT).
+ * 2. Menambah bar maklumat visual sekiranya data yang ditapis melebihi 50 buah sekolah.
+ * 3. Mengekalkan pengiraan KPI (purata, bintang, serahan) dan eksport CSV untuk 100% data penuh.
  */
 
 import { PenataranService } from '../services/penataran.service.js';
@@ -77,7 +81,7 @@ function renderDaerahDropdownPenataran(userRole) {
         container.innerHTML = `<select id="filterDaerahPenataran" class="w-full md:w-48 px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold outline-none focus:border-sky-500 bg-white text-slate-700 shadow-sm" onchange="window.setDaerahPenataran(this.value)">${daerahOpts}</select>`;
         
         const sel = document.getElementById('filterDaerahPenataran');
-        if(sel) sel.value = activeDaerahPenataran;
+        if (sel) sel.value = activeDaerahPenataran;
     } else {
         container.innerHTML = '';
     }
@@ -130,7 +134,7 @@ window.applyFilterPenataran = function() {
         baseData = baseData.filter(d => d.daerah === activeDaerahPenataran);
     }
     
-    // 2. Kemaskini KPI menggunakan baseData (mengikut daerah)
+    // 2. Kemaskini KPI menggunakan baseData (mengikut daerah penuh)
     kemaskiniKPI(baseData);
 
     // 3. Tapis mengikut Card Filter & Text Search
@@ -157,7 +161,7 @@ window.applyFilterPenataran = function() {
 };
 
 /**
- * Kemaskini KPI Bar (Berdasarkan Base Data Daerah)
+ * Kemaskini KPI Bar (Berdasarkan Base Data Daerah Penuh)
  */
 function kemaskiniKPI(data) {
     purataSemasa = 0;
@@ -170,18 +174,18 @@ function kemaskiniKPI(data) {
     const cemEl = document.getElementById('kpiPenataranCemerlang');
     const avgEl = document.getElementById('kpiPenataranPurata');
     
-    if(totalEl) totalEl.innerText = data.length;
+    if (totalEl) totalEl.innerText = data.length;
     
-    if(cemEl) {
+    if (cemEl) {
         const cemerlang = data.filter(i => i.penarafan.includes('5 Bintang')).length;
         cemEl.innerText = cemerlang;
     }
     
-    if(avgEl) avgEl.innerText = purataSemasa;
+    if (avgEl) avgEl.innerText = purataSemasa;
 }
 
 /**
- * Papar jadual ke dalam DOM HTML
+ * Papar jadual ke dalam DOM HTML (PENGOPTIMUMAN HAD 50 BARIS)
  */
 function renderJadualPenataran() {
     const tbody = document.getElementById('tbodyAdminPenataran');
@@ -192,9 +196,12 @@ function renderJadualPenataran() {
         return;
     }
 
+    const limit = APP_CONFIG.ADMIN_TABLE_LIMIT || 50;
+    const displayList = filteredPenataranList.slice(0, limit);
+
     const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
 
-    tbody.innerHTML = filteredPenataranList.map((item, index) => {
+    let tableRowsHTML = displayList.map((item, index) => {
         // Tentukan nama paparan dinamik untuk PPD
         let displayNama = item.nama_sekolah;
         if (senaraiKodPPD.includes(item.kod_sekolah)) {
@@ -235,7 +242,7 @@ function renderJadualPenataran() {
             </td>
             <td class="px-6 py-5 text-center bg-sky-50/20 align-middle font-black text-sky-700 text-lg">${item.jumlah_skor}</td>
             <td class="px-6 py-5 text-center bg-sky-50/20 align-middle font-bold text-slate-600">${item.peratus}</td>
-            <td class="px-6 py-5 text-center align-middle">
+            <td class="px-6 py-4 text-center align-middle">
                 <div class="mb-1.5">${starsHtml}</div>
                 <span class="inline-block px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border ${bgStyle}">${item.penarafan.split('(')[1]?.replace(')','') || item.penarafan}</span>
             </td>
@@ -246,12 +253,34 @@ function renderJadualPenataran() {
             </td>
         </tr>`;
     }).join('');
+
+    // Bar Maklumat Had Paparan Visual jika data melebihi 50 baris
+    if (filteredPenataranList.length > limit) {
+        tableRowsHTML += `
+        <tr class="bg-amber-50/80 border-t-2 border-amber-200">
+            <td colspan="7" class="p-3 px-6 text-center text-xs font-bold text-amber-800">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-2">
+                    <span class="flex items-center gap-1.5">
+                        <i class="fas fa-info-circle text-amber-500 text-sm"></i>
+                        Memaparkan <b>${limit}</b> daripada <b>${filteredPenataranList.length}</b> sekolah. Gunakan carian untuk melihat sekolah spesifik.
+                    </span>
+                    <span class="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1 rounded-full font-black uppercase tracking-wider">
+                        Eksport CSV Menyimpan 100% Data (${filteredPenataranList.length} Rekod)
+                    </span>
+                </div>
+            </td>
+        </tr>`;
+    }
+
+    tbody.innerHTML = tableRowsHTML;
 }
 
 /**
  * Padam data sekolah (Reset)
  */
 window.padamRekodPenataran = async function(kod) {
+    if (typeof Swal === 'undefined') return;
+
     Swal.fire({
         title: `Reset Data ${kod}?`,
         text: "Tindakan ini akan memadam borang penataran sekolah ini dari sistem PPD secara kekal.",
@@ -281,10 +310,12 @@ window.padamRekodPenataran = async function(kod) {
 
 /**
  * Eksport CSV Format Laporan Keseluruhan beserta Pecahan Dimensi
+ * Kekal mengeksport 100% data penuh yang ditapis tanpa had 50 baris
  */
 window.eksportPenataranCSV = function() {
     if (!filteredPenataranList || filteredPenataranList.length === 0) {
-        return Swal.fire('Tiada Data', 'Jadual kosong.', 'info');
+        if (typeof Swal !== 'undefined') Swal.fire('Tiada Data', 'Jadual kosong.', 'info');
+        return;
     }
 
     // Tajuk Lajur Standard PPD
