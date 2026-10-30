@@ -26,10 +26,9 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
   <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"></noscript>
 
-  <!-- PUSTAKA EDITOR & FONTS -->
-  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" media="print" onload="this.media='all'">
-  <noscript><link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet"></noscript>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- PUSTAKA EDITOR & FONTS (HELAIAN GAYA RASMI QUILL & GOOGLE FONTS) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@1.3.6/dist/quill.snow.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
 
   <style type="text/tailwindcss">
     @layer components {
@@ -113,6 +112,19 @@
         .rank-badge-2 { @apply bg-slate-200 text-slate-700 border-slate-400; }
         .rank-badge-3 { @apply bg-orange-100 text-orange-700 border-orange-300; }
         .rank-badge-other { @apply bg-slate-50 text-slate-500 border-slate-200; }
+
+        /* Kemasan Khas Quill Toolbar & Editor */
+        .ql-toolbar.ql-snow {
+            @apply border-2 border-slate-200 bg-slate-50 rounded-t-2xl font-sans;
+        }
+        .ql-container.ql-snow {
+            @apply border-2 border-t-0 border-slate-200 bg-white rounded-b-2xl font-sans text-sm;
+            min-height: 18rem;
+        }
+        .ql-editor {
+            min-height: 18rem;
+            line-height: 1.6;
+        }
     }
   </style>
 
@@ -121,7 +133,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-  <script defer src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/quill@1.3.6/dist/quill.min.js" onerror="this.onerror=null; this.src='https://cdn.quilljs.com/1.3.6/quill.min.js';"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
 <body id="page-admin" class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
@@ -840,7 +852,8 @@
                             <input type="text" id="msgSubject" class="w-full p-2 border-b-2 border-slate-100 font-bold text-sm outline-none focus:border-brand-500 transition-colors placeholder-slate-300" value="[TINDAKAN] Pengesahan Pendaftaran Sistem NaDIM">
                         </div>
                     </div>
-                    <div id="editor-container" class="h-64 bg-white border border-slate-200 rounded-b-lg"></div>
+                    <!-- WADAH EDITOR TEKS KAYA QUILL DENGAN PENGGAYAAN TERKAWAL -->
+                    <div id="editor-container"></div>
                 </div>
                 <div class="p-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
                     <button id="btnSendSystemEmail" class="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition flex items-center gap-2 shadow-md" onclick="hantarEmelSistem()">
