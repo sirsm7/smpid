@@ -7,12 +7,28 @@
   
   <meta name="theme-color" content="#16a34a">
   <link rel="icon" href="icoppdag.png">
+
+  <!-- PETUNJUK SUMBER AWAL (RESOURCE HINTS & PRECONNECT) -->
+  <link rel="preconnect" href="https://app.tech4ag.my">
+  <link rel="dns-prefetch" href="https://app.tech4ag.my">
+  <link rel="preconnect" href="https://cdn.tailwindcss.com">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   
+  <!-- TAILWIND CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="js/config/tailwind.config.js"></script>
   
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+  <!-- FONTAWESOME (PEMUATAN TAK SEGERAK) -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"></noscript>
+
+  <!-- PUSTAKA EDITOR & FONTS -->
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet"></noscript>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <style type="text/tailwindcss">
@@ -100,13 +116,13 @@
     }
   </style>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="console.warn('JSDelivr disekat. Mencuba Unpkg...'); this.onerror=null; this.src='https://unpkg.com/@supabase/supabase-js@2';"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-  <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
-  <!-- Tambahan PapaParse untuk Batch Import -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- PUSTAKA LUARAN BERAT (DEFERRED UNTUK MENGHILANGKAN RENDER-BLOCKING) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="console.warn('JSDelivr disekat. Mencuba Unpkg...'); this.onerror=null; this.src='https://unpkg.com/@supabase/supabase-js@2';"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <script defer src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
 <body id="page-admin" class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
 
@@ -156,7 +172,7 @@
     <div class="absolute top-0 right-0 w-64 h-64 bg-brand-500 rounded-full blur-3xl opacity-10 -mr-20 -mt-20 pointer-events-none"></div>
     <div class="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-4">
-            <img src="icoppdag.png" alt="Logo" class="w-14 h-auto drop-shadow-lg bg-white rounded-full p-1 border-2 border-white/20">
+            <img src="icoppdag.png" alt="Logo" class="w-14 h-auto drop-shadow-lg bg-white rounded-full p-1 border-2 border-white/20" fetchpriority="high">
             <div>
                 <h1 class="text-xl md:text-2xl font-bold leading-tight">Panel Admin NaDIM</h1>
                 <p class="text-slate-400 text-xs font-medium">Pengurusan Data & Komunikasi Digital</p>
@@ -900,7 +916,7 @@
                     <button id="btnBukaSemulaPukalGuru" onclick="bukaSemulaPukal('GURU')" disabled class="px-4 py-2 bg-amber-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:bg-amber-600 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-amber-500">
                         <i class="fas fa-undo"></i> Buka Semula Terpilih
                     </button>
-                    <button id="btnSelesaiPukalGuru" onclick="tandaSelesaiPukal('GURU')" disabled class="px-4 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:bg-emerald-600 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-500">
+                    <button id="btnSelesaiPukalGuru" onclick="tandaSelesaiPukal('GURU')" disabled class="px-4 py-2 bg-emerald-50 text-white rounded-lg text-xs font-bold shadow-sm transition-all hover:bg-emerald-600 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-500">
                         <i class="fas fa-check-double"></i> Selesai Terpilih (<span id="countPukalGuru">0</span>)
                     </button>
                 </div>
@@ -1472,25 +1488,10 @@
       </div>
   </div>
 
+  <!-- PENGURUSAN MODUL UTAMA (DYNAMIC ON-DEMAND ENGINE) -->
   <script type="module" src="js/core/helpers.js"></script>
   <script type="module" src="js/core/db.js"></script>
-  
-  <!-- ADMIN MODULES -->
   <script type="module" src="js/admin/main.js"></script>
-  <script type="module" src="js/admin/dashboard.js"></script>
-  <script type="module" src="js/admin/penataran.js"></script>
-  <script type="module" src="js/admin/analysis.js"></script>
-  
-  <!-- ── TAMBAHAN MODUL IMPAK ── -->
-  <script type="module" src="js/admin/impact.js"></script>
-  
-  <script type="module" src="js/admin/achievement.js"></script>
-  <script type="module" src="js/admin/communication.js"></script>
-  <script type="module" src="js/admin/gallery_manager.js"></script>
-  <script type="module" src="js/admin/booking_manager.js"></script>
-  <script type="module" src="js/admin/settings.js"></script>
-  <script type="module" src="js/admin/delima_manager.js"></script>
-  <script type="module" src="js/admin/libat_urus.js"></script>
 
   <script>
       function switchAdminHelpdeskTab(type) {
@@ -1504,25 +1505,27 @@
 
           // Reset semua butang
           [btnAduan, btnGuru, btnMurid].forEach(btn => {
-              btn.className = "px-4 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 border border-transparent transition-all uppercase tracking-wider";
+              if (btn) btn.className = "px-4 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 border border-transparent transition-all uppercase tracking-wider";
           });
           
           // Sembunyikan semua panel
-          [panelAduan, panelGuru, panelMurid].forEach(panel => panel.classList.add('hidden'));
+          [panelAduan, panelGuru, panelMurid].forEach(panel => {
+              if (panel) panel.classList.add('hidden');
+          });
 
-          // Aktifkan pilihan
+          // Aktifkan pilihan secara selamat
           if (type === 'aduan') {
-              btnAduan.className = "px-4 py-2 rounded-lg text-xs font-black bg-white text-red-600 shadow-sm border border-slate-100 transition-all transform scale-105 uppercase tracking-wider";
-              panelAduan.classList.remove('hidden');
-              if(window.loadTiketAdmin) window.loadTiketAdmin();
+              if (btnAduan) btnAduan.className = "px-4 py-2 rounded-lg text-xs font-black bg-white text-red-600 shadow-sm border border-slate-100 transition-all transform scale-105 uppercase tracking-wider";
+              if (panelAduan) panelAduan.classList.remove('hidden');
+              if (typeof window.loadTiketAdmin === 'function') window.loadTiketAdmin();
           } else if (type === 'delima-guru') {
-              btnGuru.className = "px-4 py-2 rounded-lg text-xs font-black bg-white text-blue-600 shadow-sm border border-slate-100 transition-all transform scale-105 uppercase tracking-wider";
-              panelGuru.classList.remove('hidden');
-              if(window.loadSenaraiDelimaAdmin) window.loadSenaraiDelimaAdmin('GURU');
+              if (btnGuru) btnGuru.className = "px-4 py-2 rounded-lg text-xs font-black bg-white text-blue-600 shadow-sm border border-slate-100 transition-all transform scale-105 uppercase tracking-wider";
+              if (panelGuru) panelGuru.classList.remove('hidden');
+              if (typeof window.loadSenaraiDelimaAdmin === 'function') window.loadSenaraiDelimaAdmin('GURU');
           } else if (type === 'delima-murid') {
-              btnMurid.className = "px-4 py-2 rounded-lg text-xs font-black bg-white text-cyan-600 shadow-sm border border-slate-100 transition-all transform scale-105 uppercase tracking-wider";
-              panelMurid.classList.remove('hidden');
-              if(window.loadSenaraiDelimaAdmin) window.loadSenaraiDelimaAdmin('MURID');
+              if (btnMurid) btnMurid.className = "px-4 py-2 rounded-lg text-xs font-black bg-white text-cyan-600 shadow-sm border border-slate-100 transition-all transform scale-105 uppercase tracking-wider";
+              if (panelMurid) panelMurid.classList.remove('hidden');
+              if (typeof window.loadSenaraiDelimaAdmin === 'function') window.loadSenaraiDelimaAdmin('MURID');
           }
       }
   </script>

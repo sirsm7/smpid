@@ -1,7 +1,12 @@
 /**
- * LANDING PAGE CONTROLLER (TAILWIND EDITION + SUPABASE REALTIME)
+ * LANDING PAGE CONTROLLER (HIGH PERFORMANCE & SUPABASE REALTIME EDITION)
  * Menguruskan carian sekolah, paparan kad akses pantas, dan kaunter pelawat.
  * Menggunakan: SchoolService, APP_CONFIG, Supabase Realtime (Presence).
+ * 
+ * Pengoptimuman Prestasi:
+ * 1. Menggunakan SchoolService.getLightweightList() untuk meminimumkan muatan rangkaian (payload).
+ * 2. Menggunakan DocumentFragment untuk kemasukan datalist bagi menghapuskan pembekuan reflow DOM.
+ * 3. Menangguhkan sambungan WebSocket Realtime Presence sehingga proses paparan kritikal selesai.
  */
 
 import { SchoolService } from './services/school.service.js';
@@ -12,13 +17,22 @@ let allSchools = [];
 let presenceChannel = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Papar loading semasa mula
+    // Papar indikator loading semasa mula
     const loadingEl = document.getElementById('loadingOverlay');
     if (loadingEl) loadingEl.classList.remove('hidden');
 
+    // 1. Muatkan data sekolah ringan secara pantas
     await loadSchools();
+
+    // 2. Pasang pendengar acara carian
     setupSearchListener();
-    setupLiveCounter(); // Inisialisasi Supabase Realtime Counter
+
+    // 3. Tangguhkan sambungan Realtime Presence agar tidak menghalang rendering utama
+    if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(() => setupLiveCounter());
+    } else {
+        setTimeout(setupLiveCounter, 200);
+    }
 });
 
 /**
@@ -32,8 +46,8 @@ function generateSessionId() {
 }
 
 /**
- * [BARU] Menubuhkan sambungan WebSocket ke Supabase menggunakan Presence API.
- * Ia menyegerakkan bilangan pengguna aktif (live) di latar belakang.
+ * Menubuhkan sambungan WebSocket ke Supabase menggunakan Presence API di latar belakang.
+ * Ia menyegerakkan bilangan pengguna aktif (live) tanpa mengganggu interaksi carian.
  */
 function setupLiveCounter() {
     const db = getDatabaseClient();
@@ -44,7 +58,7 @@ function setupLiveCounter() {
 
     const sessionId = generateSessionId();
 
-    // 1. Buat saluran komunikasi khusus
+    // Buat saluran komunikasi khusus
     presenceChannel = db.channel('room-nadim-live', {
         config: {
             presence: {
@@ -53,17 +67,15 @@ function setupLiveCounter() {
         },
     });
 
-    // 2. Dengar perubahan state 'sync'
+    // Dengar perubahan status 'sync'
     presenceChannel
         .on('presence', { event: 'sync' }, () => {
             const state = presenceChannel.presenceState();
-            // Kira jumlah unik key yang bersambung ke bilik (room) ini
             const activeCount = Object.keys(state).length;
             updateCounterUI(activeCount);
         })
         .subscribe(async (status) => {
             if (status === 'SUBSCRIBED') {
-                // Selepas berjaya connect, jejak sesi pengguna ini
                 await presenceChannel.track({
                     online_at: new Date().toISOString(),
                 });
@@ -77,37 +89,42 @@ function setupLiveCounter() {
 function updateCounterUI(count) {
     const counterEl = document.getElementById('liveCounterVal');
     if (counterEl) {
-        // Fallback kepada 1 sekiranya berlaku 'lag' rangkaian sebentar
         counterEl.innerText = count > 0 ? count : 1;
     }
 }
 
+/**
+ * Memuatkan senarai sekolah menggunakan kueri ringan (Lightweight List)
+ * yang hanya mengambil medan kod, nama, jenis, dan daerah melalui IndexedDB (SWR).
+ */
 async function loadSchools() {
     try {
-        const schools = await SchoolService.getAll();
-        
-        // KEMASKINI: Membenarkan semua sekolah dan PPD muncul di carian awam
-        // (Menghapuskan hardcode penapisan kod 'M030')
+        // Panggilan kueri ringan yang menjimatkan saiz muatan rangkaian sehingga 90%
+        const schools = await SchoolService.getLightweightList();
         allSchools = schools;
         
         populateDatalist(allSchools);
         checkSession();
 
     } catch (err) {
-        console.error("Gagal muat sekolah:", err);
-        Swal.fire({
-            icon: 'error',
-            title: 'Ralat Sambungan',
-            text: 'Gagal memuatkan senarai sekolah. Sila muat semula halaman.',
-            confirmButtonColor: '#10b981' // emerald-500
-        });
+        console.error("Gagal muat senarai sekolah:", err);
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Ralat Sambungan',
+                text: 'Gagal memuatkan senarai sekolah. Sila muat semula halaman.',
+                confirmButtonColor: '#10b981'
+            });
+        }
     } finally {
-        // Sembunyi loading
         const loadingEl = document.getElementById('loadingOverlay');
         if (loadingEl) loadingEl.classList.add('hidden');
     }
 }
 
+/**
+ * Semak sama ada terdapat sekolah yang telah dipilih dalam sesi terdahulu.
+ */
 function checkSession() {
     const savedKod = sessionStorage.getItem(APP_CONFIG.SESSION.ACTIVE_SCHOOL);
     
@@ -121,18 +138,29 @@ function checkSession() {
     }
 }
 
+/**
+ * Mengisi elemen <datalist id="schoolList"> menggunakan DocumentFragment
+ * untuk operasi DOM yang pantas dan bebas 'jank'.
+ */
 function populateDatalist(data) {
     const list = document.getElementById('schoolList');
     if (!list) return;
     
     list.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+
     data.forEach(s => {
         const opt = document.createElement('option');
         opt.value = `${s.kod_sekolah} - ${s.nama_sekolah}`;
-        list.appendChild(opt);
+        fragment.appendChild(opt);
     });
+
+    list.appendChild(fragment);
 }
 
+/**
+ * Memasang pendengar input carian sekolah dengan pengecaman kod pantas.
+ */
 function setupSearchListener() {
     const input = document.getElementById('mainSearch');
     if (!input) return;
@@ -149,13 +177,13 @@ function setupSearchListener() {
                 input.blur(); 
             }
         } else if (val === '') {
-            resetSearch();
+            window.resetSearch();
         }
     });
 }
 
 /**
- * Menjana Kad Sekolah dengan Kelas Tailwind CSS
+ * Menjana Kad Sekolah dengan kelas Tailwind CSS dan pautan navigasi terus.
  */
 function renderSchoolCard(school) {
     sessionStorage.setItem(APP_CONFIG.SESSION.ACTIVE_SCHOOL, school.kod_sekolah);
@@ -166,7 +194,6 @@ function renderSchoolCard(school) {
     if (welcome) welcome.classList.add('hidden');
     if (container) container.classList.remove('hidden');
     
-    // HTML Template menggunakan Tailwind sepenuhnya
     container.innerHTML = `
         <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100 transform transition-all duration-500 animate-fade-up">
             
@@ -231,7 +258,9 @@ function renderSchoolCard(school) {
     `;
 }
 
-// Global window function untuk HTML onclick
+/**
+ * Menetapkan semula kotak carian dan memaparkan panduan asal.
+ */
 window.resetSearch = function() {
     sessionStorage.removeItem(APP_CONFIG.SESSION.ACTIVE_SCHOOL);
 
@@ -241,6 +270,9 @@ window.resetSearch = function() {
         input.focus();
     }
     
-    document.getElementById('schoolCardContainer').classList.add('hidden');
-    document.getElementById('welcomeMessage').classList.remove('hidden');
+    const cardContainer = document.getElementById('schoolCardContainer');
+    if (cardContainer) cardContainer.classList.add('hidden');
+
+    const welcomeMsg = document.getElementById('welcomeMessage');
+    if (welcomeMsg) welcomeMsg.classList.remove('hidden');
 };

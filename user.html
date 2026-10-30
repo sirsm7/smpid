@@ -3,16 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NADIM - Portal Sekolah</title>
+  <title>NaDIM - Portal Sekolah</title>
   
   <meta name="theme-color" content="#16a34a">
   <link rel="icon" href="icoppdag.png">
+
+  <!-- PETUNJUK SUMBER AWAL (RESOURCE HINTS & PRECONNECT) -->
+  <link rel="preconnect" href="https://app.tech4ag.my">
+  <link rel="dns-prefetch" href="https://app.tech4ag.my">
+  <link rel="preconnect" href="https://cdn.tailwindcss.com">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   
   <!-- TAILWIND CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- FONTAWESOME -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- FONTAWESOME (PEMUATAN TAK SEGERAK / ASYNC LOAD) -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"></noscript>
   
   <!-- GOOGLE FONTS -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -58,10 +69,10 @@
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   </style>
 
-  <!-- Library JS -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="console.warn('JSDelivr disekat. Mencuba Unpkg...'); this.onerror=null; this.src='https://unpkg.com/@supabase/supabase-js@2';"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- PUSTAKA LUARAN (DEFERRED UNTUK MENGHILANGKAN RENDER-BLOCKING) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="console.warn('JSDelivr disekat. Mencuba Unpkg...'); this.onerror=null; this.src='https://unpkg.com/@supabase/supabase-js@2';"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body id="page-user" class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
 
@@ -79,7 +90,7 @@
     
     <div class="relative z-10 max-w-4xl mx-auto">
         <!-- Logo PPD -->
-        <img src="icoppdag.png" alt="Logo PPD" class="w-40 h-auto mx-auto mb-3 drop-shadow-md">
+        <img src="icoppdag.png" alt="Logo PPD" class="w-40 h-auto mx-auto mb-3 drop-shadow-md" fetchpriority="high">
         <h1 class="text-xl md:text-2xl font-bold text-white mb-1 tracking-tight" id="dispNamaSekolah">MEMUATKAN DATA...</h1>
         <p class="text-emerald-200 text-xs font-bold uppercase tracking-wider mb-4" id="dispKodDaerah">KOD: - | DAERAH: -</p>
         
@@ -749,24 +760,22 @@
   <script>
       // SCRIPT UI UNTUK SMART BOARD
       window.toggleSmartboard = function() {
-          const ada = document.querySelector('input[name="sb_ada"]:checked').value;
+          const adaRadio = document.querySelector('input[name="sb_ada"]:checked');
+          const ada = adaRadio ? adaRadio.value : 'TIDAK';
           const container = document.getElementById('sbDetailsContainer');
-          const inputs = container.querySelectorAll('input[type="number"], select, input[type="checkbox"]');
+          if (!container) return;
           
           if (ada === 'YA') {
               container.classList.remove('hidden');
-              // Jadikan mandatory untuk select dan nombor
               document.getElementById('sb_kaedah').required = true;
               document.getElementById('sb_bil_semua').required = true;
               document.getElementById('sb_bil_fungsi').required = true;
           } else {
               container.classList.add('hidden');
-              // Buang mandatory jika TIDAK
               document.getElementById('sb_kaedah').required = false;
               document.getElementById('sb_bil_semua').required = false;
               document.getElementById('sb_bil_fungsi').required = false;
               
-              // Reset nilai-nilai yang ada di dalam container
               document.getElementById('sb_kaedah').value = "";
               document.getElementById('sb_bil_semua').value = "";
               document.getElementById('sb_bil_fungsi').value = "";
@@ -776,17 +785,13 @@
 
       // Hash-based Routing for User Portal (BUG FIX V2.2 - LOCALSTORAGE SYNC)
       document.addEventListener('DOMContentLoaded', () => {
-          // UPDATE: Gunakan localStorage untuk konsistensi dengan Admin View
           const userKod = localStorage.getItem('smpid_user_kod');
           const isAuth = localStorage.getItem('smpid_auth') === 'true';
 
-          // Basic security check here for consistency
           if (!userKod && !isAuth) { return; }
 
-          // Pastikan state smart board betul semasa muat awal
           window.toggleSmartboard();
 
-          // Listen for hash changes to support browser back/forward buttons
           window.addEventListener('hashchange', () => {
               const hash = window.location.hash.replace('#', '') || 'menu';
               if (['menu', 'profil', 'analisa', 'pencapaian', 'libat-urus'].includes(hash)) {
@@ -794,10 +799,8 @@
               }
           });
 
-          // Check initial hash for deep linking
           const initialHash = window.location.hash.replace('#', '') || 'menu';
           if (initialHash !== 'menu') {
-              // Delay slightly to ensure js/user.js is fully loaded and initialized
               setTimeout(() => {
                   if (window.showSection) window.showSection(initialHash);
               }, 300);

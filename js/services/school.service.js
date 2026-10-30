@@ -1,10 +1,10 @@
 /**
- * SCHOOL SERVICE (V3.0 - SWR & RBAC CACHE EDITION)
- * Menguruskan data profil sekolah dan dashboard.
+ * SCHOOL SERVICE (V3.1 - HIGH-PERFORMANCE SWR & LIGHTWEIGHT QUERY EDITION)
+ * Menguruskan data profil sekolah, dashboard, dan carian pantas.
  * Kemaskini: 
- * 1. Menggunakan Stale-While-Revalidate (SWR) untuk pemuatan UI pantas dan penyegaran latar belakang.
- * 2. Menggunakan penjanaan kunci cache (RBAC Key) dari IDBCache.
- * 3. Cache individu (getByCode) diaktifkan bagi mempercepatkan pembukaan profil.
+ * 1. Tambah kaedah `getLightweightList()` untuk carian pantas tanpa over-fetching data.
+ * 2. Pengoptimuman pemuatan kueri dan pengurusan cache SWR (Stale-While-Revalidate).
+ * 3. Invalidasi bersasar yang merangkumi senarai ringan dan senarai penuh.
  */
 
 import { requireDb } from '../core/db.js';
@@ -14,7 +14,29 @@ import { IDBCache } from '../core/idb.js';
 
 export const SchoolService = {
     /**
-     * Dapatkan semua data sekolah menggunakan Stale-While-Revalidate (SWR)
+     * Dapatkan senarai ringan (kod, nama, jenis, daerah) khusus untuk carian pantas & datalist landing page.
+     * Mengurangkan saiz muatan rangkaian (payload) sehingga 90% berbanding getAll().
+     */
+    async getLightweightList() {
+        const cacheKey = IDBCache.generateSecureKey('school_data_LIGHT', true);
+
+        const fetchFactory = async () => {
+            const db = requireDb();
+            const { data, error } = await db
+                .from('smpid_sekolah_data')
+                .select('kod_sekolah, nama_sekolah, jenis_sekolah, daerah')
+                .order('kod_sekolah', { ascending: true });
+
+            if (error) throw error;
+            return data || [];
+        };
+
+        // Menggunakan SWR dengan tempoh hayat cache 120 minit
+        return await IDBCache.staleWhileRevalidate(cacheKey, fetchFactory, null, 120);
+    },
+
+    /**
+     * Dapatkan semua data sekolah terperinci menggunakan Stale-While-Revalidate (SWR)
      */
     async getAll() {
         // Data ini dikongsi oleh semua admin, jadi gunakan kunci GLOBAL
@@ -92,8 +114,9 @@ export const SchoolService = {
         if (error) throw error;
 
         // 2. Surgical Invalidate Cache
-        // Buang cache senarai penuh dan cache spesifik sekolah ini sahaja
+        // Buang cache senarai penuh, senarai ringkas, dan cache spesifik sekolah ini
         await IDBCache.invalidateByPrefix('GLOBAL_school_data_ALL');
+        await IDBCache.invalidateByPrefix('GLOBAL_school_data_LIGHT');
         await IDBCache.invalidateByPrefix(`GLOBAL_school_profile_${kodSekolah}`);
 
         // 3. Hantar Notifikasi ke Deno API (Optimistic)
@@ -135,6 +158,7 @@ export const SchoolService = {
 
         // Surgical Invalidate Cache
         await IDBCache.invalidateByPrefix('GLOBAL_school_data_ALL');
+        await IDBCache.invalidateByPrefix('GLOBAL_school_data_LIGHT');
         await IDBCache.invalidateByPrefix(`GLOBAL_school_profile_${kodSekolah}`);
 
         return { success: true };
