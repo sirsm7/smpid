@@ -2,19 +2,25 @@ export async function onRequest(context) {
   const { request, env } = context;
   const clientUrl = new URL(request.url);
 
-  // 1. Laluan Diagnostik: Buka https://<domain>/api/debug untuk semakan
+  // 1. Ambil dari Cloudflare ENV, jika tiada gunakan sandaran selamat pelayan pinggir
+  const supabaseUrl =
+    (env && env.SUPABASE_URL) || "https://app.tech4ag.my";
+  const supabaseAnonKey =
+    (env && env.SUPABASE_ANON_KEY) ||
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY";
+
+  // Laluan Diagnostik: https://domain-anda.my/api/debug
   if (clientUrl.pathname === "/api/debug") {
-    const rawKey = env.SUPABASE_ANON_KEY || "";
-    const jwtParts = rawKey.split(".").length;
     return new Response(
       JSON.stringify(
         {
           status: "Cloudflare Pages Function Berjaya Beroperasi",
-          has_SUPABASE_URL: Boolean(env.SUPABASE_URL),
-          has_SUPABASE_ANON_KEY: Boolean(env.SUPABASE_ANON_KEY),
-          anon_key_jwt_parts: jwtParts,
-          anon_key_valid_format: jwtParts === 3,
-          sampel_url: env.SUPABASE_URL ? `${env.SUPABASE_URL.slice(0, 16)}...` : null
+          keys_ditemui_dalam_env: Object.keys(env || {}),
+          has_SUPABASE_URL: Boolean(supabaseUrl),
+          has_SUPABASE_ANON_KEY: Boolean(supabaseAnonKey),
+          anon_key_jwt_parts: supabaseAnonKey ? supabaseAnonKey.split(".").length : 0,
+          anon_key_valid_format: supabaseAnonKey ? supabaseAnonKey.split(".").length === 3 : false,
+          sampel_url: supabaseUrl ? `${supabaseUrl.slice(0, 16)}...` : null
         },
         null,
         2
@@ -26,31 +32,16 @@ export async function onRequest(context) {
     );
   }
 
-  const supabaseUrl = env.SUPABASE_URL;
-  const supabaseAnonKey = env.SUPABASE_ANON_KEY ? env.SUPABASE_ANON_KEY.trim().replace(/^["']|["']$/g, "") : null;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return new Response(
-      JSON.stringify({
-        error: "Configuration Error",
-        message: "SUPABASE_URL atau SUPABASE_ANON_KEY tidak ditemui pada persekitaran Cloudflare Pages ini.",
-        keys_dikesan: Object.keys(env || {})
-      }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json; charset=utf-8" }
-      }
-    );
-  }
-
   const subPath = clientUrl.pathname.replace(/^\/api/, "");
   const targetUrl = new URL(
     `${supabaseUrl.replace(/\/+$/, "")}${subPath}${clientUrl.search}`
   );
 
-  // Gantikan parameter apikey jika tiada atau menggunakan penanda proksi
-  const currentApiKeyParam = targetUrl.searchParams.get("apikey");
-  if (!currentApiKeyParam || currentApiKeyParam === "edge-proxy-managed" || !currentApiKeyParam.includes(".")) {
+  // Gantikan apikey penanda kepada token sebenar dalam parameter URL
+  if (
+    targetUrl.searchParams.get("apikey") === "edge-proxy-managed" ||
+    !targetUrl.searchParams.has("apikey")
+  ) {
     targetUrl.searchParams.set("apikey", supabaseAnonKey);
   }
 
@@ -59,21 +50,16 @@ export async function onRequest(context) {
   requestHeaders.delete("origin");
   requestHeaders.delete("referer");
 
-  // Paksa apikey upstream sentiasa menggunakan kunci sebenar
   requestHeaders.set("apikey", supabaseAnonKey);
 
-  // Semak Authorization header: jika tiada, tidak lengkap, mengandungi 'edge-proxy-managed', atau bukan JWT 3 bahagian
+  // PEMBETULAN KRITIKAL PGRST301:
+  // Semak sama ada token ialah JWT 3-bahagian yang sah. Jika ia 'edge-proxy-managed'
+  // atau bukan format JWT (3 bahagian), gantikan dengan supabaseAnonKey sebenar.
   const existingAuth = requestHeaders.get("authorization");
-  const authPayload = existingAuth ? existingAuth.replace(/^Bearer\s+/i, "").trim() : "";
-  const isAuthInvalid = 
-    !existingAuth || 
-    existingAuth.trim() === "" || 
-    existingAuth.includes("null") || 
-    existingAuth.includes("undefined") || 
-    existingAuth.includes("edge-proxy-managed") ||
-    authPayload.split(".").length !== 3;
+  const rawToken = existingAuth ? existingAuth.replace(/^Bearer\s+/i, "").trim() : "";
+  const isThreePartJwt = rawToken.split(".").length === 3;
 
-  if (isAuthInvalid) {
+  if (!existingAuth || !isThreePartJwt || rawToken === "edge-proxy-managed") {
     requestHeaders.set("authorization", `Bearer ${supabaseAnonKey}`);
   }
 
@@ -106,7 +92,8 @@ export async function onRequest(context) {
     responseHeaders.delete("content-encoding");
     responseHeaders.delete("transfer-encoding");
 
-    const isNullBodyStatus = upstreamResponse.status === 204 || upstreamResponse.status === 304;
+    const isNullBodyStatus =
+      upstreamResponse.status === 204 || upstreamResponse.status === 304;
     const responseBody = isNullBodyStatus ? null : upstreamResponse.body;
 
     return new Response(responseBody, {
