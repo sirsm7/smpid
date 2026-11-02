@@ -1,21 +1,33 @@
 /**
  * @file app.config.js
- * @description Core application configuration constants and default values.
+ * @description Core application configuration constants, database definitions, and IndexedDB caching parameters.
  * @module AppConfig
  * 
- * Kemaskini V3.3:
- * - Menghapuskan URL terus dan anon key Supabase yang terdedah secara terbuka.
- * - Mengalihkan endpoint pangkalan data kepada laluan proksi tempatan Cloudflare Pages (`/api`).
- * - Menyokong perlindungan kunci persekitaran (Environment Variables) tanpa mendedahkan kelayakan asal kepada klien.
+ * Kemaskini V3.4 (IndexedDB Resilient Architecture):
+ * - Menambah pengisytiharan konfigurasi storan IndexedDB berpusat (IDB_CONFIG).
+ * - Menetapkan kunci penjejakan versi aplikasi (APP_VERSION_KEY) untuk automasi migrasi skema.
+ * - Memelihara get laluan songsang Cloudflare Edge (/api) tanpa pendedahan kelayakan terbuka.
  */
 
 export const APP_CONFIG = {
     APP_NAME: 'Nadi Analitik, Digital & Inovasi Melaka (NaDIM)',
-    APP_VERSION: '2.5.0',
+    APP_VERSION: '2.6.0',
     
     // Had Berpusat Paparan Baris Jadual Pentadbir (Maksimum 50 baris untuk render DOM pantas)
     ADMIN_TABLE_LIMIT: 50,
     
+    // Konfigurasi Pangkalan Data Tempatan IndexedDB (Resilient Client Storage)
+    IDB: {
+        DB_NAME: 'nadim_storage_v2',
+        DB_VERSION: 1,
+        CACHE_TTL_MS: 86400000, // 24 jam (tempoh hayat data sebelum semakan delta)
+        STORES: {
+            SCHOOLS: 'schools_cache',
+            ACHIEVEMENTS: 'achievements_cache',
+            META: 'system_meta'
+        }
+    },
+
     // Konfigurasi Pangkalan Data Supabase (Dilindungi melalui Cloudflare Edge Reverse Proxy)
     SUPABASE: {
         URL: typeof window !== 'undefined' && window.SUPABASE_URL ? window.SUPABASE_URL : (typeof window !== 'undefined' ? `${window.location.origin}/api` : '/api'),
@@ -30,13 +42,15 @@ export const APP_CONFIG = {
         GAS_LIBAT_URUS_URL: 'https://script.google.com/macros/s/AKfycbyIXpHGIm5kdXl2ecRG4c-JE99vcfC5xjfbvZMko0ab2cKuBRL1HDb1CFGmTLOUBFLJ/exec'
     },
 
-    // Kunci Sesi LocalStorage (Untuk Integriti Auth)
+    // Kunci Sesi LocalStorage (Untuk Integriti Auth & Penjejakan Versi Cache)
     SESSION: {
         AUTH_FLAG: 'smpid_auth',
         USER_ROLE: 'smpid_user_role',
         USER_KOD: 'smpid_user_kod',
         USER_ID: 'smpid_user_id',
-        ACTIVE_SCHOOL: 'smpid_active_school'
+        ACTIVE_SCHOOL: 'smpid_active_school',
+        APP_VERSION_KEY: 'smpid_app_version',
+        LAST_SYNC_KEY: 'smpid_last_sync'
     },
 
     // Pemetaan Daerah (Untuk RBAC & Filter Sistem)
@@ -46,7 +60,7 @@ export const APP_CONFIG = {
         'M030': 'ALOR GAJAH'
     },
 
-    // Default values for system initializations, user creation, and resets
+    // Nilai Lalai Permulaan Sistem
     DEFAULTS: {
         PASSWORD: 'jpnmel@12345', 
         AVATAR_URL: 'assets/img/default-avatar.png',
@@ -55,7 +69,7 @@ export const APP_CONFIG = {
         STATUS: 'active'
     },
 
-    // API & Database Configurations (Table definitions for Supabase)
+    // Definisi Nama Jadual Supabase
     DB_TABLES: {
         USERS: 'smpid_users',
         SCHOOLS: 'smpid_schools',
@@ -67,14 +81,14 @@ export const APP_CONFIG = {
         LIBAT_URUS: 'smpid_libat_urus'
     },
 
-    // Pagination defaults for data tables and lists
+    // Parameter Penomboran Halaman (Pagination)
     PAGINATION: {
         ITEMS_PER_PAGE: 10,
         MAX_PAGES_SHOWN: 5,
         ADMIN_TABLE_LIMIT: 50
     },
 
-    // File upload limits and security parameters
+    // Had Keselamatan Muat Naik Fail
     UPLOADS: {
         MAX_FILE_SIZE_MB: 5,
         ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/webp'],
@@ -85,7 +99,7 @@ export const APP_CONFIG = {
         ]
     },
     
-    // UI/UX Notification settings (SweetAlert defaults)
+    // Tetapan Masa Makluman SweetAlert
     ALERTS: {
         TIMER_SHORT: 1500,
         TIMER_NORMAL: 3000,
@@ -93,8 +107,10 @@ export const APP_CONFIG = {
     }
 };
 
-// Deep freeze the configuration object to prevent accidental runtime mutations
+// Penguatkuasaan Deep Freeze bagi menghalang mutasi runtime
 Object.freeze(APP_CONFIG);
+Object.freeze(APP_CONFIG.IDB);
+Object.freeze(APP_CONFIG.IDB.STORES);
 Object.freeze(APP_CONFIG.SUPABASE);
 Object.freeze(APP_CONFIG.API);
 Object.freeze(APP_CONFIG.SESSION);

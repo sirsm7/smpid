@@ -1,18 +1,39 @@
 /**
- * SMPID DATABASE CORE
- * Menguruskan inisialisasi Supabase Client melalui Cloudflare Edge Proxy.
- * Mengelakkan pendedahan kunci API terus ke pelayar dan menyediakan mekanisme anti-crash.
+ * @file js/core/db.js
+ * @description Core Database Client (Supabase Singleton & Local Cache Synchronizer)
+ * Menguruskan inisialisasi Supabase Client melalui Cloudflare Edge Proxy (/api)
+ * serta mengintegrasikan penyegerakan awal enjin storan tempatan IndexedDB.
+ * @module DatabaseCore
  */
 
 import { APP_CONFIG } from '../config/app.config.js';
+import { IDBCache } from './idb.js';
 
 let supabaseInstance = null;
+let idbInitialized = false;
+
+/**
+ * Memulakan penyegerakan awal cache tempatan IndexedDB di latar belakang
+ */
+function ensureStorageLayer() {
+    if (idbInitialized) return;
+    idbInitialized = true;
+    try {
+        IDBCache.initDB().catch(err => {
+            console.warn('[Core DB] Peringatan inisialisasi storan tempatan:', err);
+        });
+    } catch (e) {
+        console.warn('[Core DB] Ralat pembukaan storan tempatan:', e);
+    }
+}
 
 /**
  * Menginisialisasi dan mengembalikan klien Supabase singleton.
  * Mengelakkan kemalangan aplikasi sekiranya pustaka CDN disekat.
  */
 export function getDatabaseClient() {
+    ensureStorageLayer();
+
     if (supabaseInstance) {
         return supabaseInstance;
     }
