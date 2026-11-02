@@ -1,7 +1,7 @@
 /**
  * SMPID DATABASE CORE
- * Menguruskan sambungan ke Supabase Client.
- * Refactored: Anti-Crash Mechanism dengan Amaran UI.
+ * Menguruskan inisialisasi Supabase Client melalui Cloudflare Edge Proxy.
+ * Mengelakkan pendedahan kunci API terus ke pelayar dan menyediakan mekanisme anti-crash.
  */
 
 import { APP_CONFIG } from '../config/app.config.js';
@@ -9,27 +9,30 @@ import { APP_CONFIG } from '../config/app.config.js';
 let supabaseInstance = null;
 
 /**
- * Menginisialisasi dan mengembalikan klien Supabase.
- * Mengelakkan 'Crash' jika CDN disekat.
+ * Menginisialisasi dan mengembalikan klien Supabase singleton.
+ * Mengelakkan kemalangan aplikasi sekiranya pustaka CDN disekat.
  */
 export function getDatabaseClient() {
-    // 1. Return existing instance if available (Singleton)
     if (supabaseInstance) {
         return supabaseInstance;
     }
 
-    // 2. Check if window.supabase exists (CDN Loaded)
-    if (typeof window.supabase === 'undefined') {
-        // Jangan crash terus, return null dan biar 'requireDb' handle error message
-        console.error("CRITICAL: window.supabase is undefined. Network blocker detected.");
+    if (typeof window === 'undefined' || typeof window.supabase === 'undefined') {
+        console.error("CRITICAL: window.supabase is undefined. Network blocker or CDN failure detected.");
         return null;
     }
 
-    // 3. Create new instance
     try {
         supabaseInstance = window.supabase.createClient(
             APP_CONFIG.SUPABASE.URL,
-            APP_CONFIG.SUPABASE.KEY
+            APP_CONFIG.SUPABASE.KEY,
+            {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: false
+                }
+            }
         );
     } catch (error) {
         console.error("❌ [Core] Supabase Init Error:", error);
@@ -39,14 +42,14 @@ export function getDatabaseClient() {
     return supabaseInstance;
 }
 
-// Helper untuk memastikan DB wujud sebelum query
+/**
+ * Pembantu untuk memastikan sambungan pangkalan data telah sedia sebelum pertanyaan dijalankan.
+ */
 export function requireDb() {
     const db = getDatabaseClient();
-    
+
     if (!db) {
-        // Buang error standard, ganti dengan mesej mesra pengguna
-        // Ini akan ditangkap oleh try-catch di service layer
-        throw new Error("Sambungan Pangkalan Data Disekat. Sila matikan AdBlocker atau tukar rangkaian internet anda.");
+        throw new Error("Sambungan Pangkalan Data Disekat. Sila matikan AdBlocker atau periksa sambungan internet anda.");
     }
     return db;
 }

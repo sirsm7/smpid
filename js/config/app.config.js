@@ -3,23 +3,23 @@
  * @description Core application configuration constants and default values.
  * @module AppConfig
  * 
- * Kemaskini V3.2:
- * - Menambah pembolehubah had paparan berpusat `ADMIN_TABLE_LIMIT: 50` 
- *   bagi membatasi bilangan baris rendering DOM pada semua jadual pentadbir,
- *   sekali gus mempercepatkan masa muat turun (load times) dan tindak balas UI.
+ * Kemaskini V3.3:
+ * - Menghapuskan URL terus dan anon key Supabase yang terdedah secara terbuka.
+ * - Mengalihkan endpoint pangkalan data kepada laluan proksi tempatan Cloudflare Pages (`/api`).
+ * - Menyokong perlindungan kunci persekitaran (Environment Variables) tanpa mendedahkan kelayakan asal kepada klien.
  */
 
 export const APP_CONFIG = {
-    APP_NAME: 'Nadi Analitik, Digital & Inovasi Melaka (NADIM)',
+    APP_NAME: 'Nadi Analitik, Digital & Inovasi Melaka (NaDIM)',
     APP_VERSION: '2.5.0',
     
     // Had Berpusat Paparan Baris Jadual Pentadbir (Maksimum 50 baris untuk render DOM pantas)
     ADMIN_TABLE_LIMIT: 50,
     
-    // Konfigurasi Pangkalan Data Supabase (Data dirujuk dari utils.js sebagai fallback)
+    // Konfigurasi Pangkalan Data Supabase (Dilindungi melalui Cloudflare Edge Reverse Proxy)
     SUPABASE: {
-        URL: typeof window !== 'undefined' && window.SUPABASE_URL ? window.SUPABASE_URL : 'https://app.tech4ag.my',
-        KEY: typeof window !== 'undefined' && window.SUPABASE_KEY ? window.SUPABASE_KEY : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY'
+        URL: typeof window !== 'undefined' && window.SUPABASE_URL ? window.SUPABASE_URL : (typeof window !== 'undefined' ? `${window.location.origin}/api` : '/api'),
+        KEY: typeof window !== 'undefined' && window.SUPABASE_KEY ? window.SUPABASE_KEY : 'edge-proxy-managed'
     },
 
     // Konfigurasi API & Endpoint (Deno Bot & GAS Microservices)

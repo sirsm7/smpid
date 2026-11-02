@@ -1,29 +1,32 @@
 /**
  * js/core/idb.js
- * NADIM IndexedDB Cache Engine (Pro Web Caster - V3.0 SWR & RBAC Edition)
- * Fungsi: Menguruskan storan pangkalan data tempatan pelayar web (IndexedDB).
- * KEMASKINI V3.0: 
- * 1. Pengasingan Cache Selamat (RBAC Key Generation) untuk mengelak kebocoran data.
- * 2. API Stale-While-Revalidate (SWR) untuk pemaparan UI serta-merta.
- * 3. Invalidasi bersasar yang lebih pintar.
+ * NADIM IndexedDB Cache Engine (Pro Web Caster - V3.1 SWR & In-Memory Fallback Edition)
+ * Fungsi: Menguruskan storan pangkalan data tempatan pelayar web (IndexedDB)
+ * dengan sandaran selamat ke memori (in-memory fallback) sekiranya mod penyamaran (Incognito) aktif.
  */
 
 import { APP_CONFIG } from '../config/app.config.js';
 
 const DB_NAME = 'nadim_cache_db';
-const DB_VERSION = 2; // Naik taraf versi untuk memaksa reset struktur
+const DB_VERSION = 2;
 const STORE_NAME = 'query_cache';
 
-// Singleton Instance Promise
 let dbPromise = null;
+let useMemoryFallback = false;
+
+if (typeof window !== 'undefined') {
+    window.__memoryCache = window.__memoryCache || {};
+}
+
+function checkIndexedDBSupport() {
+    try {
+        return typeof window !== 'undefined' && 'indexedDB' in window && window.indexedDB !== null;
+    } catch (e) {
+        return false;
+    }
+}
 
 export const IDBCache = {
-    /**
-     * Membina kunci cache yang selamat berasaskan sesi pengguna (RBAC).
-     * @param {string} baseKey Kunci asas (cth: 'school_list')
-     * @param {boolean} isGlobal True jika data dikongsi semua pengguna
-     * @returns {string} Kunci selamat (cth: 'school_list_ADMIN_M030')
-     */
     generateSecureKey(baseKey, isGlobal = false) {
         if (isGlobal) return `GLOBAL_${baseKey}`;
         
@@ -37,35 +40,49 @@ export const IDBCache = {
     },
 
     async initDB() {
+        if (useMemoryFallback || !checkIndexedDBSupport()) {
+            useMemoryFallback = true;
+            return null;
+        }
+
         if (dbPromise) return dbPromise;
 
-        dbPromise = new Promise((resolve, reject) => {
-            const request = indexedDB.open(DB_NAME, DB_VERSION);
+        dbPromise = new Promise((resolve) => {
+            try {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) {
-                    db.createObjectStore(STORE_NAME, { keyPath: 'key' });
-                }
-            };
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'key' });
+                    }
+                };
 
-            request.onsuccess = () => {
-                const db = request.result;
-                setTimeout(() => this._sweepStaleCache(db), 1000);
-                resolve(db);
-            };
+                request.onsuccess = () => {
+                    const db = request.result;
+                    setTimeout(() => this._sweepStaleCache(db), 1000);
+                    resolve(db);
+                };
 
-            request.onerror = (event) => {
-                console.error('[IDB] Ralat memulakan pangkalan data:', event.target.error);
-                dbPromise = null; 
-                reject(event.target.error);
-            };
+                request.onerror = (event) => {
+                    console.warn('[IDB] IndexedDB disekat atau gagal dimuatkan. Beralih ke in-memory cache:', event.target.error);
+                    useMemoryFallback = true;
+                    dbPromise = null;
+                    resolve(null);
+                };
+            } catch (err) {
+                console.warn('[IDB] Exception semasa inisialisasi IndexedDB. Menggunakan in-memory cache:', err);
+                useMemoryFallback = true;
+                dbPromise = null;
+                resolve(null);
+            }
         });
 
         return dbPromise;
     },
 
     async _sweepStaleCache(db) {
+        if (!db || useMemoryFallback) return;
         try {
             const transaction = db.transaction(STORE_NAME, 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
@@ -85,8 +102,30 @@ export const IDBCache = {
     },
 
     async getCache(key) {
+        const now = new Date().getTime();
+
+        if (useMemoryFallback || !checkIndexedDBSupport()) {
+            const entry = window.__memoryCache ? window.__memoryCache[key] : null;
+            if (!entry) return null;
+            if (now > entry.expiry) {
+                delete window.__memoryCache[key];
+                return null;
+            }
+            return entry.data;
+        }
+
         try {
             const db = await this.initDB();
+            if (!db) {
+                const entry = window.__memoryCache ? window.__memoryCache[key] : null;
+                if (!entry) return null;
+                if (now > entry.expiry) {
+                    delete window.__memoryCache[key];
+                    return null;
+                }
+                return entry.data;
+            }
+
             return new Promise((resolve) => {
                 const transaction = db.transaction(STORE_NAME, 'readonly');
                 const store = transaction.objectStore(STORE_NAME);
@@ -96,7 +135,6 @@ export const IDBCache = {
                     const result = request.result;
                     if (!result) return resolve(null);
 
-                    const now = new Date().getTime();
                     if (now > result.expiry) {
                         this.removeCache(key);
                         return resolve(null);
@@ -107,27 +145,37 @@ export const IDBCache = {
                 request.onerror = () => resolve(null);
             });
         } catch (error) {
-            return null;
+            const entry = window.__memoryCache ? window.__memoryCache[key] : null;
+            return entry && now <= entry.expiry ? entry.data : null;
         }
     },
 
     async setCache(key, data, ttlMinutes = 60) {
+        const now = new Date().getTime();
+        const expiry = now + (ttlMinutes * 60 * 1000);
+        
+        const payload = {
+            key: key,
+            data: data,
+            expiry: expiry,
+            timestamp: now
+        };
+
+        if (window.__memoryCache) {
+            window.__memoryCache[key] = payload;
+        }
+
+        if (useMemoryFallback || !checkIndexedDBSupport()) {
+            return true;
+        }
+
         try {
             const db = await this.initDB();
+            if (!db) return true;
+
             return new Promise((resolve) => {
                 const transaction = db.transaction(STORE_NAME, 'readwrite');
                 const store = transaction.objectStore(STORE_NAME);
-                
-                const now = new Date().getTime();
-                const expiry = now + (ttlMinutes * 60 * 1000);
-                
-                const payload = {
-                    key: key,
-                    data: data,
-                    expiry: expiry,
-                    timestamp: now
-                };
-
                 store.put(payload);
                 transaction.oncomplete = () => resolve(true);
                 transaction.onerror = () => resolve(false);
@@ -139,8 +187,18 @@ export const IDBCache = {
     },
 
     async removeCache(key) {
+        if (window.__memoryCache && window.__memoryCache[key]) {
+            delete window.__memoryCache[key];
+        }
+
+        if (useMemoryFallback || !checkIndexedDBSupport()) {
+            return true;
+        }
+
         try {
             const db = await this.initDB();
+            if (!db) return true;
+
             return new Promise((resolve) => {
                 const transaction = db.transaction(STORE_NAME, 'readwrite');
                 const store = transaction.objectStore(STORE_NAME);
@@ -155,8 +213,22 @@ export const IDBCache = {
     },
 
     async invalidateByPrefix(prefix) {
+        if (window.__memoryCache) {
+            Object.keys(window.__memoryCache).forEach((k) => {
+                if (k.startsWith(prefix)) {
+                    delete window.__memoryCache[k];
+                }
+            });
+        }
+
+        if (useMemoryFallback || !checkIndexedDBSupport()) {
+            return true;
+        }
+
         try {
             const db = await this.initDB();
+            if (!db) return true;
+
             return new Promise((resolve) => {
                 const transaction = db.transaction(STORE_NAME, 'readwrite');
                 const store = transaction.objectStore(STORE_NAME);
@@ -165,7 +237,7 @@ export const IDBCache = {
                 request.onsuccess = (event) => {
                     const keys = event.target.result;
                     if (keys && keys.length > 0) {
-                        keys.forEach(key => {
+                        keys.forEach((key) => {
                             if (typeof key === 'string' && key.startsWith(prefix)) {
                                 store.delete(key);
                             }
@@ -182,27 +254,12 @@ export const IDBCache = {
         }
     },
 
-    /**
-     * API Stale-While-Revalidate (SWR) Pintar.
-     * Mengembalikan data cache serta-merta (jika ada), kemudian menjalankan fetch
-     * di latar belakang. Jika data baru berbeza (atau callback dibekalkan), ia akan 
-     * mengemas kini cache dan memicu UI untuk segar semula.
-     * 
-     * @param {string} key Kunci cache unik
-     * @param {function} fetchPromiseFactory Fungsi yang mengembalikan Promise data dari Supabase
-     * @param {function} onRevalidated Callback yang dipanggil jika terdapat data baharu dari latar belakang
-     * @param {number} ttlMinutes Tempoh hayat cache (Lalai: 60 minit)
-     * @returns {Promise<any>} Memulangkan cache serta-merta atau menunggu fetch jika tiada cache
-     */
     async staleWhileRevalidate(key, fetchPromiseFactory, onRevalidated = null, ttlMinutes = 60) {
         const cachedData = await this.getCache(key);
 
-        // Fungsi latar belakang untuk menyegarkan data
         const backgroundFetch = async () => {
             try {
                 const freshData = await fetchPromiseFactory();
-                
-                // Pengecaman perubahan asas (JSON stringify perbandingan ringkas)
                 const isChanged = !cachedData || JSON.stringify(cachedData) !== JSON.stringify(freshData);
                 
                 if (isChanged) {
@@ -217,11 +274,9 @@ export const IDBCache = {
         };
 
         if (cachedData) {
-            // Pulangkan cache, jalankan fetch di latar belakang tanpa block UI
             backgroundFetch();
             return cachedData;
         } else {
-            // Jika tiada cache langsung, kita mesti tunggu fetch selesai
             const freshData = await fetchPromiseFactory();
             await this.setCache(key, freshData, ttlMinutes);
             return freshData;
@@ -229,8 +284,18 @@ export const IDBCache = {
     },
 
     async clearAll() {
+        if (window.__memoryCache) {
+            window.__memoryCache = {};
+        }
+
+        if (useMemoryFallback || !checkIndexedDBSupport()) {
+            return true;
+        }
+
         try {
             const db = await this.initDB();
+            if (!db) return true;
+
             return new Promise((resolve) => {
                 const transaction = db.transaction(STORE_NAME, 'readwrite');
                 const store = transaction.objectStore(STORE_NAME);
