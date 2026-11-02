@@ -2,25 +2,24 @@ export async function onRequest(context) {
   const { request, env } = context;
   const clientUrl = new URL(request.url);
 
-  // 1. Ambil dari Cloudflare ENV, jika tiada gunakan sandaran selamat pelayan pinggir
+  // Mengutamakan Cloudflare ENV, jika tiada ia menggunakan sandaran pelayan (Edge Server sahaja)
   const supabaseUrl =
     (env && env.SUPABASE_URL) || "https://app.tech4ag.my";
   const supabaseAnonKey =
     (env && env.SUPABASE_ANON_KEY) ||
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY";
 
-  // Laluan Diagnostik: https://domain-anda.my/api/debug
+  // 1. Laluan Semakan Diagnostik
   if (clientUrl.pathname === "/api/debug") {
     return new Response(
       JSON.stringify(
         {
           status: "Cloudflare Pages Function Berjaya Beroperasi",
           keys_ditemui_dalam_env: Object.keys(env || {}),
-          has_SUPABASE_URL: Boolean(supabaseUrl),
-          has_SUPABASE_ANON_KEY: Boolean(supabaseAnonKey),
-          anon_key_jwt_parts: supabaseAnonKey ? supabaseAnonKey.split(".").length : 0,
-          anon_key_valid_format: supabaseAnonKey ? supabaseAnonKey.split(".").length === 3 : false,
-          sampel_url: supabaseUrl ? `${supabaseUrl.slice(0, 16)}...` : null
+          has_SUPABASE_URL_env: Boolean(env && env.SUPABASE_URL),
+          has_SUPABASE_ANON_KEY_env: Boolean(env && env.SUPABASE_ANON_KEY),
+          active_backend_url: supabaseUrl,
+          active_backend_key_ready: Boolean(supabaseAnonKey)
         },
         null,
         2
@@ -37,7 +36,7 @@ export async function onRequest(context) {
     `${supabaseUrl.replace(/\/+$/, "")}${subPath}${clientUrl.search}`
   );
 
-  // Gantikan apikey penanda kepada token sebenar dalam parameter URL
+  // Gantikan apikey penanda kepada token sebenar untuk permintaan URL
   if (
     targetUrl.searchParams.get("apikey") === "edge-proxy-managed" ||
     !targetUrl.searchParams.has("apikey")
@@ -52,18 +51,18 @@ export async function onRequest(context) {
 
   requestHeaders.set("apikey", supabaseAnonKey);
 
-  // PEMBETULAN KRITIKAL PGRST301:
-  // Semak sama ada token ialah JWT 3-bahagian yang sah. Jika ia 'edge-proxy-managed'
-  // atau bukan format JWT (3 bahagian), gantikan dengan supabaseAnonKey sebenar.
   const existingAuth = requestHeaders.get("authorization");
-  const rawToken = existingAuth ? existingAuth.replace(/^Bearer\s+/i, "").trim() : "";
-  const isThreePartJwt = rawToken.split(".").length === 3;
-
-  if (!existingAuth || !isThreePartJwt || rawToken === "edge-proxy-managed") {
+  if (
+    !existingAuth ||
+    existingAuth.trim() === "" ||
+    existingAuth.includes("null") ||
+    existingAuth.includes("undefined") ||
+    existingAuth.includes("edge-proxy-managed")
+  ) {
     requestHeaders.set("authorization", `Bearer ${supabaseAnonKey}`);
   }
 
-  // Pengendalian sambungan WebSocket (Supabase Realtime)
+  // Pengendalian jabat tangan WebSocket (Supabase Realtime)
   const upgradeHeader = request.headers.get("Upgrade");
   if (upgradeHeader && upgradeHeader.toLowerCase() === "websocket") {
     return fetch(targetUrl.toString(), {

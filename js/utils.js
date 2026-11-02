@@ -8,6 +8,12 @@
  * 3. Pembaikan logik pembersihan sesi semasa log keluar.
  */
 
+// ==========================================
+// 1. KONFIGURASI PUSAT (Global Window)
+// ==========================================
+window.SUPABASE_URL = 'https://app.tech4ag.my';
+window.SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY';
+
 // Domain baharu untuk integrasi Bot Telegram & API Deno
 window.DENO_API_URL = 'https://smpid.ppdag.deno.net';
 
