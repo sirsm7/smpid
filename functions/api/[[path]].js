@@ -2,15 +2,18 @@ export async function onRequest(context) {
   const { request, env } = context;
   const clientUrl = new URL(request.url);
 
-  // 1. Laluan Diagnostik: Buka https://test.tech4ag.my/api/debug di pelayar untuk semakan pantas
+  // 1. Laluan Diagnostik: Buka https://<domain>/api/debug untuk semakan
   if (clientUrl.pathname === "/api/debug") {
+    const rawKey = env.SUPABASE_ANON_KEY || "";
+    const jwtParts = rawKey.split(".").length;
     return new Response(
       JSON.stringify(
         {
           status: "Cloudflare Pages Function Berjaya Beroperasi",
-          keys_ditemui_dalam_env: Object.keys(env || {}),
           has_SUPABASE_URL: Boolean(env.SUPABASE_URL),
           has_SUPABASE_ANON_KEY: Boolean(env.SUPABASE_ANON_KEY),
+          anon_key_jwt_parts: jwtParts,
+          anon_key_valid_format: jwtParts === 3,
           sampel_url: env.SUPABASE_URL ? `${env.SUPABASE_URL.slice(0, 16)}...` : null
         },
         null,
@@ -24,15 +27,14 @@ export async function onRequest(context) {
   }
 
   const supabaseUrl = env.SUPABASE_URL;
-  const supabaseAnonKey = env.SUPABASE_ANON_KEY;
+  const supabaseAnonKey = env.SUPABASE_ANON_KEY ? env.SUPABASE_ANON_KEY.trim().replace(/^["']|["']$/g, "") : null;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return new Response(
       JSON.stringify({
         error: "Configuration Error",
         message: "SUPABASE_URL atau SUPABASE_ANON_KEY tidak ditemui pada persekitaran Cloudflare Pages ini.",
-        keys_dikesan: Object.keys(env || {}),
-        panduan: "Pastikan pemboleh ubah ditambah di ruangan Production DAN Preview, kemudian lakukan 'Retry deployment'."
+        keys_dikesan: Object.keys(env || {})
       }),
       {
         status: 500,
@@ -46,8 +48,9 @@ export async function onRequest(context) {
     `${supabaseUrl.replace(/\/+$/, "")}${subPath}${clientUrl.search}`
   );
 
-  // Gantikan penanda apikey kepada anon key sebenar dalam parameter URL
-  if (targetUrl.searchParams.get("apikey") === "edge-proxy-managed" || !targetUrl.searchParams.has("apikey")) {
+  // Gantikan parameter apikey jika tiada atau menggunakan penanda proksi
+  const currentApiKeyParam = targetUrl.searchParams.get("apikey");
+  if (!currentApiKeyParam || currentApiKeyParam === "edge-proxy-managed" || !currentApiKeyParam.includes(".")) {
     targetUrl.searchParams.set("apikey", supabaseAnonKey);
   }
 
@@ -56,10 +59,21 @@ export async function onRequest(context) {
   requestHeaders.delete("origin");
   requestHeaders.delete("referer");
 
+  // Paksa apikey upstream sentiasa menggunakan kunci sebenar
   requestHeaders.set("apikey", supabaseAnonKey);
 
+  // Semak Authorization header: jika tiada, tidak lengkap, mengandungi 'edge-proxy-managed', atau bukan JWT 3 bahagian
   const existingAuth = requestHeaders.get("authorization");
-  if (!existingAuth || existingAuth.trim() === "" || existingAuth.includes("null") || existingAuth.includes("undefined")) {
+  const authPayload = existingAuth ? existingAuth.replace(/^Bearer\s+/i, "").trim() : "";
+  const isAuthInvalid = 
+    !existingAuth || 
+    existingAuth.trim() === "" || 
+    existingAuth.includes("null") || 
+    existingAuth.includes("undefined") || 
+    existingAuth.includes("edge-proxy-managed") ||
+    authPayload.split(".").length !== 3;
+
+  if (isAuthInvalid) {
     requestHeaders.set("authorization", `Bearer ${supabaseAnonKey}`);
   }
 
