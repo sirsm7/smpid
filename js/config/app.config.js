@@ -2,24 +2,19 @@
  * @file app.config.js
  * @description Core application configuration constants and default values.
  * @module AppConfig
- * 
- * Kemaskini V3.3:
- * - Menghapuskan URL terus dan anon key Supabase yang terdedah secara terbuka.
- * - Mengalihkan endpoint pangkalan data kepada laluan proksi tempatan Cloudflare Pages (`/api`).
- * - Menyokong perlindungan kunci persekitaran (Environment Variables) tanpa mendedahkan kelayakan asal kepada klien.
  */
 
 export const APP_CONFIG = {
-    APP_NAME: 'Nadi Analitik, Digital & Inovasi Melaka (NaDIM)',
+    APP_NAME: 'Nadi Analitik, Digital & Inovasi Melaka (NADIM)',
     APP_VERSION: '2.5.0',
     
     // Had Berpusat Paparan Baris Jadual Pentadbir (Maksimum 50 baris untuk render DOM pantas)
     ADMIN_TABLE_LIMIT: 50,
     
-    // Konfigurasi Pangkalan Data Supabase (Dilindungi melalui Cloudflare Edge Reverse Proxy)
+    // Wajib merujuk proksi tempatan /api (Menghapuskan panggilan terus ke domain luar)
     SUPABASE: {
-        URL: typeof window !== 'undefined' && window.SUPABASE_URL ? window.SUPABASE_URL : (typeof window !== 'undefined' ? `${window.location.origin}/api` : '/api'),
-        KEY: typeof window !== 'undefined' && window.SUPABASE_KEY ? window.SUPABASE_KEY : 'edge-proxy-managed'
+        URL: typeof window !== 'undefined' ? `${window.location.origin}/api` : '/api',
+        KEY: 'edge-proxy-managed'
     },
 
     // Konfigurasi API & Endpoint (Deno Bot & GAS Microservices)
@@ -46,7 +41,6 @@ export const APP_CONFIG = {
         'M030': 'ALOR GAJAH'
     },
 
-    // Default values for system initializations, user creation, and resets
     DEFAULTS: {
         PASSWORD: 'jpnmel@12345', 
         AVATAR_URL: 'assets/img/default-avatar.png',
@@ -55,7 +49,6 @@ export const APP_CONFIG = {
         STATUS: 'active'
     },
 
-    // API & Database Configurations (Table definitions for Supabase)
     DB_TABLES: {
         USERS: 'smpid_users',
         SCHOOLS: 'smpid_schools',
@@ -67,14 +60,12 @@ export const APP_CONFIG = {
         LIBAT_URUS: 'smpid_libat_urus'
     },
 
-    // Pagination defaults for data tables and lists
     PAGINATION: {
         ITEMS_PER_PAGE: 10,
         MAX_PAGES_SHOWN: 5,
         ADMIN_TABLE_LIMIT: 50
     },
 
-    // File upload limits and security parameters
     UPLOADS: {
         MAX_FILE_SIZE_MB: 5,
         ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/webp'],
@@ -85,7 +76,6 @@ export const APP_CONFIG = {
         ]
     },
     
-    // UI/UX Notification settings (SweetAlert defaults)
     ALERTS: {
         TIMER_SHORT: 1500,
         TIMER_NORMAL: 3000,
@@ -93,7 +83,6 @@ export const APP_CONFIG = {
     }
 };
 
-// Deep freeze the configuration object to prevent accidental runtime mutations
 Object.freeze(APP_CONFIG);
 Object.freeze(APP_CONFIG.SUPABASE);
 Object.freeze(APP_CONFIG.API);
