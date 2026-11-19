@@ -1,10 +1,20 @@
 import { APP_CONFIG } from "../config/app.config.js";
+import { AuthService } from "../services/auth.service.js";
 
 const FREE_PAGE_IDS = new Set(["page-login", "page-public", "page-landing"]);
 const ADMIN_ROLES = new Set(["ADMIN", "PPD_UNIT", "SUPER_ADMIN", "JPNMEL"]);
+const DB_OFFLINE_REDIRECT = "login.html?db=offline";
+
+let dbProbeInFlight = null;
+let guardListenersAttached = false;
 
 function isNonEmptyValue(value) {
-  return typeof value === "string" && value.trim() !== "" && value !== "null" && value !== "undefined";
+  return (
+    typeof value === "string" &&
+    value.trim() !== "" &&
+    value !== "null" &&
+    value !== "undefined"
+  );
 }
 
 function getSessionState() {
@@ -47,6 +57,40 @@ export function clearSessionState() {
   });
 }
 
+function enforceDatabaseDisconnectRedirect() {
+  clearSessionState();
+  if (typeof window !== "undefined" && window.location) {
+    window.location.replace(DB_OFFLINE_REDIRECT);
+  }
+}
+
+async function verifyLiveDatabaseAccess() {
+  if (dbProbeInFlight) {
+    return dbProbeInFlight;
+  }
+
+  dbProbeInFlight = (async () => {
+    try {
+      if (!AuthService || typeof AuthService.checkDatabaseConnection !== "function") {
+        return true;
+      }
+      const status = await AuthService.checkDatabaseConnection();
+      if (!status || !status.connected) {
+        enforceDatabaseDisconnectRedirect();
+        return false;
+      }
+      return true;
+    } catch {
+      enforceDatabaseDisconnectRedirect();
+      return false;
+    } finally {
+      dbProbeInFlight = null;
+    }
+  })();
+
+  return dbProbeInFlight;
+}
+
 export function runSecurityCheck() {
   if (typeof document === "undefined" || !document.body) {
     return true;
@@ -65,38 +109,51 @@ export function runSecurityCheck() {
       window.location.replace("index.html");
       return false;
     }
-    return true;
+  } else {
+    const hasValidSession = isAuth || Boolean(userKod);
+    if (!hasValidSession) {
+      window.location.replace("index.html");
+      return false;
+    }
   }
 
-  const hasValidSession = isAuth || Boolean(userKod);
-  if (!hasValidSession) {
-    window.location.replace("index.html");
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    enforceDatabaseDisconnectRedirect();
     return false;
   }
 
+  verifyLiveDatabaseAccess();
   return true;
 }
 
 if (typeof window !== "undefined") {
   window.runSecurityCheck = runSecurityCheck;
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", runSecurityCheck, { once: true });
-  } else {
-    runSecurityCheck();
+  if (!guardListenersAttached) {
+    guardListenersAttached = true;
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", runSecurityCheck, { once: true });
+    } else {
+      runSecurityCheck();
+    }
+
+    window.addEventListener("storage", (event) => {
+      if (!event.key || event.key.includes("auth") || event.key.includes("user_")) {
+        runSecurityCheck();
+      }
+    });
+
+    window.addEventListener("offline", () => {
+      runSecurityCheck();
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        runSecurityCheck();
+      }
+    });
   }
-
-  window.addEventListener("storage", (event) => {
-    if (!event.key || event.key.includes("auth") || event.key.includes("user_")) {
-      runSecurityCheck();
-    }
-  });
-
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      runSecurityCheck();
-    }
-  });
 }
 
 export default {

@@ -1,6 +1,10 @@
 import { initDatabaseClient, requireDbAsync } from "../core/db.js";
 import { APP_CONFIG } from "../config/app.config.js";
 
+const DB_CHECK_TIMEOUT_MS = 6000;
+const DB_OFFLINE_MESSAGE =
+  "Sambungan ke pangkalan data terputus. Penggunaan sistem disekat buat sementara waktu sehingga sambungan dipulihkan.";
+
 function getDefaultPassword() {
   if (
     APP_CONFIG &&
@@ -13,26 +17,136 @@ function getDefaultPassword() {
   return "ppdag@12345";
 }
 
+function isConnectionFailure(err) {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return true;
+  }
+  if (!err) {
+    return false;
+  }
+  if (err.name === "AbortError" || err.name === "TypeError") {
+    return true;
+  }
+  const status = Number(err.status || err.statusCode || 0);
+  if (status >= 500) {
+    return true;
+  }
+  const rawMessage = String(err.message || err.details || err.error || "").toLowerCase();
+  const networkIndicators = [
+    "failed to fetch",
+    "networkerror",
+    "network request failed",
+    "load failed",
+    "bad gateway",
+    "upstream",
+    "timeout",
+    "timed out",
+    "aborted",
+    "econnrefused",
+    "enotfound",
+    "pangkalan data disekat",
+    "belum sedia",
+    "sambungan"
+  ];
+  return networkIndicators.some((token) => rawMessage.includes(token));
+}
+
 async function getReadyDb() {
   if (typeof requireDbAsync === "function") {
     return requireDbAsync();
   }
   const client = await initDatabaseClient();
   if (!client) {
-    throw new Error(
-      "Sambungan pangkalan data disekat atau belum sedia. Sila periksa sambungan internet anda."
-    );
+    throw new Error(DB_OFFLINE_MESSAGE);
   }
   return client;
 }
 
 export const AuthService = {
+  async checkDatabaseConnection(options = {}) {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      return {
+        connected: false,
+        reason: "Tiada sambungan internet dikesan pada peranti anda."
+      };
+    }
+
+    const timeoutMs =
+      typeof options.timeoutMs === "number" && options.timeoutMs > 0
+        ? options.timeoutMs
+        : DB_CHECK_TIMEOUT_MS;
+
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    let timeoutId = null;
+
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        if (controller) {
+          controller.abort();
+        }
+        reject(new Error("Sambungan ke pelayan pangkalan data tamat masa."));
+      }, timeoutMs);
+    });
+
+    try {
+      const probeTask = (async () => {
+        const configResponse = await fetch("/api/config", {
+          method: "GET",
+          cache: "no-store",
+          signal: controller ? controller.signal : undefined
+        });
+
+        if (!configResponse.ok) {
+          throw new Error(`Pelayan konfigurasi gagal bertindak balas (HTTP ${configResponse.status}).`);
+        }
+
+        const db = await getReadyDb();
+        let query = db.from("smpid_users").select("id").limit(1);
+        if (controller && typeof query.abortSignal === "function") {
+          query = query.abortSignal(controller.signal);
+        }
+
+        const { error } = await query;
+        if (error) {
+          throw error;
+        }
+
+        return {
+          connected: true,
+          checkedAt: new Date().toISOString()
+        };
+      })();
+
+      return await Promise.race([probeTask, timeoutPromise]);
+    } catch (err) {
+      const reason =
+        err && err.name === "AbortError"
+          ? "Sambungan ke pelayan pangkalan data tamat masa."
+          : err && typeof err.message === "string" && err.message.trim() !== ""
+            ? DB_OFFLINE_MESSAGE
+            : DB_OFFLINE_MESSAGE;
+      return {
+        connected: false,
+        reason
+      };
+    } finally {
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+    }
+  },
+
   async login(email, password) {
     const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
     const rawPassword = typeof password === "string" ? password : "";
 
     if (!cleanEmail || !rawPassword) {
       throw new Error("Sila masukkan emel dan kata laluan yang sah.");
+    }
+
+    const connectionStatus = await this.checkDatabaseConnection();
+    if (!connectionStatus.connected) {
+      throw new Error(connectionStatus.reason || DB_OFFLINE_MESSAGE);
     }
 
     const db = await getReadyDb();
@@ -42,7 +156,14 @@ export const AuthService = {
       .eq("email", cleanEmail)
       .single();
 
-    if (error || !data) {
+    if (error) {
+      if (isConnectionFailure(error)) {
+        throw new Error(DB_OFFLINE_MESSAGE);
+      }
+      throw new Error("Emel pengguna tidak ditemui.");
+    }
+
+    if (!data) {
       throw new Error("Emel pengguna tidak ditemui.");
     }
 
@@ -55,12 +176,14 @@ export const AuthService = {
         input_password: rawPassword
       });
 
-      if (
-        rpcError ||
-        !rpcResult ||
-        rpcResult.success === false ||
-        rpcResult.status === "error"
-      ) {
+      if (rpcError) {
+        if (isConnectionFailure(rpcError)) {
+          throw new Error(DB_OFFLINE_MESSAGE);
+        }
+        throw new Error("Kata laluan salah.");
+      }
+
+      if (!rpcResult || rpcResult.success === false || rpcResult.status === "error") {
         throw new Error("Kata laluan salah.");
       }
     } else if (storedPassword !== rawPassword) {

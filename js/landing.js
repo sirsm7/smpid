@@ -2,6 +2,19 @@ import { envReady } from "./config/config.js";
 import { APP_CONFIG } from "./config/app.config.js";
 import { initDatabaseClient, getDatabaseClient } from "./core/db.js";
 import { SchoolService } from "./services/school.service.js";
+import { AuthService } from "./services/auth.service.js";
+
+const DEFAULT_OFFLINE_MSG =
+  "Sambungan ke pangkalan data terputus. Semua modul, carian direktori sekolah, dan log masuk disekat buat sementara waktu sehingga sambungan dipulihkan.";
+
+const RESTRICTED_HREF_TOKENS = [
+  "modules/",
+  "public.html",
+  "gallery.html",
+  "login.html",
+  "admin.html",
+  "user.html"
+];
 
 let allSchools = [];
 let presenceChannel = null;
@@ -9,6 +22,9 @@ let presenceSessionId = "";
 let isLoadingSchools = false;
 let isSettingUpPresence = false;
 let lifecycleBound = false;
+let isDatabaseConnected = true;
+let lastDisconnectReason = DEFAULT_OFFLINE_MSG;
+let activeLandingProbe = null;
 
 function getActiveSchoolSessionKey() {
   return (
@@ -39,6 +55,19 @@ function createIcon(iconClass) {
   return icon;
 }
 
+function setButtonContent(button, iconClass, labelText) {
+  if (!button) {
+    return;
+  }
+  clearElement(button);
+  if (iconClass) {
+    button.appendChild(createIcon(iconClass));
+  }
+  const span = document.createElement("span");
+  span.textContent = labelText;
+  button.appendChild(span);
+}
+
 function showAlert(options) {
   if (typeof window !== "undefined" && window.Swal && typeof window.Swal.fire === "function") {
     return window.Swal.fire(options);
@@ -47,10 +76,224 @@ function showAlert(options) {
     options && (options.text || options.title)
       ? `${options.title || ""}\n${options.text || ""}`.trim()
       : "";
-  if (message) {
+  if (message && !(options && options.toast)) {
     window.alert(message);
   }
   return Promise.resolve({ isConfirmed: true });
+}
+
+function isRestrictedAnchor(anchor) {
+  if (!anchor) {
+    return false;
+  }
+  if (anchor.hasAttribute("data-requires-db")) {
+    return true;
+  }
+  const rawHref = (anchor.getAttribute("href") || "").trim().toLowerCase();
+  if (!rawHref || rawHref === "#" || rawHref === "index.html" || rawHref === "./") {
+    return false;
+  }
+  return RESTRICTED_HREF_TOKENS.some((token) => rawHref.includes(token));
+}
+
+function ensureLandingConnectionBanner() {
+  let banner = document.getElementById("dbConnectionBannerLanding");
+  let messageEl = document.getElementById("dbConnectionMessageLanding");
+  let retryBtn = document.getElementById("btnRetryDbConnectionLanding");
+
+  if (!banner) {
+    const mainEl = document.querySelector("main") || document.body;
+    if (!mainEl) {
+      return { banner: null, messageEl: null, retryBtn: null };
+    }
+
+    banner = document.createElement("div");
+    banner.id = "dbConnectionBannerLanding";
+    banner.setAttribute("role", "alert");
+    banner.className =
+      "hidden mb-6 p-4 md:p-5 rounded-2xl bg-red-50 border-2 border-red-200 text-red-900 shadow-lg";
+
+    const layout = document.createElement("div");
+    layout.className = "flex flex-col sm:flex-row sm:items-center justify-between gap-4";
+
+    const infoRow = document.createElement("div");
+    infoRow.className = "flex items-start gap-3 min-w-0";
+
+    const iconBox = document.createElement("div");
+    iconBox.className =
+      "w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0 mt-0.5";
+    iconBox.appendChild(createIcon("fas fa-database text-base"));
+
+    const textCol = document.createElement("div");
+    textCol.className = "flex-1 min-w-0";
+
+    const titleEl = document.createElement("p");
+    titleEl.className = "text-xs font-black uppercase tracking-wider text-red-700 mb-1";
+    titleEl.textContent = "Sekatan Sambungan Pangkalan Data";
+
+    messageEl = document.createElement("p");
+    messageEl.id = "dbConnectionMessageLanding";
+    messageEl.className = "text-xs text-red-800 leading-relaxed font-medium break-words";
+    messageEl.textContent = DEFAULT_OFFLINE_MSG;
+
+    textCol.appendChild(titleEl);
+    textCol.appendChild(messageEl);
+    infoRow.appendChild(iconBox);
+    infoRow.appendChild(textCol);
+
+    retryBtn = document.createElement("button");
+    retryBtn.type = "button";
+    retryBtn.id = "btnRetryDbConnectionLanding";
+    retryBtn.className =
+      "w-full sm:w-auto shrink-0 min-h-[44px] px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-sm";
+    setButtonContent(retryBtn, "fas fa-sync-alt", "Semak Semula Sambungan");
+
+    layout.appendChild(infoRow);
+    layout.appendChild(retryBtn);
+    banner.appendChild(layout);
+
+    if (mainEl.firstChild) {
+      mainEl.insertBefore(banner, mainEl.firstChild);
+    } else {
+      mainEl.appendChild(banner);
+    }
+  }
+
+  if (retryBtn && retryBtn.dataset.bound !== "true") {
+    retryBtn.dataset.bound = "true";
+    retryBtn.addEventListener("click", () => {
+      verifyLandingDatabaseAvailability(true);
+    });
+  }
+
+  return { banner, messageEl, retryBtn };
+}
+
+function syncRestrictedLinksState(locked) {
+  if (typeof document === "undefined") {
+    return;
+  }
+  const anchors = document.querySelectorAll("a[href]");
+  anchors.forEach((anchor) => {
+    if (!isRestrictedAnchor(anchor)) {
+      return;
+    }
+    if (locked) {
+      anchor.dataset.dbLocked = "true";
+      anchor.setAttribute("aria-disabled", "true");
+      anchor.setAttribute("tabindex", "-1");
+      anchor.classList.add("opacity-50", "pointer-events-none", "cursor-not-allowed");
+    } else if (anchor.dataset.dbLocked === "true") {
+      delete anchor.dataset.dbLocked;
+      anchor.removeAttribute("aria-disabled");
+      anchor.removeAttribute("tabindex");
+      anchor.classList.remove("opacity-50", "pointer-events-none", "cursor-not-allowed");
+    }
+  });
+}
+
+function applyLandingLockState(connected, reason = "") {
+  isDatabaseConnected = Boolean(connected);
+  lastDisconnectReason = isDatabaseConnected ? "" : reason || DEFAULT_OFFLINE_MSG;
+  const locked = !isDatabaseConnected;
+
+  const searchInput = document.getElementById("mainSearch");
+  if (searchInput) {
+    searchInput.disabled = locked;
+    if (locked) {
+      searchInput.classList.add("opacity-60", "cursor-not-allowed");
+    } else {
+      searchInput.classList.remove("opacity-60", "cursor-not-allowed");
+    }
+  }
+
+  syncRestrictedLinksState(locked);
+
+  const { banner, messageEl } = ensureLandingConnectionBanner();
+  if (banner) {
+    if (isDatabaseConnected) {
+      banner.classList.add("hidden");
+    } else {
+      if (messageEl) {
+        messageEl.textContent = lastDisconnectReason;
+      }
+      banner.classList.remove("hidden");
+    }
+  }
+}
+
+export async function verifyLandingDatabaseAvailability(isManualRetry = false) {
+  if (activeLandingProbe) {
+    return activeLandingProbe;
+  }
+
+  const { retryBtn } = ensureLandingConnectionBanner();
+  if (retryBtn) {
+    retryBtn.disabled = true;
+    setButtonContent(retryBtn, "fas fa-circle-notch fa-spin", "Menyemak Sambungan...");
+  }
+
+  activeLandingProbe = (async () => {
+    try {
+      await awaitRuntimeEnv();
+      const status =
+        AuthService && typeof AuthService.checkDatabaseConnection === "function"
+          ? await AuthService.checkDatabaseConnection()
+          : { connected: true };
+
+      if (status && status.connected) {
+        const wasDisconnected = !isDatabaseConnected;
+        applyLandingLockState(true, "");
+        if (allSchools.length === 0) {
+          await loadSchools();
+        }
+        if (wasDisconnected) {
+          setupLiveCounter(true).catch(() => {});
+        }
+        if (isManualRetry) {
+          await showAlert({
+            toast: true,
+            position: "top-end",
+            icon: "success",
+            title: "Sambungan Dipulihkan",
+            text: "Pangkalan data aktif. Semua modul boleh diakses semula.",
+            timer: 2000,
+            showConfirmButton: false
+          });
+        }
+        return true;
+      }
+
+      const reason = (status && status.reason) || DEFAULT_OFFLINE_MSG;
+      applyLandingLockState(false, reason);
+      if (isManualRetry) {
+        await showAlert({
+          icon: "error",
+          title: "Sambungan Masih Terputus",
+          text: reason
+        });
+      }
+      return false;
+    } catch {
+      applyLandingLockState(false, DEFAULT_OFFLINE_MSG);
+      if (isManualRetry) {
+        await showAlert({
+          icon: "error",
+          title: "Sambungan Masih Terputus",
+          text: DEFAULT_OFFLINE_MSG
+        });
+      }
+      return false;
+    } finally {
+      if (retryBtn) {
+        retryBtn.disabled = false;
+        setButtonContent(retryBtn, "fas fa-sync-alt", "Semak Semula Sambungan");
+      }
+      activeLandingProbe = null;
+    }
+  })();
+
+  return activeLandingProbe;
 }
 
 function generateSessionId() {
@@ -84,7 +327,7 @@ async function teardownLiveCounter() {
 }
 
 async function setupLiveCounter(forceReconnect = false) {
-  if (isSettingUpPresence) {
+  if (!isDatabaseConnected || isSettingUpPresence) {
     return;
   }
 
@@ -151,22 +394,50 @@ function bindLifecycleEvents() {
   }
   lifecycleBound = true;
 
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      const needsReconnect = !presenceChannel || presenceChannel.state !== "joined";
-      if (needsReconnect) {
-        setupLiveCounter(true).catch(() => {});
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (isDatabaseConnected) {
+        return;
       }
-      if (allSchools.length === 0) {
-        loadSchools().catch(() => {});
+      const targetAnchor =
+        event.target && typeof event.target.closest === "function"
+          ? event.target.closest("a[href]")
+          : null;
+      if (targetAnchor && isRestrictedAnchor(targetAnchor)) {
+        event.preventDefault();
+        event.stopPropagation();
+        showAlert({
+          icon: "error",
+          title: "Akses Modul Disekat",
+          text: lastDisconnectReason || DEFAULT_OFFLINE_MSG
+        });
       }
-    }
+    },
+    true
+  );
+
+  window.addEventListener("offline", () => {
+    applyLandingLockState(false, "Tiada sambungan internet dikesan pada peranti anda.");
+    teardownLiveCounter().catch(() => {});
   });
 
   window.addEventListener("online", () => {
-    setupLiveCounter(true).catch(() => {});
-    if (allSchools.length === 0) {
-      loadSchools().catch(() => {});
+    verifyLandingDatabaseAvailability(false).catch(() => {});
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      verifyLandingDatabaseAvailability(false)
+        .then((connected) => {
+          if (connected) {
+            const needsReconnect = !presenceChannel || presenceChannel.state !== "joined";
+            if (needsReconnect) {
+              setupLiveCounter(true).catch(() => {});
+            }
+          }
+        })
+        .catch(() => {});
     }
   });
 
@@ -195,12 +466,7 @@ async function loadSchools() {
     populateDatalist(allSchools);
     checkSession();
   } catch {
-    await showAlert({
-      icon: "error",
-      title: "Ralat Sambungan",
-      text: "Gagal memuatkan senarai sekolah. Sila muat semula halaman.",
-      confirmButtonColor: "#10b981"
-    });
+    applyLandingLockState(false, DEFAULT_OFFLINE_MSG);
   } finally {
     isLoadingSchools = false;
     const loadingEl = document.getElementById("loadingOverlay");
@@ -267,6 +533,9 @@ function setupSearchListener() {
   }
 
   input.addEventListener("input", (e) => {
+    if (!isDatabaseConnected) {
+      return;
+    }
     const val = e.target.value || "";
     const parts = val.split(" - ");
 
@@ -282,6 +551,9 @@ function setupSearchListener() {
   });
 
   input.addEventListener("change", (e) => {
+    if (!isDatabaseConnected) {
+      return;
+    }
     const val = e.target.value || "";
     const school = matchSchoolFromQuery(val);
     if (school) {
@@ -292,6 +564,10 @@ function setupSearchListener() {
 
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
+      if (!isDatabaseConnected) {
+        e.preventDefault();
+        return;
+      }
       const school = matchSchoolFromQuery(input.value);
       if (school) {
         e.preventDefault();
@@ -454,6 +730,8 @@ function renderSchoolCard(school) {
   card.appendChild(header);
   card.appendChild(body);
   container.appendChild(card);
+
+  syncRestrictedLinksState(!isDatabaseConnected);
 }
 
 window.resetSearch = function () {
@@ -462,7 +740,9 @@ window.resetSearch = function () {
   const input = document.getElementById("mainSearch");
   if (input) {
     input.value = "";
-    input.focus();
+    if (isDatabaseConnected) {
+      input.focus();
+    }
   }
 
   const cardContainer = document.getElementById("schoolCardContainer");
@@ -483,17 +763,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadingEl.classList.remove("hidden");
   }
 
-  await loadSchools();
+  ensureLandingConnectionBanner();
   setupSearchListener();
   bindLifecycleEvents();
 
-  if ("requestIdleCallback" in window) {
-    window.requestIdleCallback(() => {
-      setupLiveCounter();
-    });
-  } else {
-    setTimeout(() => {
-      setupLiveCounter();
-    }, 200);
+  const connected = await verifyLandingDatabaseAvailability(false);
+  if (connected) {
+    await loadSchools();
+  } else if (loadingEl) {
+    loadingEl.classList.add("hidden");
+  }
+
+  if (connected) {
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(() => {
+        setupLiveCounter();
+      });
+    } else {
+      setTimeout(() => {
+        setupLiveCounter();
+      }, 200);
+    }
   }
 });
+
+if (typeof window !== "undefined") {
+  window.verifyLandingDatabaseAvailability = verifyLandingDatabaseAvailability;
+}

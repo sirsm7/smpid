@@ -71,6 +71,24 @@
           </h2>
         </div>
 
+        <div id="dbConnectionBanner" role="alert" class="hidden mb-6 p-4 rounded-2xl bg-red-50 border-2 border-red-200 text-red-900 shadow-sm">
+          <div class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0 mt-0.5">
+              <i class="fas fa-database"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-black uppercase tracking-wider text-red-700 mb-1">Sekatan Sambungan Pangkalan Data</p>
+              <p id="dbConnectionMessage" class="text-xs text-red-800 leading-relaxed font-medium break-words">
+                Sambungan ke pangkalan data terputus. Log masuk dan penggunaan sistem disekat sehingga sambungan dipulihkan.
+              </p>
+            </div>
+          </div>
+          <button type="button" id="btnRetryDbConnection" class="mt-3 w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-sm">
+            <i class="fas fa-sync-alt"></i>
+            <span>Semak Semula Sambungan</span>
+          </button>
+        </div>
+
         <form class="space-y-6" onsubmit="event.preventDefault(); window.prosesLogin && window.prosesLogin();">
           <div>
             <label for="inputEmail" class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Emel Pengguna</label>
@@ -127,7 +145,7 @@
     <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">&copy; 2026 USTP PPD ALOR GAJAH</p>
   </footer>
 
-  <script type="module" src="js/auth.js?v=2026.3"></script>
+  <script type="module" src="js/auth.js?v=2026.4"></script>
 
 </body>
 </html>
