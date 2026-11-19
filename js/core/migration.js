@@ -8,6 +8,7 @@ const PAGE_SIZE = 1000;
 const UPSERT_BATCH_SIZE = 100;
 const UPSERT_BATCH_RPC = "nadim_upsert_batch";
 const SEQUENCE_RESET_RPC = "nadim_reset_sequences";
+const FALLBACK_SEQUENCE_RESET_RPC = "reset_table_sequences";
 const DEFAULT_SUPABASE_SCHEMA = "nadim_data";
 const SCHEMA_INTROSPECTION_TIMEOUT_MS = 4000;
 
@@ -372,9 +373,10 @@ async function resolveProjectSchemas(activeSchema, parentSignal) {
     };
 
     const def = openApiDefs && openApiDefs[tableName] ? openApiDefs[tableName] : null;
-    const defProps = def && def.properties && typeof def.properties === "object"
-      ? Object.keys(def.properties)
-      : [];
+    const defProps =
+      def && def.properties && typeof def.properties === "object"
+        ? Object.keys(def.properties)
+        : [];
     const defRequired = def && Array.isArray(def.required) ? def.required : [];
 
     let detectedPk = reg.primary_key || "id";
@@ -390,13 +392,14 @@ async function resolveProjectSchemas(activeSchema, parentSignal) {
       }
     }
 
-    const baseHeaders = reg.fallback_headers.length > 0
-      ? [...reg.fallback_headers]
-      : defRequired.filter((col) => {
-          const propMeta = def && def.properties ? def.properties[col] : null;
-          const hasDefault = propMeta && Object.prototype.hasOwnProperty.call(propMeta, "default");
-          return !hasDefault && col !== detectedPk;
-        });
+    const baseHeaders =
+      reg.fallback_headers.length > 0
+        ? [...reg.fallback_headers]
+        : defRequired.filter((col) => {
+            const propMeta = def && def.properties ? def.properties[col] : null;
+            const hasDefault = propMeta && Object.prototype.hasOwnProperty.call(propMeta, "default");
+            return !hasDefault && col !== detectedPk;
+          });
 
     const optionalSet = new Set([...reg.fallback_optional, ...defProps]);
     baseHeaders.forEach((col) => optionalSet.delete(col));
@@ -618,8 +621,8 @@ async function resolveSuperAdminContext(client) {
     const storedRole = String(window.localStorage.getItem(roleKey) || "").trim().toUpperCase();
     const storedId = String(
       window.localStorage.getItem(idKey) ||
-      window.localStorage.getItem("smpid_user_email") ||
-      ""
+        window.localStorage.getItem("smpid_user_email") ||
+        ""
     ).trim();
 
     if (storedId) {
@@ -834,6 +837,18 @@ function validateAndNormalizeBackupPayload(rawJson, liveSchemas) {
   };
 }
 
+function isMissingRpcFunctionError(error) {
+  if (!error) {
+    return false;
+  }
+  const errMsgLower = String(error.message || "").toLowerCase();
+  return (
+    error.code === "42883" ||
+    error.code === "PGRST202" ||
+    errMsgLower.includes("could not find the function")
+  );
+}
+
 async function upsertTableBatchWithFallback(
   client,
   tableName,
@@ -853,13 +868,7 @@ async function upsertTableBatchWithFallback(
     return;
   }
 
-  const errMsgLower = String(rpcError.message || "").toLowerCase();
-  const isMissingRpc =
-    rpcError.code === "42883" ||
-    rpcError.code === "PGRST202" ||
-    errMsgLower.includes("could not find the function");
-
-  if (!isMissingRpc) {
+  if (!isMissingRpcFunctionError(rpcError)) {
     throw new Error(`Ralat pemulihan pada jadual ${tableName}: ${rpcError.message}`);
   }
 
@@ -874,6 +883,41 @@ async function upsertTableBatchWithFallback(
   const { error: upsertError } = await query;
   if (upsertError) {
     throw new Error(`Ralat pemulihan pada jadual ${tableName}: ${upsertError.message}`);
+  }
+}
+
+async function resetSequencesWithFallback(client, tableOrder, callerIdentifier) {
+  const primaryRes = await runWithTimeout(
+    client.rpc(SEQUENCE_RESET_RPC, {
+      p_tables: tableOrder,
+      p_admin_email: callerIdentifier || null
+    }),
+    15000,
+    { error: null }
+  );
+
+  if (!primaryRes || !primaryRes.error) {
+    return;
+  }
+
+  if (!isMissingRpcFunctionError(primaryRes.error)) {
+    throw new Error(
+      `Pemulihan baris selesai tetapi penyelarasan jujukan gagal: ${primaryRes.error.message}`
+    );
+  }
+
+  const fallbackRes = await runWithTimeout(
+    client.rpc(FALLBACK_SEQUENCE_RESET_RPC, {
+      p_tables: tableOrder
+    }),
+    15000,
+    { error: null }
+  );
+
+  if (fallbackRes && fallbackRes.error && !isMissingRpcFunctionError(fallbackRes.error)) {
+    throw new Error(
+      `Pemulihan baris selesai tetapi penyelarasan jujukan gagal: ${fallbackRes.error.message}`
+    );
   }
 }
 
@@ -1141,20 +1185,11 @@ export const MigrationManager = {
         `Menyelaraskan jujukan ID dalam skema ${activeSchema} (setval)...`
       );
 
-      const seqResult = await runWithTimeout(
-        client.rpc(SEQUENCE_RESET_RPC, {
-          p_tables: validated.tableOrder,
-          p_admin_email: superAdminContext.callerIdentifier || null
-        }),
-        15000,
-        { error: null }
+      await resetSequencesWithFallback(
+        client,
+        validated.tableOrder,
+        superAdminContext.callerIdentifier
       );
-
-      if (seqResult && seqResult.error) {
-        throw new Error(
-          `Pemulihan baris selesai tetapi penyelarasan jujukan gagal: ${seqResult.error.message}`
-        );
-      }
 
       if (IDBCache && typeof IDBCache.clearAll === "function") {
         await runWithTimeout(IDBCache.clearAll(), 3000, false);

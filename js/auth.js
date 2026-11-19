@@ -1,7 +1,7 @@
 import { envReady } from "./config/config.js";
 import { APP_CONFIG } from "./config/app.config.js";
 import { initDatabaseClient } from "./core/db.js";
-import { clearSessionState } from "./core/auth.guard.js";
+import * as authGuard from "./core/auth.guard.js?v=2026.3";
 import { AuthService } from "./services/auth.service.js";
 import { toggleLoading } from "./core/helpers.js";
 
@@ -23,6 +23,37 @@ function clearElement(el) {
   while (el.firstChild) {
     el.removeChild(el.firstChild);
   }
+}
+
+function resetClientSession() {
+  if (authGuard && typeof authGuard.clearSessionState === "function") {
+    authGuard.clearSessionState();
+    return;
+  }
+  if (
+    authGuard &&
+    authGuard.default &&
+    typeof authGuard.default.clearSessionState === "function"
+  ) {
+    authGuard.default.clearSessionState();
+    return;
+  }
+  const sessionCfg = (APP_CONFIG && APP_CONFIG.SESSION) || {};
+  const keys = [
+    sessionCfg.AUTH_FLAG || "smpid_auth",
+    sessionCfg.USER_KOD || "smpid_user_kod",
+    sessionCfg.USER_ROLE || "smpid_user_role",
+    sessionCfg.USER_ID || "smpid_user_id",
+    "smpid_auth",
+    "smpid_user_kod",
+    "smpid_user_role",
+    "smpid_user_id"
+  ];
+  keys.forEach((key) => {
+    try {
+      localStorage.removeItem(key);
+    } catch {}
+  });
 }
 
 function showAlert(options) {
@@ -199,7 +230,7 @@ export async function prosesLogin() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  clearSessionState();
+  resetClientSession();
   window.history.replaceState(null, "", window.location.href);
   renderLoginHeader();
 });

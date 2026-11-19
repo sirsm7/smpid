@@ -38,7 +38,7 @@
     .hidden { display: none !important; }
   </style>
 
-  <script type="module" src="js/config/config.js?v=2026.2"></script>
+  <script type="module" src="js/config/config.js?v=2026.3"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
@@ -81,6 +81,7 @@
               <input type="email" id="inputEmail"
                      class="w-full min-h-[52px] pl-11 pr-4 py-4 rounded-2xl bg-slate-50 border-2 border-slate-50 text-slate-700 font-bold focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/5 outline-none transition-all placeholder-slate-300"
                      placeholder="kodsekolah@moe.gov.my"
+                     autocomplete="username"
                      required>
             </div>
           </div>
@@ -94,8 +95,9 @@
               <input type="password" id="inputPassword"
                      class="w-full min-h-[52px] pl-11 pr-12 py-4 rounded-2xl bg-slate-50 border-2 border-slate-50 text-slate-700 font-bold focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/5 outline-none transition-all placeholder-slate-300"
                      placeholder="••••••••"
+                     autocomplete="current-password"
                      required>
-              <button type="button" onclick="if(window.togglePass) window.togglePass();" class="absolute inset-y-0 right-0 px-4 flex items-center text-slate-300 hover:text-brand-600 cursor-pointer transition-colors focus:outline-none min-h-[44px]">
+              <button type="button" aria-label="Togol paparan kata laluan" onclick="if(window.togglePass) window.togglePass();" class="absolute inset-y-0 right-0 px-4 flex items-center text-slate-300 hover:text-brand-600 cursor-pointer transition-colors focus:outline-none min-h-[44px] min-w-[44px]">
                 <i class="fas fa-eye" id="iconEye"></i>
               </button>
             </div>
@@ -125,7 +127,7 @@
     <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">&copy; 2026 USTP PPD ALOR GAJAH</p>
   </footer>
 
-  <script type="module" src="js/auth.js?v=2026.2"></script>
+  <script type="module" src="js/auth.js?v=2026.3"></script>
 
 </body>
 </html>
