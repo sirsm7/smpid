@@ -8,6 +8,8 @@ export async function onRequestGet(context) {
   const gasUploadUrl = typeof env.GAS_UPLOAD_URL === "string" ? env.GAS_UPLOAD_URL.trim() : "";
   const gasEmailUrl = typeof env.GAS_EMAIL_URL === "string" ? env.GAS_EMAIL_URL.trim() : "";
   const gasLibatUrusUrl = typeof env.GAS_LIBAT_URUS_URL === "string" ? env.GAS_LIBAT_URUS_URL.trim() : "";
+  const rawNotifyApiUrl = typeof env.NOTIFY_API_URL === "string" ? env.NOTIFY_API_URL.trim() : "";
+  const notifyApiUrl = (rawNotifyApiUrl || "/api/functions/v1/smpid-notify").replace(/\/+$/, "");
 
   const headers = {
     "Content-Type": "application/json; charset=utf-8",
@@ -31,7 +33,9 @@ export async function onRequestGet(context) {
   const payload = {
     SUPABASE_URL: supabaseUrl,
     SUPABASE_ANON_KEY: supabaseAnonKey,
-    SUPABASE_SCHEMA: supabaseSchema
+    SUPABASE_SCHEMA: supabaseSchema,
+    NOTIFY_API_URL: notifyApiUrl,
+    EDGE_NOTIFY_URL: notifyApiUrl
   };
 
   if (gasEndpointUrl) {

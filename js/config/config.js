@@ -1,6 +1,7 @@
 const CONFIG_ENDPOINT = "/api/config";
 const REQUEST_TIMEOUT_MS = 10000;
 const DEFAULT_SUPABASE_SCHEMA = "nadim_data";
+const DEFAULT_NOTIFY_API_URL = "/api/functions/v1/smpid-notify";
 
 let inFlightRequest = null;
 
@@ -16,6 +17,11 @@ function normalizeSchema(value) {
   return cleaned;
 }
 
+function normalizeEndpointUrl(value, fallback = "") {
+  const cleaned = normalizeString(value) || fallback;
+  return cleaned.replace(/\/+$/, "");
+}
+
 function validateAndFreezeEnv(rawPayload) {
   const payload = rawPayload && typeof rawPayload === "object" ? rawPayload : {};
   const supabaseUrl = normalizeString(payload.SUPABASE_URL);
@@ -25,6 +31,10 @@ function validateAndFreezeEnv(rawPayload) {
   const gasUploadUrl = normalizeString(payload.GAS_UPLOAD_URL);
   const gasEmailUrl = normalizeString(payload.GAS_EMAIL_URL);
   const gasLibatUrusUrl = normalizeString(payload.GAS_LIBAT_URUS_URL);
+  const notifyApiUrl = normalizeEndpointUrl(
+    payload.NOTIFY_API_URL || payload.EDGE_NOTIFY_URL || payload.DENO_API_URL,
+    DEFAULT_NOTIFY_API_URL
+  );
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error("Konfigurasi pelayan tidak lengkap: SUPABASE_URL atau SUPABASE_ANON_KEY tiada.");
@@ -33,7 +43,10 @@ function validateAndFreezeEnv(rawPayload) {
   const normalizedEnv = {
     SUPABASE_URL: supabaseUrl,
     SUPABASE_ANON_KEY: supabaseAnonKey,
-    SUPABASE_SCHEMA: supabaseSchema
+    SUPABASE_SCHEMA: supabaseSchema,
+    NOTIFY_API_URL: notifyApiUrl,
+    EDGE_NOTIFY_URL: notifyApiUrl,
+    DENO_API_URL: notifyApiUrl
   };
 
   const primaryGasUrl = gasEndpointUrl || gasUploadUrl || gasEmailUrl || gasLibatUrusUrl;
@@ -60,6 +73,10 @@ function validateAndFreezeEnv(rawPayload) {
     window.SUPABASE_URL = frozenEnv.SUPABASE_URL;
     window.SUPABASE_ANON_KEY = frozenEnv.SUPABASE_ANON_KEY;
     window.SUPABASE_SCHEMA = frozenEnv.SUPABASE_SCHEMA;
+    window.NOTIFY_API_URL = frozenEnv.NOTIFY_API_URL;
+    window.EDGE_NOTIFY_URL = frozenEnv.EDGE_NOTIFY_URL;
+    window.DENO_API_URL = frozenEnv.DENO_API_URL;
+    window.DENO_URL = frozenEnv.NOTIFY_API_URL;
 
     if (frozenEnv.GAS_ENDPOINT_URL) {
       window.GAS_ENDPOINT_URL = frozenEnv.GAS_ENDPOINT_URL;

@@ -8,6 +8,15 @@ function readEnvValue(key) {
   return env[key].trim();
 }
 
+function resolveNotifyBaseUrl() {
+  const raw =
+    readEnvValue("NOTIFY_API_URL") ||
+    readEnvValue("EDGE_NOTIFY_URL") ||
+    readEnvValue("DENO_API_URL") ||
+    "/api/functions/v1/smpid-notify";
+  return raw.replace(/\/+$/, "");
+}
+
 const supabaseConfig = {};
 Object.defineProperties(supabaseConfig, {
   URL: {
@@ -81,11 +90,25 @@ Object.defineProperties(apiConfig, {
       return readEnvValue("GAS_LIBAT_URUS_URL") || readEnvValue("GAS_ENDPOINT_URL");
     }
   },
+  NOTIFY_API_URL: {
+    enumerable: true,
+    configurable: false,
+    get() {
+      return resolveNotifyBaseUrl();
+    }
+  },
+  EDGE_NOTIFY_URL: {
+    enumerable: true,
+    configurable: false,
+    get() {
+      return resolveNotifyBaseUrl();
+    }
+  },
   DENO_URL: {
     enumerable: true,
     configurable: false,
     get() {
-      return readEnvValue("DENO_API_URL");
+      return resolveNotifyBaseUrl();
     }
   }
 });
