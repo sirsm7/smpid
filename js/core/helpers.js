@@ -1,168 +1,206 @@
-/**
- * NADIM HELPER UTILITIES
- * Fungsi bantuan umum untuk manipulasi data dan UI.
- * * UPDATE V1.2: Menambah sokongan fungsi muat naik fail ke Google Drive (Base64).
- */
+import { envReady, getEnv } from "../config/config.js";
+import { APP_CONFIG } from "../config/app.config.js";
 
-import { APP_CONFIG } from '../config/app.config.js';
-
-/**
- * Papar atau Sembunyi Overlay Loading
- * @param {boolean} show - True untuk papar, False untuk sembunyi
- */
 export function toggleLoading(show) {
-    const el = document.getElementById('loadingOverlay');
-    if (el) {
-        if (show) el.classList.remove('hidden');
-        else el.classList.add('hidden');
-    }
+  const el = document.getElementById("loadingOverlay");
+  if (!el) {
+    return;
+  }
+  if (show) {
+    el.classList.remove("hidden");
+  } else {
+    el.classList.add("hidden");
+  }
 }
 
-/**
- * Bersihkan format nombor telefon (Buang sengkang, tambah 6)
- * @param {string} phone 
- * @returns {string}
- */
 export function cleanPhone(phone) {
-    if (!phone) return "";
-    let cleaned = phone.replace(/[^0-9]/g, '');
-    if (cleaned.length === 0) return "";
-    if (cleaned.startsWith('0')) cleaned = '6' + cleaned;
-    return cleaned;
+  if (!phone) {
+    return "";
+  }
+  let cleaned = String(phone).replace(/[^0-9]/g, "");
+  if (cleaned.length === 0) {
+    return "";
+  }
+  if (cleaned.startsWith("0")) {
+    cleaned = "6" + cleaned;
+  }
+  return cleaned;
 }
 
-/**
- * Format input telefon secara automatik semasa menaip (Event Handler)
- * @param {HTMLInputElement} input 
- */
 export function autoFormatPhone(input) {
-    if (!input) return;
-    let val = input.value.replace(/[^0-9]/g, '');
-    if (val.length < 5) return;
-    
-    // Pastikan format +60...
-    if (val.startsWith('60')) input.value = '+' + val;
-    else if (val.startsWith('0')) input.value = '+6' + val;
-    else input.value = '+6' + val;
+  if (!input) {
+    return;
+  }
+  const val = String(input.value || "").replace(/[^0-9]/g, "");
+  if (val.length < 5) {
+    return;
+  }
+  if (val.startsWith("60")) {
+    input.value = "+" + val;
+  } else if (val.startsWith("0")) {
+    input.value = "+6" + val;
+  } else {
+    input.value = "+6" + val;
+  }
 }
 
-/**
- * Tukar teks jadi Sentence Case (Huruf besar selepas titik)
- * @param {string} str 
- * @returns {string}
- */
 export function formatSentenceCase(str) {
-    if (!str) return "";
-    return str.replace(/(?:^|[\.\!\?]\s+)([a-z])/g, function(match) {
-        return match.toUpperCase();
-    });
+  if (!str) {
+    return "";
+  }
+  return String(str).replace(/(?:^|[.!?]\s+)([a-z])/g, (match) => match.toUpperCase());
 }
 
-/**
- * Semak domain emel (moe-dl.edu.my sahaja)
- * @param {string} email 
- * @returns {boolean}
- */
 export function checkEmailDomain(email) {
-    return email && email.includes("@moe-dl.edu.my");
+  return Boolean(email && String(email).includes("@moe-dl.edu.my"));
 }
 
-/**
- * Jana pautan WhatsApp
- * @param {string} nama 
- * @param {string} noTel 
- * @param {boolean} isRaw 
- * @returns {string|null}
- */
 export function generateWhatsAppLink(nama, noTel, isRaw = false) {
-    const cleanNum = cleanPhone(noTel);
-    if (!cleanNum) return null;
-    
-    if (isRaw) return `https://wa.me/${cleanNum}`;
-    
-    const rawMsg = `Assalamualaikum / Salam Sejahtera Cikgu ${nama || ''}, ini adalah mesej automatik NADIM.\n\nMohon kerjasama cikgu untuk aktifkan ID Telegram di bot kami. Sila klik https://t.me/smpid_bot , tekan Start, masukkan kod sekolah, dan pilih peranan.\n\nTerima kasih.`;
-    return `https://wa.me/${cleanNum}?text=${encodeURIComponent(rawMsg)}`;
+  const cleanNum = cleanPhone(noTel);
+  if (!cleanNum) {
+    return null;
+  }
+  if (isRaw) {
+    return `https://wa.me/${cleanNum}`;
+  }
+  const rawMsg = `Assalamualaikum / Salam Sejahtera Cikgu ${nama || ""}, ini adalah mesej automatik NADIM.\n\nMohon kerjasama cikgu untuk aktifkan ID Telegram di bot kami. Sila klik https://t.me/smpid_bot , tekan Start, masukkan kod sekolah, dan pilih peranan.\n\nTerima kasih.`;
+  return `https://wa.me/${cleanNum}?text=${encodeURIComponent(rawMsg)}`;
 }
 
-/**
- * Fungsi Log Keluar Global
- * UPDATE: Membersihkan localStorage bukannya sessionStorage.
- */
 export function keluarSistem() {
-    Swal.fire({
-        title: 'Log Keluar?', 
-        icon: 'warning', 
-        showCancelButton: true, 
-        confirmButtonColor: '#d33', 
-        confirmButtonText: 'Ya, Keluar',
-        cancelButtonText: 'Batal'
+  const performLogout = async () => {
+    try {
+      if (
+        typeof window !== "undefined" &&
+        window.RealtimeManager &&
+        typeof window.RealtimeManager.unsubscribeAll === "function"
+      ) {
+        await window.RealtimeManager.unsubscribeAll();
+      }
+    } catch {}
+    try {
+      localStorage.clear();
+    } catch {}
+    window.location.replace("index.html");
+  };
+
+  if (typeof window !== "undefined" && window.Swal && typeof window.Swal.fire === "function") {
+    window.Swal.fire({
+      title: "Log Keluar?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      confirmButtonText: "Ya, Keluar",
+      cancelButtonText: "Batal"
     }).then((result) => {
-        if (result.isConfirmed) {
-            // UPDATE: Gunakan localStorage.clear() supaya semua tab terkesan
-            localStorage.clear();
-            window.location.replace('index.html');
-        }
+      if (result && result.isConfirmed) {
+        performLogout();
+      }
     });
+    return;
+  }
+
+  if (typeof window !== "undefined" && window.confirm("Log Keluar?")) {
+    performLogout();
+  }
 }
 
-/**
- * BARU: Enjin Muat Naik Fail ke Google Drive melalui GAS
- * @param {File} file - Objek fail yang dipilih oleh pengguna
- * @returns {Promise<string>} - Mengembalikan URL Google Drive fail tersebut
- */
+function resolveGasUploadUrl() {
+  const env = getEnv() || (typeof window !== "undefined" ? window.__ENV : null);
+  const candidate =
+    (APP_CONFIG && APP_CONFIG.API && APP_CONFIG.API.GAS_UPLOAD_URL) ||
+    (env && (env.GAS_UPLOAD_URL || env.GAS_ENDPOINT_URL)) ||
+    (typeof window !== "undefined" ? window.GAS_URL : "") ||
+    "";
+  return typeof candidate === "string" ? candidate.trim() : "";
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const resultStr = typeof reader.result === "string" ? reader.result : "";
+      const parts = resultStr.split(",");
+      if (parts.length < 2 || !parts[1]) {
+        reject(new Error("Gagal mengekstrak kandungan Base64 fail."));
+        return;
+      }
+      resolve(parts[1]);
+    };
+    reader.onerror = () => {
+      reject(new Error("Gagal membaca fail yang dimuat naik."));
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export async function uploadFileToDrive(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        
-        reader.onload = async () => {
-            // Memisahkan metadata 'data:image/jpeg;base64,' untuk mendapatkan rentetan Base64 sahaja
-            const base64Data = reader.result.split(',')[1];
-            
-            const payload = {
-                fileName: file.name,
-                mimeType: file.type,
-                base64Data: base64Data
-            };
+  if (!file) {
+    throw new Error("Tiada fail dipilih untuk dimuat naik.");
+  }
 
-            try {
-                // Menghantar ke Google Apps Script
-                const response = await fetch(APP_CONFIG.API.GAS_UPLOAD_URL, {
-                    method: 'POST',
-                    mode: 'cors',
-                    redirect: 'follow',
-                    // Menggunakan text/plain untuk memintas halangan CORS (Preflight OPTIONS)
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8',
-                    },
-                    body: JSON.stringify(payload)
-                });
+  const maxMb =
+    APP_CONFIG && APP_CONFIG.UPLOADS && typeof APP_CONFIG.UPLOADS.MAX_FILE_SIZE_MB === "number"
+      ? APP_CONFIG.UPLOADS.MAX_FILE_SIZE_MB
+      : 5;
+  if (file.size > maxMb * 1024 * 1024) {
+    throw new Error(`Saiz fail melebihi had maksimum ${maxMb}MB.`);
+  }
 
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    resolve(result.url);
-                } else {
-                    reject(new Error(result.message || "Ralat semasa proses muat naik."));
-                }
-            } catch (error) {
-                reject(new Error("Gagal menyambung ke pelayan muat naik. Sila semak capaian internet anda."));
-            }
-        };
+  await envReady;
 
-        reader.onerror = () => {
-            reject(new Error("Gagal membaca fail yang dimuat naik."));
-        };
+  const uploadUrl = resolveGasUploadUrl();
+  if (!uploadUrl) {
+    throw new Error("Konfigurasi titik akhir muat naik Google Apps Script tidak tersedia.");
+  }
 
-        // Mulakan proses bacaan fail kepada format Base64
-        reader.readAsDataURL(file);
+  const base64Data = await readFileAsBase64(file);
+  const payload = {
+    fileName: file.name,
+    mimeType: file.type || "application/octet-stream",
+    base64Data
+  };
+
+  let response;
+  try {
+    response = await fetch(uploadUrl, {
+      method: "POST",
+      redirect: "follow",
+      headers: {
+        "Content-Type": "text/plain"
+      },
+      body: JSON.stringify(payload)
     });
+  } catch {
+    throw new Error("Gagal menyambung ke pelayan muat naik. Sila semak capaian internet anda.");
+  }
+
+  const rawText = await response.text();
+  let result;
+  try {
+    result = rawText ? JSON.parse(rawText) : null;
+  } catch {
+    throw new Error("Tindak balas pelayan muat naik bukan format JSON yang sah.");
+  }
+
+  if (!response.ok || !result || result.status !== "success" || !result.url) {
+    const errorMsg =
+      result && typeof result.message === "string" && result.message.trim()
+        ? result.message.trim()
+        : "Ralat semasa proses muat naik fail ke Google Drive.";
+    throw new Error(errorMsg);
+  }
+
+  return result.url;
 }
 
-// Expose ke global window untuk keserasian HTML `onclick="..."` legacy
-window.toggleLoading = toggleLoading;
-window.autoFormatPhone = autoFormatPhone;
-window.cleanPhone = cleanPhone;
-window.generateWhatsAppLink = generateWhatsAppLink;
-window.formatSentenceCase = formatSentenceCase;
-window.keluarSistem = keluarSistem;
-window.uploadFileToDrive = uploadFileToDrive;
+if (typeof window !== "undefined") {
+  window.toggleLoading = toggleLoading;
+  window.autoFormatPhone = autoFormatPhone;
+  window.cleanPhone = cleanPhone;
+  window.generateWhatsAppLink = generateWhatsAppLink;
+  window.formatSentenceCase = formatSentenceCase;
+  window.checkEmailDomain = checkEmailDomain;
+  window.keluarSistem = keluarSistem;
+  window.uploadFileToDrive = uploadFileToDrive;
+}

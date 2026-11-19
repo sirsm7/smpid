@@ -2,32 +2,26 @@
 <html lang="ms">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NaDIM - Portal Sekolah</title>
-  
+
   <meta name="theme-color" content="#16a34a">
   <link rel="icon" href="icoppdag.png">
 
-  <!-- PETUNJUK SUMBER AWAL (RESOURCE HINTS & PRECONNECT) -->
-  <link rel="preconnect" href="https://app.tech4ag.my">
-  <link rel="dns-prefetch" href="https://app.tech4ag.my">
+  <link rel="preconnect" href="https://seber.tech4ag.my">
+  <link rel="dns-prefetch" href="https://seber.tech4ag.my">
   <link rel="preconnect" href="https://cdn.tailwindcss.com">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-  
-  <!-- TAILWIND CSS -->
+
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- FONTAWESOME (PEMUATAN TAK SEGERAK / ASYNC LOAD) -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
-  <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"></noscript>
-  
-  <!-- GOOGLE FONTS -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  
+
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
   <script>
     tailwind.config = {
       theme: {
@@ -38,24 +32,27 @@
             ppd: { 50: '#f3e8ff', 100: '#e9d5ff', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9' }
           },
           animation: {
-            'fade-up': 'fadeUp 0.5s ease-out forwards',
+            'fade-up': 'fadeUp 0.5s ease-out forwards'
           },
           keyframes: {
             fadeUp: {
               '0%': { opacity: '0', transform: 'translateY(20px)' },
-              '100%': { opacity: '1', transform: 'translateY(0)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' }
             }
           }
         }
       }
-    }
+    };
   </script>
 
   <style>
     .hidden { display: none !important; }
     .uppercase-input { text-transform: uppercase; }
-    
-    /* Global Table Wrapping Fix */
+
+    .animate-fade-up {
+      animation: fadeUp 0.5s ease-out forwards;
+    }
+
     table td, table th {
       white-space: normal !important;
       word-wrap: break-word !important;
@@ -69,743 +66,731 @@
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   </style>
 
-  <!-- PUSTAKA LUARAN (DEFERRED UNTUK MENGHILANGKAN RENDER-BLOCKING) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="console.warn('JSDelivr disekat. Mencuba Unpkg...'); this.onerror=null; this.src='https://unpkg.com/@supabase/supabase-js@2';"></script>
+  <script type="module" src="js/config/config.js?v=2026.1"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script defer src="js/utils.js?v=2026.1"></script>
 </head>
-<body id="page-user" class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+<body id="page-user" class="bg-slate-50 text-slate-800 antialiased min-h-dvh overflow-x-hidden flex flex-col">
 
-  <!-- LOADING OVERLAY -->
   <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
-    <div class="text-center text-white">
+    <div class="text-center text-white px-4">
       <i class="fas fa-circle-notch fa-spin fa-3x mb-3 text-brand-500"></i>
       <p class="font-bold tracking-wide animate-pulse">Memproses...</p>
     </div>
   </div>
 
-  <!-- HEADER HERO -->
-  <header class="bg-gradient-to-br from-brand-900 via-brand-700 to-emerald-900 pb-20 pt-8 px-4 shadow-xl text-center relative overflow-hidden">
+  <header class="bg-gradient-to-br from-brand-900 via-brand-700 to-emerald-900 pb-20 pt-8 px-4 shadow-xl text-center relative overflow-hidden shrink-0">
     <div class="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
-    
-    <div class="relative z-10 max-w-4xl mx-auto">
-        <!-- Logo PPD -->
-        <img src="icoppdag.png" alt="Logo PPD" class="w-40 h-auto mx-auto mb-3 drop-shadow-md" fetchpriority="high">
-        <h1 class="text-xl md:text-2xl font-bold text-white mb-1 tracking-tight" id="dispNamaSekolah">MEMUATKAN DATA...</h1>
-        <p class="text-emerald-200 text-xs font-bold uppercase tracking-wider mb-4" id="dispKodDaerah">KOD: - | DAERAH: -</p>
-        
-        <span class="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white text-xs font-bold px-4 py-1.5 rounded-full backdrop-blur-sm" id="displayKodSekolah">
-            <i class="fas fa-spinner fa-spin"></i> Sila Tunggu
-        </span>
+
+    <div class="relative z-10 max-w-4xl mx-auto min-w-0">
+      <img src="icoppdag.png" alt="Logo PPD" class="w-36 sm:w-40 h-auto mx-auto mb-3 drop-shadow-md" fetchpriority="high">
+      <h1 class="text-xl md:text-2xl font-bold text-white mb-1 tracking-tight break-words" id="dispNamaSekolah">MEMUATKAN DATA...</h1>
+      <p class="text-emerald-200 text-xs font-bold uppercase tracking-wider mb-4 break-words" id="dispKodDaerah">KOD: - | DAERAH: -</p>
+
+      <span class="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white text-xs font-bold px-4 py-1.5 rounded-full backdrop-blur-sm" id="displayKodSekolah">
+        <i class="fas fa-spinner fa-spin"></i> Sila Tunggu
+      </span>
     </div>
   </header>
 
-  <!-- MAIN CONTAINER -->
-  <div class="container mx-auto px-4 -mt-12 pb-20 relative z-20 max-w-4xl">
+  <main class="container mx-auto px-4 -mt-12 pb-20 relative z-20 max-w-4xl flex-grow">
 
-    <!-- MENU UTAMA -->
     <div id="section-menu" class="animate-fade-up">
-        <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-            <div class="p-6 md:p-8">
-                <div class="text-center mb-8">
-                    <h2 class="text-sm font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-4" id="welcomeText">MENU UTAMA</h2>
+      <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden min-w-0">
+        <div class="p-6 md:p-8">
+          <div class="text-center mb-8">
+            <h2 class="text-sm font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-4" id="welcomeText">MENU UTAMA</h2>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+
+            <a href="#profil" onclick="showSection('profil', event)" class="min-h-[44px] group p-4 bg-blue-50 hover:bg-blue-600 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-blue-100 hover:shadow-lg hover:shadow-blue-500/30 flex flex-col items-center justify-center">
+              <div class="w-12 h-12 bg-white text-blue-500 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-blue-600">
+                <i class="fas fa-user-edit"></i>
+              </div>
+              <span class="text-xs font-bold text-blue-800 group-hover:text-white uppercase break-words">PROFIL SEKOLAH</span>
+            </a>
+
+            <a href="modules/helpdesk/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="min-h-[44px] group p-4 bg-red-50 hover:bg-red-500 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-red-100 hover:shadow-lg hover:shadow-red-500/30 flex flex-col items-center justify-center">
+              <div class="w-12 h-12 bg-white text-red-500 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-red-600">
+                <i class="fas fa-headset"></i>
+              </div>
+              <span class="text-xs font-bold text-red-800 group-hover:text-white uppercase break-words">PUSAT SOKONGAN</span>
+            </a>
+
+            <a href="modules/penataran/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="min-h-[44px] group p-4 bg-sky-50 hover:bg-sky-600 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-sky-100 hover:shadow-lg hover:shadow-sky-500/30 flex flex-col items-center justify-center">
+              <div class="w-12 h-12 bg-white text-sky-500 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-sky-600">
+                <i class="fas fa-clipboard-check"></i>
+              </div>
+              <span class="text-xs font-bold text-sky-800 group-hover:text-white uppercase break-words">PENILAIAN KENDIRI</span>
+            </a>
+
+            <a href="modules/booking/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="min-h-[44px] group p-4 bg-lime-50 hover:bg-lime-600 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-lime-100 hover:shadow-lg hover:shadow-lime-500/30 flex flex-col items-center justify-center">
+              <div class="w-12 h-12 bg-white text-lime-600 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-lime-700">
+                <i class="fas fa-calendar-check"></i>
+              </div>
+              <span class="text-xs font-bold text-lime-900 group-hover:text-white uppercase break-words">TEMPAHAN BIMBINGAN</span>
+            </a>
+
+            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between col-span-2 md:col-span-1 min-w-0">
+              <div class="text-center mb-3">
+                <div class="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center text-lg mb-2 mx-auto shadow-md">
+                  <i class="fas fa-microchip"></i>
                 </div>
-
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-                    
-                    <!-- 1. PROFIL SEKOLAH -->
-                    <a href="#profil" onclick="showSection('profil', event)" class="group p-4 bg-blue-50 hover:bg-blue-600 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-blue-100 hover:shadow-lg hover:shadow-blue-500/30">
-                        <div class="w-12 h-12 bg-white text-blue-500 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-blue-600">
-                            <i class="fas fa-user-edit"></i>
-                        </div>
-                        <span class="text-xs font-bold text-blue-800 group-hover:text-white uppercase">PROFIL SEKOLAH</span>
-                    </a>
-
-                    <!-- 2. PUSAT SOKONGAN DELIMA (HELPDESK & ADUAN) -->
-                    <a href="modules/helpdesk/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="group p-4 bg-red-50 hover:bg-red-500 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-red-100 hover:shadow-lg hover:shadow-red-500/30">
-                        <div class="w-12 h-12 bg-white text-red-500 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-red-600">
-                            <i class="fas fa-headset"></i>
-                        </div>
-                        <span class="text-xs font-bold text-red-800 group-hover:text-white uppercase">PUSAT SOKONGAN</span>
-                    </a>
-
-                    <!-- 3. PENILAIAN KENDIRI -->
-                    <a href="modules/penataran/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="group p-4 bg-sky-50 hover:bg-sky-600 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-sky-100 hover:shadow-lg hover:shadow-sky-500/30">
-                        <div class="w-12 h-12 bg-white text-sky-500 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-sky-600">
-                            <i class="fas fa-clipboard-check"></i>
-                        </div>
-                        <span class="text-xs font-bold text-sky-800 group-hover:text-white uppercase">PENILAIAN KENDIRI</span>
-                    </a>
-
-                    <!-- 4. TEMPAHAN BIMBINGAN -->
-                    <a href="modules/booking/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="group p-4 bg-lime-50 hover:bg-lime-600 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-lime-100 hover:shadow-lg hover:shadow-lime-500/30">
-                        <div class="w-12 h-12 bg-white text-lime-600 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-lime-700">
-                            <i class="fas fa-calendar-check"></i>
-                        </div>
-                        <span class="text-xs font-bold text-lime-900 group-hover:text-white uppercase">TEMPAHAN BIMBINGAN</span>
-                    </a>
-
-                    <!-- 5. HAB KOMPETENSI DIGITAL (Merged Card) -->
-                    <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between col-span-2 md:col-span-1">
-                        <div class="text-center mb-3">
-                            <div class="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center text-lg mb-2 mx-auto shadow-md">
-                                <i class="fas fa-microchip"></i>
-                            </div>
-                            <h6 class="text-[10px] font-black text-indigo-900 uppercase tracking-widest leading-tight">HAB KOMPETENSI DIGITAL</h6>
-                        </div>
-                        <div class="grid grid-cols-1 gap-2">
-                            <a href="modules/spka/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="py-2.5 px-3 bg-white hover:bg-indigo-50 border border-slate-200 rounded-xl text-[9px] font-black text-indigo-600 transition flex items-center justify-between group">
-                                <span>MODUL BELAJAR AI</span>
-                                <i class="fas fa-chevron-right text-slate-300 group-hover:text-indigo-500"></i>
-                            </a>
-                            <a href="https://gce.tech4ag.my/" target="_blank" class="py-2.5 px-3 bg-white hover:bg-purple-50 border border-slate-200 rounded-xl text-[9px] font-black text-purple-600 transition flex items-center justify-between group">
-                                <span>PENSIJILAN GOOGLE</span>
-                                <i class="fas fa-external-link-alt text-slate-300 group-hover:text-purple-500"></i>
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- 6. HAB PELAPORAN DIGITAL (Merged Card) -->
-                    <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between col-span-2 md:col-span-1">
-                        <div class="text-center mb-3">
-                            <div class="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center text-lg mb-2 mx-auto shadow-md">
-                                <i class="fas fa-chart-pie"></i>
-                            </div>
-                            <h6 class="text-[10px] font-black text-emerald-900 uppercase tracking-widest leading-tight">HAB PELAPORAN DIGITAL</h6>
-                        </div>
-                        <div class="grid grid-cols-1 gap-2">
-                            <a href="modules/pppdm/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="py-2.5 px-3 bg-white hover:bg-emerald-50 border border-slate-200 rounded-xl text-[9px] font-black text-emerald-600 transition flex items-center justify-between group">
-                                <span>LAPORAN PPPDM</span>
-                                <i class="fas fa-chevron-right text-slate-300 group-hover:text-emerald-500"></i>
-                            </a>
-                            <a href="#analisa" onclick="showSection('analisa', event)" class="py-2.5 px-3 bg-white hover:bg-amber-50 border border-slate-200 rounded-xl text-[9px] font-black text-amber-600 transition flex items-center justify-between group">
-                                <span>ANALISA DIGITAL</span>
-                                <i class="fas fa-chevron-right text-slate-300 group-hover:text-amber-500"></i>
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- 7. LAPORAN LIBAT URUS -->
-                    <a href="#libat-urus" onclick="showSection('libat-urus', event)" class="group p-4 bg-orange-50 hover:bg-orange-600 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-orange-100 hover:shadow-lg hover:shadow-orange-500/30 col-span-2 md:col-span-3">
-                        <div class="w-12 h-12 bg-white text-orange-500 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-orange-600">
-                            <i class="fas fa-users-cog"></i>
-                        </div>
-                        <span class="text-xs font-bold text-orange-900 group-hover:text-white uppercase tracking-wider">Laporan Libat Urus DELIMa</span>
-                    </a>
-
-                </div>
-
-                <div class="space-y-3">
-                    <a href="#pencapaian" onclick="showSection('pencapaian', event)" class="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold shadow-lg transition flex items-center justify-center gap-2">
-                        <i class="fas fa-trophy text-yellow-300"></i> Rekod Pencapaian & Kemenjadian
-                    </a>
-                    <button onclick="ubahKataLaluan()" class="w-full py-3 bg-white border-2 border-slate-200 hover:border-slate-400 text-slate-600 rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm">
-                        <i class="fas fa-key text-slate-400"></i> Tukar Kata Laluan
-                    </button>
-                    <button id="btnLogoutMenu" onclick="keluarSistem()" class="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm">
-                        <i class="fas fa-sign-out-alt"></i> Log Keluar
-                    </button>
-                </div>
-
-                <div class="text-center mt-6">
-                     <button id="btnResetData" onclick="resetDataSekolah()" class="text-xs text-red-400 hover:text-red-600 font-bold hidden"><i class="fas fa-trash-alt mr-1"></i> [Admin] Reset Data Sekolah Ini</button>
-                </div>
+                <h6 class="text-[10px] font-black text-indigo-900 uppercase tracking-widest leading-tight break-words">HAB KOMPETENSI DIGITAL</h6>
+              </div>
+              <div class="grid grid-cols-1 gap-2">
+                <a href="modules/spka/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="min-h-[44px] py-2.5 px-3 bg-white hover:bg-indigo-50 border border-slate-200 rounded-xl text-[9px] font-black text-indigo-600 transition flex items-center justify-between group">
+                  <span>MODUL BELAJAR AI</span>
+                  <i class="fas fa-chevron-right text-slate-300 group-hover:text-indigo-500"></i>
+                </a>
+                <a href="https://gce.tech4ag.my/" target="_blank" rel="noopener noreferrer" class="min-h-[44px] py-2.5 px-3 bg-white hover:bg-purple-50 border border-slate-200 rounded-xl text-[9px] font-black text-purple-600 transition flex items-center justify-between group">
+                  <span>PENSIJILAN GOOGLE</span>
+                  <i class="fas fa-external-link-alt text-slate-300 group-hover:text-purple-500"></i>
+                </a>
+              </div>
             </div>
-            <div class="bg-slate-50 p-3 text-center border-t border-slate-100">
-                <p class="text-[10px] text-slate-400 font-medium">&copy; Unit Sumber Teknologi Pendidikan PPDAG</p>
+
+            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between col-span-2 md:col-span-1 min-w-0">
+              <div class="text-center mb-3">
+                <div class="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center text-lg mb-2 mx-auto shadow-md">
+                  <i class="fas fa-chart-pie"></i>
+                </div>
+                <h6 class="text-[10px] font-black text-emerald-900 uppercase tracking-widest leading-tight break-words">HAB PELAPORAN DIGITAL</h6>
+              </div>
+              <div class="grid grid-cols-1 gap-2">
+                <a href="modules/pppdm/index.html" onclick="sessionStorage.setItem('smpid_entry_portal', '../../user.html');" class="min-h-[44px] py-2.5 px-3 bg-white hover:bg-emerald-50 border border-slate-200 rounded-xl text-[9px] font-black text-emerald-600 transition flex items-center justify-between group">
+                  <span>LAPORAN PPPDM</span>
+                  <i class="fas fa-chevron-right text-slate-300 group-hover:text-emerald-500"></i>
+                </a>
+                <a href="#analisa" onclick="showSection('analisa', event)" class="min-h-[44px] py-2.5 px-3 bg-white hover:bg-amber-50 border border-slate-200 rounded-xl text-[9px] font-black text-amber-600 transition flex items-center justify-between group">
+                  <span>ANALISA DIGITAL</span>
+                  <i class="fas fa-chevron-right text-slate-300 group-hover:text-amber-500"></i>
+                </a>
+              </div>
             </div>
+
+            <a href="#libat-urus" onclick="showSection('libat-urus', event)" class="min-h-[44px] group p-4 bg-orange-50 hover:bg-orange-600 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 text-center border border-orange-100 hover:shadow-lg hover:shadow-orange-500/30 col-span-2 md:col-span-3 flex flex-col items-center justify-center">
+              <div class="w-12 h-12 bg-white text-orange-500 rounded-full flex items-center justify-center text-xl mb-3 mx-auto shadow-sm group-hover:text-orange-600">
+                <i class="fas fa-users-cog"></i>
+              </div>
+              <span class="text-xs font-bold text-orange-900 group-hover:text-white uppercase tracking-wider break-words">Laporan Libat Urus DELIMa</span>
+            </a>
+
+          </div>
+
+          <div class="space-y-3">
+            <a href="#pencapaian" onclick="showSection('pencapaian', event)" class="w-full min-h-[52px] py-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold shadow-lg transition flex items-center justify-center gap-2">
+              <i class="fas fa-trophy text-yellow-300"></i> Rekod Pencapaian &amp; Kemenjadian
+            </a>
+            <button type="button" onclick="ubahKataLaluan()" class="w-full min-h-[48px] py-3 bg-white border-2 border-slate-200 hover:border-slate-400 text-slate-600 rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm">
+              <i class="fas fa-key text-slate-400"></i> Tukar Kata Laluan
+            </button>
+            <button type="button" id="btnLogoutMenu" onclick="keluarSistem()" class="w-full min-h-[48px] py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold transition flex items-center justify-center gap-2 text-sm">
+              <i class="fas fa-sign-out-alt"></i> Log Keluar
+            </button>
+          </div>
+
+          <div class="text-center mt-6">
+            <button type="button" id="btnResetData" onclick="resetDataSekolah()" class="min-h-[44px] px-4 text-xs text-red-400 hover:text-red-600 font-bold hidden inline-flex items-center justify-center">
+              <i class="fas fa-trash-alt mr-1"></i> [Admin] Reset Data Sekolah Ini
+            </button>
+          </div>
         </div>
+        <div class="bg-slate-50 p-3 text-center border-t border-slate-100">
+          <p class="text-[10px] text-slate-400 font-medium">&copy; 2026 Unit Sumber Teknologi Pendidikan PPDAG</p>
+        </div>
+      </div>
     </div>
 
-    <!-- SEKSYEN PROFIL -->
     <div id="section-profil" class="hidden animate-fade-up">
-        <div class="flex items-center mb-6">
-            <button onclick="showSection('menu', event)" class="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 mr-4 transition"><i class="fas fa-arrow-left"></i></button>
-            <h2 class="text-xl font-bold text-slate-800">Kemaskini Maklumat</h2>
-        </div>
+      <div class="flex items-center mb-6">
+        <button type="button" onclick="showSection('menu', event)" class="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 mr-4 transition shrink-0">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2 class="text-xl font-bold text-slate-800">Kemaskini Maklumat</h2>
+      </div>
 
-        <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-6 md:p-8">
-            <form id="dataForm" onsubmit="event.preventDefault(); simpanProfil();" class="space-y-6">
-                <input type="hidden" id="hiddenKodSekolah">
+      <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-6 md:p-8 min-w-0">
+        <form id="dataForm" onsubmit="event.preventDefault(); simpanProfil();" class="space-y-6">
+          <input type="hidden" id="hiddenKodSekolah">
 
-                <!-- SEKSYEN SEKOLAH (BAHARU) -->
-                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                    <h3 class="text-sm font-bold text-slate-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-building"></i> MAKLUMAT ASAS SEKOLAH</h3>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">NO TELEFON SEKOLAH (PEJABAT)</label>
-                            <input type="tel" id="sekolahTel" class="w-full p-3 rounded-xl border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none font-bold text-slate-700" oninput="autoFormatPhone(this)" placeholder="+60...">
-                        </div>
-                    </div>
+          <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+            <h3 class="text-sm font-bold text-slate-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-building"></i> MAKLUMAT ASAS SEKOLAH</h3>
+            <div class="space-y-4">
+              <div>
+                <label for="sekolahTel" class="block text-xs font-bold text-slate-500 uppercase mb-1">NO TELEFON SEKOLAH (PEJABAT)</label>
+                <input type="tel" id="sekolahTel" class="w-full min-h-[48px] p-3 rounded-xl border border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none font-bold text-slate-700" oninput="autoFormatPhone(this)" placeholder="+60...">
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-teal-50 p-6 rounded-2xl border border-teal-100">
+            <h3 class="text-sm font-bold text-teal-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-tv"></i> MAKLUMAT SMART BOARD</h3>
+
+            <div class="mb-4">
+              <label class="block text-xs font-bold text-teal-600 uppercase mb-2 break-words">ADAKAH SEKOLAH MEMPUNYAI SMART BOARD BAGI TUJUAN PDP GURU DAN MURID DI SEKOLAH?</label>
+              <div class="flex flex-wrap gap-4 mt-3">
+                <label class="min-h-[44px] flex items-center gap-2 cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-teal-200 shadow-sm hover:bg-teal-100 transition">
+                  <input type="radio" name="sb_ada" value="YA" class="w-4 h-4 accent-teal-600" onchange="window.toggleSmartboard()">
+                  <span class="text-xs font-bold text-teal-900">YA, KAMI ADA</span>
+                </label>
+                <label class="min-h-[44px] flex items-center gap-2 cursor-pointer bg-white px-4 py-2.5 rounded-xl border border-teal-200 shadow-sm hover:bg-teal-100 transition">
+                  <input type="radio" name="sb_ada" value="TIDAK" class="w-4 h-4 accent-teal-600" onchange="window.toggleSmartboard()" checked>
+                  <span class="text-xs font-bold text-teal-900">TIDAK ADA</span>
+                </label>
+              </div>
+            </div>
+
+            <div id="sbDetailsContainer" class="hidden space-y-5 pt-5 border-t border-teal-200">
+              <div>
+                <label for="sb_kaedah" class="block text-xs font-bold text-teal-600 uppercase mb-1">KAEDAH PEMBEKALAN SMART BOARD DI SEKOLAH</label>
+                <select id="sb_kaedah" class="w-full min-h-[48px] p-3 rounded-xl border border-teal-200 focus:border-teal-500 outline-none font-bold text-slate-700 bg-white">
+                  <option value="" disabled selected>- SILA PILIH -</option>
+                  <option value="SUMBANGAN PIBG/LPS/KUMPULAN TERTENTU">SUMBANGAN PIBG/LPS/KUMPULAN TERTENTU</option>
+                  <option value="SUMBANGAN INDIVIDU">SUMBANGAN INDIVIDU</option>
+                  <option value="SUMBANGAN AGENSI KERAJAAN">SUMBANGAN AGENSI KERAJAAN</option>
+                  <option value="SUMBANGAN KEMENTERIAN PENDIDIKAN">SUMBANGAN KEMENTERIAN PENDIDIKAN</option>
+                  <option value="LAIN-LAIN (PEMBELIAN SENDIRI)">LAIN-LAIN (PEMBELIAN SENDIRI)</option>
+                  <option value="TIDAK BERKENAAN">TIDAK BERKENAAN (JIKA TIADA SMART BOARD DI SEKOLAH)</option>
+                </select>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label for="sb_bil_semua" class="block text-xs font-bold text-teal-600 uppercase mb-1">BILANGAN SMART BOARD YANG ADA DI SEKOLAH *</label>
+                  <input type="number" id="sb_bil_semua" min="0" class="w-full min-h-[48px] p-3 rounded-xl border border-teal-200 focus:border-teal-500 outline-none font-bold text-slate-700" placeholder="Contoh: 2">
                 </div>
-
-                <!-- SEKSYEN SMART BOARD -->
-                <div class="bg-teal-50 p-6 rounded-2xl border border-teal-100">
-                    <h3 class="text-sm font-bold text-teal-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-tv"></i> MAKLUMAT SMART BOARD</h3>
-                    
-                    <!-- Soalan 1: Ada atau tidak -->
-                    <div class="mb-4">
-                        <label class="block text-xs font-bold text-teal-600 uppercase mb-2">ADAKAH SEKOLAH MEMPUNYAI SMART BOARD BAGI TUJUAN PDP GURU DAN MURID DI SEKOLAH?</label>
-                        <div class="flex gap-6 mt-3">
-                            <label class="flex items-center gap-2 cursor-pointer bg-white px-4 py-2 rounded-xl border border-teal-200 shadow-sm hover:bg-teal-100 transition">
-                                <input type="radio" name="sb_ada" value="YA" class="w-4 h-4 accent-teal-600" onchange="window.toggleSmartboard()">
-                                <span class="text-xs font-bold text-teal-900">YA, KAMI ADA</span>
-                            </label>
-                            <label class="flex items-center gap-2 cursor-pointer bg-white px-4 py-2 rounded-xl border border-teal-200 shadow-sm hover:bg-teal-100 transition">
-                                <input type="radio" name="sb_ada" value="TIDAK" class="w-4 h-4 accent-teal-600" onchange="window.toggleSmartboard()" checked>
-                                <span class="text-xs font-bold text-teal-900">TIDAK ADA</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Hidden Container -->
-                    <div id="sbDetailsContainer" class="hidden space-y-5 pt-5 border-t border-teal-200">
-                        <!-- Kaedah Pembekalan -->
-                        <div>
-                            <label class="block text-xs font-bold text-teal-600 uppercase mb-1">KAEDAH PEMBEKALAN SMART BOARD DI SEKOLAH</label>
-                            <select id="sb_kaedah" class="w-full p-3 rounded-xl border border-teal-200 focus:border-teal-500 outline-none font-bold text-slate-700 bg-white">
-                                <option value="" disabled selected>- SILA PILIH -</option>
-                                <option value="SUMBANGAN PIBG/LPS/KUMPULAN TERTENTU">SUMBANGAN PIBG/LPS/KUMPULAN TERTENTU</option>
-                                <option value="SUMBANGAN INDIVIDU">SUMBANGAN INDIVIDU</option>
-                                <option value="SUMBANGAN AGENSI KERAJAAN">SUMBANGAN AGENSI KERAJAAN</option>
-                                <option value="SUMBANGAN KEMENTERIAN PENDIDIKAN">SUMBANGAN KEMENTERIAN PENDIDIKAN</option>
-                                <option value="LAIN-LAIN (PEMBELIAN SENDIRI)">LAIN-LAIN (PEMBELIAN SENDIRI)</option>
-                                <option value="TIDAK BERKENAAN">TIDAK BERKENAAN (JIKA TIADA SMART BOARD DI SEKOLAH)</option>
-                            </select>
-                        </div>
-
-                        <!-- Bilangan -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-teal-600 uppercase mb-1">BILANGAN SMART BOARD YANG ADA DI SEKOLAH *</label>
-                                <input type="number" id="sb_bil_semua" class="w-full p-3 rounded-xl border border-teal-200 focus:border-teal-500 outline-none font-bold text-slate-700" placeholder="Contoh: 2">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-teal-600 uppercase mb-1">BILANGAN SMART BOARD YANG BERFUNGSI *</label>
-                                <input type="number" id="sb_bil_fungsi" class="w-full p-3 rounded-xl border border-teal-200 focus:border-teal-500 outline-none font-bold text-slate-700" placeholder="Contoh: 1">
-                            </div>
-                        </div>
-
-                        <!-- Lokasi -->
-                        <div>
-                            <label class="block text-xs font-bold text-teal-600 uppercase mb-2">LOKASI PENEMPATAN SMART BOARD * (Boleh pilih >1)</label>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 bg-white p-4 rounded-xl border border-teal-200 shadow-sm">
-                                <label class="flex items-center gap-2 cursor-pointer hover:bg-teal-50 p-2 rounded-lg transition">
-                                    <input type="checkbox" name="sb_lokasi" value="DALAM KELAS" class="w-4 h-4 accent-teal-600"> <span class="text-xs font-bold text-slate-700">DALAM KELAS</span>
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer hover:bg-teal-50 p-2 rounded-lg transition">
-                                    <input type="checkbox" name="sb_lokasi" value="PERPUSTAKAAN" class="w-4 h-4 accent-teal-600"> <span class="text-xs font-bold text-slate-700">PERPUSTAKAAN</span>
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer hover:bg-teal-50 p-2 rounded-lg transition">
-                                    <input type="checkbox" name="sb_lokasi" value="MAKMAL KOMPUTER" class="w-4 h-4 accent-teal-600"> <span class="text-xs font-bold text-slate-700">MAKMAL KOMPUTER</span>
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer hover:bg-teal-50 p-2 rounded-lg transition">
-                                    <input type="checkbox" name="sb_lokasi" value="LAIN-LAIN BILIK" class="w-4 h-4 accent-teal-600"> <span class="text-xs font-bold text-slate-700">LAIN-LAIN BILIK</span>
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer hover:bg-teal-50 p-2 rounded-lg transition col-span-1 sm:col-span-2 lg:col-span-3 border-t border-slate-100 pt-2 mt-1">
-                                    <input type="checkbox" name="sb_lokasi" value="TIDAK BERKENAAN" class="w-4 h-4 accent-red-500" onchange="document.querySelectorAll('input[name=sb_lokasi]:not([value=\'TIDAK BERKENAAN\'])').forEach(cb => { if(this.checked) cb.checked = false; })"> <span class="text-xs font-bold text-red-600 italic">TIDAK BERKENAAN</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
+                <div>
+                  <label for="sb_bil_fungsi" class="block text-xs font-bold text-teal-600 uppercase mb-1">BILANGAN SMART BOARD YANG BERFUNGSI *</label>
+                  <input type="number" id="sb_bil_fungsi" min="0" class="w-full min-h-[48px] p-3 rounded-xl border border-teal-200 focus:border-teal-500 outline-none font-bold text-slate-700" placeholder="Contoh: 1">
                 </div>
-                
-                <!-- SEKSYEN PGB -->
-                <div class="bg-purple-50 p-6 rounded-2xl border border-purple-100">
-                    <h3 class="text-sm font-bold text-purple-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-user-tie"></i> MAKLUMAT PENGARAH KV / PENGETUA / GURU BESAR (PGB)</h3>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-purple-500 uppercase mb-1">NAMA PENUH</label>
-                            <input type="text" id="pgbNama" class="w-full p-3 rounded-xl border border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none uppercase-input font-bold" oninput="this.value = this.value.toUpperCase()">
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-purple-500 uppercase mb-1">NO TELEFON</label>
-                                <input type="tel" id="pgbTel" class="w-full p-3 rounded-xl border border-purple-200 focus:border-purple-500 outline-none" oninput="autoFormatPhone(this)">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-purple-500 uppercase mb-1">EMEL RASMI</label>
-                                <input type="email" id="pgbEmel" class="w-full p-3 rounded-xl border border-purple-200 focus:border-purple-500 outline-none">
-                            </div>
-                        </div>
-                    </div>
-                </div>
+              </div>
 
-                <!-- SEKSYEN GPK PENTADBIRAN -->
-                <div class="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
-                    <h3 class="text-sm font-bold text-indigo-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-user-tag"></i> MAKLUMAT GPK PENTADBIRAN</h3>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-indigo-500 uppercase mb-1">NAMA PENUH</label>
-                            <input type="text" id="gpkNama" class="w-full p-3 rounded-xl border border-indigo-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none uppercase-input font-bold" oninput="this.value = this.value.toUpperCase()">
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-indigo-500 uppercase mb-1">NO TELEFON</label>
-                                <input type="tel" id="gpkTel" class="w-full p-3 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none" oninput="autoFormatPhone(this)">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-indigo-500 uppercase mb-1">EMEL RASMI</label>
-                                <input type="email" id="gpkEmel" class="w-full p-3 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none">
-                            </div>
-                        </div>
-                    </div>
+              <div>
+                <label class="block text-xs font-bold text-teal-600 uppercase mb-2">LOKASI PENEMPATAN SMART BOARD * (Boleh pilih &gt;1)</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 bg-white p-4 rounded-xl border border-teal-200 shadow-sm">
+                  <label class="min-h-[44px] flex items-center gap-2 cursor-pointer hover:bg-teal-50 p-2 rounded-lg transition">
+                    <input type="checkbox" name="sb_lokasi" value="DALAM KELAS" class="w-4 h-4 accent-teal-600"> <span class="text-xs font-bold text-slate-700">DALAM KELAS</span>
+                  </label>
+                  <label class="min-h-[44px] flex items-center gap-2 cursor-pointer hover:bg-teal-50 p-2 rounded-lg transition">
+                    <input type="checkbox" name="sb_lokasi" value="PERPUSTAKAAN" class="w-4 h-4 accent-teal-600"> <span class="text-xs font-bold text-slate-700">PERPUSTAKAAN</span>
+                  </label>
+                  <label class="min-h-[44px] flex items-center gap-2 cursor-pointer hover:bg-teal-50 p-2 rounded-lg transition">
+                    <input type="checkbox" name="sb_lokasi" value="MAKMAL KOMPUTER" class="w-4 h-4 accent-teal-600"> <span class="text-xs font-bold text-slate-700">MAKMAL KOMPUTER</span>
+                  </label>
+                  <label class="min-h-[44px] flex items-center gap-2 cursor-pointer hover:bg-teal-50 p-2 rounded-lg transition">
+                    <input type="checkbox" name="sb_lokasi" value="LAIN-LAIN BILIK" class="w-4 h-4 accent-teal-600"> <span class="text-xs font-bold text-slate-700">LAIN-LAIN BILIK</span>
+                  </label>
+                  <label class="min-h-[44px] flex items-center gap-2 cursor-pointer hover:bg-teal-50 p-2 rounded-lg transition col-span-1 sm:col-span-2 lg:col-span-3 border-t border-slate-100 pt-2 mt-1">
+                    <input type="checkbox" name="sb_lokasi" value="TIDAK BERKENAAN" class="w-4 h-4 accent-red-500" onchange="document.querySelectorAll('input[name=sb_lokasi]:not([value=\'TIDAK BERKENAAN\'])').forEach(function(cb) { if(this.checked) cb.checked = false; }, this)"> <span class="text-xs font-bold text-red-600 italic">TIDAK BERKENAAN</span>
+                  </label>
                 </div>
+              </div>
+            </div>
+          </div>
 
-                <div class="bg-blue-50 p-6 rounded-2xl border border-blue-100">
-                    <h3 class="text-sm font-bold text-blue-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-laptop-code"></i> MAKLUMAT GPICT</h3>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-blue-500 uppercase mb-1">NAMA PENUH</label>
-                            <input type="text" id="gpictNama" class="w-full p-3 rounded-xl border border-blue-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none uppercase-input font-bold" required oninput="this.value = this.value.toUpperCase()">
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-blue-500 uppercase mb-1">NO TELEFON</label>
-                                <input type="tel" id="gpictTel" class="w-full p-3 rounded-xl border border-blue-200 focus:border-blue-500 outline-none" required oninput="autoFormatPhone(this)">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-blue-500 uppercase mb-1">EMEL DELIMA</label>
-                                <input type="email" id="gpictEmel" class="w-full p-3 rounded-xl border border-blue-200 focus:border-blue-500 outline-none" required>
-                            </div>
-                        </div>
-                    </div>
+          <div class="bg-purple-50 p-6 rounded-2xl border border-purple-100">
+            <h3 class="text-sm font-bold text-purple-700 uppercase mb-4 flex items-center gap-2 break-words"><i class="fas fa-user-tie"></i> MAKLUMAT PENGARAH KV / PENGETUA / GURU BESAR (PGB)</h3>
+            <div class="space-y-4">
+              <div>
+                <label for="pgbNama" class="block text-xs font-bold text-purple-500 uppercase mb-1">NAMA PENUH</label>
+                <input type="text" id="pgbNama" class="w-full min-h-[48px] p-3 rounded-xl border border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none uppercase-input font-bold" oninput="this.value = this.value.toUpperCase()">
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label for="pgbTel" class="block text-xs font-bold text-purple-500 uppercase mb-1">NO TELEFON</label>
+                  <input type="tel" id="pgbTel" class="w-full min-h-[48px] p-3 rounded-xl border border-purple-200 focus:border-purple-500 outline-none" oninput="autoFormatPhone(this)">
                 </div>
-
-                <div class="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-sm font-bold text-emerald-700 uppercase flex items-center gap-2"><i class="fas fa-user-shield"></i> ADMIN DELIMa</h3>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="checkSama" onchange="salinData()" class="w-4 h-4 accent-emerald-500">
-                            <span class="text-xs font-bold text-emerald-600">SAMA?</span>
-                        </label>
-                    </div>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-emerald-500 uppercase mb-1">NAMA PENUH</label>
-                            <input type="text" id="adminNama" class="w-full p-3 rounded-xl border border-emerald-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none uppercase-input font-bold" required oninput="this.value = this.value.toUpperCase()">
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-bold text-emerald-500 uppercase mb-1">NO TELEFON</label>
-                                <input type="tel" id="adminTel" class="w-full p-3 rounded-xl border border-emerald-200 focus:border-emerald-500 outline-none" required oninput="autoFormatPhone(this)">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-emerald-500 uppercase mb-1">EMEL DELIMA</label>
-                                <input type="email" id="adminEmel" class="w-full p-3 rounded-xl border border-emerald-200 focus:border-emerald-500 outline-none" required>
-                            </div>
-                        </div>
-                    </div>
+                <div>
+                  <label for="pgbEmel" class="block text-xs font-bold text-purple-500 uppercase mb-1">EMEL RASMI</label>
+                  <input type="email" id="pgbEmel" class="w-full min-h-[48px] p-3 rounded-xl border border-purple-200 focus:border-purple-500 outline-none">
                 </div>
+              </div>
+            </div>
+          </div>
 
-                <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
-                    <i class="fas fa-save"></i> SIMPAN MAKLUMAT
-                </button>
-            </form>
-        </div>
+          <div class="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
+            <h3 class="text-sm font-bold text-indigo-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-user-tag"></i> MAKLUMAT GPK PENTADBIRAN</h3>
+            <div class="space-y-4">
+              <div>
+                <label for="gpkNama" class="block text-xs font-bold text-indigo-500 uppercase mb-1">NAMA PENUH</label>
+                <input type="text" id="gpkNama" class="w-full min-h-[48px] p-3 rounded-xl border border-indigo-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none uppercase-input font-bold" oninput="this.value = this.value.toUpperCase()">
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label for="gpkTel" class="block text-xs font-bold text-indigo-500 uppercase mb-1">NO TELEFON</label>
+                  <input type="tel" id="gpkTel" class="w-full min-h-[48px] p-3 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none" oninput="autoFormatPhone(this)">
+                </div>
+                <div>
+                  <label for="gpkEmel" class="block text-xs font-bold text-indigo-500 uppercase mb-1">EMEL RASMI</label>
+                  <input type="email" id="gpkEmel" class="w-full min-h-[48px] p-3 rounded-xl border border-indigo-200 focus:border-indigo-500 outline-none">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-blue-50 p-6 rounded-2xl border border-blue-100">
+            <h3 class="text-sm font-bold text-blue-700 uppercase mb-4 flex items-center gap-2"><i class="fas fa-laptop-code"></i> MAKLUMAT GPICT</h3>
+            <div class="space-y-4">
+              <div>
+                <label for="gpictNama" class="block text-xs font-bold text-blue-500 uppercase mb-1">NAMA PENUH</label>
+                <input type="text" id="gpictNama" class="w-full min-h-[48px] p-3 rounded-xl border border-blue-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none uppercase-input font-bold" required oninput="this.value = this.value.toUpperCase()">
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label for="gpictTel" class="block text-xs font-bold text-blue-500 uppercase mb-1">NO TELEFON</label>
+                  <input type="tel" id="gpictTel" class="w-full min-h-[48px] p-3 rounded-xl border border-blue-200 focus:border-blue-500 outline-none" required oninput="autoFormatPhone(this)">
+                </div>
+                <div>
+                  <label for="gpictEmel" class="block text-xs font-bold text-blue-500 uppercase mb-1">EMEL DELIMA</label>
+                  <input type="email" id="gpictEmel" class="w-full min-h-[48px] p-3 rounded-xl border border-blue-200 focus:border-blue-500 outline-none" required>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
+            <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+              <h3 class="text-sm font-bold text-emerald-700 uppercase flex items-center gap-2"><i class="fas fa-user-shield"></i> ADMIN DELIMa</h3>
+              <label class="min-h-[44px] flex items-center gap-2 cursor-pointer px-2">
+                <input type="checkbox" id="checkSama" onchange="salinData()" class="w-4 h-4 accent-emerald-500">
+                <span class="text-xs font-bold text-emerald-600">SAMA?</span>
+              </label>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <label for="adminNama" class="block text-xs font-bold text-emerald-500 uppercase mb-1">NAMA PENUH</label>
+                <input type="text" id="adminNama" class="w-full min-h-[48px] p-3 rounded-xl border border-emerald-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none uppercase-input font-bold" required oninput="this.value = this.value.toUpperCase()">
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label for="adminTel" class="block text-xs font-bold text-emerald-500 uppercase mb-1">NO TELEFON</label>
+                  <input type="tel" id="adminTel" class="w-full min-h-[48px] p-3 rounded-xl border border-emerald-200 focus:border-emerald-500 outline-none" required oninput="autoFormatPhone(this)">
+                </div>
+                <div>
+                  <label for="adminEmel" class="block text-xs font-bold text-emerald-500 uppercase mb-1">EMEL DELIMA</label>
+                  <input type="email" id="adminEmel" class="w-full min-h-[48px] p-3 rounded-xl border border-emerald-200 focus:border-emerald-500 outline-none" required>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="w-full min-h-[52px] bg-brand-600 hover:bg-brand-700 text-white font-bold py-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+            <i class="fas fa-save"></i> SIMPAN MAKLUMAT
+          </button>
+        </form>
+      </div>
     </div>
 
-    <!-- SEKSYEN ANALISA -->
     <div id="section-analisa" class="hidden animate-fade-up">
-        <div class="flex items-center mb-6">
-            <button onclick="showSection('menu', event)" class="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 mr-4 transition"><i class="fas fa-arrow-left"></i></button>
-            <h2 class="text-xl font-bold text-slate-800">Analisa Digital</h2>
-        </div>
+      <div class="flex items-center mb-6">
+        <button type="button" onclick="showSection('menu', event)" class="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 mr-4 transition shrink-0">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2 class="text-xl font-bold text-slate-800">Analisa Digital</h2>
+      </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div class="bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl p-6 text-white shadow-lg shadow-blue-500/20">
-                <p class="text-xs font-bold text-blue-200 uppercase mb-1">Skor DCS</p>
-                <h2 class="text-4xl font-black mb-2" id="valDcs">-</h2>
-                <span class="inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm" id="trendDcs">Memuatkan...</span>
-            </div>
-            <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-3xl p-6 text-white shadow-lg shadow-emerald-500/20">
-                <p class="text-xs font-bold text-emerald-200 uppercase mb-1">% Aktif DELIMa</p>
-                <h2 class="text-4xl font-black mb-2"><span id="valAktif">-</span>%</h2>
-                <span class="inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm">Tahun Semasa</span>
-            </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl p-6 text-white shadow-lg shadow-blue-500/20 min-w-0">
+          <p class="text-xs font-bold text-blue-200 uppercase mb-1">Skor DCS</p>
+          <h2 class="text-4xl font-black mb-2" id="valDcs">-</h2>
+          <span class="inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm" id="trendDcs">Memuatkan...</span>
         </div>
+        <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-3xl p-6 text-white shadow-lg shadow-emerald-500/20 min-w-0">
+          <p class="text-xs font-bold text-emerald-200 uppercase mb-1">% Aktif DELIMa</p>
+          <h2 class="text-4xl font-black mb-2"><span id="valAktif">-</span>%</h2>
+          <span class="inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm">Tahun Semasa</span>
+        </div>
+      </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <a href="https://app.powerbi.com/view?r=eyJrIjoiYjI5YjAzYTctNTc2Yy00ZjQzLWEyMTYtZWY3MGRkZDZlZGNlIiwidCI6ImU5N2QwMDA1LTcyZTQtNGM3YS1hOWMwLThmOWZkZWY1ZmY2OCIsImMiOjEwfQ%3D%3D&pageName=ReportSectionbf55b087db28044ada28" target="_blank" class="bg-white border-2 border-blue-100 hover:border-blue-500 text-blue-600 p-4 rounded-2xl font-bold text-sm text-center transition">
-                <i class="fas fa-globe mr-2"></i> Analisa Kebangsaan
-            </a>
-            <a href="https://app.powerbi.com/view?r=eyJrIjoiNzUyYzQ5ZTItZmU0Yi00Y2ZlLTg2OTMtYjYwOTk4NDRlYzA4IiwidCI6ImQ3M2UwNDFkLWE2MzAtNDg5NS05NmZlLWRiMGUxZTc0Y2Y5OCIsImMiOjEwfQ%3D%3D" target="_blank" class="bg-white border-2 border-red-100 hover:border-red-500 text-red-600 p-4 rounded-2xl font-bold text-sm text-center transition">
-                <i class="fas fa-chart-bar mr-2"></i> Analisa Penggunaan
-            </a>
-        </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <a href="https://app.powerbi.com/view?r=eyJrIjoiYjI5YjAzYTctNTc2Yy00ZjQzLWEyMTYtZWY3MGRkZDZlZGNlIiwidCI6ImU5N2QwMDA1LTcyZTQtNGM3YS1hOWMwLThmOWZkZWY1ZmY2OCIsImMiOjEwfQ%3D%3D&pageName=ReportSectionbf55b087db28044ada28" target="_blank" rel="noopener noreferrer" class="min-h-[48px] bg-white border-2 border-blue-100 hover:border-blue-500 text-blue-600 p-4 rounded-2xl font-bold text-sm text-center transition flex items-center justify-center">
+          <i class="fas fa-globe mr-2"></i> Analisa Kebangsaan
+        </a>
+        <a href="https://app.powerbi.com/view?r=eyJrIjoiNzUyYzQ5ZTItZmU0Yi00Y2ZlLTg2OTMtYjYwOTk4NDRlYzA4IiwidCI6ImQ3M2UwNDFkLWE2MzAtNDg5NS05NmZlLWRiMGUxZTc0Y2Y5OCIsImMiOjEwfQ%3D%3D" target="_blank" rel="noopener noreferrer" class="min-h-[48px] bg-white border-2 border-red-100 hover:border-red-500 text-red-600 p-4 rounded-2xl font-bold text-sm text-center transition flex items-center justify-center">
+          <i class="fas fa-chart-bar mr-2"></i> Analisa Penggunaan
+        </a>
+      </div>
 
-        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 mb-6">
-            <h3 class="text-sm font-bold text-slate-500 uppercase mb-4">Trend Pencapaian</h3>
-            <div class="relative h-64 w-full">
-                <canvas id="chartAnalisa"></canvas>
-            </div>
+      <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 mb-6 min-w-0">
+        <h3 class="text-sm font-bold text-slate-500 uppercase mb-4">Trend Pencapaian</h3>
+        <div class="relative h-64 w-full">
+          <canvas id="chartAnalisa"></canvas>
         </div>
+      </div>
 
-        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-            <table class="w-full text-sm text-left">
-                <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
-                    <tr><th class="px-6 py-3 font-bold">Tahun</th><th class="px-6 py-3 font-bold">Skor DCS</th><th class="px-6 py-3 font-bold">% Aktif</th></tr>
-                </thead>
-                <tbody id="tableAnalisaBody" class="divide-y divide-slate-100"><tr><td colspan="3" class="p-6 text-center text-slate-400">Memuatkan data...</td></tr></tbody>
-            </table>
+      <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left">
+            <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
+              <tr><th class="px-6 py-3 font-bold">Tahun</th><th class="px-6 py-3 font-bold">Skor DCS</th><th class="px-6 py-3 font-bold">% Aktif</th></tr>
+            </thead>
+            <tbody id="tableAnalisaBody" class="divide-y divide-slate-100"><tr><td colspan="3" class="p-6 text-center text-slate-400">Memuatkan data...</td></tr></tbody>
+          </table>
         </div>
+      </div>
     </div>
 
-    <!-- SEKSYEN PENCAPAIAN -->
     <div id="section-pencapaian" class="hidden animate-fade-up">
-        <div class="flex items-center mb-6">
-            <button onclick="showSection('menu', event)" class="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 mr-4 transition"><i class="fas fa-arrow-left"></i></button>
-            <h2 class="text-xl font-bold text-slate-800">Rekod Pencapaian</h2>
-        </div>
+      <div class="flex items-center mb-6">
+        <button type="button" onclick="showSection('menu', event)" class="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 mr-4 transition shrink-0">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2 class="text-xl font-bold text-slate-800">Rekod Pencapaian</h2>
+      </div>
 
-        <div class="flex bg-white p-1 rounded-xl shadow-sm border border-slate-100 mb-6" id="pencapaianTabs">
-            <button id="tab-p-murid" class="flex-1 py-2 rounded-lg text-xs font-bold bg-teal-600 text-white shadow-sm transition" onclick="setPencapaianType('MURID')">MURID</button>
-            <button id="tab-p-guru" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 transition" onclick="setPencapaianType('GURU')">GURU</button>
-            <button id="tab-p-sekolah" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 transition" onclick="setPencapaianType('SEKOLAH')">SEKOLAH</button>
-        </div>
+      <div class="flex bg-white p-1.5 rounded-xl shadow-sm border border-slate-100 mb-6 gap-1" id="pencapaianTabs">
+        <button type="button" id="tab-p-murid" class="flex-1 min-h-[44px] py-2 rounded-lg text-xs font-bold bg-teal-600 text-white shadow-sm transition" onclick="setPencapaianType('MURID')">MURID</button>
+        <button type="button" id="tab-p-guru" class="flex-1 min-h-[44px] py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 transition" onclick="setPencapaianType('GURU')">GURU</button>
+        <button type="button" id="tab-p-sekolah" class="flex-1 min-h-[44px] py-2 rounded-lg text-xs font-bold text-slate-500 hover:bg-slate-50 transition" onclick="setPencapaianType('SEKOLAH')">SEKOLAH</button>
+      </div>
 
-        <div id="wrapperJenisRekod" class="flex justify-center gap-4 mb-6 hidden">
-            <label class="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="radioJenis" id="radioPertandingan" class="accent-teal-600" checked onchange="toggleJenisPencapaian()">
-                <span class="text-xs font-bold">PERTANDINGAN</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="radioJenis" id="radioPensijilan" class="accent-teal-600" onchange="toggleJenisPencapaian()">
-                <span class="text-xs font-bold">PENSIJILAN</span>
-            </label>
-        </div>
+      <div id="wrapperJenisRekod" class="flex justify-center gap-6 mb-6 hidden">
+        <label class="min-h-[44px] flex items-center gap-2 cursor-pointer">
+          <input type="radio" name="radioJenis" id="radioPertandingan" class="accent-teal-600 w-4 h-4" checked onchange="toggleJenisPencapaian()">
+          <span class="text-xs font-bold">PERTANDINGAN</span>
+        </label>
+        <label class="min-h-[44px] flex items-center gap-2 cursor-pointer">
+          <input type="radio" name="radioJenis" id="radioPensijilan" class="accent-teal-600 w-4 h-4" onchange="toggleJenisPencapaian()">
+          <span class="text-xs font-bold">PENSIJILAN</span>
+        </label>
+      </div>
 
-        <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-6 md:p-8 mb-8 border-t-4 border-t-teal-500">
-            <h3 class="text-sm font-bold text-teal-700 uppercase mb-6 flex items-center gap-2"><i class="fas fa-plus-circle"></i> ISI MAKLUMAT PENCAPAIAN</h3>
-            <form id="formPencapaian" onsubmit="event.preventDefault(); simpanPencapaian();" class="space-y-5">
-                <input type="hidden" id="pencapaianKategori" value="MURID">
-                <input type="hidden" id="pInputJenisRekod" value="PERTANDINGAN">
+      <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-6 md:p-8 mb-8 border-t-4 border-t-teal-500 min-w-0">
+        <h3 class="text-sm font-bold text-teal-700 uppercase mb-6 flex items-center gap-2"><i class="fas fa-plus-circle"></i> ISI MAKLUMAT PENCAPAIAN</h3>
+        <form id="formPencapaian" onsubmit="event.preventDefault(); simpanPencapaian();" class="space-y-5">
+          <input type="hidden" id="pencapaianKategori" value="MURID">
+          <input type="hidden" id="pInputJenisRekod" value="PERTANDINGAN">
 
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="labelNamaPeserta">NAMA MURID / KUMPULAN</label>
-                    <input type="text" id="pInputNama" class="w-full p-3 rounded-xl border border-slate-300 focus:border-teal-500 outline-none uppercase-input font-bold" required oninput="this.value = this.value.toUpperCase()">
-                </div>
+          <div>
+            <label for="pInputNama" class="block text-xs font-bold text-slate-500 uppercase mb-1" id="labelNamaPeserta">NAMA MURID / KUMPULAN</label>
+            <input type="text" id="pInputNama" class="w-full min-h-[48px] p-3 rounded-xl border border-slate-300 focus:border-teal-500 outline-none uppercase-input font-bold" required oninput="this.value = this.value.toUpperCase()">
+          </div>
 
-                <div id="divInputJawatan" class="hidden">
-                    <label class="block text-xs font-bold text-amber-600 uppercase mb-1">JAWATAN (WAJIB)</label>
-                    <select id="pInputJawatan" class="w-full p-3 rounded-xl bg-amber-50 border border-amber-200 text-slate-700 font-bold outline-none">
-                        <!-- Populated by JS -->
-                    </select>
-                </div>
+          <div id="divInputJawatan" class="hidden">
+            <label for="pInputJawatan" class="block text-xs font-bold text-amber-600 uppercase mb-1">JAWATAN (WAJIB)</label>
+            <select id="pInputJawatan" class="w-full min-h-[48px] p-3 rounded-xl bg-amber-50 border border-amber-200 text-slate-700 font-bold outline-none">
+            </select>
+          </div>
 
-                <div id="divInputPenyedia" class="hidden">
-                    <label class="block text-xs font-bold text-amber-600 uppercase mb-1">PENYEDIA / JENAMA</label>
-                    <select id="pInputPenyedia" class="w-full p-3 rounded-xl bg-white border border-slate-300 text-slate-700 font-bold outline-none">
-                        <!-- Populated by JS -->
-                    </select>
-                </div>
+          <div id="divInputPenyedia" class="hidden">
+            <label for="pInputPenyedia" class="block text-xs font-bold text-amber-600 uppercase mb-1">PENYEDIA / JENAMA</label>
+            <select id="pInputPenyedia" class="w-full min-h-[48px] p-3 rounded-xl bg-white border border-slate-300 text-slate-700 font-bold outline-none">
+            </select>
+          </div>
 
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblProgram">NAMA PERTANDINGAN</label>
-                    <input type="text" id="pInputProgram" class="w-full p-3 rounded-xl border border-slate-300 focus:border-teal-500 outline-none uppercase-input" required oninput="this.value = this.value.toUpperCase()">
-                </div>
+          <div>
+            <label for="pInputProgram" class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblProgram">NAMA PERTANDINGAN</label>
+            <input type="text" id="pInputProgram" class="w-full min-h-[48px] p-3 rounded-xl border border-slate-300 focus:border-teal-500 outline-none uppercase-input" required oninput="this.value = this.value.toUpperCase()">
+          </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div id="divColPeringkat">
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PERINGKAT TERTINGGI</label>
-                        <select id="pInputPeringkat" class="w-full p-3 rounded-xl bg-white border border-slate-300 outline-none">
-                            <!-- Populated by JS -->
-                        </select>
-                    </div>
-                    <div id="divColTahun">
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">TAHUN ACARA</label>
-                        <div class="relative">
-                            <select id="pInputTahun" class="w-full p-3 rounded-xl border border-slate-300 font-bold appearance-none bg-white outline-none" required>
-                                <!-- Populated by JS -->
-                            </select>
-                            <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblPencapaian">KEPUTUSAN / PENCAPAIAN</label>
-                    <input type="text" id="pInputPencapaian" class="w-full p-3 rounded-xl border border-slate-300 focus:border-teal-500 outline-none uppercase-input" required oninput="this.value = this.value.toUpperCase()">
-                </div>
-
-                <!-- MUAT NAIK FAIL BAHARU -->
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">MUAT NAIK BUKTI (PDF/GAMBAR)</label>
-                    <div class="relative">
-                        <i class="fas fa-upload absolute left-4 top-1/2 -translate-y-1/2 text-teal-400 z-10 pointer-events-none"></i>
-                        <input type="file" id="pInputFile" accept=".pdf, image/jpeg, image/png" class="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-300 focus:border-teal-500 outline-none text-teal-700 font-medium bg-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 transition-all cursor-pointer shadow-sm" required>
-                    </div>
-                    <p class="text-[9px] text-teal-600 mt-2 font-bold uppercase tracking-wider ml-1">Maksimum saiz fail: 5MB</p>
-                </div>
-
-                <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
-                    <i class="fas fa-save"></i> SIMPAN REKOD
-                </button>
-            </form>
-        </div>
-
-        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                <h3 class="text-xs font-bold text-slate-500 uppercase">SENARAI REKOD TERDAHULU</h3>
-                <button onclick="loadPencapaianSekolah()" class="text-xs bg-white border border-slate-200 px-3 py-1 rounded hover:bg-slate-50 transition"><i class="fas fa-sync-alt"></i></button>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div id="divColPeringkat">
+              <label for="pInputPeringkat" class="block text-xs font-bold text-slate-500 uppercase mb-1">PERINGKAT TERTINGGI</label>
+              <select id="pInputPeringkat" class="w-full min-h-[48px] p-3 rounded-xl bg-white border border-slate-300 outline-none">
+              </select>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
-                        <tr><th class="px-6 py-3 font-bold text-center">KATEGORI</th><th class="px-6 py-3 font-bold">BUTIRAN PERTANDINGAN</th><th class="px-6 py-3 font-bold text-center">TINDAKAN</th></tr>
-                    </thead>
-                    <tbody id="tbodyRekodPencapaian" class="divide-y divide-slate-100"><tr><td colspan="3" class="p-6 text-center text-slate-400">Memuatkan...</td></tr></tbody>
-                </table>
+            <div id="divColTahun">
+              <label for="pInputTahun" class="block text-xs font-bold text-slate-500 uppercase mb-1">TAHUN ACARA</label>
+              <div class="relative">
+                <select id="pInputTahun" class="w-full min-h-[48px] p-3 rounded-xl border border-slate-300 font-bold appearance-none bg-white outline-none" required>
+                </select>
+                <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+              </div>
             </div>
+          </div>
+
+          <div>
+            <label for="pInputPencapaian" class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblPencapaian">KEPUTUSAN / PENCAPAIAN</label>
+            <input type="text" id="pInputPencapaian" class="w-full min-h-[48px] p-3 rounded-xl border border-slate-300 focus:border-teal-500 outline-none uppercase-input" required oninput="this.value = this.value.toUpperCase()">
+          </div>
+
+          <div>
+            <label for="pInputFile" class="block text-xs font-bold text-slate-500 uppercase mb-1">MUAT NAIK BUKTI (PDF/GAMBAR)</label>
+            <div class="relative">
+              <i class="fas fa-upload absolute left-4 top-1/2 -translate-y-1/2 text-teal-400 z-10 pointer-events-none"></i>
+              <input type="file" id="pInputFile" accept=".pdf, image/jpeg, image/png" class="w-full min-h-[48px] pl-12 pr-4 py-3 rounded-xl border border-slate-300 focus:border-teal-500 outline-none text-teal-700 font-medium bg-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 transition-all cursor-pointer shadow-sm" required>
+            </div>
+            <p class="text-[9px] text-teal-600 mt-2 font-bold uppercase tracking-wider ml-1">Maksimum saiz fail: 5MB</p>
+          </div>
+
+          <button type="submit" class="w-full min-h-[52px] bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+            <i class="fas fa-save"></i> SIMPAN REKOD
+          </button>
+        </form>
+      </div>
+
+      <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center gap-2">
+          <h3 class="text-xs font-bold text-slate-500 uppercase">SENARAI REKOD TERDAHULU</h3>
+          <button type="button" onclick="loadPencapaianSekolah()" class="min-w-[44px] min-h-[44px] text-xs bg-white border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition inline-flex items-center justify-center"><i class="fas fa-sync-alt"></i></button>
         </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left">
+            <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
+              <tr><th class="px-6 py-3 font-bold text-center">KATEGORI</th><th class="px-6 py-3 font-bold">BUTIRAN PERTANDINGAN</th><th class="px-6 py-3 font-bold text-center">TINDAKAN</th></tr>
+            </thead>
+            <tbody id="tbodyRekodPencapaian" class="divide-y divide-slate-100"><tr><td colspan="3" class="p-6 text-center text-slate-400">Memuatkan...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
 
     </div>
 
-    <!-- SEKSYEN LIBAT URUS -->
     <div id="section-libat-urus" class="hidden animate-fade-up">
-        <div class="flex items-center mb-6">
-            <button onclick="showSection('menu', event)" class="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 mr-4 transition"><i class="fas fa-arrow-left"></i></button>
-            <h2 class="text-xl font-bold text-slate-800">Laporan Libat Urus DELIMa</h2>
-        </div>
+      <div class="flex items-center mb-6">
+        <button type="button" onclick="showSection('menu', event)" class="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 mr-4 transition shrink-0">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <h2 class="text-xl font-bold text-slate-800">Laporan Libat Urus DELIMa</h2>
+      </div>
 
-        <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-6 md:p-8 mb-8 border-t-4 border-t-orange-500">
-            <h3 class="text-sm font-bold text-orange-700 uppercase mb-6 flex items-center gap-2"><i class="fas fa-file-signature"></i> HANTAR LAPORAN BAHARU</h3>
-            <form id="formLibatUrus" onsubmit="event.preventDefault(); window.submitLibatUrus();" class="space-y-5">
-                
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">KATEGORI SASARAN (LIBAT URUS BERSAMA)</label>
-                    <select id="luKategori" class="w-full p-3 rounded-xl border border-slate-300 focus:border-orange-500 outline-none font-bold bg-white" required>
-                        <option value="" disabled selected>PILIH KATEGORI</option>
-                        <option value="GURU">GURU</option>
-                        <option value="MURID">MURID</option>
-                        <option value="IBU-BAPA (PIBG & PIBKS)">IBU-BAPA (PIBG & PIBKS)</option>
-                    </select>
-                </div>
+      <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-6 md:p-8 mb-8 border-t-4 border-t-orange-500 min-w-0">
+        <h3 class="text-sm font-bold text-orange-700 uppercase mb-6 flex items-center gap-2"><i class="fas fa-file-signature"></i> HANTAR LAPORAN BAHARU</h3>
+        <form id="formLibatUrus" onsubmit="event.preventDefault(); window.submitLibatUrus();" class="space-y-5">
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">TARIKH LAKSANA</label>
-                        <input type="date" id="luTarikh" class="w-full p-3 rounded-xl border border-slate-300 focus:border-orange-500 outline-none font-bold text-slate-700" required>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">JUMLAH PESERTA</label>
-                        <input type="number" id="luPeserta" min="1" class="w-full p-3 rounded-xl border border-slate-300 focus:border-orange-500 outline-none font-bold text-slate-700" required>
-                    </div>
-                </div>
+          <div>
+            <label for="luKategori" class="block text-xs font-bold text-slate-500 uppercase mb-1">KATEGORI SASARAN (LIBAT URUS BERSAMA)</label>
+            <select id="luKategori" class="w-full min-h-[48px] p-3 rounded-xl border border-slate-300 focus:border-orange-500 outline-none font-bold bg-white" required>
+              <option value="" disabled selected>PILIH KATEGORI</option>
+              <option value="GURU">GURU</option>
+              <option value="MURID">MURID</option>
+              <option value="IBU-BAPA (PIBG & PIBKS)">IBU-BAPA (PIBG &amp; PIBKS)</option>
+            </select>
+          </div>
 
-                <div class="mb-2">
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">MOD PELAKSANAAN</label>
-                    <div class="grid grid-cols-2 gap-4">
-                        <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-orange-50 transition">
-                            <input type="radio" name="luModPelaksanaan" value="BERSEMUKA" class="accent-orange-600" checked onchange="toggleModPelaksanaan('BERSEMUKA')">
-                            <span class="text-xs font-bold text-slate-700">BERSEMUKA</span>
-                        </label>
-                        <label class="flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-orange-50 transition">
-                            <input type="radio" name="luModPelaksanaan" value="DALAM TALIAN" class="accent-orange-600" onchange="toggleModPelaksanaan('DALAM TALIAN')">
-                            <span class="text-xs font-bold text-slate-700">DALAM TALIAN</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div>
-                    <label id="lblLuTempat" class="block text-xs font-bold text-slate-500 uppercase mb-1">TEMPAT</label>
-                    <input type="text" id="luTempat" class="w-full p-3 rounded-xl border border-slate-300 focus:border-orange-500 outline-none uppercase-input font-bold" required oninput="this.value = this.value.toUpperCase()">
-                </div>
-
-                <script>
-                    function toggleModPelaksanaan(mod) {
-                        const lbl = document.getElementById('lblLuTempat');
-                        const input = document.getElementById('luTempat');
-                        input.value = ''; 
-                        if(mod === 'BERSEMUKA') {
-                            lbl.innerText = 'TEMPAT';
-                            input.setAttribute('oninput', 'this.value = this.value.toUpperCase()');
-                            input.classList.add('uppercase-input');
-                        } else {
-                            lbl.innerText = 'PAUTAN GOOGLE MEET / SLIDE PERKONGSIAN';
-                            input.setAttribute('oninput', 'this.value = this.value.toLowerCase()');
-                            input.classList.remove('uppercase-input');
-                        }
-                    }
-                </script>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">MUAT NAIK ONE-PAGE REPORT (PDF/GAMBAR)</label>
-                    <div class="relative">
-                        <i class="fas fa-upload absolute left-4 top-1/2 -translate-y-1/2 text-orange-400 z-10 pointer-events-none"></i>
-                        <input type="file" id="luFile" accept=".pdf, image/jpeg, image/png" class="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-300 focus:border-orange-500 outline-none text-orange-700 font-medium bg-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 transition-all cursor-pointer shadow-sm" required>
-                    </div>
-                    <p class="text-[9px] text-orange-600 mt-2 font-bold uppercase tracking-wider ml-1">Maksimum saiz fail: 5MB</p>
-                </div>
-
-                <button type="submit" id="btnSubmitLU" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
-                    <i class="fas fa-paper-plane"></i> HANTAR LAPORAN
-                </button>
-            </form>
-        </div>
-
-        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                <h3 class="text-xs font-bold text-slate-500 uppercase">SEJARAH LAPORAN SEKOLAH</h3>
-                <button onclick="window.loadLibatUrusSekolah()" class="text-xs bg-white border border-slate-200 px-3 py-1 rounded hover:bg-slate-50 transition"><i class="fas fa-sync-alt"></i></button>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="luTarikh" class="block text-xs font-bold text-slate-500 uppercase mb-1">TARIKH LAKSANA</label>
+              <input type="date" id="luTarikh" class="w-full min-h-[48px] p-3 rounded-xl border border-slate-300 focus:border-orange-500 outline-none font-bold text-slate-700" required>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
-                        <tr><th class="px-6 py-3 font-bold">BUTIRAN PELAKSANAAN</th><th class="px-6 py-3 font-bold text-center">STATISTIK</th><th class="px-6 py-3 font-bold text-center">TINDAKAN</th></tr>
-                    </thead>
-                    <tbody id="tbodyLibatUrus" class="divide-y divide-slate-100"><tr><td colspan="3" class="p-6 text-center text-slate-400">Memuatkan...</td></tr></tbody>
-                </table>
+            <div>
+              <label for="luPeserta" class="block text-xs font-bold text-slate-500 uppercase mb-1">JUMLAH PESERTA</label>
+              <input type="number" id="luPeserta" min="1" class="w-full min-h-[48px] p-3 rounded-xl border border-slate-300 focus:border-orange-500 outline-none font-bold text-slate-700" required>
             </div>
+          </div>
+
+          <div class="mb-2">
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">MOD PELAKSANAAN</label>
+            <div class="grid grid-cols-2 gap-4">
+              <label class="min-h-[44px] flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-orange-50 transition">
+                <input type="radio" name="luModPelaksanaan" value="BERSEMUKA" class="accent-orange-600 w-4 h-4" checked onchange="toggleModPelaksanaan('BERSEMUKA')">
+                <span class="text-xs font-bold text-slate-700">BERSEMUKA</span>
+              </label>
+              <label class="min-h-[44px] flex items-center gap-2 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-orange-50 transition">
+                <input type="radio" name="luModPelaksanaan" value="DALAM TALIAN" class="accent-orange-600 w-4 h-4" onchange="toggleModPelaksanaan('DALAM TALIAN')">
+                <span class="text-xs font-bold text-slate-700">DALAM TALIAN</span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label for="luTempat" id="lblLuTempat" class="block text-xs font-bold text-slate-500 uppercase mb-1">TEMPAT</label>
+            <input type="text" id="luTempat" class="w-full min-h-[48px] p-3 rounded-xl border border-slate-300 focus:border-orange-500 outline-none uppercase-input font-bold" required oninput="this.value = this.value.toUpperCase()">
+          </div>
+
+          <script>
+            function toggleModPelaksanaan(mod) {
+              const lbl = document.getElementById('lblLuTempat');
+              const input = document.getElementById('luTempat');
+              if (!lbl || !input) return;
+              input.value = '';
+              if (mod === 'BERSEMUKA') {
+                lbl.textContent = 'TEMPAT';
+                input.setAttribute('oninput', 'this.value = this.value.toUpperCase()');
+                input.classList.add('uppercase-input');
+              } else {
+                lbl.textContent = 'PAUTAN GOOGLE MEET / SLIDE PERKONGSIAN';
+                input.setAttribute('oninput', 'this.value = this.value.toLowerCase()');
+                input.classList.remove('uppercase-input');
+              }
+            }
+          </script>
+
+          <div>
+            <label for="luFile" class="block text-xs font-bold text-slate-500 uppercase mb-1">MUAT NAIK ONE-PAGE REPORT (PDF/GAMBAR)</label>
+            <div class="relative">
+              <i class="fas fa-upload absolute left-4 top-1/2 -translate-y-1/2 text-orange-400 z-10 pointer-events-none"></i>
+              <input type="file" id="luFile" accept=".pdf, image/jpeg, image/png" class="w-full min-h-[48px] pl-12 pr-4 py-3 rounded-xl border border-slate-300 focus:border-orange-500 outline-none text-orange-700 font-medium bg-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 transition-all cursor-pointer shadow-sm" required>
+            </div>
+            <p class="text-[9px] text-orange-600 mt-2 font-bold uppercase tracking-wider ml-1">Maksimum saiz fail: 5MB</p>
+          </div>
+
+          <button type="submit" id="btnSubmitLU" class="w-full min-h-[52px] bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+            <i class="fas fa-paper-plane"></i> HANTAR LAPORAN
+          </button>
+        </form>
+      </div>
+
+      <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center gap-2">
+          <h3 class="text-xs font-bold text-slate-500 uppercase">SEJARAH LAPORAN SEKOLAH</h3>
+          <button type="button" onclick="window.loadLibatUrusSekolah()" class="min-w-[44px] min-h-[44px] text-xs bg-white border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition inline-flex items-center justify-center"><i class="fas fa-sync-alt"></i></button>
         </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left">
+            <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
+              <tr><th class="px-6 py-3 font-bold">BUTIRAN PELAKSANAAN</th><th class="px-6 py-3 font-bold text-center">STATISTIK</th><th class="px-6 py-3 font-bold text-center">TINDAKAN</th></tr>
+            </thead>
+            <tbody id="tbodyLibatUrus" class="divide-y divide-slate-100"><tr><td colspan="3" class="p-6 text-center text-slate-400">Memuatkan...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
-    <!-- MODAL EDIT PENYERTAAN -->
     <div id="modalEditPencapaianUser" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4">
       <div class="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-          <div class="bg-teal-600 p-4 flex justify-between items-center text-white sticky top-0 z-10">
-              <h3 class="font-bold text-sm">Kemaskini Rekod</h3>
-              <button onclick="document.getElementById('modalEditPencapaianUser').classList.add('hidden')" class="hover:bg-teal-700 rounded p-1 text-white">&times;</button>
-          </div>
-          <div class="p-6">
-              <form id="formEditPencapaianUser" onsubmit="event.preventDefault(); updatePencapaianUser();" class="space-y-4">
-                  <input type="hidden" id="editUserId">
-                  
-                  <div class="flex justify-center gap-4 mb-4">
-                      <label class="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name="editRadioJenisUser" id="editRadioPertandinganUser" value="PERTANDINGAN" onchange="toggleEditUserJenis()" class="accent-teal-600">
-                          <span class="text-xs font-bold">PERTANDINGAN</span>
-                      </label>
-                      <label class="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name="editRadioJenisUser" id="editRadioPensijilanUser" value="PENSIJILAN" onchange="toggleEditUserJenis()" class="accent-teal-600">
-                          <span class="text-xs font-bold">PENSIJILAN</span>
-                      </label>
-                  </div>
+        <div class="bg-teal-600 p-4 flex justify-between items-center text-white sticky top-0 z-10">
+          <h3 class="font-bold text-sm">Kemaskini Rekod</h3>
+          <button type="button" onclick="document.getElementById('modalEditPencapaianUser').classList.add('hidden')" class="min-w-[44px] min-h-[44px] hover:bg-teal-700 rounded p-1 text-white flex items-center justify-center">&times;</button>
+        </div>
+        <div class="p-6">
+          <form id="formEditPencapaianUser" onsubmit="event.preventDefault(); updatePencapaianUser();" class="space-y-4">
+            <input type="hidden" id="editUserId">
 
-                  <!-- Nama Peserta -->
-                  <div>
-                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1">NAMA PESERTA / SEKOLAH</label>
-                      <input type="text" id="editUserNama" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()" required>
-                  </div>
-                  
-                  <!-- Jawatan -->
-                  <div id="editUserDivJawatan" class="hidden">
-                      <label class="block text-xs font-bold text-amber-600 uppercase mb-1">JAWATAN (WAJIB)</label>
-                      <select id="editUserJawatan" class="w-full p-3 border border-amber-300 bg-amber-50 rounded-lg text-sm font-bold">
-                          <!-- Populated by JS -->
-                      </select>
-                  </div>
+            <div class="flex justify-center gap-6 mb-4">
+              <label class="min-h-[44px] flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="editRadioJenisUser" id="editRadioPertandinganUser" value="PERTANDINGAN" onchange="toggleEditUserJenis()" class="accent-teal-600 w-4 h-4">
+                <span class="text-xs font-bold">PERTANDINGAN</span>
+              </label>
+              <label class="min-h-[44px] flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="editRadioJenisUser" id="editRadioPensijilanUser" value="PENSIJILAN" onchange="toggleEditUserJenis()" class="accent-teal-600 w-4 h-4">
+                <span class="text-xs font-bold">PENSIJILAN</span>
+              </label>
+            </div>
 
-                  <!-- Penyedia -->
-                  <div id="editUserDivPenyedia" class="hidden">
-                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PENYEDIA / JENAMA</label>
-                      <select id="editUserPenyedia" class="w-full p-3 border border-slate-300 rounded-lg text-sm">
-                          <!-- Populated by JS -->
-                      </select>
-                  </div>
+            <div>
+              <label for="editUserNama" class="block text-xs font-bold text-slate-500 uppercase mb-1">NAMA PESERTA / SEKOLAH</label>
+              <input type="text" id="editUserNama" class="w-full min-h-[48px] p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()" required>
+            </div>
 
-                  <!-- Program -->
-                  <div>
-                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblEditUserProgram">NAMA PROGRAM</label>
-                      <input type="text" id="editUserProgram" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()" required>
-                  </div>
-                  
-                  <!-- Peringkat & Tahun -->
-                  <div class="grid grid-cols-2 gap-4">
-                      <div id="editUserColPeringkat">
-                          <label class="block text-xs font-bold text-slate-500 uppercase mb-1">PERINGKAT</label>
-                          <select id="editUserPeringkat" class="w-full p-3 border border-slate-300 rounded-lg text-sm">
-                              <!-- Populated by JS -->
-                          </select>
-                      </div>
-                      <div id="editUserColTahun">
-                          <label class="block text-xs font-bold text-slate-500 uppercase mb-1">TAHUN</label>
-                          <div class="relative">
-                              <select id="editUserTahun" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold appearance-none bg-white outline-none" required>
-                                  <!-- Populated by JS -->
-                              </select>
-                              <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
-                          </div>
-                      </div>
-                  </div>
+            <div id="editUserDivJawatan" class="hidden">
+              <label for="editUserJawatan" class="block text-xs font-bold text-amber-600 uppercase mb-1">JAWATAN (WAJIB)</label>
+              <select id="editUserJawatan" class="w-full min-h-[48px] p-3 border border-amber-300 bg-amber-50 rounded-lg text-sm font-bold">
+              </select>
+            </div>
 
-                  <!-- Pencapaian -->
-                  <div>
-                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblEditUserPencapaian">KEPUTUSAN / PENCAPAIAN</label>
-                      <input type="text" id="editUserPencapaian" class="w-full p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()" required>
-                  </div>
+            <div id="editUserDivPenyedia" class="hidden">
+              <label for="editUserPenyedia" class="block text-xs font-bold text-slate-500 uppercase mb-1">PENYEDIA / JENAMA</label>
+              <select id="editUserPenyedia" class="w-full min-h-[48px] p-3 border border-slate-300 rounded-lg text-sm">
+              </select>
+            </div>
 
-                  <!-- EDIT: RUANG FAIL HIBRID -->
-                  <div>
-                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1">MUAT NAIK BUKTI BAHARU (PILIHAN)</label>
-                      <div class="relative mb-2">
-                          <i class="fas fa-upload absolute left-4 top-1/2 -translate-y-1/2 text-teal-400 z-10 pointer-events-none"></i>
-                          <input type="file" id="editUserFile" accept=".pdf, image/jpeg, image/png" class="w-full pl-12 pr-4 py-3 border border-slate-300 rounded-lg text-sm text-teal-700 font-medium file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 transition-all cursor-pointer bg-white">
-                      </div>
-                      <div class="flex items-center justify-between">
-                          <p class="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Biarkan kosong untuk kekalkan fail semasa.</p>
-                          <a id="currentProofLink" href="#" target="_blank" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2 py-1 rounded border border-blue-200 transition"><i class="fas fa-external-link-alt"></i> Lihat Fail Semasa</a>
-                      </div>
-                  </div>
+            <div>
+              <label for="editUserProgram" class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblEditUserProgram">NAMA PROGRAM</label>
+              <input type="text" id="editUserProgram" class="w-full min-h-[48px] p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()" required>
+            </div>
 
-                  <button type="submit" class="w-full mt-4 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl shadow transition">SIMPAN PERUBAHAN</button>
-              </form>
-          </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div id="editUserColPeringkat">
+                <label for="editUserPeringkat" class="block text-xs font-bold text-slate-500 uppercase mb-1">PERINGKAT</label>
+                <select id="editUserPeringkat" class="w-full min-h-[48px] p-3 border border-slate-300 rounded-lg text-sm">
+                </select>
+              </div>
+              <div id="editUserColTahun">
+                <label for="editUserTahun" class="block text-xs font-bold text-slate-500 uppercase mb-1">TAHUN</label>
+                <div class="relative">
+                  <select id="editUserTahun" class="w-full min-h-[48px] p-3 border border-slate-300 rounded-lg text-sm font-bold appearance-none bg-white outline-none" required>
+                  </select>
+                  <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"></i>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label for="editUserPencapaian" class="block text-xs font-bold text-slate-500 uppercase mb-1" id="lblEditUserPencapaian">KEPUTUSAN / PENCAPAIAN</label>
+              <input type="text" id="editUserPencapaian" class="w-full min-h-[48px] p-3 border border-slate-300 rounded-lg text-sm font-bold uppercase" oninput="this.value = this.value.toUpperCase()" required>
+            </div>
+
+            <div>
+              <label for="editUserFile" class="block text-xs font-bold text-slate-500 uppercase mb-1">MUAT NAIK BUKTI BAHARU (PILIHAN)</label>
+              <div class="relative mb-2">
+                <i class="fas fa-upload absolute left-4 top-1/2 -translate-y-1/2 text-teal-400 z-10 pointer-events-none"></i>
+                <input type="file" id="editUserFile" accept=".pdf, image/jpeg, image/png" class="w-full min-h-[48px] pl-12 pr-4 py-3 border border-slate-300 rounded-lg text-sm text-teal-700 font-medium file:mr-4 file:py-1.5 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 transition-all cursor-pointer bg-white">
+              </div>
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <p class="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Biarkan kosong untuk kekalkan fail semasa.</p>
+                <a id="currentProofLink" href="#" target="_blank" rel="noopener noreferrer" class="min-h-[36px] text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2.5 py-1 rounded border border-blue-200 transition"><i class="fas fa-external-link-alt"></i> Lihat Fail Semasa</a>
+              </div>
+            </div>
+
+            <button type="submit" class="w-full min-h-[48px] mt-4 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl shadow transition">SIMPAN PERUBAHAN</button>
+          </form>
+        </div>
       </div>
-  </div>
+    </div>
 
-  <!-- MODULAR JS -->
-  <script type="module" src="js/user.js"></script>
-  
+  </main>
+
+  <script type="module" src="js/user.js?v=2026.1"></script>
+
   <script>
-      // SCRIPT UI UNTUK SMART BOARD
-      window.toggleSmartboard = function() {
-          const adaRadio = document.querySelector('input[name="sb_ada"]:checked');
-          const ada = adaRadio ? adaRadio.value : 'TIDAK';
-          const container = document.getElementById('sbDetailsContainer');
-          if (!container) return;
-          
-          if (ada === 'YA') {
-              container.classList.remove('hidden');
-              document.getElementById('sb_kaedah').required = true;
-              document.getElementById('sb_bil_semua').required = true;
-              document.getElementById('sb_bil_fungsi').required = true;
-          } else {
-              container.classList.add('hidden');
-              document.getElementById('sb_kaedah').required = false;
-              document.getElementById('sb_bil_semua').required = false;
-              document.getElementById('sb_bil_fungsi').required = false;
-              
-              document.getElementById('sb_kaedah').value = "";
-              document.getElementById('sb_bil_semua').value = "";
-              document.getElementById('sb_bil_fungsi').value = "";
-              document.querySelectorAll('input[name="sb_lokasi"]').forEach(cb => cb.checked = false);
+    window.toggleSmartboard = function() {
+      const adaRadio = document.querySelector('input[name="sb_ada"]:checked');
+      const ada = adaRadio ? adaRadio.value : 'TIDAK';
+      const container = document.getElementById('sbDetailsContainer');
+      if (!container) return;
+
+      const kaedahEl = document.getElementById('sb_kaedah');
+      const semuaEl = document.getElementById('sb_bil_semua');
+      const fungsiEl = document.getElementById('sb_bil_fungsi');
+
+      if (ada === 'YA') {
+        container.classList.remove('hidden');
+        if (kaedahEl) kaedahEl.required = true;
+        if (semuaEl) semuaEl.required = true;
+        if (fungsiEl) fungsiEl.required = true;
+      } else {
+        container.classList.add('hidden');
+        if (kaedahEl) {
+          kaedahEl.required = false;
+          kaedahEl.value = '';
+        }
+        if (semuaEl) {
+          semuaEl.required = false;
+          semuaEl.value = '';
+        }
+        if (fungsiEl) {
+          fungsiEl.required = false;
+          fungsiEl.value = '';
+        }
+        document.querySelectorAll('input[name="sb_lokasi"]').forEach(function(cb) {
+          cb.checked = false;
+        });
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const userKod = localStorage.getItem('smpid_user_kod');
+      const isAuth = localStorage.getItem('smpid_auth') === 'true';
+
+      if (!userKod && !isAuth) {
+        return;
+      }
+
+      window.toggleSmartboard();
+
+      window.addEventListener('hashchange', function() {
+        const hash = window.location.hash.replace('#', '') || 'menu';
+        if (['menu', 'profil', 'analisa', 'pencapaian', 'libat-urus'].includes(hash)) {
+          if (typeof window.showSection === 'function') {
+            window.showSection(hash);
           }
-      };
-
-      // Hash-based Routing for User Portal (BUG FIX V2.2 - LOCALSTORAGE SYNC)
-      document.addEventListener('DOMContentLoaded', () => {
-          const userKod = localStorage.getItem('smpid_user_kod');
-          const isAuth = localStorage.getItem('smpid_auth') === 'true';
-
-          if (!userKod && !isAuth) { return; }
-
-          window.toggleSmartboard();
-
-          window.addEventListener('hashchange', () => {
-              const hash = window.location.hash.replace('#', '') || 'menu';
-              if (['menu', 'profil', 'analisa', 'pencapaian', 'libat-urus'].includes(hash)) {
-                  if (window.showSection) window.showSection(hash);
-              }
-          });
-
-          const initialHash = window.location.hash.replace('#', '') || 'menu';
-          if (initialHash !== 'menu') {
-              setTimeout(() => {
-                  if (window.showSection) window.showSection(initialHash);
-              }, 300);
-          }
+        }
       });
+
+      const initialHash = window.location.hash.replace('#', '') || 'menu';
+      if (initialHash !== 'menu') {
+        setTimeout(function() {
+          if (typeof window.showSection === 'function') {
+            window.showSection(initialHash);
+          }
+        }, 300);
+      }
+    });
   </script>
 
 </body>

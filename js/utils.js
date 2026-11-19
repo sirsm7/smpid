@@ -1,184 +1,267 @@
-/**
- * NADIM CORE UTILITIES (js/utils.js)
- * Versi: 2.3 (Full Production & Cross-Tab Support)
- * Fungsi: Konfigurasi Supabase, Helper Global & Keselamatan Sesi
- * * UPDATE V2.3:
- * 1. Migrasi DENO_API_URL ke domain utama (smpid.ppdag.deno.net).
- * 2. Penukaran sessionStorage ke localStorage bagi menyokong integriti silang tab.
- * 3. Pembaikan logik pembersihan sesi semasa log keluar.
- */
+let supabaseClient = null;
+window.supabaseClient = null;
 
-// ==========================================
-// 1. KONFIGURASI PUSAT (Global Window)
-// ==========================================
-window.SUPABASE_URL = 'https://app.tech4ag.my';
-window.SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY';
-
-// Domain baharu untuk integrasi Bot Telegram & API Deno
-window.DENO_API_URL = 'https://smpid.ppdag.deno.net';
-
-// ==========================================
-// 2. INISIALISASI SUPABASE
-// ==========================================
-let supabaseClient;
-if (window.supabase) {
+async function resolveRuntimeEnv() {
+  if (window.ENV_READY && typeof window.ENV_READY.then === "function") {
     try {
-        supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
-        console.log("✅ Supabase Client Ready (Utils v2.3)");
-    } catch (e) {
-        console.error("❌ Gagal memulakan Supabase Client:", e);
+      await window.ENV_READY;
+    } catch {}
+  }
+
+  if (window.__ENV && window.__ENV.SUPABASE_URL && window.__ENV.SUPABASE_ANON_KEY) {
+    return window.__ENV;
+  }
+
+  try {
+    const response = await fetch("/api/config", {
+      method: "GET",
+      cache: "no-store",
+      headers: { Accept: "application/json" }
+    });
+    if (response.ok) {
+      const cfg = await response.json();
+      if (cfg && cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY) {
+        const frozen = Object.freeze({
+          SUPABASE_URL: String(cfg.SUPABASE_URL).trim(),
+          SUPABASE_ANON_KEY: String(cfg.SUPABASE_ANON_KEY).trim(),
+          GAS_ENDPOINT_URL: cfg.GAS_ENDPOINT_URL ? String(cfg.GAS_ENDPOINT_URL).trim() : "",
+          SUPABASE_SCHEMA: cfg.SUPABASE_SCHEMA ? String(cfg.SUPABASE_SCHEMA).trim() : "public"
+        });
+        window.__ENV = frozen;
+        return frozen;
+      }
     }
-} else {
-    console.error("❌ Ralat: Library Supabase tidak dikesan. Pastikan CDN diletakkan di <head>.");
+  } catch {}
+
+  return window.__ENV || null;
 }
 
-// Akses global untuk modul legasi
-window.supabaseClient = supabaseClient;
+async function initUtilsSupabase() {
+  if (supabaseClient) {
+    window.supabaseClient = supabaseClient;
+    return supabaseClient;
+  }
 
-// ==========================================
-// 3. UI HELPER (LOADING & FORMATTING)
-// ==========================================
+  if (window._supabase) {
+    supabaseClient = window._supabase;
+    window.supabaseClient = supabaseClient;
+    return supabaseClient;
+  }
 
-/**
- * Mengawal paparan overlay pemuatan (loading)
- * @param {boolean} show - Papar jika true
- */
+  const env = await resolveRuntimeEnv();
+  if (
+    env &&
+    env.SUPABASE_URL &&
+    env.SUPABASE_ANON_KEY &&
+    window.supabase &&
+    typeof window.supabase.createClient === "function"
+  ) {
+    try {
+      const schemaOption =
+        env.SUPABASE_SCHEMA && env.SUPABASE_SCHEMA !== "public"
+          ? { db: { schema: env.SUPABASE_SCHEMA } }
+          : undefined;
+      supabaseClient = schemaOption
+        ? window.supabase.createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, schemaOption)
+        : window.supabase.createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
+      window._supabase = supabaseClient;
+      window.supabaseClient = supabaseClient;
+      return supabaseClient;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+window.utilsReady = initUtilsSupabase();
+
+window.getSupabaseClient = async function () {
+  if (supabaseClient) {
+    return supabaseClient;
+  }
+  return initUtilsSupabase();
+};
+
 function toggleLoading(show) {
-    const el = document.getElementById('loadingOverlay');
-    if (el) {
-        if (show) el.classList.remove('hidden');
-        else el.classList.add('hidden');
+  const el = document.getElementById("loadingOverlay");
+  if (el) {
+    if (show) {
+      el.classList.remove("hidden");
+    } else {
+      el.classList.add("hidden");
     }
+  }
 }
 
-/**
- * Membersihkan format nombor telefon kepada standard +60
- * @param {string} phone 
- */
 function cleanPhone(phone) {
-    if (!phone) return "";
-    let cleaned = phone.replace(/[^0-9]/g, '');
-    if (cleaned.length === 0) return "";
-    if (cleaned.startsWith('0')) cleaned = '6' + cleaned;
-    return cleaned;
+  if (!phone) {
+    return "";
+  }
+  let cleaned = String(phone).replace(/[^0-9]/g, "");
+  if (cleaned.length === 0) {
+    return "";
+  }
+  if (cleaned.startsWith("0")) {
+    cleaned = `6${cleaned}`;
+  }
+  return cleaned;
 }
 
-/**
- * Format input telefon secara masa-nyata (Real-time)
- * @param {HTMLInputElement} input 
- */
 function autoFormatPhone(input) {
-    if (!input) return;
-    let val = input.value.replace(/[^0-9]/g, '');
-    if (val.length < 5) return;
-    
-    if (val.startsWith('60')) input.value = '+' + val;
-    else if (val.startsWith('0')) input.value = '+6' + val;
-    else input.value = '+6' + val;
+  if (!input) {
+    return;
+  }
+  const val = String(input.value || "").replace(/[^0-9]/g, "");
+  if (val.length < 5) {
+    return;
+  }
+
+  if (val.startsWith("60")) {
+    input.value = `+${val}`;
+  } else if (val.startsWith("0")) {
+    input.value = `+6${val}`;
+  } else {
+    input.value = `+6${val}`;
+  }
 }
 
-/**
- * Pengesahan domain emel rasmi DELIMa
- */
 function checkEmailDomain(email) {
-    return email && email.toLowerCase().includes("@moe-dl.edu.my");
+  return Boolean(email && String(email).toLowerCase().includes("@moe-dl.edu.my"));
 }
 
-/**
- * Menukar teks kepada format Ayat (Sentence Case)
- */
 function formatSentenceCase(str) {
-    if (!str) return "";
-    return str.toLowerCase().replace(/(?:^|[\.\!\?]\s+)([a-z])/g, function(match) {
-        return match.toUpperCase();
-    });
+  if (!str) {
+    return "";
+  }
+  return String(str)
+    .toLowerCase()
+    .replace(/(?:^|[.!?]\s+)([a-z])/g, (match) => match.toUpperCase());
 }
 
-/**
- * Menjana pautan pantas ke WhatsApp Web/App
- */
 function generateWhatsAppLink(nama, noTel, isRaw = false) {
-    const cleanNum = cleanPhone(noTel);
-    if (!cleanNum) return null;
-    
-    if (isRaw) return `https://wa.me/${cleanNum}`;
-    
-    const rawMsg = `Assalamualaikum / Salam Sejahtera Cikgu ${nama || ''}, ini adalah mesej automatik NADIM.\n\nMohon kerjasama cikgu untuk aktifkan ID Telegram di bot kami. Sila klik https://t.me/smpid_bot , tekan Start, masukkan kod sekolah, dan pilih peranan.\n\nTerima kasih.`;
-    return `https://wa.me/${cleanNum}?text=${encodeURIComponent(rawMsg)}`;
+  const cleanNum = cleanPhone(noTel);
+  if (!cleanNum) {
+    return null;
+  }
+
+  if (isRaw) {
+    return `https://wa.me/${cleanNum}`;
+  }
+
+  const rawMsg = `Assalamualaikum / Salam Sejahtera Cikgu ${nama || ""}, ini adalah mesej automatik NADIM.\n\nMohon kerjasama cikgu untuk aktifkan ID Telegram di bot kami. Sila klik https://t.me/smpid_bot , tekan Start, masukkan kod sekolah, dan pilih peranan.\n\nTerima kasih.`;
+  return `https://wa.me/${cleanNum}?text=${encodeURIComponent(rawMsg)}`;
 }
 
-// ==========================================
-// 4. KESELAMATAN & PENGURUSAN SESI
-// ==========================================
+function sanitizeExternalUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== "string") {
+    return null;
+  }
+  const trimmed = rawUrl.trim();
+  if (!trimmed || trimmed === "#") {
+    return null;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.href;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
-/**
- * Menyemak kebenaran akses halaman berdasarkan status log masuk
- * Menggunakan localStorage untuk memastikan sesi kekal dalam tab baharu
- */
+function getSessionStorageKeys() {
+  if (window.APP_CONFIG && window.APP_CONFIG.SESSION) {
+    return {
+      authKey: window.APP_CONFIG.SESSION.AUTH_FLAG || "smpid_auth",
+      kodKey: window.APP_CONFIG.SESSION.USER_KOD || "smpid_user_kod"
+    };
+  }
+  return {
+    authKey: "smpid_auth",
+    kodKey: "smpid_user_kod"
+  };
+}
+
 function runSecurityCheck() {
-    const bodyId = document.body.id;
-    
-    // Ambil data dari localStorage (Migration dari sessionStorage)
-    const isAuth = localStorage.getItem('smpid_auth') === 'true';
-    const userKod = localStorage.getItem('smpid_user_kod');
+  const bodyId = document.body ? document.body.id : "";
+  const { authKey, kodKey } = getSessionStorageKeys();
 
-    // Senarai halaman yang memerlukan perlindungan akses
-    const protectedPages = ['page-user', 'page-admin'];
+  const isAuth = localStorage.getItem(authKey) === "true";
+  const userKod = localStorage.getItem(kodKey);
+  const protectedPages = ["page-user", "page-admin"];
 
-    if (protectedPages.includes(bodyId)) {
-        if (!isAuth && (!userKod || userKod === 'null')) {
-            console.warn("🔒 Akses Tanpa Izin: Sesi tidak dikesan. Mengalih ke Portal...");
-            window.location.replace('index.html');
-        } else {
-            console.log(`✅ Sesi Sah: ${userKod || 'PENTADBIR'}`);
-        }
+  if (protectedPages.includes(bodyId)) {
+    if (!isAuth && (!userKod || userKod === "null")) {
+      window.location.replace("index.html");
     }
+  }
 }
 
-/**
- * Menghapuskan semua data sesi dan kembali ke halaman utama
- */
+function performLogoutCleanup() {
+  try {
+    if (
+      window.RealtimeManager &&
+      typeof window.RealtimeManager.removeAllChannels === "function"
+    ) {
+      window.RealtimeManager.removeAllChannels();
+    }
+  } catch {}
+  localStorage.clear();
+  sessionStorage.clear();
+  window.location.replace("index.html");
+}
+
 function keluarSistem() {
-    Swal.fire({
-        title: 'Log Keluar?', 
-        text: 'Anda perlu log masuk semula untuk mengakses sistem.',
-        icon: 'warning', 
-        showCancelButton: true, 
-        confirmButtonColor: '#ef4444', 
-        confirmButtonText: 'Ya, Log Keluar',
-        cancelButtonText: 'Batal',
-        customClass: { popup: 'rounded-3xl' }
+  if (typeof window.Swal !== "undefined" && typeof window.Swal.fire === "function") {
+    window.Swal.fire({
+      title: "Log Keluar?",
+      text: "Anda perlu log masuk semula untuk mengakses sistem.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      confirmButtonText: "Ya, Log Keluar",
+      cancelButtonText: "Batal",
+      customClass: { popup: "rounded-3xl" }
     }).then((result) => {
-        if (result.isConfirmed) {
-            // Bersihkan kedua-dua storan untuk keselamatan
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.replace('index.html');
-        }
+      if (result && result.isConfirmed) {
+        performLogoutCleanup();
+      }
     });
+    return;
+  }
+
+  if (window.confirm("Log Keluar? Anda perlu log masuk semula untuk mengakses sistem.")) {
+    performLogoutCleanup();
+  }
 }
 
-// ==========================================
-// 5. GLOBAL INITIALIZATION & EXPORTS
-// ==========================================
+document.addEventListener("DOMContentLoaded", () => {
+  runSecurityCheck();
+});
 
-document.addEventListener('DOMContentLoaded', () => {
+window.addEventListener("pageshow", (event) => {
+  const navEntries =
+    typeof performance !== "undefined" && typeof performance.getEntriesByType === "function"
+      ? performance.getEntriesByType("navigation")
+      : [];
+  const isBackForward =
+    navEntries.length > 0 && navEntries[0] && navEntries[0].type === "back_forward";
+
+  if (event.persisted || isBackForward) {
     runSecurityCheck();
+  }
 });
 
-// Menangani isu navigasi butang 'Back' pelayar
-window.addEventListener('pageshow', function(event) {
-    if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
-        runSecurityCheck();
-    }
-});
-
-// Mengeksport fungsi ke skop global window (Kritikal untuk onclick HTML)
 window.toggleLoading = toggleLoading;
 window.cleanPhone = cleanPhone;
 window.autoFormatPhone = autoFormatPhone;
 window.checkEmailDomain = checkEmailDomain;
 window.formatSentenceCase = formatSentenceCase;
 window.generateWhatsAppLink = generateWhatsAppLink;
+window.sanitizeExternalUrl = sanitizeExternalUrl;
 window.keluarSistem = keluarSistem;
 window.runSecurityCheck = runSecurityCheck;

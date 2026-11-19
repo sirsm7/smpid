@@ -2,41 +2,45 @@ export async function onRequest(context) {
   const { request, env } = context;
   const clientUrl = new URL(request.url);
 
-  // Mengutamakan Cloudflare ENV, jika tiada ia menggunakan sandaran pelayan (Edge Server sahaja)
-  const supabaseUrl =
-    (env && env.SUPABASE_URL) || "https://app.tech4ag.my";
-  const supabaseAnonKey =
-    (env && env.SUPABASE_ANON_KEY) ||
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzYzMzczNjQ1LCJleHAiOjIwNzg3MzM2NDV9.vZOedqJzUn01PjwfaQp7VvRzSm4aRMr21QblPDK8AoY";
+  const supabaseUrl = env && typeof env.SUPABASE_URL === "string" ? env.SUPABASE_URL.trim() : "";
+  const supabaseAnonKey = env && typeof env.SUPABASE_ANON_KEY === "string" ? env.SUPABASE_ANON_KEY.trim() : "";
 
-  // 1. Laluan Semakan Diagnostik
-  if (clientUrl.pathname === "/api/debug") {
+  if (!supabaseUrl || !supabaseAnonKey) {
     return new Response(
-      JSON.stringify(
-        {
-          status: "Cloudflare Pages Function Berjaya Beroperasi",
-          keys_ditemui_dalam_env: Object.keys(env || {}),
-          has_SUPABASE_URL_env: Boolean(env && env.SUPABASE_URL),
-          has_SUPABASE_ANON_KEY_env: Boolean(env && env.SUPABASE_ANON_KEY),
-          active_backend_url: supabaseUrl,
-          active_backend_key_ready: Boolean(supabaseAnonKey)
-        },
-        null,
-        2
-      ),
+      JSON.stringify({
+        error: "Configuration Error",
+        message: "Required environment variables SUPABASE_URL or SUPABASE_ANON_KEY are missing or empty."
+      }),
       {
-        status: 200,
-        headers: { "Content-Type": "application/json; charset=utf-8" }
+        status: 500,
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store"
+        }
       }
     );
   }
 
-  const subPath = clientUrl.pathname.replace(/^\/api/, "");
-  const targetUrl = new URL(
-    `${supabaseUrl.replace(/\/+$/, "")}${subPath}${clientUrl.search}`
-  );
+  let targetUrl;
+  try {
+    const subPath = clientUrl.pathname.replace(/^\/api/, "");
+    targetUrl = new URL(`${supabaseUrl.replace(/\/+$/, "")}${subPath}${clientUrl.search}`);
+  } catch {
+    return new Response(
+      JSON.stringify({
+        error: "Configuration Error",
+        message: "Invalid SUPABASE_URL format configured in environment variables."
+      }),
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store"
+        }
+      }
+    );
+  }
 
-  // Gantikan apikey penanda kepada token sebenar untuk permintaan URL
   if (
     targetUrl.searchParams.get("apikey") === "edge-proxy-managed" ||
     !targetUrl.searchParams.has("apikey")
@@ -62,7 +66,6 @@ export async function onRequest(context) {
     requestHeaders.set("authorization", `Bearer ${supabaseAnonKey}`);
   }
 
-  // Pengendalian jabat tangan WebSocket (Supabase Realtime)
   const upgradeHeader = request.headers.get("Upgrade");
   if (upgradeHeader && upgradeHeader.toLowerCase() === "websocket") {
     return fetch(targetUrl.toString(), {
@@ -73,26 +76,22 @@ export async function onRequest(context) {
 
   const method = request.method.toUpperCase();
   const hasBody = !["GET", "HEAD", "OPTIONS"].includes(method);
-
-  let body = null;
-  if (hasBody) {
-    body = await request.arrayBuffer();
-  }
+  const body = hasBody ? await request.arrayBuffer() : null;
 
   try {
     const upstreamResponse = await fetch(targetUrl.toString(), {
-      method: method,
+      method,
       headers: requestHeaders,
-      body: body,
+      body,
       redirect: "follow"
     });
 
     const responseHeaders = new Headers(upstreamResponse.headers);
     responseHeaders.delete("content-encoding");
     responseHeaders.delete("transfer-encoding");
+    responseHeaders.set("Cache-Control", "no-store");
 
-    const isNullBodyStatus =
-      upstreamResponse.status === 204 || upstreamResponse.status === 304;
+    const isNullBodyStatus = upstreamResponse.status === 204 || upstreamResponse.status === 304;
     const responseBody = isNullBodyStatus ? null : upstreamResponse.body;
 
     return new Response(responseBody, {
@@ -105,11 +104,14 @@ export async function onRequest(context) {
       JSON.stringify({
         error: "Bad Gateway",
         message: "Gagal berhubung dengan pelayan pangkalan data upstream.",
-        details: error.message
+        details: error && error.message ? error.message : "Upstream connection error"
       }),
       {
         status: 502,
-        headers: { "Content-Type": "application/json; charset=utf-8" }
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store"
+        }
       }
     );
   }

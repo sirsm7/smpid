@@ -1,302 +1,290 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mengenai NaDIM - Dokumentasi Sistem</title>
-    
-    <meta name="theme-color" content="#16a34a">
-    <link rel="icon" href="icoppdag.png">
-    
-    <!-- TAILWIND CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="js/config/tailwind.config.js"></script>
-    
-    <!-- FONTAWESOME -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
-    <!-- GOOGLE FONTS -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mengenai NaDIM - Dokumentasi Sistem</title>
 
-    <style type="text/tailwindcss">
-        @layer utilities {
-            .glass-card {
-                @apply bg-white/80 backdrop-blur-md border border-white/40 shadow-xl rounded-3xl;
-            }
-            .tab-btn {
-                @apply flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-300 text-center flex flex-col md:flex-row items-center justify-center gap-2;
-            }
-            .tab-active {
-                @apply bg-brand-600 text-white shadow-md transform scale-105;
-            }
-            .tab-inactive {
-                @apply bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-brand-600;
-            }
-        }
-    </style>
+  <meta name="theme-color" content="#16a34a">
+  <link rel="icon" href="icoppdag.png">
+
+  <link rel="preconnect" href="https://cdn.tailwindcss.com">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/config/tailwind.config.js?v=2026.1"></script>
+
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .glass-card {
+        @apply bg-white/80 backdrop-blur-md border border-white/40 shadow-xl rounded-3xl;
+      }
+      .tab-btn {
+        @apply min-h-[44px] flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-300 text-center flex flex-col md:flex-row items-center justify-center gap-2;
+      }
+      .tab-active {
+        @apply bg-brand-600 text-white shadow-md transform scale-105;
+      }
+      .tab-inactive {
+        @apply bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-brand-600;
+      }
+    }
+  </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col selection:bg-brand-200 selection:text-brand-900">
+<body class="bg-slate-50 text-slate-800 antialiased min-h-dvh overflow-x-hidden flex flex-col selection:bg-brand-200 selection:text-brand-900">
 
-    <!-- NAVIGATION BAR -->
-    <nav class="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <img src="icoppdag.png" alt="Logo PPD" class="h-8 w-auto">
-                <span class="font-bold text-slate-800 tracking-tight hidden sm:block">Dokumentasi <span class="text-brand-600">NaDIM</span></span>
-            </div>
-            <a href="index.html" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-brand-600 transition-all text-xs font-bold border border-slate-200">
-                <i class="fas fa-arrow-left"></i> Kembali ke Portal
-            </a>
+  <nav class="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-sm shrink-0">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <img src="icoppdag.png" alt="Logo PPD" class="h-8 w-auto shrink-0">
+        <span class="font-bold text-slate-800 tracking-tight hidden sm:block truncate">Dokumentasi <span class="text-brand-600">NaDIM</span></span>
+      </div>
+      <a href="index.html" class="min-h-[44px] inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-brand-600 transition-all text-xs font-bold border border-slate-200 shrink-0">
+        <i class="fas fa-arrow-left"></i> Kembali ke Portal
+      </a>
+    </div>
+  </nav>
+
+  <header class="bg-gradient-to-br from-brand-900 via-brand-700 to-emerald-900 pt-20 pb-32 px-4 relative overflow-hidden shrink-0">
+    <div class="absolute top-0 right-0 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+    <div class="absolute bottom-0 left-0 w-64 h-64 bg-emerald-400 opacity-10 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none"></div>
+
+    <div class="relative z-10 max-w-4xl mx-auto text-center animate-fade-up min-w-0">
+      <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-emerald-200 text-[10px] font-black uppercase tracking-widest border border-white/20 mb-6">
+        <i class="fas fa-book-open"></i> Blueprint Sistem
+      </span>
+      <h1 class="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight mb-6 tracking-tight break-words">
+        Nadi Analitik, Digital <br/>&amp; Inovasi Melaka
+      </h1>
+      <p class="text-emerald-100 text-base md:text-lg max-w-2xl mx-auto font-medium leading-relaxed break-words">
+        Pusat sehenti berimpak tinggi yang menyelaraskan pemantauan data (Analitik), pengurusan sokongan (Digital), dan pembudayaan kecerdasan buatan (Inovasi) untuk warga pendidik.
+      </p>
+    </div>
+  </header>
+
+  <main class="flex-grow container mx-auto px-4 -mt-20 relative z-20 max-w-6xl pb-24">
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16 animate-fade-up" style="animation-delay: 0.1s;">
+      <div class="glass-card p-6 border-t-4 border-t-blue-500 hover:-translate-y-1 transition-transform duration-300 min-w-0">
+        <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl mb-4 shadow-sm border border-blue-100">
+          <i class="fas fa-database"></i>
         </div>
-    </nav>
-
-    <!-- HERO SECTION -->
-    <header class="bg-gradient-to-br from-brand-900 via-brand-700 to-emerald-900 pt-20 pb-32 px-4 relative overflow-hidden">
-        <div class="absolute top-0 right-0 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
-        <div class="absolute bottom-0 left-0 w-64 h-64 bg-emerald-400 opacity-10 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none"></div>
-        
-        <div class="relative z-10 max-w-4xl mx-auto text-center animate-fade-up">
-            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-emerald-200 text-[10px] font-black uppercase tracking-widest border border-white/20 mb-6">
-                <i class="fas fa-book-open"></i> Blueprint Sistem
-            </span>
-            <h1 class="text-4xl md:text-5xl font-black text-white leading-tight mb-6 tracking-tight">
-                Nadi Analitik, Digital <br/>& Inovasi Melaka
-            </h1>
-            <p class="text-emerald-100 text-base md:text-lg max-w-2xl mx-auto font-medium leading-relaxed">
-                Pusat sehenti berimpak tinggi yang menyelaraskan pemantauan data (Analitik), pengurusan sokongan (Digital), dan pembudayaan kecerdasan buatan (Inovasi) untuk warga pendidik.
-            </p>
+        <h3 class="font-bold text-slate-800 mb-2 break-words">Pemusatan Ekosistem Digital</h3>
+        <p class="text-sm text-slate-500 leading-relaxed break-words">Mengumpul profil dan maklumat penggerak digital sekolah secara menyeluruh dan masa nyata (real-time).</p>
+      </div>
+      <div class="glass-card p-6 border-t-4 border-t-amber-500 hover:-translate-y-1 transition-transform duration-300 min-w-0">
+        <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl mb-4 shadow-sm border border-amber-100">
+          <i class="fas fa-chart-pie"></i>
         </div>
-    </header>
-
-    <!-- MAIN CONTENT -->
-    <main class="flex-grow container mx-auto px-4 -mt-20 relative z-20 max-w-6xl pb-24">
-        
-        <!-- INTRO & OBJECTIVES GRID -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-16 animate-fade-up" style="animation-delay: 0.1s;">
-            <!-- Obj 1 -->
-            <div class="glass-card p-6 border-t-4 border-t-blue-500 hover:-translate-y-1 transition-transform duration-300">
-                <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl mb-4 shadow-sm border border-blue-100">
-                    <i class="fas fa-database"></i>
-                </div>
-                <h3 class="font-bold text-slate-800 mb-2">Pemusatan Ekosistem Digital</h3>
-                <p class="text-sm text-slate-500 leading-relaxed">Mengumpul profil dan maklumat penggerak digital sekolah secara menyeluruh dan masa nyata (real-time).</p>
-            </div>
-            <!-- Obj 2 -->
-            <div class="glass-card p-6 border-t-4 border-t-amber-500 hover:-translate-y-1 transition-transform duration-300">
-                <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl mb-4 shadow-sm border border-amber-100">
-                    <i class="fas fa-chart-pie"></i>
-                </div>
-                <h3 class="font-bold text-slate-800 mb-2">Analitik & Pemantauan Data</h3>
-                <p class="text-sm text-slate-500 leading-relaxed">Visualisasi interaktif skor Digital Competency (DCS), laporan PPPDM dan peratusan keaktifan DELIMa.</p>
-            </div>
-            <!-- Obj 3 -->
-            <div class="glass-card p-6 border-t-4 border-t-emerald-500 hover:-translate-y-1 transition-transform duration-300">
-                <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl mb-4 shadow-sm border border-emerald-100">
-                    <i class="fas fa-calendar-check"></i>
-                </div>
-                <h3 class="font-bold text-slate-800 mb-2">Pendigitalan Pengurusan</h3>
-                <p class="text-sm text-slate-500 leading-relaxed">Mendigitalkan operasi menerusi sistem Meja Bantuan (Helpdesk) aduan ICT dan tempahan bimbingan e-Booking.</p>
-            </div>
-            <!-- Obj 4 -->
-            <div class="glass-card p-6 border-t-4 border-t-purple-500 hover:-translate-y-1 transition-transform duration-300">
-                <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl mb-4 shadow-sm border border-purple-100">
-                    <i class="fas fa-robot"></i>
-                </div>
-                <h3 class="font-bold text-slate-800 mb-2">Inovasi & Pembudayaan AI</h3>
-                <p class="text-sm text-slate-500 leading-relaxed">Menyediakan hab latihan maya inovatif untuk memperkasa kompetensi guru dalam era Generative AI (Gen-AI).</p>
-            </div>
+        <h3 class="font-bold text-slate-800 mb-2 break-words">Analitik &amp; Pemantauan Data</h3>
+        <p class="text-sm text-slate-500 leading-relaxed break-words">Visualisasi interaktif skor Digital Competency (DCS), laporan PPPDM dan peratusan keaktifan DELIMa.</p>
+      </div>
+      <div class="glass-card p-6 border-t-4 border-t-emerald-500 hover:-translate-y-1 transition-transform duration-300 min-w-0">
+        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl mb-4 shadow-sm border border-emerald-100">
+          <i class="fas fa-calendar-check"></i>
         </div>
-
-        <!-- THE 4 PILLARS (TERAS) - INTERACTIVE TABS -->
-        <div class="mb-20 animate-fade-up" style="animation-delay: 0.2s;">
-            <div class="text-center mb-8">
-                <h2 class="text-3xl font-black text-slate-800 tracking-tight">4 Teras Utama Modul</h2>
-                <p class="text-slate-500 mt-2">Seni bina sistem NaDIM mengikut tahap capaian pengguna.</p>
-            </div>
-
-            <div class="bg-white p-2 rounded-2xl shadow-sm border border-slate-100 flex flex-wrap gap-2 mb-8 max-w-4xl mx-auto">
-                <button onclick="switchTab('awam')" id="btn-awam" class="tab-btn tab-active"><i class="fas fa-globe-asia"></i> Portal Awam</button>
-                <button onclick="switchTab('sekolah')" id="btn-sekolah" class="tab-btn tab-inactive"><i class="fas fa-school"></i> Portal Sekolah</button>
-                <button onclick="switchTab('ppd')" id="btn-ppd" class="tab-btn tab-inactive"><i class="fas fa-building"></i> Portal Pentadbir</button>
-                <button onclick="switchTab('digital')" id="btn-digital" class="tab-btn tab-inactive"><i class="fas fa-microchip"></i> Hab Inovasi</button>
-            </div>
-
-            <!-- Tab Content: Awam -->
-            <div id="content-awam" class="glass-card p-8 md:p-12 animate-fade-in border-l-8 border-l-blue-500">
-                <div class="flex flex-col md:flex-row gap-8 items-start">
-                    <div class="md:w-1/3">
-                        <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-3xl mb-4">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <h3 class="text-2xl font-bold text-slate-800 mb-2">Portal Awam</h3>
-                        <p class="text-slate-500 text-sm">Direka terbuka tanpa log masuk untuk memudahkan pengumpulan data akar umbi.</p>
-                    </div>
-                    <div class="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-100">
-                            <h4 class="font-bold text-blue-700 flex items-center gap-2 mb-2"><i class="fas fa-paper-plane"></i> Serahan Kemenjadian</h4>
-                            <p class="text-xs text-slate-600 leading-relaxed">Borang pintar untuk merekod pencapaian murid, guru, atau sekolah (Pertandingan/Pensijilan) sehingga peringkat antarabangsa.</p>
-                        </div>
-                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-100">
-                            <h4 class="font-bold text-blue-700 flex items-center gap-2 mb-2"><i class="fas fa-images"></i> Galeri Digital</h4>
-                            <p class="text-xs text-slate-600 leading-relaxed">Papan pemuka dinamik yang menyusun pautan bukti sijil & pencapaian menjadi sebuah galeri visual sekolah.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tab Content: Sekolah -->
-            <div id="content-sekolah" class="hidden glass-card p-8 md:p-12 animate-fade-in border-l-8 border-l-amber-500">
-                <div class="flex flex-col md:flex-row gap-8 items-start">
-                    <div class="md:w-1/3">
-                        <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-3xl mb-4">
-                            <i class="fas fa-user-lock"></i>
-                        </div>
-                        <h3 class="text-2xl font-bold text-slate-800 mb-2">Portal Sekolah</h3>
-                        <p class="text-slate-500 text-sm">Capaian bersekuriti khusus untuk pengurusan di peringkat institusi.</p>
-                    </div>
-                    <div class="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-100">
-                            <h4 class="font-bold text-amber-700 flex items-center gap-2 mb-2"><i class="fas fa-id-card"></i> Profil Pegawai Meja</h4>
-                            <p class="text-xs text-slate-600 leading-relaxed">Modul kemaskini direktori rasmi untuk GPICT dan Admin DELIMa bagi pemantauan daerah.</p>
-                        </div>
-                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-100">
-                            <h4 class="font-bold text-amber-700 flex items-center gap-2 mb-2"><i class="fas fa-calendar-alt"></i> E-Booking</h4>
-                            <p class="text-xs text-slate-600 leading-relaxed">Sistem tempahan slot bimbingan kalendar interaktif lengkap dengan perlindungan pertindihan (double-booking).</p>
-                        </div>
-                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 sm:col-span-2">
-                            <h4 class="font-bold text-amber-700 flex items-center gap-2 mb-2"><i class="fas fa-headset"></i> Pusat Sokongan (Helpdesk)</h4>
-                            <p class="text-xs text-slate-600 leading-relaxed">Meja bantuan digital bagi melaporkan isu teknikal atau menjejak permohonan status ID DELIMa terus kepada pentadbir sistem.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tab Content: PPD/Admin -->
-            <div id="content-ppd" class="hidden glass-card p-8 md:p-12 animate-fade-in border-l-8 border-l-brand-600">
-                <div class="flex flex-col md:flex-row gap-8 items-start">
-                    <div class="md:w-1/3">
-                        <div class="w-16 h-16 bg-brand-100 text-brand-600 rounded-2xl flex items-center justify-center text-3xl mb-4">
-                            <i class="fas fa-cogs"></i>
-                        </div>
-                        <h3 class="text-2xl font-bold text-slate-800 mb-2">Portal Pentadbir</h3>
-                        <p class="text-slate-500 text-sm">Pusat kawalan pentadbiran mutlak untuk memantau data secara pukal.</p>
-                    </div>
-                    <div class="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-100">
-                            <h4 class="font-bold text-brand-700 flex items-center gap-2 mb-2"><i class="fas fa-chart-line"></i> Analitik PPPDM</h4>
-                            <p class="text-xs text-slate-600 leading-relaxed">Visualisasi data tinggi memisahkan Sekolah Rendah (SR) dan Menengah (SM) bagi melihat trend transformasi digital.</p>
-                        </div>
-                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-100">
-                            <h4 class="font-bold text-brand-700 flex items-center gap-2 mb-2"><i class="fas fa-envelope-open-text"></i> Email Blaster</h4>
-                            <p class="text-xs text-slate-600 leading-relaxed">Sistem siaran emel pukal terbina dalam berserta butang integrasi WhatsApp pantas untuk susulan.</p>
-                        </div>
-                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 sm:col-span-2">
-                            <h4 class="font-bold text-brand-700 flex items-center gap-2 mb-2"><i class="fas fa-magic"></i> Penyeragaman Pintar (Standardize)</h4>
-                            <p class="text-xs text-slate-600 leading-relaxed">Fungsi kebersihan pangkalan data (batch update) untuk membaiki kesilapan ejaan nama program oleh pengguna secara serentak.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tab Content: Digital Hub / Inovasi -->
-            <div id="content-digital" class="hidden glass-card p-8 md:p-12 animate-fade-in border-l-8 border-l-purple-500">
-                <div class="flex flex-col md:flex-row gap-8 items-start">
-                    <div class="md:w-1/3">
-                        <div class="w-16 h-16 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-3xl mb-4">
-                            <i class="fas fa-laptop-code"></i>
-                        </div>
-                        <h3 class="text-2xl font-bold text-slate-800 mb-2">Hab Inovasi</h3>
-                        <p class="text-slate-500 text-sm">Nilai tambah sistem dalam bentuk pembangunan profesionalisme berterusan (CPD).</p>
-                    </div>
-                    <div class="md:w-2/3 grid grid-cols-1 gap-4">
-                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 flex gap-4 items-start">
-                            <div class="bg-purple-100 text-purple-600 p-3 rounded-lg"><i class="fas fa-brain text-xl"></i></div>
-                            <div>
-                                <h4 class="font-bold text-purple-700 mb-1">Modul S.P.K.A (SirSM.AI)</h4>
-                                <p class="text-xs text-slate-600 leading-relaxed">Enjin pembelajaran Kejuruteraan Prompt. Dilengkapi "Mesin Prompt", Bank Prompt mengikut sektor pendidikan, dan Kuiz Interaktif untuk mengatasi halusinasi AI.</p>
-                            </div>
-                        </div>
-                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 flex gap-4 items-start">
-                            <div class="bg-purple-100 text-purple-600 p-3 rounded-lg"><i class="fab fa-google text-xl"></i></div>
-                            <div>
-                                <h4 class="font-bold text-purple-700 mb-1">Modul Bank Gemini</h4>
-                                <p class="text-xs text-slate-600 leading-relaxed">Hab latihan interaktif persediaan peperiksaan <em>Google Certified Educator</em> lengkap dengan analitik soalan dan mod Kad Imbasan (Flashcards).</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <h3 class="font-bold text-slate-800 mb-2 break-words">Pendigitalan Pengurusan</h3>
+        <p class="text-sm text-slate-500 leading-relaxed break-words">Mendigitalkan operasi menerusi sistem Meja Bantuan (Helpdesk) aduan ICT dan tempahan bimbingan e-Booking.</p>
+      </div>
+      <div class="glass-card p-6 border-t-4 border-t-purple-500 hover:-translate-y-1 transition-transform duration-300 min-w-0">
+        <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl mb-4 shadow-sm border border-purple-100">
+          <i class="fas fa-robot"></i>
         </div>
+        <h3 class="font-bold text-slate-800 mb-2 break-words">Inovasi &amp; Pembudayaan AI</h3>
+        <p class="text-sm text-slate-500 leading-relaxed break-words">Menyediakan hab latihan maya inovatif untuk memperkasa kompetensi guru dalam era Generative AI (Gen-AI).</p>
+      </div>
+    </div>
 
-        <!-- TECH STACK SECTION -->
-        <div class="bg-slate-900 rounded-[2.5rem] p-8 md:p-12 text-white shadow-2xl relative overflow-hidden animate-fade-up" style="animation-delay: 0.3s;">
-            <div class="absolute top-0 right-0 w-64 h-64 bg-brand-500 opacity-20 rounded-full blur-[80px] pointer-events-none"></div>
-            
-            <div class="text-center max-w-2xl mx-auto mb-12 relative z-10">
-                <h2 class="text-2xl md:text-3xl font-black mb-4">Seni Bina Teknologi <span class="text-brand-400">Gred Industri</span></h2>
-                <p class="text-slate-400">NaDIM bukan sekadar borang digital. Ia adalah jentera yang dibina menggunakan gabungan teknologi moden untuk kelajuan, keselamatan, dan kestabilan optimum.</p>
+    <div class="mb-20 animate-fade-up" style="animation-delay: 0.2s;">
+      <div class="text-center mb-8 min-w-0">
+        <h2 class="text-3xl font-black text-slate-800 tracking-tight break-words">4 Teras Utama Modul</h2>
+        <p class="text-slate-500 mt-2 break-words">Seni bina sistem NaDIM mengikut tahap capaian pengguna.</p>
+      </div>
+
+      <div class="bg-white p-2 rounded-2xl shadow-sm border border-slate-100 flex flex-wrap gap-2 mb-8 max-w-4xl mx-auto">
+        <button type="button" onclick="switchTab('awam')" id="btn-awam" class="tab-btn tab-active"><i class="fas fa-globe-asia"></i> Portal Awam</button>
+        <button type="button" onclick="switchTab('sekolah')" id="btn-sekolah" class="tab-btn tab-inactive"><i class="fas fa-school"></i> Portal Sekolah</button>
+        <button type="button" onclick="switchTab('ppd')" id="btn-ppd" class="tab-btn tab-inactive"><i class="fas fa-building"></i> Portal Pentadbir</button>
+        <button type="button" onclick="switchTab('digital')" id="btn-digital" class="tab-btn tab-inactive"><i class="fas fa-microchip"></i> Hab Inovasi</button>
+      </div>
+
+      <div id="content-awam" class="glass-card p-6 sm:p-8 md:p-12 animate-fade-in border-l-8 border-l-blue-500 min-w-0">
+        <div class="flex flex-col md:flex-row gap-8 items-start min-w-0">
+          <div class="md:w-1/3 min-w-0">
+            <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-3xl mb-4">
+              <i class="fas fa-users"></i>
             </div>
-
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 relative z-10">
-                <div class="text-center p-4 border border-slate-800 rounded-2xl bg-slate-800/50 backdrop-blur-sm">
-                    <i class="fas fa-database text-3xl text-emerald-400 mb-3"></i>
-                    <h4 class="font-bold text-slate-200 text-sm mb-1">Supabase DB</h4>
-                    <p class="text-[10px] text-slate-400">Pangkalan data masa nyata (Real-time sync).</p>
-                </div>
-                <div class="text-center p-4 border border-slate-800 rounded-2xl bg-slate-800/50 backdrop-blur-sm">
-                    <i class="fab fa-telegram-plane text-3xl text-blue-400 mb-3"></i>
-                    <h4 class="font-bold text-slate-200 text-sm mb-1">Deno Edge Bot</h4>
-                    <p class="text-[10px] text-slate-400">Notifikasi automatik Telegram pantas.</p>
-                </div>
-                <div class="text-center p-4 border border-slate-800 rounded-2xl bg-slate-800/50 backdrop-blur-sm">
-                    <i class="fas fa-shield-alt text-3xl text-purple-400 mb-3"></i>
-                    <h4 class="font-bold text-slate-200 text-sm mb-1">Strict RBAC</h4>
-                    <p class="text-[10px] text-slate-400">Hierarki akses keselamatan ketat.</p>
-                </div>
-                <div class="text-center p-4 border border-slate-800 rounded-2xl bg-slate-800/50 backdrop-blur-sm">
-                    <i class="fab fa-css3-alt text-3xl text-sky-400 mb-3"></i>
-                    <h4 class="font-bold text-slate-200 text-sm mb-1">Tailwind CSS</h4>
-                    <p class="text-[10px] text-slate-400">Antaramuka responsif dan pantas dimuat.</p>
-                </div>
+            <h3 class="text-2xl font-bold text-slate-800 mb-2 break-words">Portal Awam</h3>
+            <p class="text-slate-500 text-sm break-words">Direka terbuka tanpa log masuk untuk memudahkan pengumpulan data akar umbi.</p>
+          </div>
+          <div class="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full min-w-0">
+            <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 min-w-0">
+              <h4 class="font-bold text-blue-700 flex items-center gap-2 mb-2"><i class="fas fa-paper-plane"></i> Serahan Kemenjadian</h4>
+              <p class="text-xs text-slate-600 leading-relaxed break-words">Borang pintar untuk merekod pencapaian murid, guru, atau sekolah (Pertandingan/Pensijilan) sehingga peringkat antarabangsa.</p>
             </div>
+            <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 min-w-0">
+              <h4 class="font-bold text-blue-700 flex items-center gap-2 mb-2"><i class="fas fa-images"></i> Galeri Digital</h4>
+              <p class="text-xs text-slate-600 leading-relaxed break-words">Papan pemuka dinamik yang menyusun pautan bukti sijil &amp; pencapaian menjadi sebuah galeri visual sekolah.</p>
+            </div>
+          </div>
         </div>
+      </div>
 
-    </main>
-
-    <!-- FOOTER -->
-    <footer class="bg-white border-t border-slate-200 py-12 mt-auto">
-        <div class="container mx-auto px-4 text-center">
-            <p class="text-slate-600 font-medium mb-2">NaDIM &copy; 2026</p>
-            <p class="text-xs text-slate-400 uppercase tracking-widest">Dibangunkan oleh Unit Sumber Teknologi Pendidikan (USTP) PPD Alor Gajah</p>
+      <div id="content-sekolah" class="hidden glass-card p-6 sm:p-8 md:p-12 animate-fade-in border-l-8 border-l-amber-500 min-w-0">
+        <div class="flex flex-col md:flex-row gap-8 items-start min-w-0">
+          <div class="md:w-1/3 min-w-0">
+            <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-3xl mb-4">
+              <i class="fas fa-user-lock"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-slate-800 mb-2 break-words">Portal Sekolah</h3>
+            <p class="text-slate-500 text-sm break-words">Capaian bersekuriti khusus untuk pengurusan di peringkat institusi.</p>
+          </div>
+          <div class="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full min-w-0">
+            <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 min-w-0">
+              <h4 class="font-bold text-amber-700 flex items-center gap-2 mb-2"><i class="fas fa-id-card"></i> Profil Pegawai Meja</h4>
+              <p class="text-xs text-slate-600 leading-relaxed break-words">Modul kemaskini direktori rasmi untuk GPICT dan Admin DELIMa bagi pemantauan daerah.</p>
+            </div>
+            <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 min-w-0">
+              <h4 class="font-bold text-amber-700 flex items-center gap-2 mb-2"><i class="fas fa-calendar-alt"></i> E-Booking</h4>
+              <p class="text-xs text-slate-600 leading-relaxed break-words">Sistem tempahan slot bimbingan kalendar interaktif lengkap dengan perlindungan pertindihan (double-booking).</p>
+            </div>
+            <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 sm:col-span-2 min-w-0">
+              <h4 class="font-bold text-amber-700 flex items-center gap-2 mb-2"><i class="fas fa-headset"></i> Pusat Sokongan (Helpdesk)</h4>
+              <p class="text-xs text-slate-600 leading-relaxed break-words">Meja bantuan digital bagi melaporkan isu teknikal atau menjejak permohonan status ID DELIMa terus kepada pentadbir sistem.</p>
+            </div>
+          </div>
         </div>
-    </footer>
+      </div>
 
-    <!-- INTERACTIVE TAB LOGIC -->
-    <script>
-        function switchTab(tabId) {
-            // IDs
-            const tabs = ['awam', 'sekolah', 'ppd', 'digital'];
-            
-            // Reset all
-            tabs.forEach(t => {
-                // Button styles
-                const btn = document.getElementById('btn-' + t);
-                btn.classList.remove('tab-active');
-                btn.classList.add('tab-inactive');
-                
-                // Content visibility
-                const content = document.getElementById('content-' + t);
-                content.classList.add('hidden');
-            });
+      <div id="content-ppd" class="hidden glass-card p-6 sm:p-8 md:p-12 animate-fade-in border-l-8 border-l-brand-600 min-w-0">
+        <div class="flex flex-col md:flex-row gap-8 items-start min-w-0">
+          <div class="md:w-1/3 min-w-0">
+            <div class="w-16 h-16 bg-brand-100 text-brand-600 rounded-2xl flex items-center justify-center text-3xl mb-4">
+              <i class="fas fa-cogs"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-slate-800 mb-2 break-words">Portal Pentadbir</h3>
+            <p class="text-slate-500 text-sm break-words">Pusat kawalan pentadbiran mutlak untuk memantau data secara pukal.</p>
+          </div>
+          <div class="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full min-w-0">
+            <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 min-w-0">
+              <h4 class="font-bold text-brand-700 flex items-center gap-2 mb-2"><i class="fas fa-chart-line"></i> Analitik PPPDM</h4>
+              <p class="text-xs text-slate-600 leading-relaxed break-words">Visualisasi data tinggi memisahkan Sekolah Rendah (SR) dan Menengah (SM) bagi melihat trend transformasi digital.</p>
+            </div>
+            <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 min-w-0">
+              <h4 class="font-bold text-brand-700 flex items-center gap-2 mb-2"><i class="fas fa-envelope-open-text"></i> Email Blaster</h4>
+              <p class="text-xs text-slate-600 leading-relaxed break-words">Sistem siaran emel pukal terbina dalam berserta butang integrasi WhatsApp pantas untuk susulan.</p>
+            </div>
+            <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 sm:col-span-2 min-w-0">
+              <h4 class="font-bold text-brand-700 flex items-center gap-2 mb-2"><i class="fas fa-magic"></i> Penyeragaman Pintar (Standardize)</h4>
+              <p class="text-xs text-slate-600 leading-relaxed break-words">Fungsi kebersihan pangkalan data (batch update) untuk membaiki kesilapan ejaan nama program oleh pengguna secara serentak.</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-            // Set active
-            const activeBtn = document.getElementById('btn-' + tabId);
-            activeBtn.classList.remove('tab-inactive');
-            activeBtn.classList.add('tab-active');
+      <div id="content-digital" class="hidden glass-card p-6 sm:p-8 md:p-12 animate-fade-in border-l-8 border-l-purple-500 min-w-0">
+        <div class="flex flex-col md:flex-row gap-8 items-start min-w-0">
+          <div class="md:w-1/3 min-w-0">
+            <div class="w-16 h-16 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center text-3xl mb-4">
+              <i class="fas fa-laptop-code"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-slate-800 mb-2 break-words">Hab Inovasi</h3>
+            <p class="text-slate-500 text-sm break-words">Nilai tambah sistem dalam bentuk pembangunan profesionalisme berterusan (CPD).</p>
+          </div>
+          <div class="md:w-2/3 grid grid-cols-1 gap-4 w-full min-w-0">
+            <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 flex gap-4 items-start min-w-0">
+              <div class="bg-purple-100 text-purple-600 p-3 rounded-lg shrink-0"><i class="fas fa-brain text-xl"></i></div>
+              <div class="min-w-0">
+                <h4 class="font-bold text-purple-700 mb-1 break-words">Modul S.P.K.A (SirSM.AI)</h4>
+                <p class="text-xs text-slate-600 leading-relaxed break-words">Enjin pembelajaran Kejuruteraan Prompt. Dilengkapi "Mesin Prompt", Bank Prompt mengikut sektor pendidikan, dan Kuiz Interaktif untuk mengatasi halusinasi AI.</p>
+              </div>
+            </div>
+            <div class="bg-slate-50 p-5 rounded-xl border border-slate-100 flex gap-4 items-start min-w-0">
+              <div class="bg-purple-100 text-purple-600 p-3 rounded-lg shrink-0"><i class="fab fa-google text-xl"></i></div>
+              <div class="min-w-0">
+                <h4 class="font-bold text-purple-700 mb-1 break-words">Modul Bank Gemini</h4>
+                <p class="text-xs text-slate-600 leading-relaxed break-words">Hab latihan interaktif persediaan peperiksaan <em>Google Certified Educator</em> lengkap dengan analitik soalan dan mod Kad Imbasan (Flashcards).</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-            const activeContent = document.getElementById('content-' + tabId);
-            activeContent.classList.remove('hidden');
+    <div class="bg-slate-900 rounded-[2.5rem] p-6 sm:p-8 md:p-12 text-white shadow-2xl relative overflow-hidden animate-fade-up min-w-0" style="animation-delay: 0.3s;">
+      <div class="absolute top-0 right-0 w-64 h-64 bg-brand-500 opacity-20 rounded-full blur-[80px] pointer-events-none"></div>
+
+      <div class="text-center max-w-2xl mx-auto mb-12 relative z-10 min-w-0">
+        <h2 class="text-2xl md:text-3xl font-black mb-4 break-words">Seni Bina Teknologi <span class="text-brand-400">Gred Industri</span></h2>
+        <p class="text-slate-400 break-words">NaDIM bukan sekadar borang digital. Ia adalah jentera yang dibina menggunakan gabungan teknologi moden untuk kelajuan, keselamatan, dan kestabilan optimum.</p>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 relative z-10">
+        <div class="text-center p-4 border border-slate-800 rounded-2xl bg-slate-800/50 backdrop-blur-sm min-w-0">
+          <i class="fas fa-database text-3xl text-emerald-400 mb-3"></i>
+          <h4 class="font-bold text-slate-200 text-sm mb-1 break-words">Supabase DB</h4>
+          <p class="text-[10px] text-slate-400 break-words">Pangkalan data masa nyata (Real-time sync).</p>
+        </div>
+        <div class="text-center p-4 border border-slate-800 rounded-2xl bg-slate-800/50 backdrop-blur-sm min-w-0">
+          <i class="fas fa-bolt text-3xl text-amber-400 mb-3"></i>
+          <h4 class="font-bold text-slate-200 text-sm mb-1 break-words">Cloudflare Edge</h4>
+          <p class="text-[10px] text-slate-400 break-words">Pengehosan global &amp; API edge pantas.</p>
+        </div>
+        <div class="text-center p-4 border border-slate-800 rounded-2xl bg-slate-800/50 backdrop-blur-sm min-w-0">
+          <i class="fas fa-shield-alt text-3xl text-purple-400 mb-3"></i>
+          <h4 class="font-bold text-slate-200 text-sm mb-1 break-words">Strict RBAC</h4>
+          <p class="text-[10px] text-slate-400 break-words">Hierarki akses keselamatan ketat.</p>
+        </div>
+        <div class="text-center p-4 border border-slate-800 rounded-2xl bg-slate-800/50 backdrop-blur-sm min-w-0">
+          <i class="fab fa-css3-alt text-3xl text-sky-400 mb-3"></i>
+          <h4 class="font-bold text-slate-200 text-sm mb-1 break-words">Tailwind CSS</h4>
+          <p class="text-[10px] text-slate-400 break-words">Antaramuka responsif dan pantas dimuat.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 py-12 mt-auto shrink-0">
+    <div class="container mx-auto px-4 text-center">
+      <p class="text-slate-600 font-medium mb-2">NaDIM &copy; 2026</p>
+      <p class="text-xs text-slate-400 uppercase tracking-widest">Dibangunkan oleh Unit Sumber Teknologi Pendidikan (USTP) PPD Alor Gajah</p>
+    </div>
+  </footer>
+
+  <script>
+    function switchTab(tabId) {
+      const tabs = ['awam', 'sekolah', 'ppd', 'digital'];
+
+      tabs.forEach(function (t) {
+        const btn = document.getElementById('btn-' + t);
+        if (btn) {
+          btn.classList.remove('tab-active');
+          btn.classList.add('tab-inactive');
         }
-    </script>
+
+        const content = document.getElementById('content-' + t);
+        if (content) {
+          content.classList.add('hidden');
+        }
+      });
+
+      const activeBtn = document.getElementById('btn-' + tabId);
+      if (activeBtn) {
+        activeBtn.classList.remove('tab-inactive');
+        activeBtn.classList.add('tab-active');
+      }
+
+      const activeContent = document.getElementById('content-' + tabId);
+      if (activeContent) {
+        activeContent.classList.remove('hidden');
+      }
+    }
+  </script>
 </body>
 </html>

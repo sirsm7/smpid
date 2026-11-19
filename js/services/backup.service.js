@@ -1,98 +1,99 @@
-/**
- * BACKUP & RESTORE SERVICE
- * Menguruskan eksport dan import keseluruhan pangkalan data (JSON).
- * Memastikan kebergantungan jadual (Foreign Keys) terjaga melalui susunan.
- */
+import { MigrationManager } from "../core/migration.js";
+import { APP_CONFIG } from "../config/app.config.js";
 
-import { getDatabaseClient } from '../core/db.js';
+function normalizeToJsonFile(input) {
+  if (typeof File !== "undefined" && input instanceof File) {
+    return input;
+  }
 
-// Senarai jadual mengikut urutan kebergantungan (Foreign Keys).
-// Jadual rujukan utama mesti di-restore dahulu untuk mengelakkan ralat constraint.
-const TABLES = [
-    'smpid_sekolah_data',
-    'smpid_users',
-    'smpid_admin_users',
-    'smpid_pencapaian',
-    'smpid_aduan',
-    'smpid_dcs_analisa',
-    'smpid_bb_tempahan',
-    'smpid_bb_kunci',
-    'smpid_delima_status',
-    'smpid_penataran_digital',
-    'smpid_libat_urus',
-    'smpid_impak_bbm'
-];
+  if (typeof Blob !== "undefined" && input instanceof Blob) {
+    return new File([input], "nadim_restore.json", { type: "application/json" });
+  }
+
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("Format fail sandaran tidak sah. Sila muat naik fail .json yang sah.");
+  }
+
+  let normalizedDoc = input;
+
+  if (!input.metadata && !input.tables && input.data && typeof input.data === "object") {
+    const legacyTableNames = Object.keys(input.data);
+    const tablesMap = {};
+
+    for (let i = 0; i < legacyTableNames.length; i += 1) {
+      const tableName = legacyTableNames[i];
+      const rows = Array.isArray(input.data[tableName]) ? input.data[tableName] : [];
+      const firstRow = rows.length > 0 && rows[0] && typeof rows[0] === "object" ? rows[0] : {};
+      const inferredCols = Object.keys(firstRow);
+      const pk = inferredCols.includes("kod_sekolah")
+        ? "kod_sekolah"
+        : inferredCols.includes("role")
+          ? "role"
+          : "id";
+
+      tablesMap[tableName] = {
+        table_name: tableName,
+        primary_key: pk,
+        headers: inferredCols.length > 0 ? [pk] : [],
+        optional_headers: inferredCols.filter((col) => col !== pk),
+        rows
+      };
+    }
+
+    normalizedDoc = {
+      metadata: {
+        app: "nadim",
+        schema_version: typeof input.version === "string" ? input.version : APP_CONFIG.APP_VERSION,
+        exported_at: typeof input.timestamp === "string" ? input.timestamp : new Date().toISOString(),
+        table_order: legacyTableNames
+      },
+      tables: tablesMap
+    };
+  }
+
+  const serialized = JSON.stringify(normalizedDoc);
+  return new File([serialized], "nadim_restore.json", { type: "application/json" });
+}
 
 export const BackupService = {
-    /**
-     * Menarik keseluruhan data dari semua jadual yang tersenarai.
-     * @returns {Promise<Object>} Objek JSON berstruktur.
-     */
-    async exportAllData() {
-        const db = getDatabaseClient();
-        if (!db) throw new Error("Tiada sambungan pangkalan data.");
+  isBusy() {
+    return MigrationManager.isBusy();
+  },
 
-        const backupData = {
-            timestamp: new Date().toISOString(),
-            version: '1.0',
-            data: {}
-        };
+  cancelActiveOperation() {
+    MigrationManager.cancelActiveOperation();
+  },
 
-        for (const table of TABLES) {
-            // Had 100,000 baris untuk memintas had lalai Supabase bagi backup pukal
-            const { data, error } = await db.from(table).select('*').limit(100000);
-            if (error) {
-                console.error(`[BackupService] Gagal mengeksport jadual ${table}:`, error);
-                throw new Error(`Ralat menarik jadual ${table}: ${error.message}`);
-            }
-            backupData.data[table] = data || [];
-        }
+  async exportBackupJson(options = {}) {
+    return MigrationManager.exportBackupJson(options);
+  },
 
-        return backupData;
-    },
+  async importBackupJson(file, options = {}) {
+    return MigrationManager.importBackupJson(file, options);
+  },
 
-    /**
-     * Memulihkan data dari fail JSON ke dalam pangkalan data menggunakan upsert.
-     * @param {Object} backupJson Objek JSON dari fail yang dimuat naik.
-     * @returns {Promise<Object>} Laporan kejayaan dan ralat.
-     */
-    async restoreAllData(backupJson) {
-        const db = getDatabaseClient();
-        if (!db) throw new Error("Tiada sambungan pangkalan data.");
+  async exportAllData(options = {}) {
+    const result = await MigrationManager.exportBackupJson(options);
+    return result.document;
+  },
 
-        if (!backupJson || !backupJson.data) {
-            throw new Error("Format fail backup tidak sah. Sila gunakan fail yang dijanakan oleh sistem ini.");
-        }
+  async restoreAllData(backupInput, options = {}) {
+    const jsonFile = normalizeToJsonFile(backupInput);
+    const result = await MigrationManager.importBackupJson(jsonFile, options);
+    const summaryMessages = result.tableOrder.map(
+      (tableName) => `Jadual ${tableName} berjaya dipulihkan.`
+    );
 
-        const dataToRestore = backupJson.data;
-        const logResults = {
-            success: [],
-            errors: []
-        };
-
-        for (const table of TABLES) {
-            const tableData = dataToRestore[table];
-            
-            if (tableData && tableData.length > 0) {
-                try {
-                    // Pemprosesan secara berkelompok (Chunking) untuk mengelakkan ralat saiz muatan (Payload Too Large)
-                    const CHUNK_SIZE = 1000;
-                    for (let i = 0; i < tableData.length; i += CHUNK_SIZE) {
-                        const chunk = tableData.slice(i, i + CHUNK_SIZE);
-                        const { error } = await db.from(table).upsert(chunk);
-                        
-                        if (error) throw error;
-                    }
-                    logResults.success.push(`Jadual ${table} - ${tableData.length} rekod dimuatnaik.`);
-                } catch (error) {
-                    console.error(`[BackupService] Gagal memulihkan jadual ${table}:`, error);
-                    logResults.errors.push(`Jadual ${table}: ${error.message}`);
-                }
-            } else {
-                logResults.success.push(`Jadual ${table} - Kosong (Tiada data).`);
-            }
-        }
-
-        return logResults;
-    }
+    return {
+      success: summaryMessages,
+      errors: [],
+      tableCount: result.tableCount,
+      totalRows: result.totalRows,
+      tableOrder: result.tableOrder
+    };
+  }
 };
+
+if (typeof window !== "undefined") {
+  window.BackupService = BackupService;
+}

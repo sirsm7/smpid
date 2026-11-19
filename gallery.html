@@ -4,23 +4,43 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NaDIM - Galeri Kemenjadian</title>
-  
+
   <meta name="theme-color" content="#16a34a">
   <link rel="icon" href="icoppdag.png">
-  
+
+  <!-- TAILWIND CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="js/config/tailwind.config.js"></script>
-  
+  <script src="js/config/tailwind.config.js?v=2026.1"></script>
+
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
     .hidden { display: none !important; }
+
+    .card-gallery {
+      @apply bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full;
+    }
+    .gallery-thumb-container {
+      @apply relative aspect-video bg-slate-100 overflow-hidden flex-shrink-0;
+    }
+    .gallery-thumb {
+      @apply absolute inset-0 w-full h-full object-cover transition-transform duration-700 hover:scale-110;
+    }
     
-    .card-gallery { @apply bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col h-full; }
-    .gallery-thumb-container { @apply relative aspect-video bg-slate-100 overflow-hidden flex-shrink-0; }
-    .gallery-thumb { @apply absolute inset-0 w-full h-full object-cover transition-transform duration-700 hover:scale-110; }
-    
+    .fade-up,
+    .animate-fade-up {
+      animation: fadeInUp 0.5s ease-out forwards;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     /* Global Table Wrapping Fix */
     table td, table th {
       white-space: normal !important;
@@ -33,13 +53,16 @@
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
   </style>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- KONFIGURASI MASA JALAN & PUSTAKA LUARAN -->
+  <script type="module" src="js/config/config.js?v=2026.1"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script defer src="js/utils.js?v=2026.1"></script>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+<body class="bg-slate-50 text-slate-800 antialiased min-h-dvh overflow-x-hidden flex flex-col">
 
   <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
-    <div class="text-center text-white">
+    <div class="text-center text-white px-4">
       <i class="fas fa-circle-notch fa-spin fa-3x mb-3 text-brand-500"></i>
       <p class="font-bold tracking-wide animate-pulse">Mengambil Data Galeri...</p>
     </div>
@@ -47,118 +70,120 @@
 
   <header class="bg-gradient-to-br from-brand-900 via-brand-700 to-emerald-900 pb-28 pt-10 px-4 shadow-xl relative overflow-hidden">
     <div class="absolute top-0 right-0 w-80 h-80 bg-white opacity-5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
-    
-    <div class="relative z-10 max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-        <div class="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-            <!-- Logo PPD: Memperbesarkan saiz kepada w-32 (Optimum Prominent Size V11.0) -->
-            <img src="icoppdag.png" alt="Logo PPD" class="w-32 h-auto drop-shadow-xl bg-white/10 p-2 rounded-2xl backdrop-blur-sm transform hover:rotate-3 transition duration-500">
-            
-            <div>
-                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-brand-300 text-[10px] font-black uppercase tracking-widest border border-white/10 mb-4">
-                    <i class="fas fa-chart-line"></i> Dashboard Kemenjadian
-                </span>
-                <h1 class="text-2xl md:text-4xl font-black text-white leading-tight mb-1 uppercase tracking-tight" id="headerSchoolName">MEMUATKAN...</h1>
-                <p class="text-emerald-200 text-sm font-bold tracking-widest" id="headerSchoolCode">-</p>
-            </div>
-        </div>
 
-        <div class="flex gap-3">
-            <button onclick="window.location.href='index.html'" class="px-6 py-2.5 rounded-full bg-white/10 text-white hover:bg-white hover:text-brand-900 transition-all text-xs font-black border border-white/20 shadow-lg flex items-center gap-2">
-                <i class="fas fa-home"></i> PORTAL UTAMA
-            </button>
+    <div class="relative z-10 max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+      <div class="flex flex-col md:flex-row items-center gap-6 text-center md:text-left min-w-0">
+        <!-- Logo PPD: Memperbesarkan saiz kepada w-32 -->
+        <img src="icoppdag.png" alt="Logo PPD" class="w-32 h-auto drop-shadow-xl bg-white/10 p-2 rounded-2xl backdrop-blur-sm transform hover:rotate-3 transition duration-500 shrink-0">
+
+        <div class="min-w-0">
+          <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-brand-300 text-[10px] font-black uppercase tracking-widest border border-white/10 mb-4 break-words">
+            <i class="fas fa-chart-line"></i> Dashboard Kemenjadian
+          </span>
+          <h1 class="text-2xl md:text-4xl font-black text-white leading-tight mb-1 uppercase tracking-tight break-words" id="headerSchoolName">MEMUATKAN...</h1>
+          <p class="text-emerald-200 text-sm font-bold tracking-widest break-words" id="headerSchoolCode">-</p>
         </div>
+      </div>
+
+      <div class="flex gap-3 shrink-0">
+        <button type="button" onclick="window.location.href='index.html'" class="min-h-[44px] px-6 py-2.5 rounded-full bg-white/10 text-white hover:bg-white hover:text-brand-900 transition-all text-xs font-black border border-white/20 shadow-lg flex items-center gap-2">
+          <i class="fas fa-home"></i> PORTAL UTAMA
+        </button>
+      </div>
     </div>
   </header>
 
-  <div class="container mx-auto px-4 -mt-16 pb-20 relative z-20 max-w-7xl">
-    
-    <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 md:p-8 mb-8 animate-fade-up">
-        <div class="flex flex-col lg:flex-row justify-between items-center gap-8">
-            
-            <div class="flex flex-wrap justify-center md:justify-start items-center gap-6 md:gap-10">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-lg shadow-lg">
-                        <i class="fas fa-trophy"></i>
-                    </div>
-                    <div>
-                        <div class="text-2xl font-black text-slate-800" id="countTotal">0</div>
-                        <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Jumlah Rekod</div>
-                    </div>
-                </div>
+  <main class="container mx-auto px-4 -mt-16 pb-20 relative z-20 max-w-7xl flex-grow">
 
-                <div class="h-10 w-px bg-slate-100 hidden md:block"></div>
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 md:p-8 mb-8 animate-fade-up min-w-0">
+      <div class="flex flex-col lg:flex-row justify-between items-center gap-8 min-w-0">
 
-                <div class="flex gap-8">
-                    <div class="text-center md:text-left">
-                        <div class="text-lg font-black text-blue-600" id="countMurid">0</div>
-                        <div class="text-[9px] font-black text-blue-400 uppercase tracking-widest" id="lblStat1">Murid</div>
-                    </div>
-                    <div class="text-center md:text-left">
-                        <div class="text-lg font-black text-amber-500" id="countGuru">0</div>
-                        <div class="text-[9px] font-black text-amber-400 uppercase tracking-widest" id="lblStat2">Guru</div>
-                    </div>
-                    <div class="text-center md:text-left" id="statBox3">
-                        <div class="text-lg font-black text-indigo-600" id="countSekolah">0</div>
-                        <div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Sekolah</div>
-                    </div>
-                </div>
+        <div class="flex flex-wrap justify-center md:justify-start items-center gap-6 md:gap-10 min-w-0">
+          <div class="flex items-center gap-4 min-w-0">
+            <div class="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-lg shadow-lg shrink-0">
+              <i class="fas fa-trophy"></i>
             </div>
-
-            <!-- BUTANG TAPISAN DINAMIK -->
-            <div class="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100 w-full lg:w-auto" id="filterContainerPublic">
-                <!-- Butang akan disuntik secara dinamik oleh renderDynamicFilters() dalam gallery.js -->
+            <div class="min-w-0">
+              <div class="text-2xl font-black text-slate-800 break-words" id="countTotal">0</div>
+              <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest break-words">Jumlah Rekod</div>
             </div>
+          </div>
 
+          <div class="h-10 w-px bg-slate-100 hidden md:block shrink-0"></div>
+
+          <div class="flex flex-wrap justify-center gap-8 min-w-0">
+            <div class="text-center md:text-left min-w-0">
+              <div class="text-lg font-black text-blue-600 break-words" id="countMurid">0</div>
+              <div class="text-[9px] font-black text-blue-400 uppercase tracking-widest break-words" id="lblStat1">Murid</div>
+            </div>
+            <div class="text-center md:text-left min-w-0">
+              <div class="text-lg font-black text-amber-500 break-words" id="countGuru">0</div>
+              <div class="text-[9px] font-black text-amber-400 uppercase tracking-widest break-words" id="lblStat2">Guru</div>
+            </div>
+            <div class="text-center md:text-left min-w-0" id="statBox3">
+              <div class="text-lg font-black text-indigo-600 break-words" id="countSekolah">0</div>
+              <div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest break-words">Sekolah</div>
+            </div>
+          </div>
         </div>
-    </div>
 
-    <div id="jawatanCloudWrapper" class="mb-8 hidden animate-fade-up">
-        <div class="flex justify-between items-center mb-3 px-2">
-            <h6 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                <i class="fas fa-tags text-amber-500"></i> Tapisan Jawatan Guru
-            </h6>
-            <button onclick="filterByJawatan('ALL')" id="btnResetJawatan" class="text-[10px] font-black text-red-400 hover:text-red-600 hidden uppercase tracking-widest">
-                Padam Tapis <i class="fas fa-times ml-1"></i>
-            </button>
+        <!-- BUTANG TAPISAN DINAMIK -->
+        <div class="flex flex-wrap bg-slate-50 p-1.5 rounded-2xl border border-slate-100 w-full lg:w-auto" id="filterContainerPublic">
+          <!-- Butang akan disuntik secara dinamik oleh renderDynamicFilters() dalam gallery.js -->
         </div>
-        <div id="jawatanCloudContainer" class="p-4 bg-white rounded-3xl border border-slate-100 shadow-sm flex flex-wrap justify-center">
-        </div>
-    </div>
 
-    <div id="galleryGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-        <div class="col-span-full py-20 text-center">
-            <i class="fas fa-circle-notch fa-spin fa-2x text-slate-200 mb-4"></i>
-            <p class="text-slate-400 font-bold italic">Sedang menyusun papan pencapaian...</p>
-        </div>
-    </div>
-
-  </div>
-
-  <footer class="mt-auto py-12 bg-white border-t border-slate-100">
-      <div class="container mx-auto px-4 text-center">
-          <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">&copy; 2026 USTP PPD ALOR GAJAH</p>
       </div>
+    </div>
+
+    <div id="jawatanCloudWrapper" class="mb-8 hidden animate-fade-up min-w-0">
+      <div class="flex flex-wrap justify-between items-center mb-3 px-2 gap-2">
+        <h6 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 break-words">
+          <i class="fas fa-tags text-amber-500"></i> Tapisan Jawatan Guru
+        </h6>
+        <button type="button" onclick="filterByJawatan('ALL')" id="btnResetJawatan" class="min-h-[44px] px-3 text-[10px] font-black text-red-400 hover:text-red-600 hidden uppercase tracking-widest shrink-0">
+          Padam Tapis <i class="fas fa-times ml-1"></i>
+        </button>
+      </div>
+      <div id="jawatanCloudContainer" class="p-4 bg-white rounded-3xl border border-slate-100 shadow-sm flex flex-wrap justify-center gap-2">
+      </div>
+    </div>
+
+    <div id="galleryGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 min-w-0">
+      <div class="col-span-full py-20 text-center">
+        <i class="fas fa-circle-notch fa-spin fa-2x text-slate-200 mb-4"></i>
+        <p class="text-slate-400 font-bold italic">Sedang menyusun papan pencapaian...</p>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="mt-auto py-12 bg-white border-t border-slate-100 shrink-0">
+    <div class="container mx-auto px-4 text-center">
+      <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">&copy; 2026 USTP PPD ALOR GAJAH</p>
+    </div>
   </footer>
 
-  <script type="module" src="js/gallery.js"></script>
+  <script type="module" src="js/gallery.js?v=2026.1"></script>
 
   <script>
-      window.updateFilterUI = function(btn) {
-          const btns = document.querySelectorAll('.btn-filter');
-          btns.forEach(b => {
-              b.classList.remove('bg-slate-900', 'text-white', 'shadow-md', 'scale-105', 'transform');
-              b.classList.add('text-slate-500'); // Ensure it goes back to unselected text color
-          });
-          // Remove default colors from the active button so the dark theme applies cleanly
-          btn.classList.remove('text-slate-500', 'hover:text-blue-600', 'hover:text-amber-600', 'hover:text-indigo-600', 'hover:text-teal-600', 'hover:text-fuchsia-600');
-          btn.classList.add('bg-slate-900', 'text-white', 'shadow-md', 'transform', 'scale-105');
-      };
+    window.updateFilterUI = function(btn) {
+      const btns = document.querySelectorAll('.btn-filter');
+      btns.forEach(b => {
+        b.classList.remove('bg-slate-900', 'text-white', 'shadow-md', 'scale-105', 'transform');
+        b.classList.add('text-slate-500'); // Ensure it goes back to unselected text color
+      });
+      if (btn) {
+        // Remove default colors from the active button so the dark theme applies cleanly
+        btn.classList.remove('text-slate-500', 'hover:text-blue-600', 'hover:text-amber-600', 'hover:text-indigo-600', 'hover:text-teal-600', 'hover:text-fuchsia-600');
+        btn.classList.add('bg-slate-900', 'text-white', 'shadow-md', 'transform', 'scale-105');
+      }
+    };
 
-      const originalFilterGallery = window.filterGallery;
-      window.filterGallery = function(type, btn) {
-          if(btn) window.updateFilterUI(btn);
-          if(typeof originalFilterGallery === 'function') originalFilterGallery(type, btn);
-      };
+    const originalFilterGallery = window.filterGallery;
+    window.filterGallery = function(type, btn) {
+      if(btn) window.updateFilterUI(btn);
+      if(typeof originalFilterGallery === 'function') originalFilterGallery(type, btn);
+    };
   </script>
 
 </body>

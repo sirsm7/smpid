@@ -2,140 +2,128 @@
 <html lang="ms">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NaDIM - Portal Utama</title>
-  
+
   <meta name="theme-color" content="#198754">
   <link rel="icon" href="icoppdag.png">
 
-  <!-- PETUNJUK SUMBER AWAL (RESOURCE HINTS & PRECONNECT) -->
-  <link rel="preconnect" href="https://app.tech4ag.my">
-  <link rel="dns-prefetch" href="https://app.tech4ag.my">
+  <link rel="preconnect" href="https://seber.tech4ag.my">
+  <link rel="dns-prefetch" href="https://seber.tech4ag.my">
   <link rel="preconnect" href="https://cdn.tailwindcss.com">
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-  
-  <!-- TAILWIND CSS (CDN) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="js/config/tailwind.config.js"></script>
-  
-  <!-- FONTAWESOME (PEMUATAN TAK SEGERAK) -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
-  <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"></noscript>
-  
-  <!-- GOOGLE FONTS -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- STYLE TAMBAHAN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/config/tailwind.config.js?v=2026.1"></script>
+
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
   <style>
     .glass-effect {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
     }
-    .fade-up { animation: fadeInUp 0.5s ease-out forwards; opacity: 0; transform: translateY(20px); }
-    @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
-    .hidden { display: none !important; }
+    .fade-up,
+    .animate-fade-up {
+      animation: fadeInUp 0.5s ease-out forwards;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .hidden {
+      display: none !important;
+    }
   </style>
 
-  <!-- PUSTAKA LUARAN (DEFERRED - MENGHILANGKAN RENDER-BLOCKING) -->
+  <script type="module" src="js/config/config.js?v=2026.2"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-<body id="page-landing" class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+<body id="page-landing" class="bg-slate-50 text-slate-800 antialiased min-h-dvh overflow-x-hidden flex flex-col">
 
-  <!-- LOADING OVERLAY -->
   <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
-    <div class="text-center text-white">
+    <div class="text-center text-white px-4">
       <i class="fas fa-circle-notch fa-spin fa-3x mb-3 text-brand-500"></i>
       <p class="font-bold tracking-wide animate-pulse">Memuatkan Data Sekolah...</p>
     </div>
   </div>
 
-  <!-- HEADER HERO -->
-  <div class="bg-gradient-to-br from-brand-900 via-brand-700 to-emerald-900 pb-24 pt-16 px-4 shadow-xl relative overflow-hidden">
-    <!-- Decorative Circle -->
+  <header class="bg-gradient-to-br from-brand-900 via-brand-700 to-emerald-900 pb-24 pt-20 md:pt-16 px-4 shadow-xl relative overflow-hidden">
     <div class="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl pointer-events-none"></div>
-    
-    <!-- Top Right Controls (Live Counter & Dokumentasi) -->
-    <div class="absolute top-4 right-4 md:top-6 md:right-6 flex flex-col md:flex-row items-end md:items-center gap-3 z-20">
-        
-        <!-- Live Counter Badge -->
-        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/40 border border-slate-700/50 text-emerald-100 text-[10px] font-black tracking-widest backdrop-blur-md shadow-lg cursor-default" title="Pengunjung Sedang Aktif di Portal">
-            <span class="relative flex h-2.5 w-2.5">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-            </span>
-            <span id="liveCounterVal" class="text-white text-xs">1</span> AKTIF
-        </div>
 
-        <!-- Pautan Dokumentasi -->
-        <a href="about.html" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all text-xs font-bold border border-white/20 backdrop-blur-sm">
-            <i class="fas fa-info-circle"></i> Mengenai Sistem
-        </a>
+    <div class="absolute top-3 right-3 md:top-6 md:right-6 flex flex-wrap items-center justify-end gap-2 md:gap-3 z-20">
+      <div class="min-h-[40px] inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/40 border border-slate-700/50 text-emerald-100 text-[10px] font-black tracking-widest backdrop-blur-md shadow-lg cursor-default" title="Pengunjung Sedang Aktif di Portal">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+        </span>
+        <span id="liveCounterVal" class="text-white text-xs">1</span> AKTIF
+      </div>
+
+      <a href="about.html" class="min-h-[44px] inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all text-xs font-bold border border-white/20 backdrop-blur-sm">
+        <i class="fas fa-info-circle"></i> Mengenai Sistem
+      </a>
     </div>
-    
-    <div class="relative z-10 max-w-4xl mx-auto text-center mt-6 md:mt-0">
-        <!-- Logo PPD -->
-        <img src="icoppdag.png" alt="Logo PPD" class="mx-auto mb-6 w-48 h-auto drop-shadow-lg transform hover:scale-105 transition duration-500" fetchpriority="high">
-        
-        <h1 class="text-3xl md:text-5xl font-bold text-white mb-2 tracking-tight">
-            NaDIM
-        </h1>
-        <p class="text-emerald-100 text-sm md:text-base font-medium tracking-wide uppercase opacity-90 mb-10">
-            Nadi Analitik, Digital & Inovasi Melaka
+
+    <div class="relative z-10 max-w-4xl mx-auto text-center mt-6 md:mt-0 min-w-0">
+      <img src="icoppdag.png" alt="Logo PPD" class="mx-auto mb-6 w-40 sm:w-48 h-auto drop-shadow-lg transform hover:scale-105 transition duration-500" fetchpriority="high">
+
+      <h1 class="text-3xl md:text-5xl font-bold text-white mb-2 tracking-tight">
+        NaDIM
+      </h1>
+      <p class="text-emerald-100 text-sm md:text-base font-medium tracking-wide uppercase opacity-90 mb-10 break-words">
+        Nadi Analitik, Digital &amp; Inovasi Melaka
+      </p>
+
+      <div class="relative max-w-xl mx-auto group">
+        <div class="absolute inset-0 bg-brand-400 rounded-full blur opacity-25 group-hover:opacity-40 transition duration-300"></div>
+        <div class="relative">
+          <i class="fas fa-search absolute left-5 top-1/2 transform -translate-y-1/2 text-slate-400 text-lg group-hover:text-brand-600 transition"></i>
+          <input type="text" id="mainSearch" list="schoolList"
+                 class="w-full min-h-[52px] pl-14 pr-6 py-4 rounded-full bg-white border-2 border-transparent focus:border-brand-300 focus:ring-4 focus:ring-brand-500/20 shadow-2xl text-base md:text-lg font-semibold text-slate-700 placeholder-slate-400 outline-none transition-all"
+                 placeholder="Cari Kod (MBA0001) atau Nama Sekolah..." autocomplete="off">
+          <datalist id="schoolList"></datalist>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 -mt-16 relative z-20 pb-20 flex-grow">
+    <div class="max-w-4xl mx-auto min-w-0">
+      <div id="schoolCardContainer" class="hidden"></div>
+
+      <div id="welcomeMessage" class="text-center mt-20 fade-up">
+        <div class="inline-flex items-center justify-center w-20 h-20 bg-white rounded-full shadow-lg mb-6 text-slate-300 border border-slate-100">
+          <i class="fas fa-search fa-3x"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-600 mb-2">Mula Carian Anda</h3>
+        <p class="text-slate-500 text-sm max-w-md mx-auto mb-10 break-words">
+          Sila taip kod sekolah atau nama sekolah di ruang carian di atas untuk mengakses menu serahan data, galeri, dan log masuk.
         </p>
 
-        <!-- SEARCH BAR HERO -->
-        <div class="relative max-w-xl mx-auto group">
-            <div class="absolute inset-0 bg-brand-400 rounded-full blur opacity-25 group-hover:opacity-40 transition duration-300"></div>
-            <div class="relative">
-                <i class="fas fa-search absolute left-5 top-1/2 transform -translate-y-1/2 text-slate-400 text-lg group-hover:text-brand-600 transition"></i>
-                <input type="text" id="mainSearch" list="schoolList" 
-                       class="w-full pl-14 pr-6 py-4 rounded-full bg-white border-2 border-transparent focus:border-brand-300 focus:ring-4 focus:ring-brand-500/20 shadow-2xl text-lg font-semibold text-slate-700 placeholder-slate-400 outline-none transition-all" 
-                       placeholder="Cari Kod (MBA0001) atau Nama Sekolah..." autocomplete="off">
-                <datalist id="schoolList"></datalist>
-            </div>
+        <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+          <a href="login.html?mod=admin" class="min-h-[44px] inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-slate-800 text-white font-bold text-sm hover:bg-slate-900 hover:shadow-lg transition transform hover:-translate-y-1 w-full sm:w-auto">
+            <i class="fas fa-user-shield"></i> Log Masuk Pentadbir
+          </a>
+          <a href="about.html" class="min-h-[44px] inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-white border-2 border-slate-200 text-slate-600 font-bold text-sm hover:border-brand-500 hover:text-brand-600 hover:shadow-lg transition transform hover:-translate-y-1 w-full sm:w-auto">
+            <i class="fas fa-book-open"></i> Mengenai Sistem
+          </a>
         </div>
+      </div>
     </div>
-  </div>
+  </main>
 
-  <!-- MAIN CONTENT CONTAINER -->
-  <div class="container mx-auto px-4 -mt-16 relative z-20 pb-20">
-    <div class="max-w-4xl mx-auto">
-
-        <!-- KAD DINAMIK (Muncul bila sekolah dipilih) -->
-        <div id="schoolCardContainer" class="hidden">
-            <!-- Diisi oleh JavaScript (landing.js) -->
-        </div>
-
-        <!-- NOTA KAKI / PANDUAN RINGKAS (Default View) -->
-        <div id="welcomeMessage" class="text-center mt-20 fade-up">
-            <div class="inline-flex items-center justify-center w-20 h-20 bg-white rounded-full shadow-lg mb-6 text-slate-300 border border-slate-100">
-                <i class="fas fa-search fa-3x"></i>
-            </div>
-            <h3 class="text-xl font-bold text-slate-600 mb-2">Mula Carian Anda</h3>
-            <p class="text-slate-500 text-sm max-w-md mx-auto mb-10">
-                Sila taip kod sekolah atau nama sekolah di ruang carian di atas untuk mengakses menu serahan data, galeri, dan log masuk.
-            </p>
-            
-            <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
-                <a href="login.html?mod=admin" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-slate-800 text-white font-bold text-sm hover:bg-slate-900 hover:shadow-lg transition transform hover:-translate-y-1 w-full sm:w-auto">
-                    <i class="fas fa-user-shield"></i> Log Masuk Pentadbir
-                </a>
-                <a href="about.html" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-white border-2 border-slate-200 text-slate-600 font-bold text-sm hover:border-brand-500 hover:text-brand-600 hover:shadow-lg transition transform hover:-translate-y-1 w-full sm:w-auto">
-                    <i class="fas fa-book-open"></i> Mengenai Sistem
-                </a>
-            </div>
-        </div>
-
-    </div>
-  </div>
-
-  <!-- MODULAR JAVASCRIPT -->
-  <script type="module" src="js/landing.js"></script>
+  <script type="module" src="js/landing.js?v=2026.2"></script>
 
 </body>
 </html>

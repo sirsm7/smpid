@@ -1,289 +1,618 @@
-import { AchievementService } from './services/achievement.service.js';
-import { SchoolService } from './services/school.service.js';
-import { APP_CONFIG } from './config/app.config.js';
+import { envReady } from "./config/config.js";
+import { APP_CONFIG } from "./config/app.config.js";
+import { initDatabaseClient } from "./core/db.js";
+import { RealtimeManager } from "./core/realtime.js";
+import { AchievementService } from "./services/achievement.service.js";
+import { SchoolService } from "./services/school.service.js";
 
 let allGalleryData = [];
-let currentJawatanFilter = 'ALL';
-let isPPDMode = false; // Flag dinamik untuk menentukan status PPD
+let currentJawatanFilter = "ALL";
+let currentCategoryFilter = "SEMUA";
+let currentKodSekolah = "";
+let isPPDMode = false;
+let realtimeSubscribed = false;
 
-document.addEventListener('DOMContentLoaded', () => {
-    initGallery();
+function clearElement(el) {
+  if (!el) {
+    return;
+  }
+  while (el.firstChild) {
+    el.removeChild(el.firstChild);
+  }
+}
+
+function createIcon(iconClass) {
+  const icon = document.createElement("i");
+  icon.className = iconClass;
+  return icon;
+}
+
+function sanitizeExternalUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== "string") {
+    return null;
+  }
+  const trimmed = rawUrl.trim();
+  if (!trimmed || trimmed === "#") {
+    return null;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.href;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function filterCategoryScope(data) {
+  const list = Array.isArray(data) ? data : [];
+  if (isPPDMode) {
+    return list.filter((item) => ["PEGAWAI", "PPD"].includes(item.kategori));
+  }
+  return list.filter((item) => ["MURID", "GURU", "SEKOLAH"].includes(item.kategori));
+}
+
+async function silentRefreshPublicGallery() {
+  if (!currentKodSekolah || !document.getElementById("galleryGrid")) {
+    return;
+  }
+  try {
+    await envReady;
+    await initDatabaseClient();
+    const data = await AchievementService.getBySchool(currentKodSekolah);
+    allGalleryData = filterCategoryScope(data);
+    updateStats(allGalleryData);
+    if (currentCategoryFilter === "GURU" && !isPPDMode) {
+      generateJawatanCloud();
+    }
+    window.renderGallery(currentCategoryFilter);
+  } catch {}
+}
+
+function ensureRealtimeSync() {
+  if (realtimeSubscribed || !RealtimeManager) {
+    return;
+  }
+  realtimeSubscribed = true;
+
+  RealtimeManager.subscribeTable({
+    key: "public_gallery_pencapaian",
+    table: "smpid_pencapaian",
+    primaryKey: "id",
+    cacheStore:
+      APP_CONFIG.IDB && APP_CONFIG.IDB.STORES
+        ? APP_CONFIG.IDB.STORES.ACHIEVEMENTS
+        : "achievements_cache",
+    cachePrefix: "achievements",
+    onChange: async () => {
+      await silentRefreshPublicGallery();
+    },
+    onSync: async () => {
+      await silentRefreshPublicGallery();
+    }
+  }).catch(() => {
+    realtimeSubscribed = false;
+  });
+}
+
+function bindLifecycleEvents() {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      silentRefreshPublicGallery();
+    }
+  });
+
+  window.addEventListener("online", () => {
+    silentRefreshPublicGallery();
+  });
+
+  const cleanup = () => {
+    if (RealtimeManager && typeof RealtimeManager.removeAllChannels === "function") {
+      RealtimeManager.removeAllChannels();
+    }
+  };
+
+  window.addEventListener("beforeunload", cleanup);
+  window.addEventListener("pagehide", cleanup);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  bindLifecycleEvents();
+  initGallery();
 });
 
 async function initGallery() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const kodSekolah = urlParams.get('kod') ? urlParams.get('kod').toUpperCase() : null;
+  const urlParams = new URLSearchParams(window.location.search);
+  const rawKod = urlParams.get("kod");
+  const kodSekolah = rawKod ? rawKod.trim().toUpperCase() : null;
 
-    if (!kodSekolah) {
-        window.location.replace('index.html');
-        return;
+  if (!kodSekolah) {
+    window.location.replace("index.html");
+    return;
+  }
+
+  currentKodSekolah = kodSekolah;
+
+  const senaraiKodPPD = APP_CONFIG.PPD_MAPPING
+    ? Object.keys(APP_CONFIG.PPD_MAPPING)
+    : ["M010", "M020", "M030"];
+  isPPDMode = senaraiKodPPD.includes(kodSekolah);
+
+  try {
+    await envReady;
+    await initDatabaseClient();
+
+    const headerNameEl = document.getElementById("headerSchoolName");
+    const headerCodeEl = document.getElementById("headerSchoolCode");
+
+    if (isPPDMode) {
+      const namaPpd =
+        (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[kodSekolah]) ||
+        "PEJABAT PENDIDIKAN DAERAH";
+      if (headerNameEl) {
+        headerNameEl.textContent = `PPD ${namaPpd}`;
+      }
+      if (headerCodeEl) {
+        headerCodeEl.textContent = kodSekolah;
+      }
+    } else {
+      const sekolah = await SchoolService.getByCode(kodSekolah);
+      if (sekolah) {
+        if (headerNameEl) {
+          headerNameEl.textContent = sekolah.nama_sekolah || kodSekolah;
+        }
+        if (headerCodeEl) {
+          headerCodeEl.textContent = kodSekolah;
+        }
+      }
     }
 
-    // Semak sama ada kod pada URL adalah sebahagian daripada senarai PPD
-    const senaraiKodPPD = APP_CONFIG.PPD_MAPPING ? Object.keys(APP_CONFIG.PPD_MAPPING) : ['M010', 'M020', 'M030'];
-    isPPDMode = senaraiKodPPD.includes(kodSekolah);
+    const data = await AchievementService.getBySchool(kodSekolah);
+    allGalleryData = filterCategoryScope(data);
 
-    try {
-        // Paparan Header Dinamik
-        if (isPPDMode) {
-            const namaPpd = APP_CONFIG.PPD_MAPPING[kodSekolah] || 'PEJABAT PENDIDIKAN DAERAH';
-            document.getElementById('headerSchoolName').innerText = "PPD " + namaPpd;
-            document.getElementById('headerSchoolCode').innerText = kodSekolah;
-        } else {
-            const sekolah = await SchoolService.getByCode(kodSekolah);
-            if (sekolah) {
-                document.getElementById('headerSchoolName').innerText = sekolah.nama_sekolah;
-                document.getElementById('headerSchoolCode').innerText = kodSekolah;
-            }
-        }
-
-        const data = await AchievementService.getBySchool(kodSekolah);
-        
-        // Asingkan data berdasarkan mod PPD atau Sekolah
-        if (isPPDMode) {
-            allGalleryData = data.filter(item => ['PEGAWAI', 'PPD'].includes(item.kategori));
-        } else {
-            allGalleryData = data.filter(item => ['MURID', 'GURU', 'SEKOLAH'].includes(item.kategori));
-        }
-
-        renderDynamicFilters();
-        updateStats(allGalleryData);
-        window.renderGallery('SEMUA');
-
-    } catch (e) {
-        console.error("Gallery Init Error:", e);
-        const grid = document.getElementById('galleryGrid');
-        if(grid) grid.innerHTML = `<div class="col-span-full text-center text-red-500 font-bold py-10">Gagal memuatkan galeri.</div>`;
+    renderDynamicFilters();
+    updateStats(allGalleryData);
+    window.renderGallery("SEMUA");
+    ensureRealtimeSync();
+  } catch {
+    const grid = document.getElementById("galleryGrid");
+    if (grid) {
+      clearElement(grid);
+      const errDiv = document.createElement("div");
+      errDiv.className = "col-span-full text-center text-red-500 font-bold py-10";
+      errDiv.textContent = "Gagal memuatkan galeri.";
+      grid.appendChild(errDiv);
     }
+  }
 }
 
 function updateStats(data) {
-    const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
-    setTxt('countTotal', data.length);
-    
-    const statBox3 = document.getElementById('statBox3');
-    const lblStat1 = document.getElementById('lblStat1');
-    const lblStat2 = document.getElementById('lblStat2');
-
-    if (isPPDMode) {
-        setTxt('countMurid', data.filter(i => i.kategori === 'PEGAWAI').length);
-        setTxt('countGuru', data.filter(i => i.kategori === 'PPD').length);
-        if (statBox3) statBox3.classList.add('hidden');
-        if (lblStat1) lblStat1.innerText = 'PEGAWAI';
-        if (lblStat2) lblStat2.innerText = 'UNIT / SEKTOR';
-    } else {
-        setTxt('countMurid', data.filter(i => i.kategori === 'MURID').length);
-        setTxt('countGuru', data.filter(i => i.kategori === 'GURU').length);
-        setTxt('countSekolah', data.filter(i => i.kategori === 'SEKOLAH').length);
-        if (statBox3) statBox3.classList.remove('hidden');
-        if (lblStat1) lblStat1.innerText = 'MURID';
-        if (lblStat2) lblStat2.innerText = 'GURU';
+  const setTxt = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = String(val);
     }
+  };
+  setTxt("countTotal", data.length);
+
+  const statBox3 = document.getElementById("statBox3");
+  const lblStat1 = document.getElementById("lblStat1");
+  const lblStat2 = document.getElementById("lblStat2");
+
+  if (isPPDMode) {
+    setTxt("countMurid", data.filter((i) => i.kategori === "PEGAWAI").length);
+    setTxt("countGuru", data.filter((i) => i.kategori === "PPD").length);
+    if (statBox3) {
+      statBox3.classList.add("hidden");
+    }
+    if (lblStat1) {
+      lblStat1.textContent = "PEGAWAI";
+    }
+    if (lblStat2) {
+      lblStat2.textContent = "UNIT / SEKTOR";
+    }
+  } else {
+    setTxt("countMurid", data.filter((i) => i.kategori === "MURID").length);
+    setTxt("countGuru", data.filter((i) => i.kategori === "GURU").length);
+    setTxt("countSekolah", data.filter((i) => i.kategori === "SEKOLAH").length);
+    if (statBox3) {
+      statBox3.classList.remove("hidden");
+    }
+    if (lblStat1) {
+      lblStat1.textContent = "MURID";
+    }
+    if (lblStat2) {
+      lblStat2.textContent = "GURU";
+    }
+  }
+}
+
+function createFilterButton(type, label, hoverClass, isActive) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.dataset.filterType = type;
+  btn.dataset.hoverClass = hoverClass;
+  btn.className = isActive
+    ? "btn-filter min-h-[44px] flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all bg-slate-900 text-white shadow-md uppercase tracking-widest"
+    : `btn-filter min-h-[44px] flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 ${hoverClass} uppercase tracking-widest`;
+  btn.textContent = label;
+  btn.addEventListener("click", () => {
+    window.filterGallery(type, btn);
+  });
+  return btn;
 }
 
 function renderDynamicFilters() {
-    const container = document.getElementById('filterContainerPublic');
-    if (!container) return;
+  const container = document.getElementById("filterContainerPublic");
+  if (!container) {
+    return;
+  }
 
-    let html = `<button onclick="filterGallery('SEMUA', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all bg-slate-900 text-white shadow-md uppercase tracking-widest">SEMUA</button>`;
+  clearElement(container);
+  const fragment = document.createDocumentFragment();
 
-    if (isPPDMode) {
-        html += `
-            <button onclick="filterGallery('PEGAWAI', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-blue-600 uppercase tracking-widest">PEGAWAI</button>
-            <button onclick="filterGallery('PPD', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-indigo-600 uppercase tracking-widest">UNIT / SEKTOR</button>
-        `;
-    } else {
-        html += `
-            <button onclick="filterGallery('MURID', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-blue-600 uppercase tracking-widest">MURID</button>
-            <button onclick="filterGallery('GURU', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-amber-600 uppercase tracking-widest">GURU</button>
-            <button onclick="filterGallery('SEKOLAH', this)" class="btn-filter flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 hover:text-indigo-600 uppercase tracking-widest">SEKOLAH</button>
-        `;
-    }
+  fragment.appendChild(
+    createFilterButton("SEMUA", "SEMUA", "hover:text-slate-900", true)
+  );
 
-    container.innerHTML = html;
+  if (isPPDMode) {
+    fragment.appendChild(
+      createFilterButton("PEGAWAI", "PEGAWAI", "hover:text-blue-600", false)
+    );
+    fragment.appendChild(
+      createFilterButton("PPD", "UNIT / SEKTOR", "hover:text-indigo-600", false)
+    );
+  } else {
+    fragment.appendChild(
+      createFilterButton("MURID", "MURID", "hover:text-blue-600", false)
+    );
+    fragment.appendChild(
+      createFilterButton("GURU", "GURU", "hover:text-amber-600", false)
+    );
+    fragment.appendChild(
+      createFilterButton("SEKOLAH", "SEKOLAH", "hover:text-indigo-600", false)
+    );
+  }
+
+  container.appendChild(fragment);
 }
 
-window.filterGallery = function(type, btn) {
-    const cloudWrapper = document.getElementById('jawatanCloudWrapper');
-    
-    // Cloud jawatan hanya untuk guru di peringkat sekolah
-    if (type === 'GURU' && !isPPDMode) {
-        if(cloudWrapper) cloudWrapper.classList.remove('hidden');
-        generateJawatanCloud();
-    } else {
-        if(cloudWrapper) cloudWrapper.classList.add('hidden');
-        currentJawatanFilter = 'ALL';
-    }
+window.filterGallery = function (type, btn) {
+  currentCategoryFilter = type || "SEMUA";
 
-    window.renderGallery(type);
-};
-
-window.renderGallery = function(filterType) {
-    const grid = document.getElementById('galleryGrid');
-    if(!grid) return;
-    grid.innerHTML = "";
-
-    let filteredData = (filterType === 'SEMUA') 
-        ? allGalleryData 
-        : allGalleryData.filter(item => item.kategori === filterType);
-
-    if (filterType === 'GURU' && currentJawatanFilter !== 'ALL') {
-        filteredData = filteredData.filter(item => item.jawatan === currentJawatanFilter);
-    }
-
-    if (filteredData.length === 0) {
-        grid.innerHTML = `
-        <div class="col-span-full text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
-            <i class="fas fa-folder-open text-4xl text-slate-200 mb-3"></i>
-            <p class="text-slate-400 font-bold italic">Tiada rekod dijumpai untuk kategori ini.</p>
-        </div>`;
-        return;
-    }
-
-    const uniqueYears = [...new Set(filteredData.map(item => item.tahun))].sort((a, b) => b - a);
-
-    uniqueYears.forEach(year => {
-        const headerHTML = `
-            <div class="col-span-full flex items-center gap-4 mt-8 mb-4 animate-fade-up">
-                <span class="bg-indigo-50 text-indigo-700 px-4 py-1.5 rounded-full text-xs font-black border border-indigo-100 shadow-sm">
-                    <i class="fas fa-calendar-alt mr-2"></i> TAHUN ${year}
-                </span>
-                <div class="h-px bg-slate-200 flex-grow"></div>
-            </div>`;
-        grid.innerHTML += headerHTML;
-
-        const itemsInYear = filteredData.filter(item => item.tahun === year);
-        itemsInYear.forEach(item => {
-            grid.innerHTML += createCardHTML(item);
-        });
+  const container = document.getElementById("filterContainerPublic");
+  if (container) {
+    const allBtns = container.querySelectorAll("button.btn-filter");
+    allBtns.forEach((b) => {
+      const hoverCls = b.dataset.hoverClass || "hover:text-slate-900";
+      const isSelected = btn ? b === btn : b.dataset.filterType === currentCategoryFilter;
+      b.className = isSelected
+        ? "btn-filter min-h-[44px] flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all bg-slate-900 text-white shadow-md uppercase tracking-widest"
+        : `btn-filter min-h-[44px] flex-1 lg:px-6 py-2.5 rounded-xl text-[10px] font-black transition-all text-slate-500 ${hoverCls} uppercase tracking-widest`;
     });
+  }
+
+  const cloudWrapper = document.getElementById("jawatanCloudWrapper");
+  if (currentCategoryFilter === "GURU" && !isPPDMode) {
+    if (cloudWrapper) {
+      cloudWrapper.classList.remove("hidden");
+    }
+    generateJawatanCloud();
+  } else {
+    if (cloudWrapper) {
+      cloudWrapper.classList.add("hidden");
+    }
+    currentJawatanFilter = "ALL";
+  }
+
+  window.renderGallery(currentCategoryFilter);
 };
 
-function createCardHTML(item) {
-    const link = item.pautan_bukti || "";
-    let thumbnailArea = "";
-    let iconType = "fa-link";
-    
-    let borderClass = "border-t-4 border-slate-300";
-    let textClass = "text-slate-600";
-    let catIcon = "fa-folder";
+window.renderGallery = function (filterType) {
+  const grid = document.getElementById("galleryGrid");
+  if (!grid) {
+    return;
+  }
+  clearElement(grid);
 
-    if (item.kategori === 'MURID') {
-        borderClass = "border-t-4 border-blue-500"; textClass = "text-blue-600"; catIcon = "fa-user-graduate";
-    } else if (item.kategori === 'GURU') {
-        borderClass = "border-t-4 border-amber-500"; textClass = "text-amber-600"; catIcon = "fa-chalkboard-user";
-    } else if (item.kategori === 'SEKOLAH') {
-        borderClass = "border-t-4 border-indigo-500"; textClass = "text-indigo-600"; catIcon = "fa-school";
-    } else if (item.kategori === 'PEGAWAI') {
-        borderClass = "border-t-4 border-teal-500"; textClass = "text-teal-600"; catIcon = "fa-user-tie";
-    } else if (item.kategori === 'PPD') {
-        borderClass = "border-t-4 border-fuchsia-500"; textClass = "text-fuchsia-600"; catIcon = "fa-building";
-    }
+  const activeType = filterType || "SEMUA";
+  let filteredData =
+    activeType === "SEMUA"
+      ? allGalleryData
+      : allGalleryData.filter((item) => item.kategori === activeType);
 
-    const fileIdMatch = link.match(/\/d\/([a-zA-Z0-9_-]+)/);
-    const folderMatch = link.match(/\/folders\/([a-zA-Z0-9_-]+)/);
-    const youtubeMatch = link.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+  if (activeType === "GURU" && currentJawatanFilter !== "ALL") {
+    filteredData = filteredData.filter((item) => item.jawatan === currentJawatanFilter);
+  }
 
-    if (folderMatch) {
-        iconType = "fa-folder-open";
-        thumbnailArea = `<div class="aspect-video bg-slate-100 flex items-center justify-center text-amber-400 text-5xl"><i class="fas fa-folder-open"></i></div>`;
-    } else if (fileIdMatch) {
-        const fileId = fileIdMatch[1];
-        const thumbUrl = `https://lh3.googleusercontent.com/d/${fileId}=s400`;
-        iconType = "fa-image";
-        thumbnailArea = `
-            <div class="aspect-video bg-slate-100 overflow-hidden">
-                <img src="${thumbUrl}" class="w-full h-full object-cover transform hover:scale-110 transition duration-700" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'aspect-video bg-slate-100 flex items-center justify-center text-slate-300 text-3xl\\'><i class=\\'fas fa-image-slash\\'></i></div>'">
-            </div>`;
-    } else if (youtubeMatch) {
-        const videoId = youtubeMatch[1];
-        const thumbUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`; 
-        iconType = "fa-play";
-        thumbnailArea = `
-            <div class="aspect-video bg-black overflow-hidden relative">
-                <img src="${thumbUrl}" class="w-full h-full object-cover opacity-80 transition duration-500">
-                <div class="absolute inset-0 flex items-center justify-center">
-                    <i class="fas fa-play-circle text-white/90 text-4xl shadow-2xl"></i>
-                </div>
-            </div>`;
-    } else {
-        iconType = "fa-globe";
-        thumbnailArea = `<div class="aspect-video bg-slate-50 flex items-center justify-center text-slate-300 text-3xl"><i class="fas fa-globe-asia"></i></div>`;
-    }
+  if (filteredData.length === 0) {
+    const emptyBox = document.createElement("div");
+    emptyBox.className =
+      "col-span-full text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-200";
+    emptyBox.appendChild(createIcon("fas fa-folder-open text-4xl text-slate-200 mb-3"));
+    const emptyText = document.createElement("p");
+    emptyText.className = "text-slate-400 font-bold italic";
+    emptyText.textContent = "Tiada rekod dijumpai untuk kategori ini.";
+    emptyBox.appendChild(emptyText);
+    grid.appendChild(emptyBox);
+    return;
+  }
 
-    return `
-    <div class="card-gallery animate-fade-up ${borderClass}" onclick="window.open('${link}', '_blank')">
-        ${thumbnailArea}
-        <div class="p-4 flex flex-col flex-grow relative">
-            <span class="absolute top-[-14px] right-3 bg-white p-1 rounded-full shadow-sm text-slate-400 text-[10px] w-7 h-7 flex items-center justify-center border border-slate-100">
-                <i class="fas ${iconType}"></i>
-            </span>
-            <div class="flex items-center gap-1.5 mb-2">
-                <div class="w-2 h-2 rounded-full ${textClass.replace('text', 'bg')}"></div>
-                <span class="text-[9px] font-black uppercase tracking-wider ${textClass}">${item.kategori}</span>
-            </div>
-            <h6 class="font-bold text-slate-800 text-xs leading-snug mb-1 whitespace-normal">${item.nama_pertandingan}</h6>
-            <p class="text-[10px] text-slate-400 font-bold mb-3 whitespace-normal">${item.nama_peserta}</p>
-            
-            <div class="mt-auto pt-3 border-t border-slate-50 flex justify-between items-center">
-                <span class="text-[10px] font-black ${textClass} bg-slate-50 px-2 py-0.5 rounded border border-slate-100 uppercase truncate max-w-[120px]">
-                    ${item.pencapaian}
-                </span>
-                <i class="fas fa-external-link-alt text-slate-300 text-[9px]"></i>
-            </div>
-        </div>
-    </div>`;
+  const uniqueYears = [...new Set(filteredData.map((item) => item.tahun))].sort(
+    (a, b) => b - a
+  );
+  const fragment = document.createDocumentFragment();
+
+  uniqueYears.forEach((year) => {
+    const yearHeader = document.createElement("div");
+    yearHeader.className = "col-span-full flex items-center gap-4 mt-8 mb-4 animate-fade-up";
+
+    const yearBadge = document.createElement("span");
+    yearBadge.className =
+      "bg-indigo-50 text-indigo-700 px-4 py-1.5 rounded-full text-xs font-black border border-indigo-100 shadow-sm";
+    yearBadge.appendChild(createIcon("fas fa-calendar-alt mr-2"));
+    yearBadge.appendChild(document.createTextNode(`TAHUN ${year || "-"}`));
+
+    const line = document.createElement("div");
+    line.className = "h-px bg-slate-200 flex-grow";
+
+    yearHeader.appendChild(yearBadge);
+    yearHeader.appendChild(line);
+    fragment.appendChild(yearHeader);
+
+    const itemsInYear = filteredData.filter((item) => item.tahun === year);
+    itemsInYear.forEach((item) => {
+      fragment.appendChild(createCardElement(item));
+    });
+  });
+
+  grid.appendChild(fragment);
+};
+
+function createCardElement(item) {
+  const rawLink = item.pautan_bukti || "";
+  const safeUrl = sanitizeExternalUrl(rawLink);
+  let iconType = "fa-globe";
+
+  let borderClass = "border-t-4 border-slate-300";
+  let textClass = "text-slate-600";
+  let dotClass = "bg-slate-600";
+
+  if (item.kategori === "MURID") {
+    borderClass = "border-t-4 border-blue-500";
+    textClass = "text-blue-600";
+    dotClass = "bg-blue-600";
+  } else if (item.kategori === "GURU") {
+    borderClass = "border-t-4 border-amber-500";
+    textClass = "text-amber-600";
+    dotClass = "bg-amber-600";
+  } else if (item.kategori === "SEKOLAH") {
+    borderClass = "border-t-4 border-indigo-500";
+    textClass = "text-indigo-600";
+    dotClass = "bg-indigo-600";
+  } else if (item.kategori === "PEGAWAI") {
+    borderClass = "border-t-4 border-teal-500";
+    textClass = "text-teal-600";
+    dotClass = "bg-teal-600";
+  } else if (item.kategori === "PPD") {
+    borderClass = "border-t-4 border-fuchsia-500";
+    textClass = "text-fuchsia-600";
+    dotClass = "bg-fuchsia-600";
+  }
+
+  const card = document.createElement("div");
+  card.className = `card-gallery animate-fade-up ${borderClass} min-w-0 ${
+    safeUrl ? "cursor-pointer" : "cursor-default"
+  }`;
+
+  if (safeUrl) {
+    card.addEventListener("click", () => {
+      window.open(safeUrl, "_blank", "noopener,noreferrer");
+    });
+  }
+
+  const fileIdMatch = rawLink.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  const folderMatch = rawLink.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  const youtubeMatch = rawLink.match(
+    /(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/
+  );
+
+  if (folderMatch) {
+    iconType = "fa-folder-open";
+    const thumbBox = document.createElement("div");
+    thumbBox.className =
+      "aspect-video bg-slate-100 flex items-center justify-center text-amber-400 text-5xl";
+    thumbBox.appendChild(createIcon("fas fa-folder-open"));
+    card.appendChild(thumbBox);
+  } else if (fileIdMatch && /^[a-zA-Z0-9_-]+$/.test(fileIdMatch[1])) {
+    iconType = "fa-image";
+    const thumbBox = document.createElement("div");
+    thumbBox.className = "aspect-video bg-slate-100 overflow-hidden";
+
+    const img = document.createElement("img");
+    img.src = `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}=s400`;
+    img.alt = item.nama_pertandingan || "Bukti Pencapaian";
+    img.loading = "lazy";
+    img.className = "w-full h-full object-cover transform hover:scale-110 transition duration-700";
+    img.addEventListener("error", () => {
+      clearElement(thumbBox);
+      thumbBox.className =
+        "aspect-video bg-slate-100 flex items-center justify-center text-slate-300 text-3xl";
+      thumbBox.appendChild(createIcon("fas fa-image-slash"));
+    });
+
+    thumbBox.appendChild(img);
+    card.appendChild(thumbBox);
+  } else if (youtubeMatch && /^[a-zA-Z0-9_-]{11}$/.test(youtubeMatch[1])) {
+    iconType = "fa-play";
+    const thumbBox = document.createElement("div");
+    thumbBox.className = "aspect-video bg-black overflow-hidden relative";
+
+    const img = document.createElement("img");
+    img.src = `https://img.youtube.com/vi/${youtubeMatch[1]}/mqdefault.jpg`;
+    img.alt = item.nama_pertandingan || "Video Bukti";
+    img.loading = "lazy";
+    img.className = "w-full h-full object-cover opacity-80 transition duration-500";
+    img.addEventListener("error", () => {
+      clearElement(thumbBox);
+      thumbBox.className =
+        "aspect-video bg-slate-900 flex items-center justify-center text-slate-500 text-3xl";
+      thumbBox.appendChild(createIcon("fas fa-video-slash"));
+    });
+
+    const overlay = document.createElement("div");
+    overlay.className = "absolute inset-0 flex items-center justify-center";
+    overlay.appendChild(createIcon("fas fa-play-circle text-white/90 text-4xl shadow-2xl"));
+
+    thumbBox.appendChild(img);
+    thumbBox.appendChild(overlay);
+    card.appendChild(thumbBox);
+  } else {
+    iconType = "fa-globe";
+    const thumbBox = document.createElement("div");
+    thumbBox.className =
+      "aspect-video bg-slate-50 flex items-center justify-center text-slate-300 text-3xl";
+    thumbBox.appendChild(createIcon("fas fa-globe-asia"));
+    card.appendChild(thumbBox);
+  }
+
+  const bodyDiv = document.createElement("div");
+  bodyDiv.className = "p-4 flex flex-col flex-grow relative min-w-0";
+
+  const typeBadge = document.createElement("span");
+  typeBadge.className =
+    "absolute top-[-14px] right-3 bg-white p-1 rounded-full shadow-sm text-slate-400 text-[10px] w-7 h-7 flex items-center justify-center border border-slate-100";
+  typeBadge.appendChild(createIcon(`fas ${iconType}`));
+  bodyDiv.appendChild(typeBadge);
+
+  const catRow = document.createElement("div");
+  catRow.className = "flex items-center gap-1.5 mb-2";
+  const dot = document.createElement("div");
+  dot.className = `w-2 h-2 rounded-full ${dotClass}`;
+  const catLabel = document.createElement("span");
+  catLabel.className = `text-[9px] font-black uppercase tracking-wider ${textClass}`;
+  catLabel.textContent = item.kategori || "-";
+  catRow.appendChild(dot);
+  catRow.appendChild(catLabel);
+  bodyDiv.appendChild(catRow);
+
+  const titleEl = document.createElement("h6");
+  titleEl.className =
+    "font-bold text-slate-800 text-xs leading-snug mb-1 whitespace-normal break-words";
+  titleEl.textContent = item.nama_pertandingan || "-";
+  bodyDiv.appendChild(titleEl);
+
+  const participantEl = document.createElement("p");
+  participantEl.className =
+    "text-[10px] text-slate-400 font-bold mb-3 whitespace-normal break-words";
+  participantEl.textContent = item.nama_peserta || "-";
+  bodyDiv.appendChild(participantEl);
+
+  const footerDiv = document.createElement("div");
+  footerDiv.className =
+    "mt-auto pt-3 border-t border-slate-50 flex justify-between items-center gap-2";
+
+  const resultBadge = document.createElement("span");
+  resultBadge.className = `text-[10px] font-black ${textClass} bg-slate-50 px-2 py-0.5 rounded border border-slate-100 uppercase truncate max-w-[140px]`;
+  resultBadge.textContent = item.pencapaian || "-";
+
+  footerDiv.appendChild(resultBadge);
+  if (safeUrl) {
+    footerDiv.appendChild(
+      createIcon("fas fa-external-link-alt text-slate-300 text-[9px] shrink-0")
+    );
+  }
+
+  bodyDiv.appendChild(footerDiv);
+  card.appendChild(bodyDiv);
+
+  return card;
 }
 
 function generateJawatanCloud() {
-    const container = document.getElementById('jawatanCloudContainer');
-    if (!container) return;
+  const container = document.getElementById("jawatanCloudContainer");
+  if (!container) {
+    return;
+  }
 
-    const guruData = allGalleryData.filter(item => item.kategori === 'GURU');
-    const counts = {};
-    let max = 0;
+  const guruData = allGalleryData.filter((item) => item.kategori === "GURU");
+  const counts = {};
 
-    guruData.forEach(item => {
-        if (item.jawatan) {
-            const j = item.jawatan.trim();
-            counts[j] = (counts[j] || 0) + 1;
-            if (counts[j] > max) max = counts[j];
-        }
+  guruData.forEach((item) => {
+    if (item.jawatan) {
+      const j = item.jawatan.trim();
+      if (j) {
+        counts[j] = (counts[j] || 0) + 1;
+      }
+    }
+  });
+
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  clearElement(container);
+
+  if (entries.length === 0) {
+    const emptyP = document.createElement("p");
+    emptyP.className = "text-xs text-slate-400 italic py-2";
+    emptyP.textContent = "Tiada data jawatan direkodkan.";
+    container.appendChild(emptyP);
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  entries.forEach(([jawatan, count]) => {
+    const isActive = jawatan === currentJawatanFilter;
+    let sizeStyle = "text-[10px]";
+    if (count > 2) {
+      sizeStyle = "text-[11px] font-bold";
+    }
+    if (count > 5) {
+      sizeStyle = "text-[12px] font-black";
+    }
+
+    const chip = document.createElement("div");
+    chip.className = `min-h-[40px] inline-flex items-center px-3 py-1.5 rounded-full border cursor-pointer transition-all m-1 shadow-sm ${
+      isActive
+        ? "bg-indigo-600 text-white border-indigo-600 scale-105"
+        : "bg-white text-slate-500 border-slate-200 hover:border-indigo-400 hover:text-indigo-600"
+    }`;
+    chip.addEventListener("click", () => {
+      window.filterByJawatan(jawatan);
     });
 
-    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    
-    if (entries.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-400 italic py-2">Tiada data jawatan direkodkan.</p>`;
-        return;
-    }
+    const labelSpan = document.createElement("span");
+    labelSpan.className = sizeStyle;
+    labelSpan.textContent = jawatan;
 
-    container.innerHTML = entries.map(([jawatan, count]) => {
-        const isActive = (jawatan === currentJawatanFilter);
-        let sizeStyle = "text-[10px]";
-        if(count > 2) sizeStyle = "text-[11px] font-bold";
-        if(count > 5) sizeStyle = "text-[12px] font-black";
+    const countSpan = document.createElement("span");
+    countSpan.className = `ml-2 px-1.5 rounded-full text-[9px] font-bold ${
+      isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-400"
+    }`;
+    countSpan.textContent = String(count);
 
-        return `
-            <div onclick="filterByJawatan('${jawatan}')" 
-                 class="inline-flex items-center px-3 py-1.5 rounded-full border cursor-pointer transition-all m-1 shadow-sm
-                        ${isActive ? 'bg-indigo-600 text-white border-indigo-600 scale-105' : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-400 hover:text-indigo-600'}">
-                <span class="${sizeStyle}">${jawatan}</span>
-                <span class="ml-2 bg-slate-100 text-slate-400 px-1.5 rounded-full text-[9px] font-bold ${isActive ? 'bg-white/20 text-white' : ''}">${count}</span>
-            </div>
-        `;
-    }).join('');
+    chip.appendChild(labelSpan);
+    chip.appendChild(countSpan);
+    fragment.appendChild(chip);
+  });
+
+  container.appendChild(fragment);
 }
 
-window.filterByJawatan = function(jawatan) {
-    currentJawatanFilter = (currentJawatanFilter === jawatan) ? 'ALL' : jawatan;
-    
-    const btnReset = document.getElementById('btnResetJawatan');
-    if(btnReset) {
-        if (currentJawatanFilter !== 'ALL') btnReset.classList.remove('hidden');
-        else btnReset.classList.add('hidden');
-    }
+window.filterByJawatan = function (jawatan) {
+  currentJawatanFilter =
+    jawatan === "ALL" || currentJawatanFilter === jawatan ? "ALL" : jawatan;
 
-    generateJawatanCloud();
-    window.renderGallery('GURU');
+  const btnReset = document.getElementById("btnResetJawatan");
+  if (btnReset) {
+    if (currentJawatanFilter !== "ALL") {
+      btnReset.classList.remove("hidden");
+    } else {
+      btnReset.classList.add("hidden");
+    }
+  }
+
+  generateJawatanCloud();
+  window.renderGallery("GURU");
 };

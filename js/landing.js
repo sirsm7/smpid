@@ -1,278 +1,503 @@
-/**
- * LANDING PAGE CONTROLLER (HIGH PERFORMANCE & SUPABASE REALTIME EDITION)
- * Menguruskan carian sekolah, paparan kad akses pantas, dan kaunter pelawat.
- * Menggunakan: SchoolService, APP_CONFIG, Supabase Realtime (Presence).
- * 
- * Pengoptimuman Prestasi:
- * 1. Menggunakan SchoolService.getLightweightList() untuk meminimumkan muatan rangkaian (payload).
- * 2. Menggunakan DocumentFragment untuk kemasukan datalist bagi menghapuskan pembekuan reflow DOM.
- * 3. Menangguhkan sambungan WebSocket Realtime Presence sehingga proses paparan kritikal selesai.
- */
-
-import { SchoolService } from './services/school.service.js';
-import { APP_CONFIG } from './config/app.config.js';
-import { getDatabaseClient } from './core/db.js';
+import { envReady } from "./config/config.js";
+import { APP_CONFIG } from "./config/app.config.js";
+import { initDatabaseClient, getDatabaseClient } from "./core/db.js";
+import { SchoolService } from "./services/school.service.js";
 
 let allSchools = [];
 let presenceChannel = null;
+let presenceSessionId = "";
+let isLoadingSchools = false;
+let isSettingUpPresence = false;
 
-document.addEventListener('DOMContentLoaded', async () => {
-    // Papar indikator loading semasa mula
-    const loadingEl = document.getElementById('loadingOverlay');
-    if (loadingEl) loadingEl.classList.remove('hidden');
+function getActiveSchoolSessionKey() {
+  return (
+    (APP_CONFIG && APP_CONFIG.SESSION && APP_CONFIG.SESSION.ACTIVE_SCHOOL) ||
+    "smpid_active_school"
+  );
+}
 
-    // 1. Muatkan data sekolah ringan secara pantas
-    await loadSchools();
+function awaitRuntimeEnv() {
+  if (typeof window !== "undefined" && window.ENV_READY) {
+    return window.ENV_READY;
+  }
+  return envReady;
+}
 
-    // 2. Pasang pendengar acara carian
-    setupSearchListener();
+function clearElement(el) {
+  if (!el) {
+    return;
+  }
+  while (el.firstChild) {
+    el.removeChild(el.firstChild);
+  }
+}
 
-    // 3. Tangguhkan sambungan Realtime Presence agar tidak menghalang rendering utama
-    if ('requestIdleCallback' in window) {
-        window.requestIdleCallback(() => setupLiveCounter());
-    } else {
-        setTimeout(setupLiveCounter, 200);
-    }
-});
+function createIcon(iconClass) {
+  const icon = document.createElement("i");
+  icon.className = iconClass;
+  return icon;
+}
 
-/**
- * Menjana UUID ringkas untuk sesi pelawat sekiranya crypto API tidak tersedia.
- */
+function showAlert(options) {
+  if (typeof window !== "undefined" && window.Swal && typeof window.Swal.fire === "function") {
+    return window.Swal.fire(options);
+  }
+  const message =
+    options && (options.text || options.title)
+      ? `${options.title || ""}\n${options.text || ""}`.trim()
+      : "";
+  if (message) {
+    window.alert(message);
+  }
+  return Promise.resolve({ isConfirmed: true });
+}
+
 function generateSessionId() {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return crypto.randomUUID();
-    }
-    return 'session-xxx-xxx'.replace(/[x]/g, () => (Math.random() * 16 | 0).toString(16));
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "session-xxx-xxx".replace(/[x]/g, () =>
+    Math.floor(Math.random() * 16).toString(16)
+  );
 }
 
-/**
- * Menubuhkan sambungan WebSocket ke Supabase menggunakan Presence API di latar belakang.
- * Ia menyegerakkan bilangan pengguna aktif (live) tanpa mengganggu interaksi carian.
- */
-function setupLiveCounter() {
-    const db = getDatabaseClient();
-    if (!db) {
-        console.warn("[Realtime] Gagal memulakan sambungan Supabase Client untuk fungsi Live Counter.");
-        return;
-    }
-
-    const sessionId = generateSessionId();
-
-    // Buat saluran komunikasi khusus
-    presenceChannel = db.channel('room-nadim-live', {
-        config: {
-            presence: {
-                key: sessionId,
-            },
-        },
-    });
-
-    // Dengar perubahan status 'sync'
-    presenceChannel
-        .on('presence', { event: 'sync' }, () => {
-            const state = presenceChannel.presenceState();
-            const activeCount = Object.keys(state).length;
-            updateCounterUI(activeCount);
-        })
-        .subscribe(async (status) => {
-            if (status === 'SUBSCRIBED') {
-                await presenceChannel.track({
-                    online_at: new Date().toISOString(),
-                });
-            }
-        });
-}
-
-/**
- * Kemas kini angka paparan pada Lencana Antaramuka (UI Badge).
- */
 function updateCounterUI(count) {
-    const counterEl = document.getElementById('liveCounterVal');
-    if (counterEl) {
-        counterEl.innerText = count > 0 ? count : 1;
-    }
+  const counterEl = document.getElementById("liveCounterVal");
+  if (counterEl) {
+    counterEl.textContent = String(count > 0 ? count : 1);
+  }
 }
 
-/**
- * Memuatkan senarai sekolah menggunakan kueri ringan (Lightweight List)
- * yang hanya mengambil medan kod, nama, jenis, dan daerah melalui IndexedDB (SWR).
- */
-async function loadSchools() {
-    try {
-        // Panggilan kueri ringan yang menjimatkan saiz muatan rangkaian sehingga 90%
-        const schools = await SchoolService.getLightweightList();
-        allSchools = schools;
-        
-        populateDatalist(allSchools);
-        checkSession();
+async function teardownLiveCounter() {
+  if (!presenceChannel) {
+    return;
+  }
+  const channelToClose = presenceChannel;
+  presenceChannel = null;
+  try {
+    const db = getDatabaseClient();
+    if (db && typeof db.removeChannel === "function") {
+      await db.removeChannel(channelToClose);
+    }
+  } catch {}
+}
 
-    } catch (err) {
-        console.error("Gagal muat senarai sekolah:", err);
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                icon: 'error',
-                title: 'Ralat Sambungan',
-                text: 'Gagal memuatkan senarai sekolah. Sila muat semula halaman.',
-                confirmButtonColor: '#10b981'
+async function setupLiveCounter(forceReconnect = false) {
+  if (isSettingUpPresence) {
+    return;
+  }
+
+  if (
+    !forceReconnect &&
+    presenceChannel &&
+    presenceChannel.state === "joined"
+  ) {
+    return;
+  }
+
+  isSettingUpPresence = true;
+
+  try {
+    await awaitRuntimeEnv();
+    const db = (await initDatabaseClient()) || getDatabaseClient();
+    if (!db || typeof db.channel !== "function") {
+      return;
+    }
+
+    await teardownLiveCounter();
+
+    if (!presenceSessionId) {
+      presenceSessionId = generateSessionId();
+    }
+
+    const channel = db.channel("room-nadim-live", {
+      config: {
+        presence: {
+          key: presenceSessionId
+        }
+      }
+    });
+
+    presenceChannel = channel;
+
+    channel
+      .on("presence", { event: "sync" }, () => {
+        if (presenceChannel !== channel) {
+          return;
+        }
+        const state = channel.presenceState();
+        const activeCount = state ? Object.keys(state).length : 1;
+        updateCounterUI(activeCount);
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED" && presenceChannel === channel) {
+          try {
+            await channel.track({
+              online_at: new Date().toISOString()
             });
+          } catch {}
         }
-    } finally {
-        const loadingEl = document.getElementById('loadingOverlay');
-        if (loadingEl) loadingEl.classList.add('hidden');
-    }
+      });
+  } catch {
+  } finally {
+    isSettingUpPresence = false;
+  }
 }
 
-/**
- * Semak sama ada terdapat sekolah yang telah dipilih dalam sesi terdahulu.
- */
+function bindLifecycleEvents() {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      const needsReconnect = !presenceChannel || presenceChannel.state !== "joined";
+      if (needsReconnect) {
+        setupLiveCounter(true);
+      }
+      if (allSchools.length === 0) {
+        loadSchools();
+      }
+    }
+  });
+
+  window.addEventListener("online", () => {
+    setupLiveCounter(true);
+    if (allSchools.length === 0) {
+      loadSchools();
+    }
+  });
+
+  window.addEventListener("beforeunload", () => {
+    teardownLiveCounter();
+  });
+
+  window.addEventListener("pagehide", () => {
+    teardownLiveCounter();
+  });
+}
+
+async function loadSchools() {
+  if (isLoadingSchools) {
+    return;
+  }
+  isLoadingSchools = true;
+
+  try {
+    await awaitRuntimeEnv();
+    await initDatabaseClient();
+
+    const schools = await SchoolService.getLightweightList();
+    allSchools = Array.isArray(schools) ? schools : [];
+
+    populateDatalist(allSchools);
+    checkSession();
+  } catch {
+    await showAlert({
+      icon: "error",
+      title: "Ralat Sambungan",
+      text: "Gagal memuatkan senarai sekolah. Sila muat semula halaman.",
+      confirmButtonColor: "#10b981"
+    });
+  } finally {
+    isLoadingSchools = false;
+    const loadingEl = document.getElementById("loadingOverlay");
+    if (loadingEl) {
+      loadingEl.classList.add("hidden");
+    }
+  }
+}
+
 function checkSession() {
-    const savedKod = sessionStorage.getItem(APP_CONFIG.SESSION.ACTIVE_SCHOOL);
-    
-    if (savedKod && allSchools.length > 0) {
-        const school = allSchools.find(s => s.kod_sekolah === savedKod);
-        if (school) {
-            const input = document.getElementById('mainSearch');
-            if (input) input.value = `${school.kod_sekolah} - ${school.nama_sekolah}`;
-            renderSchoolCard(school);
-        }
+  const savedKod = sessionStorage.getItem(getActiveSchoolSessionKey());
+
+  if (savedKod && allSchools.length > 0) {
+    const school = allSchools.find((s) => s.kod_sekolah === savedKod);
+    if (school) {
+      const input = document.getElementById("mainSearch");
+      if (input) {
+        input.value = `${school.kod_sekolah} - ${school.nama_sekolah}`;
+      }
+      renderSchoolCard(school);
     }
+  }
 }
 
-/**
- * Mengisi elemen <datalist id="schoolList"> menggunakan DocumentFragment
- * untuk operasi DOM yang pantas dan bebas 'jank'.
- */
 function populateDatalist(data) {
-    const list = document.getElementById('schoolList');
-    if (!list) return;
-    
-    list.innerHTML = '';
-    const fragment = document.createDocumentFragment();
+  const list = document.getElementById("schoolList");
+  if (!list) {
+    return;
+  }
 
-    data.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = `${s.kod_sekolah} - ${s.nama_sekolah}`;
-        fragment.appendChild(opt);
-    });
+  clearElement(list);
+  const fragment = document.createDocumentFragment();
 
-    list.appendChild(fragment);
-}
-
-/**
- * Memasang pendengar input carian sekolah dengan pengecaman kod pantas.
- */
-function setupSearchListener() {
-    const input = document.getElementById('mainSearch');
-    if (!input) return;
-    
-    input.addEventListener('input', (e) => {
-        const val = e.target.value;
-        const parts = val.split(' - ');
-        
-        if (parts.length >= 2) {
-            const kod = parts[0].trim();
-            const school = allSchools.find(s => s.kod_sekolah === kod);
-            if (school) {
-                renderSchoolCard(school);
-                input.blur(); 
-            }
-        } else if (val === '') {
-            window.resetSearch();
-        }
-    });
-}
-
-/**
- * Menjana Kad Sekolah dengan kelas Tailwind CSS dan pautan navigasi terus.
- */
-function renderSchoolCard(school) {
-    sessionStorage.setItem(APP_CONFIG.SESSION.ACTIVE_SCHOOL, school.kod_sekolah);
-
-    const container = document.getElementById('schoolCardContainer');
-    const welcome = document.getElementById('welcomeMessage');
-    
-    if (welcome) welcome.classList.add('hidden');
-    if (container) container.classList.remove('hidden');
-    
-    container.innerHTML = `
-        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100 transform transition-all duration-500 animate-fade-up">
-            
-            <!-- HEADER KAD -->
-            <div class="bg-gradient-to-r from-brand-50 to-white p-8 text-center border-b border-brand-100">
-                <span class="inline-block bg-brand-100 text-brand-700 text-xs font-bold px-3 py-1 rounded-full mb-3 shadow-sm border border-brand-200">
-                    ${school.kod_sekolah}
-                </span>
-                <h3 class="text-2xl md:text-3xl font-extrabold text-slate-800 leading-tight mb-2">
-                    ${school.nama_sekolah}
-                </h3>
-                <p class="text-slate-500 text-sm font-medium">Portal Rasmi Sekolah</p>
-            </div>
-            
-            <!-- GRID BUTANG MENU -->
-            <div class="p-8">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    
-                    <!-- BUTANG 1: SERAHAN DATA -->
-                    <a href="public.html?kod=${school.kod_sekolah}" class="group relative flex flex-col items-center justify-center p-6 rounded-2xl bg-emerald-50 border border-emerald-100 hover:bg-emerald-600 hover:border-emerald-600 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                        <div class="w-14 h-14 bg-white text-emerald-500 rounded-full flex items-center justify-center text-2xl mb-4 shadow-sm group-hover:bg-white/20 group-hover:text-white transition-colors">
-                            <i class="fas fa-paper-plane"></i>
-                        </div>
-                        <h6 class="font-bold text-emerald-800 mb-1 group-hover:text-white transition-colors">SERAHAN DATA</h6>
-                        <span class="text-xs text-emerald-600/80 text-center leading-tight group-hover:text-emerald-100 transition-colors">
-                            Isi pencapaian murid/guru di sini.
-                        </span>
-                    </a>
-
-                    <!-- BUTANG 2: GALERI -->
-                    <a href="gallery.html?kod=${school.kod_sekolah}" class="group relative flex flex-col items-center justify-center p-6 rounded-2xl bg-blue-50 border border-blue-100 hover:bg-blue-600 hover:border-blue-600 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                        <div class="w-14 h-14 bg-white text-blue-500 rounded-full flex items-center justify-center text-2xl mb-4 shadow-sm group-hover:bg-white/20 group-hover:text-white transition-colors">
-                            <i class="fas fa-images"></i>
-                        </div>
-                        <h6 class="font-bold text-blue-800 mb-1 group-hover:text-white transition-colors">GALERI SEKOLAH</h6>
-                        <span class="text-xs text-blue-600/80 text-center leading-tight group-hover:text-blue-100 transition-colors">
-                            Lihat papan pencapaian digital.
-                        </span>
-                    </a>
-
-                    <!-- BUTANG 3: ADMIN LOGIN -->
-                    <a href="login.html?kod=${school.kod_sekolah}" class="group relative flex flex-col items-center justify-center p-6 rounded-2xl bg-purple-50 border border-purple-100 hover:bg-purple-600 hover:border-purple-600 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                        <div class="w-14 h-14 bg-white text-purple-500 rounded-full flex items-center justify-center text-2xl mb-4 shadow-sm group-hover:bg-white/20 group-hover:text-white transition-colors">
-                            <i class="fas fa-user-lock"></i>
-                        </div>
-                        <h6 class="font-bold text-purple-800 mb-1 group-hover:text-white transition-colors">ADMIN SEKOLAH</h6>
-                        <span class="text-xs text-purple-600/80 text-center leading-tight group-hover:text-purple-100 transition-colors">
-                            Log masuk GPICT & Admin DELIMa.
-                        </span>
-                    </a>
-
-                </div>
-
-                <!-- FOOTER KAD -->
-                <div class="mt-8 text-center pt-6 border-t border-slate-100">
-                    <button onclick="resetSearch()" class="text-slate-400 hover:text-red-500 text-sm font-bold flex items-center justify-center gap-2 mx-auto transition-colors">
-                        <i class="fas fa-times-circle"></i> Tutup / Cari Sekolah Lain
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-/**
- * Menetapkan semula kotak carian dan memaparkan panduan asal.
- */
-window.resetSearch = function() {
-    sessionStorage.removeItem(APP_CONFIG.SESSION.ACTIVE_SCHOOL);
-
-    const input = document.getElementById('mainSearch');
-    if (input) {
-        input.value = '';
-        input.focus();
+  data.forEach((s) => {
+    if (!s || !s.kod_sekolah) {
+      return;
     }
-    
-    const cardContainer = document.getElementById('schoolCardContainer');
-    if (cardContainer) cardContainer.classList.add('hidden');
+    const opt = document.createElement("option");
+    opt.value = `${s.kod_sekolah} - ${s.nama_sekolah || ""}`;
+    fragment.appendChild(opt);
+  });
 
-    const welcomeMsg = document.getElementById('welcomeMessage');
-    if (welcomeMsg) welcomeMsg.classList.remove('hidden');
+  list.appendChild(fragment);
+}
+
+function matchSchoolFromQuery(rawValue) {
+  const val = String(rawValue || "").trim();
+  if (!val) {
+    return null;
+  }
+
+  const parts = val.split(" - ");
+  const candidateKod = parts[0].trim().toUpperCase();
+
+  if (parts.length >= 2) {
+    return (
+      allSchools.find(
+        (s) => s.kod_sekolah && s.kod_sekolah.toUpperCase() === candidateKod
+      ) || null
+    );
+  }
+
+  return (
+    allSchools.find(
+      (s) => s.kod_sekolah && s.kod_sekolah.toUpperCase() === candidateKod
+    ) || null
+  );
+}
+
+function setupSearchListener() {
+  const input = document.getElementById("mainSearch");
+  if (!input) {
+    return;
+  }
+
+  input.addEventListener("input", (e) => {
+    const val = e.target.value || "";
+    const parts = val.split(" - ");
+
+    if (parts.length >= 2) {
+      const school = matchSchoolFromQuery(val);
+      if (school) {
+        renderSchoolCard(school);
+        input.blur();
+      }
+    } else if (val === "") {
+      window.resetSearch();
+    }
+  });
+
+  input.addEventListener("change", (e) => {
+    const val = e.target.value || "";
+    const school = matchSchoolFromQuery(val);
+    if (school) {
+      input.value = `${school.kod_sekolah} - ${school.nama_sekolah || ""}`;
+      renderSchoolCard(school);
+    }
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const school = matchSchoolFromQuery(input.value);
+      if (school) {
+        e.preventDefault();
+        input.value = `${school.kod_sekolah} - ${school.nama_sekolah || ""}`;
+        renderSchoolCard(school);
+        input.blur();
+      }
+    }
+  });
+}
+
+function createActionTile(href, iconClass, titleText, descText, theme) {
+  const link = document.createElement("a");
+  link.href = href;
+  link.className = `group relative min-h-[44px] flex flex-col items-center justify-center p-6 rounded-2xl ${theme.cardBg} border ${theme.cardBorder} ${theme.cardHoverBg} ${theme.cardHoverBorder} hover:shadow-lg hover:-translate-y-1 transition-all duration-300 min-w-0`;
+
+  const iconCircle = document.createElement("div");
+  iconCircle.className = `w-14 h-14 bg-white ${theme.iconText} rounded-full flex items-center justify-center text-2xl mb-4 shadow-sm group-hover:bg-white/20 group-hover:text-white transition-colors shrink-0`;
+  iconCircle.appendChild(createIcon(iconClass));
+
+  const titleEl = document.createElement("h6");
+  titleEl.className = `font-bold ${theme.titleText} mb-1 group-hover:text-white transition-colors text-center`;
+  titleEl.textContent = titleText;
+
+  const descEl = document.createElement("span");
+  descEl.className = `text-xs ${theme.descText} text-center leading-tight ${theme.descHoverText} transition-colors break-words`;
+  descEl.textContent = descText;
+
+  link.appendChild(iconCircle);
+  link.appendChild(titleEl);
+  link.appendChild(descEl);
+  return link;
+}
+
+function renderSchoolCard(school) {
+  const kodSekolah = String(school.kod_sekolah || "").trim();
+  const namaSekolah = String(school.nama_sekolah || kodSekolah).trim();
+  const encodedKod = encodeURIComponent(kodSekolah);
+
+  sessionStorage.setItem(getActiveSchoolSessionKey(), kodSekolah);
+
+  const container = document.getElementById("schoolCardContainer");
+  const welcome = document.getElementById("welcomeMessage");
+
+  if (welcome) {
+    welcome.classList.add("hidden");
+  }
+  if (!container) {
+    return;
+  }
+
+  container.classList.remove("hidden");
+  clearElement(container);
+
+  const card = document.createElement("div");
+  card.className =
+    "bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100 transform transition-all duration-500 animate-fade-up min-w-0";
+
+  const header = document.createElement("div");
+  header.className =
+    "bg-gradient-to-r from-brand-50 to-white p-6 md:p-8 text-center border-b border-brand-100";
+
+  const codeBadge = document.createElement("span");
+  codeBadge.className =
+    "inline-block bg-brand-100 text-brand-700 text-xs font-bold px-3 py-1 rounded-full mb-3 shadow-sm border border-brand-200";
+  codeBadge.textContent = kodSekolah;
+
+  const schoolHeading = document.createElement("h3");
+  schoolHeading.className =
+    "text-2xl md:text-3xl font-extrabold text-slate-800 leading-tight mb-2 break-words";
+  schoolHeading.textContent = namaSekolah;
+
+  const subHeading = document.createElement("p");
+  subHeading.className = "text-slate-500 text-sm font-medium";
+  subHeading.textContent = "Portal Rasmi Sekolah";
+
+  header.appendChild(codeBadge);
+  header.appendChild(schoolHeading);
+  header.appendChild(subHeading);
+
+  const body = document.createElement("div");
+  body.className = "p-6 md:p-8";
+
+  const grid = document.createElement("div");
+  grid.className = "grid grid-cols-1 md:grid-cols-3 gap-6";
+
+  grid.appendChild(
+    createActionTile(
+      `public.html?kod=${encodedKod}`,
+      "fas fa-paper-plane",
+      "SERAHAN DATA",
+      "Isi pencapaian murid/guru di sini.",
+      {
+        cardBg: "bg-emerald-50",
+        cardBorder: "border-emerald-100",
+        cardHoverBg: "hover:bg-emerald-600",
+        cardHoverBorder: "hover:border-emerald-600",
+        iconText: "text-emerald-500",
+        titleText: "text-emerald-800",
+        descText: "text-emerald-600/80",
+        descHoverText: "group-hover:text-emerald-100"
+      }
+    )
+  );
+
+  grid.appendChild(
+    createActionTile(
+      `gallery.html?kod=${encodedKod}`,
+      "fas fa-images",
+      "GALERI SEKOLAH",
+      "Lihat papan pencapaian digital.",
+      {
+        cardBg: "bg-blue-50",
+        cardBorder: "border-blue-100",
+        cardHoverBg: "hover:bg-blue-600",
+        cardHoverBorder: "hover:border-blue-600",
+        iconText: "text-blue-500",
+        titleText: "text-blue-800",
+        descText: "text-blue-600/80",
+        descHoverText: "group-hover:text-blue-100"
+      }
+    )
+  );
+
+  grid.appendChild(
+    createActionTile(
+      `login.html?kod=${encodedKod}`,
+      "fas fa-user-lock",
+      "ADMIN SEKOLAH",
+      "Log masuk GPICT & Admin DELIMa.",
+      {
+        cardBg: "bg-purple-50",
+        cardBorder: "border-purple-100",
+        cardHoverBg: "hover:bg-purple-600",
+        cardHoverBorder: "hover:border-purple-600",
+        iconText: "text-purple-500",
+        titleText: "text-purple-800",
+        descText: "text-purple-600/80",
+        descHoverText: "group-hover:text-purple-100"
+      }
+    )
+  );
+
+  const footer = document.createElement("div");
+  footer.className = "mt-8 text-center pt-6 border-t border-slate-100";
+
+  const resetBtn = document.createElement("button");
+  resetBtn.type = "button";
+  resetBtn.className =
+    "min-h-[44px] px-4 py-2 text-slate-400 hover:text-red-500 text-sm font-bold inline-flex items-center justify-center gap-2 mx-auto transition-colors";
+  resetBtn.appendChild(createIcon("fas fa-times-circle"));
+  resetBtn.appendChild(document.createTextNode(" Tutup / Cari Sekolah Lain"));
+  resetBtn.addEventListener("click", () => {
+    window.resetSearch();
+  });
+
+  footer.appendChild(resetBtn);
+  body.appendChild(grid);
+  body.appendChild(footer);
+  card.appendChild(header);
+  card.appendChild(body);
+  container.appendChild(card);
+}
+
+window.resetSearch = function () {
+  sessionStorage.removeItem(getActiveSchoolSessionKey());
+
+  const input = document.getElementById("mainSearch");
+  if (input) {
+    input.value = "";
+    input.focus();
+  }
+
+  const cardContainer = document.getElementById("schoolCardContainer");
+  if (cardContainer) {
+    cardContainer.classList.add("hidden");
+    clearElement(cardContainer);
+  }
+
+  const welcomeMsg = document.getElementById("welcomeMessage");
+  if (welcomeMsg) {
+    welcomeMsg.classList.remove("hidden");
+  }
 };
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const loadingEl = document.getElementById("loadingOverlay");
+  if (loadingEl) {
+    loadingEl.classList.remove("hidden");
+  }
+
+  await loadSchools();
+  setupSearchListener();
+  bindLifecycleEvents();
+
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(() => {
+      setupLiveCounter();
+    });
+  } else {
+    setTimeout(() => {
+      setupLiveCounter();
+    }, 200);
+  }
+});
