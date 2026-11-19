@@ -2,6 +2,7 @@ import { envReady } from "../config/config.js";
 import { APP_CONFIG } from "../config/app.config.js";
 import { initDatabaseClient, getDatabaseClient } from "../core/db.js";
 import { RealtimeManager } from "../core/realtime.js";
+import { DelimaService } from "../../modules/helpdesk/delima.service.js";
 
 let rawDataGuru = [];
 let rawDataMurid = [];
@@ -9,6 +10,7 @@ const mapKodOuGlobal = {};
 let realtimeSubscribed = false;
 let bulkActionBusy = false;
 let deleteActionBusy = false;
+const singleActionIdsBusy = new Set();
 
 function clearElement(el) {
   if (!el) {
@@ -75,18 +77,26 @@ function renderTbodyMessage(tbody, iconClass, text, isError = false) {
   tbody.appendChild(tr);
 }
 
-async function fetchCategoryRecords(db, kategori) {
-  const { data: delimaData, error: delimaError } = await db
-    .from("smpid_delima_status")
-    .select("*")
-    .eq("kategori", kategori)
-    .order("created_at", { ascending: false });
-
-  if (delimaError) {
-    throw delimaError;
+function hydrateLocalKodOu(records) {
+  if (!Array.isArray(records) || !Array.isArray(window.globalDashboardData)) {
+    return;
   }
+  records.forEach((item) => {
+    const kod = item && item.kod_sekolah;
+    if (!kod || Object.prototype.hasOwnProperty.call(mapKodOuGlobal, kod)) {
+      return;
+    }
+    const match = window.globalDashboardData.find((s) => s && s.kod_sekolah === kod);
+    if (match && match.kod_ou) {
+      mapKodOuGlobal[kod] = match.kod_ou;
+    }
+  });
+}
 
-  let fetchedData = delimaData || [];
+async function fetchCategoryRecords(kategori) {
+  const delimaData = await DelimaService.getAll(kategori, "ALL");
+
+  let fetchedData = Array.isArray(delimaData) ? delimaData : [];
   const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
   const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
 
@@ -104,27 +114,7 @@ async function fetchCategoryRecords(db, kategori) {
     rawDataMurid = fetchedData;
   }
 
-  const unikKodSekolah = [
-    ...new Set(fetchedData.map((item) => item.kod_sekolah).filter(Boolean))
-  ];
-  const missingKodOu = unikKodSekolah.filter(
-    (kod) => !Object.prototype.hasOwnProperty.call(mapKodOuGlobal, kod)
-  );
-
-  if (missingKodOu.length > 0) {
-    const { data: sekolahData, error: sekolahError } = await db
-      .from("delima_data_sekolah")
-      .select("kod_sekolah, kod_ou")
-      .in("kod_sekolah", missingKodOu);
-
-    if (!sekolahError && Array.isArray(sekolahData)) {
-      sekolahData.forEach((sek) => {
-        if (sek && sek.kod_sekolah) {
-          mapKodOuGlobal[sek.kod_sekolah] = sek.kod_ou;
-        }
-      });
-    }
-  }
+  hydrateLocalKodOu(fetchedData);
 
   return fetchedData;
 }
@@ -137,11 +127,11 @@ async function silentRefreshDelimaCategories() {
       return;
     }
     if (document.getElementById("tbodyAdminGuru") && rawDataGuru.length > 0) {
-      await fetchCategoryRecords(db, "GURU");
+      await fetchCategoryRecords("GURU");
       await window.loadSenaraiDelimaAdmin("GURU", false);
     }
     if (document.getElementById("tbodyAdminMurid") && rawDataMurid.length > 0) {
-      await fetchCategoryRecords(db, "MURID");
+      await fetchCategoryRecords("MURID");
       await window.loadSenaraiDelimaAdmin("MURID", false);
     }
   } catch {}
@@ -153,9 +143,13 @@ function ensureRealtimeSync() {
   }
   realtimeSubscribed = true;
 
+  const tableName =
+    (APP_CONFIG && APP_CONFIG.DB_TABLES && APP_CONFIG.DB_TABLES.DELIMA_STATUS) ||
+    "smpid_delima_status";
+
   RealtimeManager.subscribeTable({
     key: "admin_delima_status",
-    table: "smpid_delima_status",
+    table: tableName,
     primaryKey: "id",
     cacheStore: "query_cache",
     cachePrefix: "delima",
@@ -448,7 +442,7 @@ window.loadSenaraiDelimaAdmin = async function (kategori, forceRefresh = true) {
         `Mengumpul dan menyegerak pangkalan data ${kategori}...`,
         false
       );
-      dataToProcess = await fetchCategoryRecords(db, kategori);
+      dataToProcess = await fetchCategoryRecords(kategori);
     }
 
     let preFilteredData = dataToProcess;
@@ -628,18 +622,22 @@ window.loadSenaraiDelimaAdmin = async function (kategori, forceRefresh = true) {
     tbody.appendChild(rowsFragment);
     window.resetBulkState(kategori);
     ensureRealtimeSync();
-  } catch {
+  } catch (err) {
     const tbodyId = kategori === "GURU" ? "tbodyAdminGuru" : "tbodyAdminMurid";
+    const detailMsg =
+      err && err.message
+        ? `Gagal menarik data permohonan DELIMa: ${err.message}`
+        : "Gagal menarik data permohonan DELIMa.";
     renderTbodyMessage(
       document.getElementById(tbodyId),
       "fas fa-exclamation-triangle mr-2",
-      "Gagal menarik data permohonan DELIMa atau Kod OU.",
+      detailMsg,
       true
     );
     showToastOrAlert({
       icon: "error",
       title: "Ralat Pangkalan Data",
-      text: "Gagal menarik data permohonan DELIMa atau Kod OU.",
+      text: detailMsg,
       confirmButtonColor: "#3085d6",
       confirmButtonText: "Tutup"
     });
@@ -899,12 +897,6 @@ async function executeBulkStatusTransition(kategori, sourceStatus, targetStatus,
     return;
   }
 
-  await envReady;
-  const db = (await initDatabaseClient()) || getDatabaseClient();
-  if (!db) {
-    return;
-  }
-
   const checkboxes = document.querySelectorAll(
     `.cb-delima-${kategori}:checked[data-status="${sourceStatus}"]`
   );
@@ -931,14 +923,9 @@ async function executeBulkStatusTransition(kategori, sourceStatus, targetStatus,
   });
 
   try {
-    const { error } = await db
-      .from("smpid_delima_status")
-      .update({ status_proses: targetStatus })
-      .in("id", idsToUpdate);
-
-    if (error) {
-      throw error;
-    }
+    const result = await DelimaService.updateStatusBulk(idsToUpdate, targetStatus);
+    const confirmedRecords = Array.isArray(result.records) ? result.records : [];
+    const updatedCount = confirmedRecords.length || idsToUpdate.length;
 
     showToastOrAlert({
       toast: true,
@@ -947,16 +934,21 @@ async function executeBulkStatusTransition(kategori, sourceStatus, targetStatus,
       title: targetStatus === "SELESAI" ? "Selesai Pukal!" : "Berjaya!",
       text:
         targetStatus === "SELESAI"
-          ? `${idsToUpdate.length} permohonan dikemaskini.`
-          : `${idsToUpdate.length} permohonan dibuka semula.`,
+          ? `${updatedCount} permohonan dikemaskini.`
+          : `${updatedCount} permohonan dibuka semula.`,
       showConfirmButton: false,
       timer: 2000,
       customClass: { popup: "colored-toast" }
     });
 
     const dataArray = kategori === "GURU" ? rawDataGuru : rawDataMurid;
-    idsToUpdate.forEach((id) => {
-      const idx = dataArray.findIndex((item) => String(item.id) === String(id));
+    const confirmedIds =
+      confirmedRecords.length > 0
+        ? confirmedRecords.map((r) => String(r.id))
+        : idsToUpdate.map((id) => String(id));
+
+    confirmedIds.forEach((idStr) => {
+      const idx = dataArray.findIndex((item) => String(item.id) === idStr);
       if (idx !== -1) {
         dataArray[idx].status_proses = targetStatus;
       }
@@ -995,15 +987,15 @@ async function executeBulkStatusTransition(kategori, sourceStatus, targetStatus,
     } else {
       await window.loadSenaraiDelimaAdmin(kategori, false);
     }
-  } catch {
+  } catch (err) {
     showToastOrAlert({
       toast: true,
       position: "top-end",
       icon: "error",
-      title: "Ralat Rangkaian",
-      text: "Gagal memproses tindakan pukal.",
+      title: "Ralat Kemas Kini Pukal",
+      text: err && err.message ? err.message : "Gagal memproses tindakan pukal.",
       showConfirmButton: false,
-      timer: 2500
+      timer: 3000
     });
   } finally {
     bulkActionBusy = false;
@@ -1041,12 +1033,16 @@ window.bukaSemulaPukal = async function (kategori) {
 };
 
 window.kemaskiniStatusDelima = async function (id, statusBaru, kategori, btnElement) {
-  await envReady;
-  const db = (await initDatabaseClient()) || getDatabaseClient();
-  if (!db || !btnElement) {
+  if (!btnElement) {
     return;
   }
 
+  const idKey = String(id);
+  if (singleActionIdsBusy.has(idKey)) {
+    return;
+  }
+
+  singleActionIdsBusy.add(idKey);
   const isToSelesai = statusBaru === "SELESAI";
   const rowElement = btnElement.closest("tr");
 
@@ -1055,19 +1051,16 @@ window.kemaskiniStatusDelima = async function (id, statusBaru, kategori, btnElem
   btnElement.classList.add("opacity-70", "cursor-not-allowed");
 
   try {
-    const { error } = await db
-      .from("smpid_delima_status")
-      .update({ status_proses: statusBaru })
-      .eq("id", id);
-
-    if (error) {
-      throw error;
-    }
+    const result = await DelimaService.updateStatus(id, statusBaru);
+    const confirmedStatus =
+      result && result.record && result.record.status_proses
+        ? result.record.status_proses
+        : statusBaru;
 
     const dataArray = kategori === "GURU" ? rawDataGuru : rawDataMurid;
-    const index = dataArray.findIndex((item) => String(item.id) === String(id));
+    const index = dataArray.findIndex((item) => String(item.id) === idKey);
     if (index !== -1) {
-      dataArray[index].status_proses = statusBaru;
+      dataArray[index].status_proses = confirmedStatus;
     }
 
     showToastOrAlert({
@@ -1075,7 +1068,7 @@ window.kemaskiniStatusDelima = async function (id, statusBaru, kategori, btnElem
       position: "top-end",
       icon: "success",
       title: "Selesai!",
-      text: `Status ditala ke ${statusBaru}`,
+      text: `Status ditala ke ${confirmedStatus}`,
       timer: 1500,
       showConfirmButton: false,
       customClass: { popup: "colored-toast" }
@@ -1086,7 +1079,7 @@ window.kemaskiniStatusDelima = async function (id, statusBaru, kategori, btnElem
     const filterEl = document.getElementById(statusFilterId);
     const statusFilter = filterEl ? filterEl.value : "ALL";
 
-    if (statusFilter !== "ALL" && statusFilter !== statusBaru) {
+    if (statusFilter !== "ALL" && statusFilter !== confirmedStatus) {
       if (rowElement) {
         rowElement.style.transition = "all 0.3s ease-out";
         rowElement.style.opacity = "0";
@@ -1110,7 +1103,7 @@ window.kemaskiniStatusDelima = async function (id, statusBaru, kategori, btnElem
     } else {
       await window.loadSenaraiDelimaAdmin(kategori, false);
     }
-  } catch {
+  } catch (err) {
     setButtonIconAndText(
       btnElement,
       isToSelesai ? "fas fa-check-circle mr-1" : "fas fa-undo mr-1",
@@ -1123,11 +1116,13 @@ window.kemaskiniStatusDelima = async function (id, statusBaru, kategori, btnElem
       toast: true,
       position: "top-end",
       icon: "error",
-      title: "Ralat Keselamatan",
-      text: "Gagal mengemas kini status.",
+      title: "Ralat Kemas Kini",
+      text: err && err.message ? err.message : "Gagal mengemas kini status.",
       showConfirmButton: false,
-      timer: 2500
+      timer: 3000
     });
+  } finally {
+    singleActionIdsBusy.delete(idKey);
   }
 };
 
@@ -1216,16 +1211,7 @@ window.padamRekodDelima = async function (id, kategori) {
   }
 
   try {
-    await envReady;
-    const db = (await initDatabaseClient()) || getDatabaseClient();
-    if (!db) {
-      throw new Error("Pangkalan data tidak tersedia.");
-    }
-
-    const { error } = await db.from("smpid_delima_status").delete().eq("id", id);
-    if (error) {
-      throw error;
-    }
+    await DelimaService.deleteStatus(id);
 
     await showToastOrAlert({
       icon: "success",
@@ -1235,11 +1221,14 @@ window.padamRekodDelima = async function (id, kategori) {
       showConfirmButton: false
     });
     await window.loadSenaraiDelimaAdmin(kategori, true);
-  } catch {
+  } catch (err) {
     showToastOrAlert({
       icon: "error",
       title: "Akses Ditolak",
-      text: "Ralat berlaku semasa cuba memadam rekod pangkalan data.",
+      text:
+        err && err.message
+          ? err.message
+          : "Ralat berlaku semasa cuba memadam rekod pangkalan data.",
       confirmButtonColor: "#ef4444"
     });
   } finally {

@@ -3,11 +3,40 @@ import { IDBCache } from "./idb.js";
 
 const DEFAULT_SUPABASE_SCHEMA = "nadim_data";
 
-let supabaseInstance = null;
-let initPromise = null;
-let idbInitialized = false;
+let supabaseInstance =
+  typeof window !== "undefined" ? window._supabase || window.supabaseClient || null : null;
+let initPromise =
+  typeof window !== "undefined" && window.DB_READY ? window.DB_READY : null;
+let idbInitialized =
+  typeof window !== "undefined" ? Boolean(window.__NADIM_IDB_INITIALIZED) : false;
 
-export let supabase = null;
+export let supabase = supabaseInstance;
+
+function syncSharedClient(client) {
+  if (!client) {
+    return null;
+  }
+  supabaseInstance = client;
+  supabase = client;
+  if (typeof window !== "undefined") {
+    window._supabase = client;
+    window.supabaseClient = client;
+  }
+  return client;
+}
+
+function getExistingSharedClient() {
+  if (supabaseInstance) {
+    return syncSharedClient(supabaseInstance);
+  }
+  if (typeof window !== "undefined") {
+    const shared = window._supabase || window.supabaseClient || null;
+    if (shared) {
+      return syncSharedClient(shared);
+    }
+  }
+  return null;
+}
 
 function resolveSupabaseSchema(runtimeEnv) {
   const raw =
@@ -24,16 +53,23 @@ function resolveSupabaseSchema(runtimeEnv) {
 }
 
 function ensureStorageLayer() {
-  if (idbInitialized) {
+  if (idbInitialized || (typeof window !== "undefined" && window.__NADIM_IDB_INITIALIZED)) {
+    idbInitialized = true;
     return;
   }
   idbInitialized = true;
+  if (typeof window !== "undefined") {
+    window.__NADIM_IDB_INITIALIZED = true;
+  }
   try {
     if (IDBCache && typeof IDBCache.initDB === "function") {
       IDBCache.initDB().catch(() => {});
     }
   } catch {
     idbInitialized = false;
+    if (typeof window !== "undefined") {
+      window.__NADIM_IDB_INITIALIZED = false;
+    }
   }
 }
 
@@ -67,8 +103,9 @@ function waitForSupabaseSdk(timeoutMs = 10000) {
 function createClientInstance() {
   ensureStorageLayer();
 
-  if (supabaseInstance) {
-    return supabaseInstance;
+  const existing = getExistingSharedClient();
+  if (existing) {
+    return existing;
   }
 
   if (
@@ -95,7 +132,7 @@ function createClientInstance() {
   }
 
   try {
-    supabaseInstance = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
+    const createdClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
       db: {
         schema: supabaseSchema
       },
@@ -106,24 +143,25 @@ function createClientInstance() {
       }
     });
 
-    supabase = supabaseInstance;
-    window._supabase = supabaseInstance;
-    window.supabaseClient = supabaseInstance;
     window.SUPABASE_SCHEMA = supabaseSchema;
+    return syncSharedClient(createdClient);
   } catch {
     supabaseInstance = null;
     supabase = null;
     return null;
   }
-
-  return supabaseInstance;
 }
 
 export async function initDatabaseClient() {
   ensureStorageLayer();
 
-  if (supabaseInstance) {
-    return supabaseInstance;
+  const existing = getExistingSharedClient();
+  if (existing) {
+    return existing;
+  }
+
+  if (typeof window !== "undefined" && window.DB_READY && !initPromise) {
+    initPromise = window.DB_READY;
   }
 
   if (!initPromise) {
@@ -134,8 +172,11 @@ export async function initDatabaseClient() {
       await waitForSupabaseSdk();
       return createClientInstance();
     })().finally(() => {
-      if (!supabaseInstance) {
+      if (!getExistingSharedClient()) {
         initPromise = null;
+        if (typeof window !== "undefined") {
+          window.DB_READY = null;
+        }
       }
     });
 
@@ -144,7 +185,8 @@ export async function initDatabaseClient() {
     }
   }
 
-  return initPromise;
+  const resolvedClient = await initPromise;
+  return syncSharedClient(resolvedClient);
 }
 
 export async function getDatabaseClientAsync() {
@@ -154,8 +196,9 @@ export async function getDatabaseClientAsync() {
 export function getDatabaseClient() {
   ensureStorageLayer();
 
-  if (supabaseInstance) {
-    return supabaseInstance;
+  const existing = getExistingSharedClient();
+  if (existing) {
+    return existing;
   }
 
   return createClientInstance();
@@ -190,17 +233,21 @@ export async function requireDbAsync() {
 if (typeof window !== "undefined") {
   initDatabaseClient().catch(() => {});
 
-  window.addEventListener("online", () => {
-    if (!supabaseInstance) {
-      initDatabaseClient().catch(() => {});
-    }
-  });
+  if (!window.__NADIM_DB_LISTENERS_BOUND) {
+    window.__NADIM_DB_LISTENERS_BOUND = true;
 
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && !supabaseInstance) {
-      initDatabaseClient().catch(() => {});
-    }
-  });
+    window.addEventListener("online", () => {
+      if (!getExistingSharedClient()) {
+        initDatabaseClient().catch(() => {});
+      }
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && !getExistingSharedClient()) {
+        initDatabaseClient().catch(() => {});
+      }
+    });
+  }
 }
 
 export default {
@@ -211,6 +258,6 @@ export default {
   requireDb,
   requireDbAsync,
   get supabase() {
-    return supabaseInstance;
+    return getExistingSharedClient();
   }
 };
