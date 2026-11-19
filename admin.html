@@ -8,7 +8,6 @@
   <meta name="theme-color" content="#16a34a">
   <link rel="icon" href="icoppdag.png">
 
-  <!-- PETUNJUK SUMBER AWAL (RESOURCE HINTS & PRECONNECT) -->
   <link rel="preconnect" href="https://seber.tech4ag.my">
   <link rel="dns-prefetch" href="https://seber.tech4ag.my">
   <link rel="preconnect" href="https://cdn.tailwindcss.com">
@@ -18,14 +17,11 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 
-  <!-- TAILWIND CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="js/config/tailwind.config.js?v=2026.1"></script>
 
-  <!-- FONTAWESOME -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
-  <!-- PUSTAKA EDITOR & FONTS (HELAIAN GAYA RASMI QUILL & GOOGLE FONTS) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@1.3.6/dist/quill.snow.css">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
 
@@ -33,7 +29,6 @@
     @layer components {
       .hidden { display: none !important; }
 
-      /* Tab Styles dengan Border Nyata */
       .tab-active {
         @apply bg-brand-600 text-white shadow-md transform scale-105 border-2 border-brand-700 ring-2 ring-brand-100;
       }
@@ -41,12 +36,10 @@
         @apply bg-white text-slate-600 hover:bg-slate-50 hover:text-brand-600 border-2 border-slate-200;
       }
 
-      /* Global Table Wrapping Fix */
       table td, table th {
         vertical-align: middle;
       }
 
-      /* Word Cloud Styles */
       .cloud-tag {
         @apply inline-flex items-center px-3 py-1.5 rounded-full text-[10px] font-bold bg-white border-2 border-slate-200 text-slate-500 cursor-pointer transition-all hover:bg-slate-50 hover:border-brand-300 hover:text-brand-600 shadow-sm m-1;
       }
@@ -54,7 +47,6 @@
         @apply bg-brand-600 text-white border-brand-700 shadow-md transform scale-105;
       }
 
-      /* Calendar Tile Styles */
       .day-card {
         @apply relative flex flex-col justify-between p-4 rounded-2xl border-2 border-slate-300 transition-all duration-300 bg-white hover:shadow-lg hover:-translate-y-1 shadow-sm;
         min-height: 140px;
@@ -78,7 +70,6 @@
         @apply !border-brand-600 ring-4 ring-brand-100 bg-brand-50/30 transform scale-[1.03] shadow-xl z-20;
       }
 
-      /* Text Wrapping Helper */
       .wrap-safe {
         white-space: normal !important;
         word-wrap: break-word !important;
@@ -87,7 +78,6 @@
         line-height: 1.5 !important;
       }
 
-      /* Scrollbar */
       ::-webkit-scrollbar { width: 8px; height: 8px; }
       ::-webkit-scrollbar-track { background: #f1f5f9; }
       ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -95,7 +85,6 @@
 
       .uppercase-input { text-transform: uppercase; }
 
-      /* Week Navigation Tabs dalam Admin */
       .week-tab-admin {
         @apply px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border-2;
       }
@@ -106,13 +95,11 @@
         @apply bg-white text-slate-400 border-slate-200 hover:border-slate-400 hover:text-brand-600;
       }
 
-      /* Rank Badge Styles */
       .rank-badge-1 { @apply bg-amber-100 text-amber-700 border-amber-300; }
       .rank-badge-2 { @apply bg-slate-200 text-slate-700 border-slate-400; }
       .rank-badge-3 { @apply bg-orange-100 text-orange-700 border-orange-300; }
       .rank-badge-other { @apply bg-slate-50 text-slate-500 border-slate-200; }
 
-      /* Kemasan Khas Quill Toolbar & Editor */
       .ql-toolbar.ql-snow {
         @apply border-2 border-slate-200 bg-slate-50 rounded-t-2xl font-sans;
       }
@@ -127,8 +114,7 @@
     }
   </style>
 
-  <!-- KONFIGURASI MASA JALAN & PUSTAKA LUARAN -->
-  <script type="module" src="js/config/config.js?v=2026.1"></script>
+  <script type="module" src="js/config/config.js?v=2026.3"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -180,7 +166,6 @@
     </div>
   </div>
 
-  <!-- HEADER COMPACT -->
   <header class="bg-slate-900 text-white pb-24 pt-6 px-4 relative overflow-hidden shadow-lg">
     <div class="absolute top-0 right-0 w-64 h-64 bg-brand-500 rounded-full blur-3xl opacity-10 -mr-20 -mt-20 pointer-events-none"></div>
     <div class="max-w-7xl mx-auto relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -195,7 +180,6 @@
         <span class="min-h-[40px] inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-white backdrop-blur-sm">
           <i class="fas fa-user-shield text-brand-400"></i> <span id="displayUserRole">MOD ADMIN</span>
         </span>
-        <!-- Tombol Keluar Global -->
         <button type="button" onclick="keluarSistem()" class="min-h-[44px] flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/20 border border-red-500/30 text-xs font-bold text-red-400 hover:bg-red-500/30 transition-all backdrop-blur-sm">
           <i class="fas fa-sign-out-alt"></i> Keluar
         </button>
@@ -205,13 +189,11 @@
 
   <main class="container mx-auto px-4 -mt-16 pb-20 relative z-20 max-w-[90rem] flex-grow">
 
-    <!-- NAVIGATION TABS -->
     <nav aria-label="Navigasi Modul Pentadbir" class="flex flex-wrap justify-center gap-1.5 mb-6 bg-white p-2 rounded-2xl shadow-lg border-2 border-slate-100 w-full mx-auto overflow-visible relative z-30">
       <a href="#dashboard" class="tab-active min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="dashboard-tab" onclick="switchAdminTab('dashboard', event)"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
       <a href="#penataran" class="tab-inactive min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="penataran-tab" onclick="switchAdminTab('penataran', event)"><i class="fas fa-clipboard-check text-sky-600"></i> Penataran</a>
       <a href="#analisa" class="tab-inactive min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="analisa-tab" onclick="switchAdminTab('analisa', event)"><i class="fas fa-chart-pie"></i> Analisa</a>
 
-      <!-- TAB IMPAK BBM -->
       <a href="#impact" class="tab-inactive min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800" id="impact-tab" onclick="switchAdminTab('impact', event)"><i class="fas fa-star text-amber-500"></i> Impak BBM</a>
 
       <a href="#pencapaian" class="tab-inactive min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="pencapaian-tab" onclick="switchAdminTab('pencapaian', event)"><i class="fas fa-trophy"></i> Kemenjadian</a>
@@ -222,10 +204,8 @@
       <a href="#libat-urus" class="tab-inactive min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="libat-urus-tab" onclick="switchAdminTab('libat-urus', event)"><i class="fas fa-handshake text-orange-600"></i> Libat Urus</a>
       <a href="#admin-users" class="tab-inactive min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="admin-users-tab" onclick="switchAdminTab('admin-users', event)"><i class="fas fa-users-cog"></i> Akses</a>
 
-      <!-- TAB IMPORT (Super Admin Sahaja) -->
       <a href="#import-data" class="hidden tab-inactive min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap" id="import-data-tab" onclick="switchAdminTab('import-data', event)"><i class="fas fa-file-import text-emerald-600"></i> Import &amp; Backup</a>
 
-      <!-- DROPDOWN PAUTAN MODULE -->
       <div class="relative group cursor-pointer">
         <button type="button" class="tab-inactive min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap">
           <i class="fas fa-cubes"></i> Pautan Modul <i class="fas fa-chevron-down text-[10px] ml-0.5"></i>
@@ -249,10 +229,8 @@
       </div>
     </nav>
 
-    <!-- TABS CONTAINER (Cleaned Single Source of Truth) -->
     <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden min-h-[500px]">
 
-      <!-- TAB 1: DASHBOARD -->
       <div id="tab-dashboard" class="p-6 md:p-8">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 border-b border-slate-100 pb-6">
           <div>
@@ -266,7 +244,6 @@
           </div>
         </div>
 
-        <!-- PANEL KPI SMART BOARD -->
         <div id="smartBoardKpiPanel" class="hidden mb-8 animate-fade-up bg-slate-50 p-4 rounded-2xl border border-slate-200">
           <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><i class="fas fa-tv text-teal-500"></i> Metrik Papan Pintar (Berdasarkan Tapisan)</h3>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -300,14 +277,12 @@
         </div>
 
         <div class="mb-8" id="filterContainer">
-          <!-- Filter buttons akan di-render oleh JS -->
         </div>
 
         <div id="schoolGridWrapper" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         </div>
       </div>
 
-      <!-- TAB PENATARAN DIGITAL -->
       <div id="tab-penataran" class="hidden p-6 md:p-8 bg-slate-50/50">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-6">
           <div>
@@ -323,7 +298,6 @@
           </div>
         </div>
 
-        <!-- Stats Bar Dinamik -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div id="card-penataran-ALL" onclick="window.setFilterPenataran('ALL')" class="bg-white p-5 rounded-2xl border-2 border-sky-400 shadow-md flex items-center justify-between cursor-pointer hover:-translate-y-1 transition-all group">
             <div>
@@ -348,7 +322,6 @@
           </div>
         </div>
 
-        <!-- Table Controls -->
         <div class="p-4 bg-slate-50 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 rounded-t-3xl">
           <div class="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
             <div class="relative w-full md:w-80">
@@ -384,7 +357,6 @@
         </div>
       </div>
 
-      <!-- TAB 2: ANALISA -->
       <div id="tab-analisa" class="hidden p-6 md:p-8">
         <div class="flex flex-wrap justify-between items-center gap-4 mb-8">
           <h2 class="text-xl font-bold text-slate-800">Laporan Pencapaian</h2>
@@ -453,7 +425,6 @@
         </div>
       </div>
 
-      <!-- TAB IMPAK BBM -->
       <div id="tab-impact" class="hidden p-6 md:p-8 bg-slate-50/30">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-6">
           <div>
@@ -469,7 +440,6 @@
           </div>
         </div>
 
-        <!-- Top Dashboard Stats -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center relative overflow-hidden group">
             <div class="absolute right-[-10px] bottom-[-10px] opacity-10 group-hover:scale-110 transition"><i class="fas fa-school text-7xl"></i></div>
@@ -493,9 +463,7 @@
           </div>
         </div>
 
-        <!-- Analisis Perincian Laporan -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <!-- Analisis 1: Laporan Eksekutif Skala Likert -->
           <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
             <h3 class="font-bold text-slate-800 text-sm uppercase tracking-widest mb-4 border-b border-slate-100 pb-3 flex items-center gap-2">
               <i class="fas fa-chart-bar text-indigo-500"></i> Laporan Eksekutif Aspek Pembelajaran
@@ -505,7 +473,6 @@
             </div>
           </div>
 
-          <!-- Analisis 2: Komponen BBM Paling Membantu -->
           <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
             <h3 class="font-bold text-slate-800 text-sm uppercase tracking-widest mb-4 border-b border-slate-100 pb-3 flex items-center gap-2">
               <i class="fas fa-cubes text-emerald-500"></i> Komponen BBM Teras Pilihan Murid
@@ -517,7 +484,6 @@
           </div>
         </div>
 
-        <!-- Jadual Pemantauan Skala Pelaksanaan Mengikut Sekolah -->
         <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
           <div class="p-5 bg-slate-50 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
             <h3 class="font-bold text-slate-600 uppercase text-xs tracking-widest flex items-center gap-2">
@@ -547,7 +513,6 @@
         </div>
       </div>
 
-      <!-- TAB 3: PENCAPAIAN (KEMENJADIAN) -->
       <div id="tab-pencapaian" class="hidden p-6 md:p-8">
         <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
           <div>
@@ -561,7 +526,6 @@
           </div>
         </div>
 
-        <!-- UNIFIED FILTER DECK -->
         <div class="bg-slate-50 p-4 rounded-2xl mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 border border-slate-100">
           <div class="col-span-1 lg:col-span-2 relative">
             <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
@@ -600,7 +564,6 @@
           </button>
         </div>
 
-        <!-- STATISTIC CARDS -->
         <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6 text-center">
           <div onclick="filterByKategori('MURID')" id="cardStat-MURID" class="p-3 bg-blue-50 rounded-xl border border-blue-100 cursor-pointer hover:bg-blue-100 transition">
             <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest">Murid</span>
@@ -677,7 +640,6 @@
           </div>
         </div>
 
-        <!-- CONTAINER: TOP PENSIJILAN -->
         <div id="topPensijilanContainer" class="hidden mb-6 animate-fade-in">
           <div class="flex flex-wrap items-center gap-2 mb-4 px-1 border-b border-slate-200 pb-2">
             <i class="fas fa-certificate text-amber-500"></i>
@@ -686,7 +648,6 @@
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- Top PPD -->
             <div class="bg-white border-2 border-indigo-100 rounded-2xl overflow-hidden shadow-sm flex flex-col">
               <div class="bg-indigo-50 px-4 py-3 border-b border-indigo-100 flex items-center justify-between">
                 <h4 class="text-xs font-black text-indigo-800 uppercase tracking-wider"><i class="fas fa-building mr-1.5 text-indigo-400"></i> Prestasi PPD</h4>
@@ -698,7 +659,6 @@
               </div>
             </div>
 
-            <!-- Top 3 Menengah -->
             <div class="bg-white border-2 border-fuchsia-100 rounded-2xl overflow-hidden shadow-sm flex flex-col">
               <div class="bg-fuchsia-50 px-4 py-3 border-b border-fuchsia-100 flex items-center justify-between">
                 <h4 class="text-xs font-black text-fuchsia-800 uppercase tracking-wider"><i class="fas fa-school mr-1.5 text-fuchsia-400"></i> Top 3 Menengah</h4>
@@ -710,7 +670,6 @@
               </div>
             </div>
 
-            <!-- Top 3 Rendah -->
             <div class="bg-white border-2 border-cyan-100 rounded-2xl overflow-hidden shadow-sm flex flex-col">
               <div class="bg-cyan-50 px-4 py-3 border-b border-cyan-100 flex items-center justify-between">
                 <h4 class="text-xs font-black text-cyan-800 uppercase tracking-wider"><i class="fas fa-child mr-1.5 text-cyan-400"></i> Top 3 Rendah</h4>
@@ -779,7 +738,6 @@
         </div>
       </div>
 
-      <!-- TAB 4: GALERI -->
       <div id="tab-gallery" class="hidden p-6 md:p-8">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 border-b border-slate-100 pb-4 gap-4">
           <div>
@@ -809,12 +767,9 @@
         <div id="adminGalleryGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
       </div>
 
-      <!-- TAB 5: TEMPAHAN BIMBINGAN & BENGKEL -->
       <div id="tab-tempahan" class="hidden">
-        <!-- Content Injected by booking_manager.js -->
       </div>
 
-      <!-- TAB 6: EMAIL BLASTER -->
       <div id="tab-email" class="hidden p-6 md:p-8">
         <h2 class="text-xl font-bold text-slate-800 mb-4">Email Blaster</h2>
         <div class="bg-amber-50 p-6 rounded-2xl border-2 border-amber-100 mb-6">
@@ -853,7 +808,6 @@
                 <input type="text" id="msgSubject" class="w-full min-h-[44px] p-2 border-b-2 border-slate-100 font-bold text-sm outline-none focus:border-brand-500 transition-colors placeholder-slate-300" value="[TINDAKAN] Pengesahan Pendaftaran Sistem NaDIM">
               </div>
             </div>
-            <!-- WADAH EDITOR TEKS KAYA QUILL DENGAN PENGGAYAAN TERKAWAL -->
             <div id="editor-container"></div>
           </div>
           <div class="p-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
@@ -864,7 +818,6 @@
         </div>
       </div>
 
-      <!-- TAB 7: HELPDESK & DELIMA (PUSAT SOKONGAN TERKUMPUL) -->
       <div id="tab-helpdesk" class="hidden p-6 md:p-8">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-slate-100 pb-4 gap-4">
           <div>
@@ -1024,7 +977,6 @@
         </div>
       </div>
 
-      <!-- TAB 7B: LIBAT URUS -->
       <div id="tab-libat-urus" class="hidden p-6 md:p-8 bg-slate-50/50">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-6">
           <div>
@@ -1117,7 +1069,6 @@
         </div>
       </div>
 
-      <!-- TAB 8: ADMIN USERS -->
       <div id="tab-admin-users" class="hidden p-6 md:p-8">
         <h2 class="text-xl font-bold text-slate-800 mb-6">Pengurusan Akses Admin</h2>
         <div id="addUserFormContainer" class="bg-slate-50 p-6 rounded-2xl border-2 border-slate-200 mb-6">
@@ -1142,7 +1093,6 @@
         <div id="adminListWrapper"></div>
       </div>
 
-      <!-- TAB 9: IMPORT DATA (SUPER ADMIN) -->
       <div id="tab-import-data" class="hidden p-6 md:p-8">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-200 pb-6">
           <div>
@@ -1187,7 +1137,6 @@
           </div>
         </div>
 
-        <!-- BATCH BACKUP & RESTORE SECTION -->
         <div class="mt-8 bg-slate-900 rounded-3xl p-6 md:p-8 border border-slate-800 shadow-2xl relative overflow-hidden">
           <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-500 opacity-10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
 
@@ -1203,7 +1152,7 @@
 
             <div class="lg:w-1/2 w-full bg-slate-800 p-6 rounded-2xl border border-slate-700">
               <label class="block text-xs font-bold text-slate-300 uppercase tracking-widest mb-3"><i class="fas fa-upload text-amber-400 mr-2"></i>Pulihkan Sistem (Restore)</label>
-              <input type="file" id="jsonBackupInput" accept=".json" class="block w-full min-h-[44px] text-sm text-slate-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600 cursor-pointer bg-slate-900 border border-slate-700 rounded-xl shadow-inner mb-4 transition-colors">
+              <input type="file" id="jsonBackupInput" accept=".json,application/json" class="block w-full min-h-[44px] text-sm text-slate-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600 cursor-pointer bg-slate-900 border border-slate-700 rounded-xl shadow-inner mb-4 transition-colors">
 
               <button type="button" onclick="mulaRestoreKeseluruhan()" id="btnMulaRestore" class="w-full min-h-[44px] bg-red-500 hover:bg-red-600 text-white font-black py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 uppercase tracking-widest transform active:scale-95">
                 <i class="fas fa-sync"></i> Mulakan Pemulihan Data
@@ -1465,7 +1414,6 @@
     </div>
   </div>
 
-  <!-- MODAL SUARA MURID (IMPAK BBM) -->
   <div id="modalImpactDetail" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm px-4 py-8">
     <div class="bg-white w-full max-w-4xl rounded-3xl overflow-hidden shadow-2xl flex flex-col h-full max-h-[90vh]">
       <div class="bg-indigo-600 p-5 md:px-8 flex justify-between items-center text-white shrink-0 shadow-md z-10">
@@ -1477,7 +1425,6 @@
       </div>
 
       <div class="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-grow bg-slate-50/50">
-        <!-- Paparan Analisis Perkara Dipelajari (Q12) -->
         <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mb-6 relative overflow-hidden group">
           <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-emerald-50 rounded-full group-hover:scale-150 transition-transform duration-500 z-0"></div>
           <h4 class="text-sm font-black text-emerald-600 uppercase tracking-widest mb-6 flex items-center gap-2 relative z-10 border-b border-emerald-100 pb-3">
@@ -1488,7 +1435,6 @@
           </div>
         </div>
 
-        <!-- Paparan Analisis Cadangan Penambahbaikan (Q13) -->
         <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden group">
           <div class="absolute -right-4 -bottom-4 w-24 h-24 bg-amber-50 rounded-full group-hover:scale-150 transition-transform duration-500 z-0"></div>
           <h4 class="text-sm font-black text-amber-600 uppercase tracking-widest mb-6 flex items-center gap-2 relative z-10 border-b border-amber-100 pb-3">
@@ -1502,9 +1448,8 @@
     </div>
   </div>
 
-  <!-- PENGURUSAN MODUL UTAMA (DYNAMIC ON-DEMAND ENGINE) -->
   <script type="module" src="js/core/helpers.js?v=2026.1"></script>
-  <script type="module" src="js/core/db.js?v=2026.1"></script>
+  <script type="module" src="js/core/db.js?v=2026.3"></script>
   <script type="module" src="js/admin/main.js?v=2026.1"></script>
 
   <script>

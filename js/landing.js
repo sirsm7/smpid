@@ -8,6 +8,7 @@ let presenceChannel = null;
 let presenceSessionId = "";
 let isLoadingSchools = false;
 let isSettingUpPresence = false;
+let lifecycleBound = false;
 
 function getActiveSchoolSessionKey() {
   return (
@@ -145,31 +146,36 @@ async function setupLiveCounter(forceReconnect = false) {
 }
 
 function bindLifecycleEvents() {
+  if (lifecycleBound) {
+    return;
+  }
+  lifecycleBound = true;
+
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       const needsReconnect = !presenceChannel || presenceChannel.state !== "joined";
       if (needsReconnect) {
-        setupLiveCounter(true);
+        setupLiveCounter(true).catch(() => {});
       }
       if (allSchools.length === 0) {
-        loadSchools();
+        loadSchools().catch(() => {});
       }
     }
   });
 
   window.addEventListener("online", () => {
-    setupLiveCounter(true);
+    setupLiveCounter(true).catch(() => {});
     if (allSchools.length === 0) {
-      loadSchools();
+      loadSchools().catch(() => {});
     }
   });
 
   window.addEventListener("beforeunload", () => {
-    teardownLiveCounter();
+    teardownLiveCounter().catch(() => {});
   });
 
   window.addEventListener("pagehide", () => {
-    teardownLiveCounter();
+    teardownLiveCounter().catch(() => {});
   });
 }
 
@@ -246,17 +252,7 @@ function matchSchoolFromQuery(rawValue) {
     return null;
   }
 
-  const parts = val.split(" - ");
-  const candidateKod = parts[0].trim().toUpperCase();
-
-  if (parts.length >= 2) {
-    return (
-      allSchools.find(
-        (s) => s.kod_sekolah && s.kod_sekolah.toUpperCase() === candidateKod
-      ) || null
-    );
-  }
-
+  const candidateKod = val.split(" - ")[0].trim().toUpperCase();
   return (
     allSchools.find(
       (s) => s.kod_sekolah && s.kod_sekolah.toUpperCase() === candidateKod

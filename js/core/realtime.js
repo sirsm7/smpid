@@ -132,7 +132,10 @@ async function detachChannel(client, channel) {
 }
 
 async function createChannelSubscription(config) {
-  await envReady;
+  const activeEnvPromise =
+    typeof window !== "undefined" && window.ENV_READY ? window.ENV_READY : envReady;
+  await activeEnvPromise;
+
   const client = await initDatabaseClient();
   if (!client || typeof client.channel !== "function") {
     return null;
@@ -219,7 +222,9 @@ async function runForegroundRevalidation(force = false) {
   }
   lastForegroundSyncAt = now;
 
-  await envReady;
+  const activeEnvPromise =
+    typeof window !== "undefined" && window.ENV_READY ? window.ENV_READY : envReady;
+  await activeEnvPromise;
   const client = await initDatabaseClient();
 
   const entries = Array.from(subscriptions.entries());
@@ -361,3 +366,5 @@ export const RealtimeManager = {
 if (typeof window !== "undefined") {
   window.RealtimeManager = RealtimeManager;
 }
+
+export default RealtimeManager;

@@ -55,33 +55,40 @@ function validateAndFreezeEnv(rawPayload) {
   }
 
   const frozenEnv = Object.freeze(normalizedEnv);
-  window.__ENV = frozenEnv;
-  window.SUPABASE_URL = frozenEnv.SUPABASE_URL;
-  window.SUPABASE_ANON_KEY = frozenEnv.SUPABASE_ANON_KEY;
-  window.SUPABASE_SCHEMA = frozenEnv.SUPABASE_SCHEMA;
+  if (typeof window !== "undefined") {
+    window.__ENV = frozenEnv;
+    window.SUPABASE_URL = frozenEnv.SUPABASE_URL;
+    window.SUPABASE_ANON_KEY = frozenEnv.SUPABASE_ANON_KEY;
+    window.SUPABASE_SCHEMA = frozenEnv.SUPABASE_SCHEMA;
 
-  if (frozenEnv.GAS_ENDPOINT_URL) {
-    window.GAS_ENDPOINT_URL = frozenEnv.GAS_ENDPOINT_URL;
-    window.GAS_URL = frozenEnv.GAS_ENDPOINT_URL;
-  }
+    if (frozenEnv.GAS_ENDPOINT_URL) {
+      window.GAS_ENDPOINT_URL = frozenEnv.GAS_ENDPOINT_URL;
+      window.GAS_URL = frozenEnv.GAS_ENDPOINT_URL;
+    }
 
-  if (frozenEnv.GAS_UPLOAD_URL) {
-    window.GAS_UPLOAD_URL = frozenEnv.GAS_UPLOAD_URL;
-  }
+    if (frozenEnv.GAS_UPLOAD_URL) {
+      window.GAS_UPLOAD_URL = frozenEnv.GAS_UPLOAD_URL;
+    }
 
-  if (frozenEnv.GAS_EMAIL_URL) {
-    window.GAS_EMAIL_URL = frozenEnv.GAS_EMAIL_URL;
-  }
+    if (frozenEnv.GAS_EMAIL_URL) {
+      window.GAS_EMAIL_URL = frozenEnv.GAS_EMAIL_URL;
+    }
 
-  if (frozenEnv.GAS_LIBAT_URUS_URL) {
-    window.GAS_LIBAT_URUS_URL = frozenEnv.GAS_LIBAT_URUS_URL;
+    if (frozenEnv.GAS_LIBAT_URUS_URL) {
+      window.GAS_LIBAT_URUS_URL = frozenEnv.GAS_LIBAT_URUS_URL;
+    }
   }
 
   return frozenEnv;
 }
 
 async function fetchRuntimeConfig() {
-  if (window.__ENV && window.__ENV.SUPABASE_URL && window.__ENV.SUPABASE_ANON_KEY) {
+  if (
+    typeof window !== "undefined" &&
+    window.__ENV &&
+    window.__ENV.SUPABASE_URL &&
+    window.__ENV.SUPABASE_ANON_KEY
+  ) {
     return window.__ENV;
   }
 
@@ -135,38 +142,55 @@ async function fetchRuntimeConfig() {
   return inFlightRequest;
 }
 
-if (!window.ENV_READY) {
-  window.ENV_READY = fetchRuntimeConfig();
+const initialReadyPromise =
+  typeof window !== "undefined" && window.ENV_READY
+    ? window.ENV_READY
+    : fetchRuntimeConfig();
+
+if (typeof window !== "undefined" && !window.ENV_READY) {
+  window.ENV_READY = initialReadyPromise;
 }
 
-export let envReady = window.ENV_READY;
+export let envReady = initialReadyPromise;
 
 export function getEnv() {
-  return window.__ENV || null;
+  return typeof window !== "undefined" ? window.__ENV || null : null;
 }
 
 export function reloadEnv() {
-  if (window.__ENV && window.__ENV.SUPABASE_URL && window.__ENV.SUPABASE_ANON_KEY) {
-    window.ENV_READY = Promise.resolve(window.__ENV);
-    envReady = window.ENV_READY;
-    return window.ENV_READY;
+  if (
+    typeof window !== "undefined" &&
+    window.__ENV &&
+    window.__ENV.SUPABASE_URL &&
+    window.__ENV.SUPABASE_ANON_KEY
+  ) {
+    const resolved = Promise.resolve(window.__ENV);
+    window.ENV_READY = resolved;
+    envReady = resolved;
+    return resolved;
   }
-  window.ENV_READY = fetchRuntimeConfig();
-  envReady = window.ENV_READY;
-  return window.ENV_READY;
+
+  const nextReadyPromise = fetchRuntimeConfig();
+  if (typeof window !== "undefined") {
+    window.ENV_READY = nextReadyPromise;
+  }
+  envReady = nextReadyPromise;
+  return nextReadyPromise;
 }
 
-window.addEventListener("online", () => {
-  if (!window.__ENV) {
-    reloadEnv().catch(() => {});
-  }
-});
+if (typeof window !== "undefined") {
+  window.addEventListener("online", () => {
+    if (!window.__ENV) {
+      reloadEnv().catch(() => {});
+    }
+  });
 
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && !window.__ENV) {
-    reloadEnv().catch(() => {});
-  }
-});
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && !window.__ENV) {
+      reloadEnv().catch(() => {});
+    }
+  });
+}
 
 export default {
   envReady,

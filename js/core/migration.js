@@ -9,6 +9,7 @@ const UPSERT_BATCH_SIZE = 100;
 const UPSERT_BATCH_RPC = "nadim_upsert_batch";
 const SEQUENCE_RESET_RPC = "nadim_reset_sequences";
 const DEFAULT_SUPABASE_SCHEMA = "nadim_data";
+const SCHEMA_INTROSPECTION_TIMEOUT_MS = 4000;
 
 const CORE_TABLE_REGISTRY = {
   smpid_sekolah_data: {
@@ -290,27 +291,129 @@ function sortTablesByDependency(tableNames) {
   return ordered;
 }
 
-async function resolveProjectSchemas() {
-  const targetNames = Object.keys(CORE_TABLE_REGISTRY);
-  const orderedNames = sortTablesByDependency(targetNames);
+async function fetchOpenApiDefinitions(activeSchema, parentSignal) {
+  const runtimeEnv =
+    getEnv() || (typeof window !== "undefined" ? window.__ENV : null);
+  const supabaseUrl =
+    runtimeEnv && typeof runtimeEnv.SUPABASE_URL === "string"
+      ? runtimeEnv.SUPABASE_URL.replace(/\/+$/, "")
+      : "";
+  const supabaseAnonKey =
+    runtimeEnv && typeof runtimeEnv.SUPABASE_ANON_KEY === "string"
+      ? runtimeEnv.SUPABASE_ANON_KEY.trim()
+      : "";
+
+  if (!supabaseUrl || !supabaseAnonKey || typeof fetch !== "function") {
+    return null;
+  }
+
+  const controller = new AbortController();
+  const abortFromParent = () => controller.abort();
+  if (parentSignal) {
+    if (parentSignal.aborted) {
+      return null;
+    }
+    parentSignal.addEventListener("abort", abortFromParent, { once: true });
+  }
+
+  const timerId = setTimeout(() => controller.abort(), SCHEMA_INTROSPECTION_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/`, {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        "Accept-Profile": activeSchema,
+        Accept: "application/openapi+json"
+      },
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const spec = await response.json();
+    if (spec && typeof spec.definitions === "object") {
+      return spec.definitions;
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timerId);
+    if (parentSignal) {
+      parentSignal.removeEventListener("abort", abortFromParent);
+    }
+  }
+}
+
+async function resolveProjectSchemas(activeSchema, parentSignal) {
+  const openApiDefs = await fetchOpenApiDefinitions(activeSchema, parentSignal);
+  const registryNames = Object.keys(CORE_TABLE_REGISTRY);
+  const discoveredNames = openApiDefs
+    ? Object.keys(openApiDefs).filter((name) => name.startsWith("smpid_"))
+    : [];
+  const allTargetNames = Array.from(new Set([...registryNames, ...discoveredNames]));
+  const orderedNames = sortTablesByDependency(allTargetNames);
   const schemas = {};
 
   for (let i = 0; i < orderedNames.length; i += 1) {
     const tableName = orderedNames[i];
-    const reg = CORE_TABLE_REGISTRY[tableName];
-    const headers = [...reg.fallback_headers];
-    const optionalHeaders = [...reg.fallback_optional];
+    const reg = CORE_TABLE_REGISTRY[tableName] || {
+      table_name: tableName,
+      primary_key: "id",
+      unique_keys: ["id"],
+      depends_on: [],
+      fallback_headers: [],
+      fallback_optional: []
+    };
+
+    const def = openApiDefs && openApiDefs[tableName] ? openApiDefs[tableName] : null;
+    const defProps = def && def.properties && typeof def.properties === "object"
+      ? Object.keys(def.properties)
+      : [];
+    const defRequired = def && Array.isArray(def.required) ? def.required : [];
+
+    let detectedPk = reg.primary_key || "id";
+    if (def && def.properties) {
+      const pkProp = Object.entries(def.properties).find(
+        ([, meta]) =>
+          meta &&
+          typeof meta.description === "string" &&
+          meta.description.includes("<pk/>")
+      );
+      if (pkProp && pkProp[0]) {
+        detectedPk = pkProp[0];
+      }
+    }
+
+    const baseHeaders = reg.fallback_headers.length > 0
+      ? [...reg.fallback_headers]
+      : defRequired.filter((col) => {
+          const propMeta = def && def.properties ? def.properties[col] : null;
+          const hasDefault = propMeta && Object.prototype.hasOwnProperty.call(propMeta, "default");
+          return !hasDefault && col !== detectedPk;
+        });
+
+    const optionalSet = new Set([...reg.fallback_optional, ...defProps]);
+    baseHeaders.forEach((col) => optionalSet.delete(col));
+
+    const headers = Array.from(new Set(baseHeaders));
+    const optionalHeaders = Array.from(optionalSet);
     const allColumns = Array.from(new Set([...headers, ...optionalHeaders]));
 
     schemas[tableName] = {
       table_name: tableName,
-      primary_key: reg.primary_key || "id",
-      unique_keys: Array.isArray(reg.unique_keys) ? [...reg.unique_keys] : [reg.primary_key || "id"],
+      primary_key: detectedPk,
+      unique_keys: Array.isArray(reg.unique_keys) ? [...reg.unique_keys] : [detectedPk],
       depends_on: Array.isArray(reg.depends_on) ? [...reg.depends_on] : [],
       headers,
       optional_headers: optionalHeaders,
       all_columns: allColumns,
-      properties: {}
+      properties: def && def.properties ? def.properties : {}
     };
   }
 
@@ -521,8 +624,13 @@ async function resolveSuperAdminContext(client) {
 
     if (storedId) {
       callerIdentifier = storedId;
-    } else if ((storedRole === "SUPER_ADMIN" || storedRole === "SUPER ADMIN") && existingSuperAdmins.length > 0) {
-      callerIdentifier = String(existingSuperAdmins[0].email || existingSuperAdmins[0].id || "").trim();
+    } else if (
+      (storedRole === "SUPER_ADMIN" || storedRole === "SUPER ADMIN") &&
+      existingSuperAdmins.length > 0
+    ) {
+      callerIdentifier = String(
+        existingSuperAdmins[0].email || existingSuperAdmins[0].id || ""
+      ).trim();
     }
   }
 
@@ -726,7 +834,14 @@ function validateAndNormalizeBackupPayload(rawJson, liveSchemas) {
   };
 }
 
-async function upsertTableBatchWithFallback(client, tableName, batch, conflictTarget, callerIdentifier, signal) {
+async function upsertTableBatchWithFallback(
+  client,
+  tableName,
+  batch,
+  conflictTarget,
+  callerIdentifier,
+  signal
+) {
   const { error: rpcError } = await client.rpc(UPSERT_BATCH_RPC, {
     p_table: tableName,
     p_rows: batch,
@@ -805,7 +920,7 @@ export const MigrationManager = {
         throw new Error("Sambungan pangkalan data Supabase tidak tersedia.");
       }
 
-      const { tableOrder, schemas } = await resolveProjectSchemas();
+      const { tableOrder, schemas } = await resolveProjectSchemas(activeSchema, controller.signal);
       const activeOrder = [];
       const exportedTables = {};
       let totalRowsExported = 0;
@@ -854,7 +969,7 @@ export const MigrationManager = {
         metadata: {
           app: "nadim",
           schema_name: activeSchema,
-          schema_version: APP_CONFIG.APP_VERSION || "3.0.0",
+          schema_version: (APP_CONFIG && APP_CONFIG.APP_VERSION) || "3.0.0",
           exported_at: new Date().toISOString(),
           table_order: activeOrder
         },
@@ -954,7 +1069,7 @@ export const MigrationManager = {
       }
 
       const superAdminContext = await resolveSuperAdminContext(client);
-      const { schemas } = await resolveProjectSchemas();
+      const { schemas } = await resolveProjectSchemas(activeSchema, controller.signal);
       const validated = validateAndNormalizeBackupPayload(parsedJson, schemas);
 
       if (validated.tableOrder.length === 0) {
@@ -1036,7 +1151,9 @@ export const MigrationManager = {
       );
 
       if (seqResult && seqResult.error) {
-        throw new Error(`Pemulihan baris selesai tetapi penyelarasan jujukan gagal: ${seqResult.error.message}`);
+        throw new Error(
+          `Pemulihan baris selesai tetapi penyelarasan jujukan gagal: ${seqResult.error.message}`
+        );
       }
 
       if (IDBCache && typeof IDBCache.clearAll === "function") {

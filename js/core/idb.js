@@ -44,7 +44,7 @@ function checkIndexedDBSupport() {
 }
 
 function getAllStoreNames(db = null) {
-  const names = new Set([DEFAULT_STORE_NAME]);
+  const names = new Set([DEFAULT_STORE_NAME, "achievements_cache"]);
   if (APP_CONFIG && APP_CONFIG.IDB && APP_CONFIG.IDB.STORES) {
     Object.values(APP_CONFIG.IDB.STORES).forEach((storeName) => {
       if (typeof storeName === "string" && storeName.trim()) {
@@ -70,14 +70,14 @@ function checkAndMigrateAppVersion() {
     if (typeof window === "undefined" || !window.localStorage) {
       return;
     }
-    const currentVersion = APP_CONFIG.APP_VERSION;
+    const currentVersion = APP_CONFIG && APP_CONFIG.APP_VERSION ? APP_CONFIG.APP_VERSION : "";
     const versionKey =
-      APP_CONFIG.SESSION && APP_CONFIG.SESSION.APP_VERSION_KEY
+      APP_CONFIG && APP_CONFIG.SESSION && APP_CONFIG.SESSION.APP_VERSION_KEY
         ? APP_CONFIG.SESSION.APP_VERSION_KEY
         : "smpid_app_version";
     const storedVersion = localStorage.getItem(versionKey);
 
-    if (storedVersion && storedVersion !== currentVersion) {
+    if (currentVersion && storedVersion && storedVersion !== currentVersion) {
       if (checkIndexedDBSupport() && typeof window.indexedDB.deleteDatabase === "function") {
         try {
           window.indexedDB.deleteDatabase("nadim_cache_db");
@@ -86,7 +86,9 @@ function checkAndMigrateAppVersion() {
       }
       window.__memoryCache = {};
     }
-    localStorage.setItem(versionKey, currentVersion);
+    if (currentVersion) {
+      localStorage.setItem(versionKey, currentVersion);
+    }
   } catch {}
 }
 
@@ -131,11 +133,11 @@ export const IDBCache = {
 
     try {
       const roleKey =
-        APP_CONFIG.SESSION && APP_CONFIG.SESSION.USER_ROLE
+        APP_CONFIG && APP_CONFIG.SESSION && APP_CONFIG.SESSION.USER_ROLE
           ? APP_CONFIG.SESSION.USER_ROLE
           : "smpid_user_role";
       const kodKey =
-        APP_CONFIG.SESSION && APP_CONFIG.SESSION.USER_KOD
+        APP_CONFIG && APP_CONFIG.SESSION && APP_CONFIG.SESSION.USER_KOD
           ? APP_CONFIG.SESSION.USER_KOD
           : "smpid_user_kod";
       const role = localStorage.getItem(roleKey) || "ANON";
@@ -323,15 +325,15 @@ export const IDBCache = {
           const store = transaction.objectStore(storeName);
           store.put(payload);
           transaction.oncomplete = () => resolve(true);
-          transaction.onerror = () => resolve(false);
-          transaction.onabort = () => resolve(false);
+          transaction.onerror = () => resolve(true);
+          transaction.onabort = () => resolve(true);
         } catch {
           dbPromise = null;
-          resolve(false);
+          resolve(true);
         }
       });
     } catch {
-      return false;
+      return true;
     }
   },
 
@@ -546,3 +548,5 @@ export const IDBCache = {
 if (typeof window !== "undefined") {
   window.IDBCache = IDBCache;
 }
+
+export default IDBCache;
