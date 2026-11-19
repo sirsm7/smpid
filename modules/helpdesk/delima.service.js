@@ -7,21 +7,21 @@ const TABLE_NAME =
   (APP_CONFIG && APP_CONFIG.DB_TABLES && APP_CONFIG.DB_TABLES.DELIMA_STATUS) ||
   "smpid_delima_status";
 
+const RPC_UPDATE_STATUS_BATCH = "update_delima_status_batch";
+const RPC_DELETE_STATUS = "delete_delima_status";
 const VALID_STATUSES = new Set(["DALAM PROSES", "SELESAI"]);
 
 function normalizeRecordId(rawId) {
-  if (typeof rawId === "number" && Number.isFinite(rawId)) {
+  if (typeof rawId === "number" && Number.isSafeInteger(rawId) && rawId > 0) {
     return rawId;
   }
   const text = String(rawId ?? "").trim();
-  if (!text) {
+  if (!/^\d+$/.test(text)) {
     throw new Error("ID rekod DELIMa tidak sah.");
   }
-  if (/^\d+$/.test(text)) {
-    const asNumber = Number(text);
-    if (Number.isSafeInteger(asNumber)) {
-      return asNumber;
-    }
+  const asNumber = Number(text);
+  if (Number.isSafeInteger(asNumber) && asNumber > 0) {
+    return asNumber;
   }
   return text;
 }
@@ -32,6 +32,18 @@ function normalizeStatusProses(rawStatus) {
     throw new Error(`Nilai status_proses tidak sah: ${rawStatus}`);
   }
   return normalized;
+}
+
+function isMissingRpcError(error) {
+  if (!error) {
+    return false;
+  }
+  const message = String(error.message || "").toLowerCase();
+  return (
+    error.code === "42883" ||
+    error.code === "PGRST202" ||
+    message.includes("could not find the function")
+  );
 }
 
 async function getReadyDb() {
@@ -52,6 +64,39 @@ async function invalidateDelimaCache() {
       await IDBCache.deleteByPrefix("delima");
     }
   } catch {}
+}
+
+async function executeStatusBatchUpdate(db, normalizedIds, normalizedStatus) {
+  const { data: rpcData, error: rpcError } = await db.rpc(RPC_UPDATE_STATUS_BATCH, {
+    p_ids: normalizedIds,
+    p_status_proses: normalizedStatus
+  });
+
+  if (!rpcError) {
+    return Array.isArray(rpcData) ? rpcData : [];
+  }
+
+  if (!isMissingRpcError(rpcError)) {
+    throw rpcError;
+  }
+
+  const { data: tableData, error: tableError } = await db
+    .from(TABLE_NAME)
+    .update({ status_proses: normalizedStatus })
+    .in("id", normalizedIds)
+    .select("id, status_proses");
+
+  if (tableError) {
+    throw tableError;
+  }
+
+  if (!Array.isArray(tableData) || tableData.length === 0) {
+    throw new Error(
+      "Kemas kini disekat oleh kawalan akses jadual. Sila jalankan skrip SQL RPC update_delima_status_batch di Supabase terlebih dahulu."
+    );
+  }
+
+  return tableData;
 }
 
 export const DelimaService = {
@@ -127,24 +172,20 @@ export const DelimaService = {
     const normalizedId = normalizeRecordId(id);
     const normalizedStatus = normalizeStatusProses(statusProses);
 
-    const { data, error } = await db
-      .from(TABLE_NAME)
-      .update({ status_proses: normalizedStatus })
-      .eq("id", normalizedId)
-      .select("id, status_proses");
+    const updatedRows = await executeStatusBatchUpdate(
+      db,
+      [normalizedId],
+      normalizedStatus
+    );
 
-    if (error) {
-      throw error;
-    }
-
-    if (!Array.isArray(data) || data.length === 0) {
+    if (updatedRows.length === 0) {
       throw new Error(
-        `Rekod ID ${normalizedId} tidak ditemui atau gagal dikemas kini kepada ${normalizedStatus}.`
+        `Rekod ID ${normalizedId} tidak ditemui dalam jadual ${TABLE_NAME}.`
       );
     }
 
     await invalidateDelimaCache();
-    return { success: true, record: data[0] };
+    return { success: true, record: updatedRows[0] };
   },
 
   async updateStatusBulk(ids, statusProses) {
@@ -156,37 +197,56 @@ export const DelimaService = {
     const normalizedIds = ids.map((rawId) => normalizeRecordId(rawId));
     const normalizedStatus = normalizeStatusProses(statusProses);
 
-    const { data, error } = await db
-      .from(TABLE_NAME)
-      .update({ status_proses: normalizedStatus })
-      .in("id", normalizedIds)
-      .select("id, status_proses");
+    const updatedRows = await executeStatusBatchUpdate(
+      db,
+      normalizedIds,
+      normalizedStatus
+    );
 
-    if (error) {
-      throw error;
-    }
-
-    if (!Array.isArray(data) || data.length === 0) {
+    if (updatedRows.length === 0) {
       throw new Error(
         `Tiada rekod berjaya dikemas kini secara pukal kepada ${normalizedStatus}.`
       );
     }
 
     await invalidateDelimaCache();
-    return { success: true, count: data.length, records: data };
+    return { success: true, count: updatedRows.length, records: updatedRows };
   },
 
   async deleteStatus(id) {
     const db = await getReadyDb();
     const normalizedId = normalizeRecordId(id);
 
-    const { error } = await db
+    const { data: rpcData, error: rpcError } = await db.rpc(RPC_DELETE_STATUS, {
+      p_id: normalizedId
+    });
+
+    if (!rpcError) {
+      if (!Array.isArray(rpcData) || rpcData.length === 0) {
+        throw new Error(`Rekod ID ${normalizedId} tidak ditemui untuk dipadam.`);
+      }
+      await invalidateDelimaCache();
+      return { success: true };
+    }
+
+    if (!isMissingRpcError(rpcError)) {
+      throw rpcError;
+    }
+
+    const { data: tableData, error: tableError } = await db
       .from(TABLE_NAME)
       .delete()
-      .eq("id", normalizedId);
+      .eq("id", normalizedId)
+      .select("id");
 
-    if (error) {
-      throw error;
+    if (tableError) {
+      throw tableError;
+    }
+
+    if (!Array.isArray(tableData) || tableData.length === 0) {
+      throw new Error(
+        "Pemadaman disekat oleh kawalan akses jadual. Sila jalankan skrip SQL RPC delete_delima_status di Supabase terlebih dahulu."
+      );
     }
 
     await invalidateDelimaCache();
