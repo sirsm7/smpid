@@ -34,17 +34,18 @@ function resolveNotifyBaseUrl() {
 }
 
 function normalizeTicketId(id) {
-  if (typeof id === "number" && Number.isFinite(id)) {
+  if (typeof id === "number" && Number.isInteger(id) && id > 0) {
     return id;
   }
   const raw = String(id ?? "").trim();
-  if (!raw) {
+  if (!raw || !/^\d+$/.test(raw)) {
     throw new Error("ID tiket tidak sah.");
   }
-  if (/^\d+$/.test(raw)) {
-    return Number(raw);
+  const parsed = Number(raw);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw new Error("ID tiket di luar julat sah.");
   }
-  return raw;
+  return parsed;
 }
 
 function sanitizeUpdatePayload(payload) {
@@ -132,11 +133,16 @@ export const SupportService = {
     const normalizedId = normalizeTicketId(id);
     const sanitizedPayload = sanitizeUpdatePayload(payload);
 
-    const { data: updatedRows, error } = await db
-      .from("smpid_aduan")
-      .update(sanitizedPayload)
-      .eq("id", normalizedId)
-      .select("id, kod_sekolah, peranan_pengirim, tajuk, status, balasan_admin, tarikh_balas");
+    const { data: updatedRows, error } = await db.rpc("update_aduan_tiket", {
+      p_id: normalizedId,
+      p_status: sanitizedPayload.status ?? null,
+      p_balasan_admin: Object.prototype.hasOwnProperty.call(sanitizedPayload, "balasan_admin")
+        ? sanitizedPayload.balasan_admin
+        : null,
+      p_tarikh_balas: sanitizedPayload.tarikh_balas ?? null,
+      p_tajuk: sanitizedPayload.tajuk ?? null,
+      p_butiran_masalah: sanitizedPayload.butiran_masalah ?? null
+    });
 
     if (error) {
       throw error;
@@ -164,16 +170,19 @@ export const SupportService = {
     const db = await getReadyDbClient();
     const normalizedId = normalizeTicketId(id);
 
-    const { error } = await db
-      .from("smpid_aduan")
-      .delete()
-      .eq("id", normalizedId);
+    const { data: deletedId, error } = await db.rpc("delete_aduan_tiket", {
+      p_id: normalizedId
+    });
 
     if (error) {
       throw error;
     }
 
-    return { success: true };
+    if (deletedId === null || deletedId === undefined) {
+      throw new Error("Rekod tiket tidak ditemui atau gagal dipadam di pangkalan data.");
+    }
+
+    return { success: true, id: deletedId };
   },
 
   async getBySchool(kodSekolah) {
