@@ -1,112 +1,217 @@
-/**
- * SUPPORT SERVICE
- * Menguruskan tiket aduan dan helpdesk.
- * Kemaskini: Tambah fungsi update (balas) dan delete.
- * Fix: Penukaran Content-Type ke text/plain untuk bypass CORS Preflight.
- */
+import { envReady, getEnv } from "../config/config.js";
+import { APP_CONFIG } from "../config/app.config.js";
+import { initDatabaseClient, getDatabaseClient } from "../core/db.js";
 
-import { getDatabaseClient } from '../core/db.js';
-import { APP_CONFIG } from '../config/app.config.js';
+const MUTABLE_TICKET_FIELDS = [
+  "status",
+  "balasan_admin",
+  "tarikh_balas",
+  "tajuk",
+  "butiran_masalah"
+];
 
-const db = getDatabaseClient();
+async function getReadyDbClient() {
+  await envReady;
+  const db = (await initDatabaseClient()) || getDatabaseClient();
+  if (!db) {
+    throw new Error("Sambungan pangkalan data tidak tersedia.");
+  }
+  return db;
+}
+
+function resolveNotifyBaseUrl() {
+  const env = typeof getEnv === "function" ? getEnv() : null;
+  const winEnv = typeof window !== "undefined" && window.__ENV ? window.__ENV : null;
+  const apiCfg = APP_CONFIG && APP_CONFIG.API ? APP_CONFIG.API : {};
+  const candidate =
+    (env && (env.NOTIFY_API_URL || env.EDGE_NOTIFY_URL)) ||
+    (winEnv && (winEnv.NOTIFY_API_URL || winEnv.EDGE_NOTIFY_URL)) ||
+    apiCfg.NOTIFY_API_URL ||
+    apiCfg.EDGE_NOTIFY_URL ||
+    apiCfg.DENO_URL ||
+    "";
+  return typeof candidate === "string" ? candidate.trim().replace(/\/+$/, "") : "";
+}
+
+function normalizeTicketId(id) {
+  if (typeof id === "number" && Number.isFinite(id)) {
+    return id;
+  }
+  const raw = String(id ?? "").trim();
+  if (!raw) {
+    throw new Error("ID tiket tidak sah.");
+  }
+  if (/^\d+$/.test(raw)) {
+    return Number(raw);
+  }
+  return raw;
+}
+
+function sanitizeUpdatePayload(payload) {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Muatan kemas kini tiket tidak sah.");
+  }
+
+  const sanitized = {};
+
+  MUTABLE_TICKET_FIELDS.forEach((field) => {
+    if (Object.prototype.hasOwnProperty.call(payload, field) && payload[field] !== undefined) {
+      if (field === "status" && payload[field] !== null) {
+        sanitized[field] = String(payload[field]).trim().toUpperCase();
+      } else if (typeof payload[field] === "string") {
+        sanitized[field] = payload[field].trim();
+      } else {
+        sanitized[field] = payload[field];
+      }
+    }
+  });
+
+  if (sanitized.status === "SELESAI" && !sanitized.tarikh_balas) {
+    sanitized.tarikh_balas = new Date().toISOString();
+  }
+
+  if (Object.keys(sanitized).length === 0) {
+    throw new Error("Tiada medan sah untuk dikemas kini pada tiket.");
+  }
+
+  return sanitized;
+}
+
+async function dispatchTicketWebhook(endpointPath, bodyPayload) {
+  const baseUrl = resolveNotifyBaseUrl();
+  if (!baseUrl) {
+    return;
+  }
+
+  try {
+    await fetch(`${baseUrl}${endpointPath}`, {
+      method: "POST",
+      redirect: "follow",
+      headers: {
+        "Content-Type": "text/plain"
+      },
+      body: JSON.stringify(bodyPayload)
+    });
+  } catch {}
+}
 
 export const SupportService = {
-    /**
-     * Hantar tiket baru
-     */
-    async createTicket(payload) {
-        const { error } = await db
-            .from('smpid_aduan')
-            .insert([payload]);
+  async createTicket(payload) {
+    const db = await getReadyDbClient();
 
-        if (error) throw error;
+    const record = {
+      kod_sekolah: String(payload?.kod_sekolah ?? "").trim().toUpperCase(),
+      peranan_pengirim: String(payload?.peranan_pengirim ?? "").trim().toUpperCase(),
+      tajuk: String(payload?.tajuk ?? "").trim(),
+      butiran_masalah: String(payload?.butiran_masalah ?? "").trim(),
+      status: String(payload?.status ?? "DALAM PROSES").trim().toUpperCase() || "DALAM PROSES"
+    };
 
-        // Notifikasi ke Telegram
-        if (APP_CONFIG.API.DENO_URL) {
-            fetch(`${APP_CONFIG.API.DENO_URL}/notify-ticket`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ 
-                    kod: payload.kod_sekolah, 
-                    peranan: payload.peranan_pengirim, 
-                    tajuk: payload.tajuk, 
-                    mesej: payload.butiran_masalah 
-                })
-            }).catch(e => console.warn("Bot offline:", e));
-        }
+    const { data, error } = await db
+      .from("smpid_aduan")
+      .insert([record])
+      .select("*")
+      .single();
 
-        return { success: true };
-    },
-
-    /**
-     * Kemaskini tiket (Balasan Admin / Status)
-     */
-    async update(id, payload) {
-        const { error } = await db
-            .from('smpid_aduan')
-            .update(payload)
-            .eq('id', id);
-
-        if (error) throw error;
-
-        // Jika ini adalah balasan admin (status SELESAI), cuba hantar notifikasi 'reply-ticket'
-        if (payload.status === 'SELESAI' && APP_CONFIG.API.DENO_URL) {
-            // Kita perlu fetch data tiket asal untuk dapatkan kod & tajuk bagi notifikasi
-            // ATAU kita hantar apa yang ada. API Deno perlukan {kod, peranan, tajuk, balasan}
-            
-            // Fetch ringkas metadata tiket
-            const { data: ticket } = await db.from('smpid_aduan').select('kod_sekolah, peranan_pengirim, tajuk').eq('id', id).single();
-            
-            if (ticket) {
-                fetch(`${APP_CONFIG.API.DENO_URL}/reply-ticket`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ 
-                        kod: ticket.kod_sekolah, 
-                        peranan: ticket.peranan_pengirim, 
-                        tajuk: ticket.tajuk, 
-                        balasan: payload.balasan_admin 
-                    })
-                }).catch(e => console.warn("[SupportService] Bot reply error:", e));
-            }
-        }
-
-        return { success: true };
-    },
-
-    /**
-     * Padam tiket
-     */
-    async delete(id) {
-        const { error } = await db
-            .from('smpid_aduan')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
-        return { success: true };
-    },
-
-    async getBySchool(kodSekolah) {
-        const { data, error } = await db
-            .from('smpid_aduan')
-            .select('*')
-            .eq('kod_sekolah', kodSekolah)
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        return data;
-    },
-
-    async getAll(statusFilter = 'ALL') {
-        let query = db.from('smpid_aduan').select('*').order('created_at', { ascending: false });
-        
-        if (statusFilter !== 'ALL') {
-            query = query.eq('status', statusFilter);
-        }
-
-        const { data, error } = await query;
-        if (error) throw error;
-        return data;
+    if (error) {
+      throw error;
     }
+
+    await dispatchTicketWebhook("/notify-ticket", {
+      kod: record.kod_sekolah,
+      peranan: record.peranan_pengirim,
+      tajuk: record.tajuk,
+      mesej: record.butiran_masalah
+    });
+
+    return { success: true, data };
+  },
+
+  async update(id, payload) {
+    const db = await getReadyDbClient();
+    const normalizedId = normalizeTicketId(id);
+    const sanitizedPayload = sanitizeUpdatePayload(payload);
+
+    const { data: updatedRows, error } = await db
+      .from("smpid_aduan")
+      .update(sanitizedPayload)
+      .eq("id", normalizedId)
+      .select("id, kod_sekolah, peranan_pengirim, tajuk, status, balasan_admin, tarikh_balas");
+
+    if (error) {
+      throw error;
+    }
+
+    if (!Array.isArray(updatedRows) || updatedRows.length === 0) {
+      throw new Error("Rekod tiket tidak ditemui atau gagal dikemas kini di pangkalan data.");
+    }
+
+    const updatedTicket = updatedRows[0];
+
+    if (updatedTicket.status === "SELESAI") {
+      await dispatchTicketWebhook("/reply-ticket", {
+        kod: updatedTicket.kod_sekolah,
+        peranan: updatedTicket.peranan_pengirim,
+        tajuk: updatedTicket.tajuk,
+        balasan: updatedTicket.balasan_admin || ""
+      });
+    }
+
+    return { success: true, data: updatedTicket };
+  },
+
+  async delete(id) {
+    const db = await getReadyDbClient();
+    const normalizedId = normalizeTicketId(id);
+
+    const { error } = await db
+      .from("smpid_aduan")
+      .delete()
+      .eq("id", normalizedId);
+
+    if (error) {
+      throw error;
+    }
+
+    return { success: true };
+  },
+
+  async getBySchool(kodSekolah) {
+    const db = await getReadyDbClient();
+    const normalizedKod = String(kodSekolah ?? "").trim().toUpperCase();
+
+    const { data, error } = await db
+      .from("smpid_aduan")
+      .select("*")
+      .eq("kod_sekolah", normalizedKod)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return Array.isArray(data) ? data : [];
+  },
+
+  async getAll(statusFilter = "ALL") {
+    const db = await getReadyDbClient();
+    const normalizedStatus = String(statusFilter ?? "ALL").trim().toUpperCase();
+
+    let query = db
+      .from("smpid_aduan")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (normalizedStatus && normalizedStatus !== "ALL") {
+      query = query.eq("status", normalizedStatus);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    return Array.isArray(data) ? data : [];
+  }
 };

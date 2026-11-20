@@ -1,12 +1,15 @@
 import { envReady, getEnv } from "../config/config.js";
 import { APP_CONFIG } from "../config/app.config.js";
 import { initDatabaseClient } from "../core/db.js";
+import { RealtimeManager } from "../core/realtime.js";
 import { SupportService } from "../services/support.service.js";
 import { toggleLoading } from "../core/helpers.js";
 
 let quill = null;
 let quillInitRetryCount = 0;
 let emailBlastBusy = false;
+let realtimeSubscribed = false;
+const activeTicketOps = new Set();
 
 function clearElement(el) {
   if (!el) {
@@ -505,6 +508,70 @@ window.hantarEmelSistem = async function () {
   }
 };
 
+function hasActiveReplyDrafts() {
+  const wrapper = document.getElementById("adminTiketWrapper");
+  if (!wrapper) {
+    return false;
+  }
+  const textareas = wrapper.querySelectorAll("textarea");
+  for (let i = 0; i < textareas.length; i += 1) {
+    const ta = textareas[i];
+    if (document.activeElement === ta || (ta.value && ta.value.trim().length > 0)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function silentRefreshTiketAdmin() {
+  if (activeTicketOps.size > 0 || hasActiveReplyDrafts()) {
+    return;
+  }
+  const wrapper = document.getElementById("adminTiketWrapper");
+  if (!wrapper) {
+    return;
+  }
+  const filterEl = document.getElementById("filterTiketAdmin");
+  const filterValue = filterEl ? filterEl.value : "ALL";
+
+  try {
+    const data = await SupportService.getAll(filterValue);
+    if (!Array.isArray(data) || data.length === 0) {
+      renderHelpdeskEmpty(wrapper, false, "Tiada tiket aduan dalam kategori tapisan ini.");
+      return;
+    }
+    const fragment = document.createDocumentFragment();
+    data.forEach((ticket) => {
+      fragment.appendChild(buildTicketCard(ticket));
+    });
+    clearElement(wrapper);
+    wrapper.appendChild(fragment);
+  } catch {}
+}
+
+function ensureTicketRealtimeSync() {
+  if (realtimeSubscribed || !RealtimeManager) {
+    return;
+  }
+  realtimeSubscribed = true;
+
+  RealtimeManager.subscribeTable({
+    key: "admin_smpid_aduan",
+    table: "smpid_aduan",
+    primaryKey: "id",
+    cacheStore: "query_cache",
+    cachePrefix: "support",
+    onChange: async () => {
+      await silentRefreshTiketAdmin();
+    },
+    onSync: async () => {
+      await silentRefreshTiketAdmin();
+    }
+  }).catch(() => {
+    realtimeSubscribed = false;
+  });
+}
+
 function renderHelpdeskLoading(wrapper) {
   clearElement(wrapper);
   const box = document.createElement("div");
@@ -565,13 +632,15 @@ function buildTicketCard(ticket) {
     roleColor = "bg-emerald-50 text-emerald-700 border-emerald-200";
   }
 
-  const isSelesai = ticket.status === "SELESAI";
+  const normalizedStatus = String(ticket.status || "DALAM PROSES").trim().toUpperCase();
+  const isSelesai = normalizedStatus === "SELESAI";
   const borderClass = isSelesai
     ? "border-l-4 border-l-emerald-500"
     : "border-l-4 border-l-amber-500 ring-1 ring-slate-200 hover:ring-slate-300";
 
   const card = document.createElement("div");
   card.className = `bg-white rounded-2xl shadow-sm overflow-hidden ${borderClass} mb-5 transition-all duration-300`;
+  card.setAttribute("data-ticket-id", String(ticket.id));
 
   const headerDiv = document.createElement("div");
   headerDiv.className =
@@ -693,6 +762,7 @@ function buildTicketCard(ticket) {
 
     const delBtn = document.createElement("button");
     delBtn.type = "button";
+    delBtn.id = `btn-delete-ticket-${ticket.id}`;
     delBtn.className =
       "min-h-[44px] px-4 py-2 rounded-xl border-2 border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200 text-xs font-bold transition inline-flex items-center gap-2";
     const delIcon = document.createElement("i");
@@ -705,6 +775,7 @@ function buildTicketCard(ticket) {
 
     const submitBtn = document.createElement("button");
     submitBtn.type = "button";
+    submitBtn.id = `btn-submit-ticket-${ticket.id}`;
     submitBtn.className =
       "min-h-[44px] px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-md shadow-indigo-500/30 inline-flex items-center gap-2";
     const submitIcon = document.createElement("i");
@@ -748,6 +819,7 @@ function buildTicketCard(ticket) {
 
     const delBtn = document.createElement("button");
     delBtn.type = "button";
+    delBtn.id = `btn-delete-ticket-${ticket.id}`;
     delBtn.className =
       "min-w-[44px] min-h-[44px] shrink-0 p-2.5 rounded-xl border-2 border-transparent text-slate-400 hover:border-red-200 hover:bg-red-50 hover:text-red-500 transition mt-1 sm:mt-0 inline-flex items-center justify-center";
     delBtn.title = "Padam Tiket";
@@ -764,6 +836,33 @@ function buildTicketCard(ticket) {
   }
 
   return card;
+}
+
+function setTicketCardBusyState(id, isBusy) {
+  const key = String(id);
+  const replyInput = document.getElementById(`reply-${key}`);
+  const submitBtn = document.getElementById(`btn-submit-ticket-${key}`);
+  const deleteBtn = document.getElementById(`btn-delete-ticket-${key}`);
+
+  if (replyInput) {
+    replyInput.disabled = isBusy;
+  }
+  if (submitBtn) {
+    submitBtn.disabled = isBusy;
+    if (isBusy) {
+      submitBtn.classList.add("opacity-60", "cursor-not-allowed");
+    } else {
+      submitBtn.classList.remove("opacity-60", "cursor-not-allowed");
+    }
+  }
+  if (deleteBtn) {
+    deleteBtn.disabled = isBusy;
+    if (isBusy) {
+      deleteBtn.classList.add("opacity-60", "cursor-not-allowed");
+    } else {
+      deleteBtn.classList.remove("opacity-60", "cursor-not-allowed");
+    }
+  }
 }
 
 window.loadTiketAdmin = async function () {
@@ -784,6 +883,7 @@ window.loadTiketAdmin = async function () {
 
     if (!Array.isArray(data) || data.length === 0) {
       renderHelpdeskEmpty(wrapper, false, "Tiada tiket aduan dalam kategori tapisan ini.");
+      ensureTicketRealtimeSync();
       return;
     }
 
@@ -794,17 +894,23 @@ window.loadTiketAdmin = async function () {
 
     clearElement(wrapper);
     wrapper.appendChild(fragment);
-  } catch {
+    ensureTicketRealtimeSync();
+  } catch (err) {
     renderHelpdeskEmpty(
       wrapper,
       true,
-      "Ralat memuatkan tiket aduan dari pangkalan data."
+      err && err.message ? err.message : "Ralat memuatkan tiket aduan dari pangkalan data."
     );
   }
 };
 
 window.submitBalasanAdmin = async function (id) {
-  const replyInput = document.getElementById(`reply-${id}`);
+  const opKey = String(id);
+  if (activeTicketOps.has(opKey)) {
+    return;
+  }
+
+  const replyInput = document.getElementById(`reply-${opKey}`);
   const replyText = replyInput ? replyInput.value.trim() : "";
 
   if (!replyText) {
@@ -816,7 +922,10 @@ window.submitBalasanAdmin = async function (id) {
     });
   }
 
+  activeTicketOps.add(opKey);
+  setTicketCardBusyState(opKey, true);
   toggleLoading(true);
+
   try {
     await envReady;
     await initDatabaseClient();
@@ -827,26 +936,39 @@ window.submitBalasanAdmin = async function (id) {
     });
 
     toggleLoading(false);
+    activeTicketOps.delete(opKey);
+
     await showAlert({
       icon: "success",
       title: "Tiket Selesai",
-      text: "Tiket aduan telah ditutup dan notifikasi telah dihantar.",
-      timer: 1800,
+      text: "Tiket aduan telah ditutup dan balasan berjaya direkodkan.",
+      timer: 1600,
       showConfirmButton: false,
       confirmButtonColor: "#22c55e"
     });
     await window.loadTiketAdmin();
-  } catch {
+  } catch (err) {
     toggleLoading(false);
+    activeTicketOps.delete(opKey);
+    setTicketCardBusyState(opKey, false);
+
     showAlert({
       icon: "error",
       title: "Ralat Sistem",
-      text: "Gagal mengemas kini maklum balas tiket ke pangkalan data."
+      text:
+        err && err.message
+          ? err.message
+          : "Gagal mengemas kini maklum balas tiket ke pangkalan data."
     });
   }
 };
 
 window.padamTiket = async function (id) {
+  const opKey = String(id);
+  if (activeTicketOps.has(opKey)) {
+    return;
+  }
+
   const result = await showAlert({
     title: "Padam Tiket Ini?",
     text: "Tindakan ini tidak boleh dikembalikan.",
@@ -863,12 +985,18 @@ window.padamTiket = async function (id) {
     return;
   }
 
+  activeTicketOps.add(opKey);
+  setTicketCardBusyState(opKey, true);
   toggleLoading(true);
+
   try {
     await envReady;
     await initDatabaseClient();
     await SupportService.delete(id);
+
     toggleLoading(false);
+    activeTicketOps.delete(opKey);
+
     await showAlert({
       icon: "success",
       title: "Dipadam",
@@ -876,12 +1004,15 @@ window.padamTiket = async function (id) {
       showConfirmButton: false
     });
     await window.loadTiketAdmin();
-  } catch {
+  } catch (err) {
     toggleLoading(false);
+    activeTicketOps.delete(opKey);
+    setTicketCardBusyState(opKey, false);
+
     showAlert({
       icon: "error",
       title: "Ralat Pangkalan Data",
-      text: "Gagal memadam tiket."
+      text: err && err.message ? err.message : "Gagal memadam tiket."
     });
   }
 };
