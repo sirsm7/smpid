@@ -1,6 +1,6 @@
 import { envReady } from "../config/config.js";
 import { APP_CONFIG } from "../config/app.config.js";
-import { initDatabaseClient, getDatabaseClient } from "../core/db.js";
+import { initDatabaseClient } from "../core/db.js";
 import { RealtimeManager } from "../core/realtime.js";
 import { BookingService } from "../services/booking.service.js";
 import { toggleLoading, cleanPhone } from "../core/helpers.js";
@@ -42,6 +42,7 @@ let globalAuditBookings = [];
 let filteredAuditBookings = [];
 let auditDaerahFilter = "ALL";
 let realtimeSubscribed = false;
+let lifecycleBound = false;
 let dateActionBusy = false;
 let cancelBookingBusy = false;
 
@@ -74,6 +75,14 @@ function createIcon(iconClass) {
   const icon = document.createElement("i");
   icon.className = iconClass;
   return icon;
+}
+
+function parseLocalIsoDate(isoDate) {
+  const parts = String(isoDate || "").split("T")[0].split("-").map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) {
+    return new Date(isoDate);
+  }
+  return new Date(parts[0], parts[1] - 1, parts[2]);
 }
 
 function showAlert(options) {
@@ -646,6 +655,22 @@ window.initAdminBooking = async function () {
   ]);
 
   ensureRealtimeSync();
+
+  if (!lifecycleBound) {
+    lifecycleBound = true;
+    const handleResumeSync = () => {
+      const tabTempahan = document.getElementById("tab-tempahan");
+      if (tabTempahan && !tabTempahan.classList.contains("hidden")) {
+        silentRefreshAllBookingViews();
+      }
+    };
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        handleResumeSync();
+      }
+    });
+    window.addEventListener("online", handleResumeSync);
+  }
 };
 
 function populateAdminBookingDaerah() {
@@ -1590,11 +1615,11 @@ window.loadAdminBookingList = async function () {
       ...processedLocks
     ]
       .filter((item) => {
-        const itemDate = new Date(item.tarikh);
+        const itemDate = parseLocalIsoDate(item.tarikh);
         itemDate.setHours(0, 0, 0, 0);
         return itemDate >= today;
       })
-      .sort((a, b) => new Date(a.tarikh) - new Date(b.tarikh));
+      .sort((a, b) => parseLocalIsoDate(a.tarikh) - parseLocalIsoDate(b.tarikh));
 
     clearElement(tbody);
 
@@ -1616,7 +1641,7 @@ window.loadAdminBookingList = async function () {
     const fragment = document.createDocumentFragment();
 
     displayList.forEach((item) => {
-      const dateStr = new Date(item.tarikh).toLocaleDateString("ms-MY", {
+      const dateStr = parseLocalIsoDate(item.tarikh).toLocaleDateString("ms-MY", {
         day: "2-digit",
         month: "short",
         year: "numeric"
@@ -1969,28 +1994,16 @@ window.loadAdminBookingAudit = async function () {
 
   try {
     await envReady;
-    const db = (await initDatabaseClient()) || getDatabaseClient();
-    if (!db) {
-      throw new Error("Pangkalan data tidak tersedia.");
-    }
-
-    const [resTempahan, resKunci] = await Promise.all([
-      db.from("smpid_bb_tempahan").select("*").order("tarikh", { ascending: false }),
-      db.from("smpid_bb_kunci").select("*").order("tarikh", { ascending: false })
+    const [allTempahan, allKunci] = await Promise.all([
+      BookingService.getAllBookings(),
+      BookingService.getAllLocks(false)
     ]);
-
-    if (resTempahan.error) {
-      throw resTempahan.error;
-    }
-    if (resKunci.error) {
-      throw resKunci.error;
-    }
 
     const userRole = localStorage.getItem(APP_CONFIG.SESSION.USER_ROLE);
     const userKod = localStorage.getItem(APP_CONFIG.SESSION.USER_KOD);
 
-    let rawTempahan = resTempahan.data || [];
-    let rawKunci = resKunci.data || [];
+    let rawTempahan = Array.isArray(allTempahan) ? allTempahan : [];
+    let rawKunci = Array.isArray(allKunci) ? allKunci : [];
 
     if (["ADMIN", "PPD_UNIT"].includes(userRole) && Array.isArray(window.globalDashboardData)) {
       const validSchoolCodes = window.globalDashboardData.map((s) => s.kod_sekolah);
