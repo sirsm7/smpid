@@ -50,6 +50,17 @@ Object.defineProperties(supabaseConfig, {
       }
       return schema;
     }
+  },
+  DELIMA_SCHEMA: {
+    enumerable: true,
+    configurable: false,
+    get() {
+      const schema = readEnvValue("SUPABASE_DELIMA_SCHEMA");
+      if (!schema || schema.toLowerCase() === "public") {
+        return "delima_data";
+      }
+      return schema;
+    }
   }
 });
 
@@ -193,6 +204,8 @@ export const APP_CONFIG = {
     BB_TEMPAHAN: "smpid_bb_tempahan",
     BB_KUNCI: "smpid_bb_kunci",
     DELIMA_STATUS: "smpid_delima_status",
+    DELIMA_DATA_SEKOLAH: "delima_data_sekolah",
+    DELIMA_SEKOLAH: "delima_data_sekolah",
     IMPAK_BBM: "smpid_impak_bbm",
     PENATARAN: "smpid_penataran_digital",
     PENATARAN_DIGITAL: "smpid_penataran_digital",

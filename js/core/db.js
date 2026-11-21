@@ -2,6 +2,7 @@ import { envReady, getEnv } from "../config/config.js";
 import { IDBCache } from "./idb.js";
 
 const DEFAULT_SUPABASE_SCHEMA = "nadim_data";
+const DEFAULT_DELIMA_SCHEMA = "delima_data";
 
 let supabaseInstance =
   typeof window !== "undefined" ? window._supabase || window.supabaseClient || null : null;
@@ -48,6 +49,20 @@ function resolveSupabaseSchema(runtimeEnv) {
 
   if (!raw || raw.toLowerCase() === "public") {
     return DEFAULT_SUPABASE_SCHEMA;
+  }
+  return raw;
+}
+
+function resolveDelimaSchema(runtimeEnv) {
+  const raw =
+    runtimeEnv && typeof runtimeEnv.SUPABASE_DELIMA_SCHEMA === "string"
+      ? runtimeEnv.SUPABASE_DELIMA_SCHEMA.trim()
+      : typeof window !== "undefined" && typeof window.SUPABASE_DELIMA_SCHEMA === "string"
+        ? window.SUPABASE_DELIMA_SCHEMA.trim()
+        : "";
+
+  if (!raw || raw.toLowerCase() === "public") {
+    return DEFAULT_DELIMA_SCHEMA;
   }
   return raw;
 }
@@ -126,6 +141,7 @@ function createClientInstance() {
       ? runtimeEnv.SUPABASE_ANON_KEY.trim()
       : "";
   const supabaseSchema = resolveSupabaseSchema(runtimeEnv);
+  const delimaSchema = resolveDelimaSchema(runtimeEnv);
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return null;
@@ -144,6 +160,7 @@ function createClientInstance() {
     });
 
     window.SUPABASE_SCHEMA = supabaseSchema;
+    window.SUPABASE_DELIMA_SCHEMA = delimaSchema;
     return syncSharedClient(createdClient);
   } catch {
     supabaseInstance = null;
@@ -210,6 +227,30 @@ export function getDatabaseSchema() {
   return resolveSupabaseSchema(runtimeEnv);
 }
 
+export function getDelimaSchema() {
+  const runtimeEnv =
+    getEnv() || (typeof window !== "undefined" ? window.__ENV : null);
+  return resolveDelimaSchema(runtimeEnv);
+}
+
+export function getDelimaDb() {
+  const db = getDatabaseClient();
+  if (!db) {
+    return null;
+  }
+  const delimaSchema = getDelimaSchema();
+  return typeof db.schema === "function" ? db.schema(delimaSchema) : db;
+}
+
+export async function getDelimaDbAsync() {
+  const db = await initDatabaseClient();
+  if (!db) {
+    return null;
+  }
+  const delimaSchema = getDelimaSchema();
+  return typeof db.schema === "function" ? db.schema(delimaSchema) : db;
+}
+
 export function requireDb() {
   const db = getDatabaseClient();
   if (!db) {
@@ -228,6 +269,18 @@ export async function requireDbAsync() {
     );
   }
   return db;
+}
+
+export function requireDelimaDb() {
+  const db = requireDb();
+  const delimaSchema = getDelimaSchema();
+  return typeof db.schema === "function" ? db.schema(delimaSchema) : db;
+}
+
+export async function requireDelimaDbAsync() {
+  const db = await requireDbAsync();
+  const delimaSchema = getDelimaSchema();
+  return typeof db.schema === "function" ? db.schema(delimaSchema) : db;
 }
 
 if (typeof window !== "undefined") {
@@ -255,8 +308,13 @@ export default {
   getDatabaseClient,
   getDatabaseClientAsync,
   getDatabaseSchema,
+  getDelimaSchema,
+  getDelimaDb,
+  getDelimaDbAsync,
   requireDb,
   requireDbAsync,
+  requireDelimaDb,
+  requireDelimaDbAsync,
   get supabase() {
     return getExistingSharedClient();
   }

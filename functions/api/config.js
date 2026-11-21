@@ -4,6 +4,8 @@ export async function onRequestGet(context) {
   const supabaseAnonKey = typeof env.SUPABASE_ANON_KEY === "string" ? env.SUPABASE_ANON_KEY.trim() : "";
   const rawSchema = typeof env.SUPABASE_SCHEMA === "string" ? env.SUPABASE_SCHEMA.trim() : "";
   const supabaseSchema = rawSchema && rawSchema.toLowerCase() !== "public" ? rawSchema : "nadim_data";
+  const rawDelimaSchema = typeof env.SUPABASE_DELIMA_SCHEMA === "string" ? env.SUPABASE_DELIMA_SCHEMA.trim() : "";
+  const supabaseDelimaSchema = rawDelimaSchema && rawDelimaSchema.toLowerCase() !== "public" ? rawDelimaSchema : "delima_data";
   const gasEndpointUrl = typeof env.GAS_ENDPOINT_URL === "string" ? env.GAS_ENDPOINT_URL.trim() : "";
   const gasUploadUrl = typeof env.GAS_UPLOAD_URL === "string" ? env.GAS_UPLOAD_URL.trim() : "";
   const gasEmailUrl = typeof env.GAS_EMAIL_URL === "string" ? env.GAS_EMAIL_URL.trim() : "";
@@ -34,6 +36,7 @@ export async function onRequestGet(context) {
     SUPABASE_URL: supabaseUrl,
     SUPABASE_ANON_KEY: supabaseAnonKey,
     SUPABASE_SCHEMA: supabaseSchema,
+    SUPABASE_DELIMA_SCHEMA: supabaseDelimaSchema,
     NOTIFY_API_URL: notifyApiUrl,
     EDGE_NOTIFY_URL: notifyApiUrl
   };

@@ -7,10 +7,15 @@ import { DelimaService } from "../../modules/helpdesk/delima.service.js";
 let rawDataGuru = [];
 let rawDataMurid = [];
 const mapKodOuGlobal = {};
+const checkedKodOuSet = new Set();
 let realtimeSubscribed = false;
 let bulkActionBusy = false;
 let deleteActionBusy = false;
 const singleActionIdsBusy = new Set();
+
+function normalizeSchoolCode(rawCode) {
+  return String(rawCode ?? "").trim().toUpperCase();
+}
 
 function clearElement(el) {
   if (!el) {
@@ -77,23 +82,54 @@ function renderTbodyMessage(tbody, iconClass, text, isError = false) {
   tbody.appendChild(tr);
 }
 
-function hydrateLocalKodOu(records) {
-  if (!Array.isArray(records) || !Array.isArray(window.globalDashboardData)) {
+async function hydrateKodOuRecords(records, forceRefresh = false) {
+  if (!Array.isArray(records) || records.length === 0) {
     return;
   }
+
+  if (forceRefresh) {
+    checkedKodOuSet.clear();
+  }
+
+  const missingCodes = new Set();
   records.forEach((item) => {
-    const kod = item && item.kod_sekolah;
-    if (!kod || Object.prototype.hasOwnProperty.call(mapKodOuGlobal, kod)) {
+    const kod = normalizeSchoolCode(item && item.kod_sekolah);
+    if (!kod) {
       return;
     }
-    const match = window.globalDashboardData.find((s) => s && s.kod_sekolah === kod);
-    if (match && match.kod_ou) {
-      mapKodOuGlobal[kod] = match.kod_ou;
+
+    if (!mapKodOuGlobal[kod] && Array.isArray(window.globalDashboardData)) {
+      const match = window.globalDashboardData.find(
+        (s) => s && normalizeSchoolCode(s.kod_sekolah) === kod
+      );
+      if (match && match.kod_ou) {
+        mapKodOuGlobal[kod] = String(match.kod_ou).trim();
+      }
+    }
+
+    if (!mapKodOuGlobal[kod] && !checkedKodOuSet.has(kod)) {
+      missingCodes.add(kod);
     }
   });
+
+  if (missingCodes.size === 0) {
+    return;
+  }
+
+  const targetList = Array.from(missingCodes);
+  try {
+    const ouMap = await DelimaService.getAllSchoolOuMap(targetList);
+    targetList.forEach((kod) => {
+      checkedKodOuSet.add(kod);
+      const entry = ouMap && ouMap[kod];
+      if (entry && entry.kod_ou) {
+        mapKodOuGlobal[kod] = String(entry.kod_ou).trim();
+      }
+    });
+  } catch {}
 }
 
-async function fetchCategoryRecords(kategori) {
+async function fetchCategoryRecords(kategori, forceRefresh = false) {
   const delimaData = await DelimaService.getAll(kategori, "ALL");
 
   let fetchedData = Array.isArray(delimaData) ? delimaData : [];
@@ -114,7 +150,7 @@ async function fetchCategoryRecords(kategori) {
     rawDataMurid = fetchedData;
   }
 
-  hydrateLocalKodOu(fetchedData);
+  await hydrateKodOuRecords(fetchedData, forceRefresh);
 
   return fetchedData;
 }
@@ -127,11 +163,11 @@ async function silentRefreshDelimaCategories() {
       return;
     }
     if (document.getElementById("tbodyAdminGuru") && rawDataGuru.length > 0) {
-      await fetchCategoryRecords("GURU");
+      await fetchCategoryRecords("GURU", true);
       await window.loadSenaraiDelimaAdmin("GURU", false);
     }
     if (document.getElementById("tbodyAdminMurid") && rawDataMurid.length > 0) {
-      await fetchCategoryRecords("MURID");
+      await fetchCategoryRecords("MURID", true);
       await window.loadSenaraiDelimaAdmin("MURID", false);
     }
   } catch {}
@@ -192,7 +228,8 @@ function buildDelimaRow(item, index, kategori, senaraiKodPPD) {
     }
   }
 
-  const kodOu = mapKodOuGlobal[item.kod_sekolah] || "Tiada Kod OU";
+  const normalizedKod = normalizeSchoolCode(item.kod_sekolah);
+  const kodOu = mapKodOuGlobal[normalizedKod] || mapKodOuGlobal[item.kod_sekolah] || "Tiada Kod OU";
   const paparKodSekolahGabungan = `${item.kod_sekolah || "-"} (${kodOu})`;
 
   const isSelesai = item.status_proses === "SELESAI";
@@ -442,7 +479,7 @@ window.loadSenaraiDelimaAdmin = async function (kategori, forceRefresh = true) {
         `Mengumpul dan menyegerak pangkalan data ${kategori}...`,
         false
       );
-      dataToProcess = await fetchCategoryRecords(kategori);
+      dataToProcess = await fetchCategoryRecords(kategori, forceRefresh);
     }
 
     let preFilteredData = dataToProcess;
@@ -778,7 +815,8 @@ window.eksportCsvPukal = function (kategori) {
 
   recordsToExport.forEach((item, index) => {
     const clean = (str) => `"${String(str ?? "").replace(/"/g, '""')}"`;
-    const kodOu = mapKodOuGlobal[item.kod_sekolah] || "TIADA KOD OU";
+    const normalizedKod = normalizeSchoolCode(item.kod_sekolah);
+    const kodOu = mapKodOuGlobal[normalizedKod] || mapKodOuGlobal[item.kod_sekolah] || "TIADA KOD OU";
     const tarikhStr = item.created_at
       ? new Date(item.created_at).toLocaleDateString("ms-MY")
       : "-";

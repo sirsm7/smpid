@@ -1,11 +1,20 @@
 import { envReady } from "../../js/config/config.js";
 import { APP_CONFIG } from "../../js/config/app.config.js";
-import { initDatabaseClient, getDatabaseClient } from "../../js/core/db.js";
+import {
+  initDatabaseClient,
+  getDatabaseClient,
+  getDelimaDb,
+  getDelimaDbAsync
+} from "../../js/core/db.js";
 import { IDBCache } from "../../js/core/idb.js";
 
 const TABLE_NAME =
   (APP_CONFIG && APP_CONFIG.DB_TABLES && APP_CONFIG.DB_TABLES.DELIMA_STATUS) ||
   "smpid_delima_status";
+
+const DELIMA_SCHOOL_TABLE =
+  (APP_CONFIG && APP_CONFIG.DB_TABLES && APP_CONFIG.DB_TABLES.DELIMA_DATA_SEKOLAH) ||
+  "delima_data_sekolah";
 
 const RPC_UPDATE_STATUS_BATCH = "update_delima_status_batch";
 const RPC_DELETE_STATUS = "delete_delima_status";
@@ -34,6 +43,27 @@ function normalizeStatusProses(rawStatus) {
   return normalized;
 }
 
+function normalizeSchoolCode(rawCode) {
+  return String(rawCode ?? "").trim().toUpperCase();
+}
+
+function normalizeSchoolOuRow(row) {
+  if (!row || typeof row !== "object") {
+    return null;
+  }
+  const kodSekolah = normalizeSchoolCode(row.kod_sekolah);
+  if (!kodSekolah) {
+    return null;
+  }
+  const rawOu = typeof row.kod_ou === "string" ? row.kod_ou.trim() : "";
+  return {
+    kod_sekolah: kodSekolah,
+    nama_sekolah: typeof row.nama_sekolah === "string" ? row.nama_sekolah.trim() : "",
+    jenis_sekolah: typeof row.jenis_sekolah === "string" ? row.jenis_sekolah.trim() : "",
+    kod_ou: rawOu || null
+  };
+}
+
 function isMissingRpcError(error) {
   if (!error) {
     return false;
@@ -56,6 +86,21 @@ async function getReadyDb() {
     throw new Error("Sambungan pangkalan data Supabase belum sedia.");
   }
   return db;
+}
+
+async function getReadyDelimaDb() {
+  const activeEnvPromise =
+    typeof window !== "undefined" && window.ENV_READY ? window.ENV_READY : envReady;
+  await activeEnvPromise;
+
+  const delimaDb =
+    (typeof getDelimaDbAsync === "function" && (await getDelimaDbAsync())) ||
+    (typeof getDelimaDb === "function" && getDelimaDb());
+
+  if (!delimaDb) {
+    throw new Error("Sambungan skema delima_data Supabase belum sedia.");
+  }
+  return delimaDb;
 }
 
 async function invalidateDelimaCache() {
@@ -100,6 +145,64 @@ async function executeStatusBatchUpdate(db, normalizedIds, normalizedStatus) {
 }
 
 export const DelimaService = {
+  async getSchoolOuByCode(kodSekolah) {
+    const normalizedCode = normalizeSchoolCode(kodSekolah);
+    if (!normalizedCode) {
+      return null;
+    }
+
+    const delimaDb = await getReadyDelimaDb();
+    const { data, error } = await delimaDb
+      .from(DELIMA_SCHOOL_TABLE)
+      .select("kod_sekolah, nama_sekolah, jenis_sekolah, kod_ou")
+      .eq("kod_sekolah", normalizedCode)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    return normalizeSchoolOuRow(data);
+  },
+
+  async getAllSchoolOuRecords(kodSekolahList = null) {
+    const delimaDb = await getReadyDelimaDb();
+    const { data, error } = await delimaDb
+      .from(DELIMA_SCHOOL_TABLE)
+      .select("kod_sekolah, nama_sekolah, jenis_sekolah, kod_ou");
+
+    if (error) {
+      throw error;
+    }
+
+    const targetSet =
+      Array.isArray(kodSekolahList) && kodSekolahList.length > 0
+        ? new Set(kodSekolahList.map((k) => normalizeSchoolCode(k)).filter(Boolean))
+        : null;
+
+    const results = [];
+    (Array.isArray(data) ? data : []).forEach((row) => {
+      const normalized = normalizeSchoolOuRow(row);
+      if (!normalized) {
+        return;
+      }
+      if (!targetSet || targetSet.has(normalized.kod_sekolah)) {
+        results.push(normalized);
+      }
+    });
+
+    return results;
+  },
+
+  async getAllSchoolOuMap(kodSekolahList = null) {
+    const records = await this.getAllSchoolOuRecords(kodSekolahList);
+    const ouMap = {};
+    records.forEach((item) => {
+      ouMap[item.kod_sekolah] = item;
+    });
+    return ouMap;
+  },
+
   async createStatusBulk(dbPayloads, webhookPayload) {
     const db = await getReadyDb();
     const { data, error } = await db

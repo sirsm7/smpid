@@ -1,6 +1,7 @@
 const CONFIG_ENDPOINT = "/api/config";
 const REQUEST_TIMEOUT_MS = 10000;
 const DEFAULT_SUPABASE_SCHEMA = "nadim_data";
+const DEFAULT_SUPABASE_DELIMA_SCHEMA = "delima_data";
 const DEFAULT_NOTIFY_API_URL = "/api/functions/v1/smpid-notify";
 
 let inFlightRequest = null;
@@ -9,10 +10,10 @@ function normalizeString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function normalizeSchema(value) {
+function normalizeSchema(value, fallback = DEFAULT_SUPABASE_SCHEMA) {
   const cleaned = normalizeString(value);
   if (!cleaned || cleaned.toLowerCase() === "public") {
-    return DEFAULT_SUPABASE_SCHEMA;
+    return fallback;
   }
   return cleaned;
 }
@@ -26,7 +27,11 @@ function validateAndFreezeEnv(rawPayload) {
   const payload = rawPayload && typeof rawPayload === "object" ? rawPayload : {};
   const supabaseUrl = normalizeString(payload.SUPABASE_URL);
   const supabaseAnonKey = normalizeString(payload.SUPABASE_ANON_KEY);
-  const supabaseSchema = normalizeSchema(payload.SUPABASE_SCHEMA);
+  const supabaseSchema = normalizeSchema(payload.SUPABASE_SCHEMA, DEFAULT_SUPABASE_SCHEMA);
+  const supabaseDelimaSchema = normalizeSchema(
+    payload.SUPABASE_DELIMA_SCHEMA,
+    DEFAULT_SUPABASE_DELIMA_SCHEMA
+  );
   const gasEndpointUrl = normalizeString(payload.GAS_ENDPOINT_URL || payload.GAS_URL);
   const gasUploadUrl = normalizeString(payload.GAS_UPLOAD_URL);
   const gasEmailUrl = normalizeString(payload.GAS_EMAIL_URL);
@@ -44,6 +49,7 @@ function validateAndFreezeEnv(rawPayload) {
     SUPABASE_URL: supabaseUrl,
     SUPABASE_ANON_KEY: supabaseAnonKey,
     SUPABASE_SCHEMA: supabaseSchema,
+    SUPABASE_DELIMA_SCHEMA: supabaseDelimaSchema,
     NOTIFY_API_URL: notifyApiUrl,
     EDGE_NOTIFY_URL: notifyApiUrl,
     DENO_API_URL: notifyApiUrl
@@ -73,6 +79,7 @@ function validateAndFreezeEnv(rawPayload) {
     window.SUPABASE_URL = frozenEnv.SUPABASE_URL;
     window.SUPABASE_ANON_KEY = frozenEnv.SUPABASE_ANON_KEY;
     window.SUPABASE_SCHEMA = frozenEnv.SUPABASE_SCHEMA;
+    window.SUPABASE_DELIMA_SCHEMA = frozenEnv.SUPABASE_DELIMA_SCHEMA;
     window.NOTIFY_API_URL = frozenEnv.NOTIFY_API_URL;
     window.EDGE_NOTIFY_URL = frozenEnv.EDGE_NOTIFY_URL;
     window.DENO_API_URL = frozenEnv.DENO_API_URL;
