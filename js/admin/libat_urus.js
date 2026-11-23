@@ -43,23 +43,57 @@ function sanitizeExternalUrl(rawUrl) {
   }
 }
 
-function extractDrivePreviewUrl(safeUrl) {
+function extractPreviewThumbnail(safeUrl) {
   if (!safeUrl) {
     return null;
   }
   try {
     const parsed = new URL(safeUrl);
+    const host = parsed.hostname.toLowerCase();
+
     if (
-      parsed.hostname !== "drive.google.com" &&
-      parsed.hostname !== "docs.google.com"
+      host === "drive.google.com" ||
+      host === "docs.google.com" ||
+      host === "drive.usercontent.google.com"
     ) {
-      return null;
+      const pathMatch = parsed.pathname.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      const queryId = parsed.searchParams.get("id");
+      const fileId = (pathMatch && pathMatch[1]) || queryId || "";
+      if (/^[a-zA-Z0-9_-]+$/.test(fileId)) {
+        return {
+          thumbUrl: `https://drive.google.com/thumbnail?id=${fileId}&sz=w600`,
+          sourceLabel: host === "docs.google.com" ? "GOOGLE DOCS" : "GOOGLE DRIVE",
+          iconClass: "fab fa-google-drive"
+        };
+      }
+      return {
+        thumbUrl: null,
+        sourceLabel: "GOOGLE DRIVE",
+        iconClass: "fab fa-google-drive"
+      };
     }
-    const fileMatch = parsed.pathname.match(/\/d\/([a-zA-Z0-9_-]+)/);
-    if (fileMatch && /^[a-zA-Z0-9_-]+$/.test(fileMatch[1])) {
-      return `https://drive.google.com/file/d/${fileMatch[1]}/preview`;
+
+    if (host === "www.youtube.com" || host === "youtube.com" || host === "youtu.be") {
+      let videoId = parsed.searchParams.get("v") || "";
+      if (!videoId && host === "youtu.be") {
+        videoId = parsed.pathname.replace(/^\/+/, "").split("/")[0] || "";
+      } else if (!videoId && parsed.pathname.startsWith("/shorts/")) {
+        videoId = parsed.pathname.split("/")[2] || "";
+      }
+      if (/^[a-zA-Z0-9_-]{6,}$/.test(videoId)) {
+        return {
+          thumbUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+          sourceLabel: "YOUTUBE",
+          iconClass: "fab fa-youtube"
+        };
+      }
     }
-    return null;
+
+    return {
+      thumbUrl: null,
+      sourceLabel: host.replace(/^www\./, "").toUpperCase(),
+      iconClass: "fas fa-external-link-alt"
+    };
   } catch {
     return null;
   }
@@ -510,34 +544,66 @@ function buildLibatUrusCard(item) {
     "group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-orange-300 transition-all duration-300 flex flex-col overflow-hidden relative transform hover:-translate-y-1 min-w-0";
 
   const safeUrl = sanitizeExternalUrl(item.pautan_fail);
-  const previewUrl = extractDrivePreviewUrl(safeUrl);
+  const previewMeta = extractPreviewThumbnail(safeUrl);
 
-  if (previewUrl) {
-    const previewWrap = document.createElement("div");
-    previewWrap.className =
-      "h-28 w-full overflow-hidden bg-slate-100 relative group-hover:opacity-90 transition-opacity";
+  const renderFallbackBanner = (container, meta) => {
+    clearElement(container);
+    container.className =
+      "h-28 w-full bg-gradient-to-br from-slate-50 to-orange-50/40 flex flex-col items-center justify-center gap-1.5 border-b border-slate-100 px-3 text-center";
+    const iconCls = meta && meta.iconClass ? meta.iconClass : "fas fa-file-alt";
+    const iconColor = meta ? "text-orange-400" : "text-slate-300";
+    container.appendChild(createIcon(`${iconCls} text-2xl ${iconColor}`));
+    if (meta && meta.sourceLabel) {
+      const labelSpan = document.createElement("span");
+      labelSpan.className =
+        "text-[9px] font-black uppercase tracking-widest text-slate-500 bg-white/90 px-2 py-0.5 rounded border border-slate-200/80 max-w-full truncate";
+      labelSpan.textContent = meta.sourceLabel;
+      container.appendChild(labelSpan);
+    }
+  };
 
-    const iframe = document.createElement("iframe");
-    iframe.src = previewUrl;
-    iframe.title = `Prapapar Laporan ${schoolName}`;
-    iframe.className =
-      "w-full h-48 -mt-10 pointer-events-none border-0 transform scale-[1.02]";
-    iframe.setAttribute("aria-hidden", "true");
-    iframe.tabIndex = -1;
-    iframe.loading = "lazy";
+  if (safeUrl && previewMeta) {
+    const previewLink = document.createElement("a");
+    previewLink.href = safeUrl;
+    previewLink.target = "_blank";
+    previewLink.rel = "noopener noreferrer";
+    previewLink.setAttribute("aria-label", `Prapapar pautan laporan ${schoolName}`);
 
-    const overlay = document.createElement("div");
-    overlay.className =
-      "absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent";
+    if (previewMeta.thumbUrl) {
+      previewLink.className =
+        "block h-28 w-full overflow-hidden bg-slate-100 relative border-b border-slate-100 group-hover:opacity-95 transition-opacity";
 
-    previewWrap.appendChild(iframe);
-    previewWrap.appendChild(overlay);
-    card.appendChild(previewWrap);
+      const img = document.createElement("img");
+      img.src = previewMeta.thumbUrl;
+      img.alt = `Lakaran Laporan ${schoolName}`;
+      img.className =
+        "w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105";
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.addEventListener("error", () => {
+        renderFallbackBanner(previewLink, previewMeta);
+      });
+
+      const overlay = document.createElement("div");
+      overlay.className =
+        "absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none";
+
+      const sourcePill = document.createElement("span");
+      sourcePill.className =
+        "absolute bottom-2 right-2 text-[8px] font-black uppercase tracking-wider text-white bg-slate-900/75 backdrop-blur-sm px-2 py-0.5 rounded";
+      sourcePill.textContent = previewMeta.sourceLabel;
+
+      previewLink.appendChild(img);
+      previewLink.appendChild(overlay);
+      previewLink.appendChild(sourcePill);
+    } else {
+      renderFallbackBanner(previewLink, previewMeta);
+    }
+
+    card.appendChild(previewLink);
   } else {
     const placeholderWrap = document.createElement("div");
-    placeholderWrap.className =
-      "h-28 w-full bg-slate-50 flex items-center justify-center border-b border-slate-100";
-    placeholderWrap.appendChild(createIcon("fas fa-file-alt text-3xl text-slate-200"));
+    renderFallbackBanner(placeholderWrap, null);
     card.appendChild(placeholderWrap);
   }
 
