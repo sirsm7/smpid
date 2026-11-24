@@ -98,7 +98,11 @@ Object.defineProperties(apiConfig, {
     enumerable: true,
     configurable: false,
     get() {
-      return readEnvValue("GAS_LIBAT_URUS_URL") || readEnvValue("GAS_ENDPOINT_URL");
+      return (
+        readEnvValue("GAS_LIBAT_URUS_URL") ||
+        readEnvValue("GAS_UPLOAD_URL") ||
+        readEnvValue("GAS_ENDPOINT_URL")
+      );
     }
   },
   NOTIFY_API_URL: {

@@ -1846,6 +1846,9 @@ window.submitLibatUrus = async function () {
 
     const uploadedUrl = await libatUrusService.uploadReportFile(file);
     const safeUrl = sanitizeExternalUrl(uploadedUrl);
+    if (!safeUrl) {
+      throw new Error("Pautan bukti Google Drive tidak sah atau gagal dijana.");
+    }
 
     if (btn) {
       setButtonState(btn, "fas fa-circle-notch fa-spin me-2", "MENYIMPAN LAPORAN...");

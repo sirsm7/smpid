@@ -9,52 +9,22 @@
 
 import { APP_CONFIG } from '../config/app.config.js';
 import { getDatabaseClient } from '../core/db.js';
-import { IDBCache } from '../core/idb.js'; // Disuntik untuk keupayaan SWR Cache
+import { uploadLibatUrusFileToDrive } from '../core/helpers.js';
+import { IDBCache } from '../core/idb.js';
 
 class LibatUrusService {
     constructor() {
         this.tableName = APP_CONFIG.DB_TABLES.LIBAT_URUS;
-        this.gasUrl = APP_CONFIG.API.GAS_LIBAT_URUS_URL;
     }
 
     async uploadReportFile(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = async () => {
-                try {
-                    const base64Data = reader.result.split(',')[1];
-                    const payload = {
-                        base64Data: base64Data,
-                        mimeType: file.type,
-                        fileName: `${Date.now()}_${file.name}`
-                    };
-
-                    const response = await fetch(this.gasUrl, {
-                        method: 'POST',
-                        mode: 'cors',
-                        headers: {
-                            'Content-Type': 'text/plain;charset=utf-8'
-                        },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`GAS upload request failed with status: ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    if (result.status === 'success') {
-                        resolve(result.url);
-                    } else {
-                        reject(new Error(result.message || 'Unknown error occurred during GAS upload.'));
-                    }
-                } catch (error) {
-                    reject(error);
-                }
-            };
-            reader.onerror = (error) => reject(error);
+        if (!file) {
+            return uploadLibatUrusFileToDrive(file);
+        }
+        const prefixedFile = new File([file], `${Date.now()}_${file.name}`, {
+            type: file.type || 'application/octet-stream'
         });
+        return uploadLibatUrusFileToDrive(prefixedFile);
     }
 
     async createLibatUrus(data) {

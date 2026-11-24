@@ -105,7 +105,10 @@ export function keluarSistem() {
   }
 }
 
-function resolveGasUploadUrl() {
+function resolveGasUploadUrl(customUploadUrl = "") {
+  if (typeof customUploadUrl === "string" && customUploadUrl.trim()) {
+    return customUploadUrl.trim();
+  }
   const env = getEnv() || (typeof window !== "undefined" ? window.__ENV : null);
   const candidate =
     (APP_CONFIG && APP_CONFIG.API && APP_CONFIG.API.GAS_UPLOAD_URL) ||
@@ -134,7 +137,7 @@ function readFileAsBase64(file) {
   });
 }
 
-export async function uploadFileToDrive(file) {
+export async function uploadFileToDrive(file, customUploadUrl = "") {
   if (!file) {
     throw new Error("Tiada fail dipilih untuk dimuat naik.");
   }
@@ -149,9 +152,11 @@ export async function uploadFileToDrive(file) {
 
   await envReady;
 
-  const uploadUrl = resolveGasUploadUrl();
-  if (!uploadUrl) {
-    throw new Error("Konfigurasi titik akhir muat naik Google Apps Script tidak tersedia.");
+  const uploadUrl = resolveGasUploadUrl(customUploadUrl);
+  if (!uploadUrl || !/^https?:\/\//i.test(uploadUrl)) {
+    throw new Error(
+      "Konfigurasi titik akhir muat naik Google Apps Script tidak tersedia atau tidak sah."
+    );
   }
 
   const base64Data = await readFileAsBase64(file);
@@ -194,6 +199,13 @@ export async function uploadFileToDrive(file) {
   return result.url;
 }
 
+export async function uploadLibatUrusFileToDrive(file) {
+  await envReady;
+  const libatUrusUrl =
+    (APP_CONFIG && APP_CONFIG.API && APP_CONFIG.API.GAS_LIBAT_URUS_URL) || "";
+  return uploadFileToDrive(file, libatUrusUrl);
+}
+
 if (typeof window !== "undefined") {
   window.toggleLoading = toggleLoading;
   window.autoFormatPhone = autoFormatPhone;
@@ -203,4 +215,5 @@ if (typeof window !== "undefined") {
   window.checkEmailDomain = checkEmailDomain;
   window.keluarSistem = keluarSistem;
   window.uploadFileToDrive = uploadFileToDrive;
+  window.uploadLibatUrusFileToDrive = uploadLibatUrusFileToDrive;
 }
