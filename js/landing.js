@@ -1,6 +1,7 @@
 import { envReady } from "./config/config.js";
 import { APP_CONFIG } from "./config/app.config.js";
 import { initDatabaseClient, getDatabaseClient } from "./core/db.js";
+import { IDBCache } from "./core/idb.js";
 import { SchoolService } from "./services/school.service.js";
 import { AuthService } from "./services/auth.service.js";
 
@@ -16,6 +17,9 @@ const RESTRICTED_HREF_TOKENS = [
   "user.html"
 ];
 
+const SCHOOLS_CACHE_KEY = "landing_lightweight_schools_v1";
+const SEARCH_DEBOUNCE_MS = 120;
+
 let allSchools = [];
 let presenceChannel = null;
 let presenceSessionId = "";
@@ -25,6 +29,7 @@ let lifecycleBound = false;
 let isDatabaseConnected = true;
 let lastDisconnectReason = DEFAULT_OFFLINE_MSG;
 let activeLandingProbe = null;
+let searchDebounceTimer = null;
 
 function getActiveSchoolSessionKey() {
   return (
@@ -460,11 +465,34 @@ async function loadSchools() {
     await awaitRuntimeEnv();
     await initDatabaseClient();
 
-    const schools = await SchoolService.getLightweightList();
-    allSchools = Array.isArray(schools) ? schools : [];
+    const loadingEl = document.getElementById("loadingOverlay");
+    const applySchoolsData = (schools) => {
+      const normalized = Array.isArray(schools) ? schools : [];
+      if (normalized.length === 0 && allSchools.length > 0) {
+        return;
+      }
+      allSchools = normalized;
+      populateDatalist(allSchools);
+      checkSession();
+      if (loadingEl) {
+        loadingEl.classList.add("hidden");
+      }
+    };
 
-    populateDatalist(allSchools);
-    checkSession();
+    const initialSchools =
+      IDBCache && typeof IDBCache.staleWhileRevalidate === "function"
+        ? await IDBCache.staleWhileRevalidate(
+            SCHOOLS_CACHE_KEY,
+            () => SchoolService.getLightweightList(),
+            (freshSchools) => {
+              applySchoolsData(freshSchools);
+            },
+            1440,
+            "query_cache"
+          )
+        : await SchoolService.getLightweightList();
+
+    applySchoolsData(initialSchools);
   } catch {
     applyLandingLockState(false, DEFAULT_OFFLINE_MSG);
   } finally {
@@ -537,17 +565,23 @@ function setupSearchListener() {
       return;
     }
     const val = e.target.value || "";
-    const parts = val.split(" - ");
-
-    if (parts.length >= 2) {
-      const school = matchSchoolFromQuery(val);
-      if (school) {
-        renderSchoolCard(school);
-        input.blur();
-      }
-    } else if (val === "") {
-      window.resetSearch();
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer);
     }
+    searchDebounceTimer = setTimeout(() => {
+      searchDebounceTimer = null;
+      const parts = val.split(" - ");
+
+      if (parts.length >= 2) {
+        const school = matchSchoolFromQuery(val);
+        if (school) {
+          renderSchoolCard(school);
+          input.blur();
+        }
+      } else if (val === "") {
+        window.resetSearch();
+      }
+    }, SEARCH_DEBOUNCE_MS);
   });
 
   input.addEventListener("change", (e) => {
@@ -759,13 +793,23 @@ window.resetSearch = function () {
 
 document.addEventListener("DOMContentLoaded", async () => {
   const loadingEl = document.getElementById("loadingOverlay");
-  if (loadingEl) {
-    loadingEl.classList.remove("hidden");
-  }
 
   ensureLandingConnectionBanner();
   setupSearchListener();
   bindLifecycleEvents();
+
+  const cachedSchools =
+    IDBCache && typeof IDBCache.getCache === "function"
+      ? await IDBCache.getCache(SCHOOLS_CACHE_KEY, "query_cache")
+      : null;
+
+  if (Array.isArray(cachedSchools) && cachedSchools.length > 0) {
+    allSchools = cachedSchools;
+    populateDatalist(allSchools);
+    checkSession();
+  } else if (loadingEl) {
+    loadingEl.classList.remove("hidden");
+  }
 
   const connected = await verifyLandingDatabaseAvailability(false);
   if (connected) {

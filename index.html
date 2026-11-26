@@ -7,6 +7,7 @@
 
   <meta name="theme-color" content="#198754">
   <link rel="icon" href="icoppdag.png">
+  <link rel="preload" as="image" href="icoppdag.png" fetchpriority="high">
 
   <link rel="preconnect" href="https://seber.tech4ag.my">
   <link rel="dns-prefetch" href="https://seber.tech4ag.my">
@@ -20,32 +21,12 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="js/config/tailwind.config.js?v=2026.1"></script>
 
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css?v=2026.1">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"></noscript>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <style>
-    .glass-effect {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(10px);
-    }
-    .fade-up,
-    .animate-fade-up {
-      animation: fadeInUp 0.5s ease-out forwards;
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    @keyframes fadeInUp {
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    .hidden {
-      display: none !important;
-    }
-  </style>
-
-  <script type="module" src="js/config/config.js?v=2026.4"></script>
+  <script type="module" src="js/config/config.js?v=2026.5"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
@@ -143,7 +124,7 @@
     </div>
   </main>
 
-  <script type="module" src="js/landing.js?v=2026.4"></script>
+  <script type="module" src="js/landing.js?v=2026.5"></script>
 
 </body>
 </html>

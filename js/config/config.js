@@ -1,10 +1,38 @@
 const CONFIG_ENDPOINT = "/api/config";
 const REQUEST_TIMEOUT_MS = 10000;
+const ENV_SESSION_CACHE_KEY = "nadim_runtime_env_v1";
 const DEFAULT_SUPABASE_SCHEMA = "nadim_data";
 const DEFAULT_SUPABASE_DELIMA_SCHEMA = "delima_data";
 const DEFAULT_NOTIFY_API_URL = "/api/functions/v1/smpid-notify";
 
 let inFlightRequest = null;
+let backgroundRefreshScheduled = false;
+
+function readSessionEnv() {
+  if (typeof window === "undefined" || !window.sessionStorage) {
+    return null;
+  }
+  try {
+    const raw = window.sessionStorage.getItem(ENV_SESSION_CACHE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.SUPABASE_URL === "string" && typeof parsed.SUPABASE_ANON_KEY === "string") {
+      return parsed;
+    }
+  } catch {}
+  return null;
+}
+
+function writeSessionEnv(payload) {
+  if (typeof window === "undefined" || !window.sessionStorage || !payload) {
+    return;
+  }
+  try {
+    window.sessionStorage.setItem(ENV_SESSION_CACHE_KEY, JSON.stringify(payload));
+  } catch {}
+}
 
 function normalizeString(value) {
   return typeof value === "string" ? value.trim() : "";
@@ -106,14 +134,29 @@ function validateAndFreezeEnv(rawPayload) {
   return frozenEnv;
 }
 
-async function fetchRuntimeConfig() {
+async function fetchRuntimeConfig(forceNetwork = false) {
   if (
+    !forceNetwork &&
     typeof window !== "undefined" &&
     window.__ENV &&
     window.__ENV.SUPABASE_URL &&
     window.__ENV.SUPABASE_ANON_KEY
   ) {
     return window.__ENV;
+  }
+
+  if (!forceNetwork) {
+    const cachedSessionPayload = readSessionEnv();
+    if (cachedSessionPayload) {
+      try {
+        const hydratedEnv = validateAndFreezeEnv(cachedSessionPayload);
+        if (!backgroundRefreshScheduled) {
+          backgroundRefreshScheduled = true;
+          fetchRuntimeConfig(true).catch(() => {});
+        }
+        return hydratedEnv;
+      } catch {}
+    }
   }
 
   if (inFlightRequest) {
@@ -151,6 +194,7 @@ async function fetchRuntimeConfig() {
         throw new Error(serverMsg);
       }
 
+      writeSessionEnv(parsedData);
       return validateAndFreezeEnv(parsedData);
     } catch (error) {
       if (error && error.name === "AbortError") {

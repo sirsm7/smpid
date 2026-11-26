@@ -3,6 +3,23 @@ import { APP_CONFIG } from "../config/app.config.js";
 import { initDatabaseClient } from "../core/db.js";
 import { RealtimeManager } from "../core/realtime.js";
 
+const ADMIN_MODULE_VERSION = "2026.9";
+const PREFETCHABLE_TABS = new Set(["penataran", "analisa", "impact", "pencapaian", "tempahan", "email", "helpdesk", "libat-urus", "admin-users"]);
+const TAB_MODULE_MAP = {
+  dashboard: ["./dashboard.js"],
+  penataran: ["./penataran.js"],
+  analisa: ["./analysis.js"],
+  impact: ["./impact.js"],
+  pencapaian: ["./achievement.js"],
+  gallery: ["./gallery_manager.js", "./dashboard.js"],
+  tempahan: ["./booking_manager.js"],
+  email: ["./communication.js"],
+  helpdesk: ["./communication.js", "./delima_manager.js"],
+  "admin-users": ["./settings.js"],
+  "import-data": ["./settings.js"],
+  "libat-urus": ["./libat_urus.js"]
+};
+
 const moduleRegistry = new Map();
 let currentTabId = "dashboard";
 
@@ -16,14 +33,33 @@ function clearElement(el) {
 }
 
 async function loadModule(modulePath) {
-  if (!moduleRegistry.has(modulePath)) {
-    const importPromise = import(modulePath).catch((err) => {
-      moduleRegistry.delete(modulePath);
+  const versionedPath = modulePath.includes("?") ? modulePath : `${modulePath}?v=${ADMIN_MODULE_VERSION}`;
+  if (!moduleRegistry.has(versionedPath)) {
+    const importPromise = import(versionedPath).catch((err) => {
+      moduleRegistry.delete(versionedPath);
       throw err;
     });
-    moduleRegistry.set(modulePath, importPromise);
+    moduleRegistry.set(versionedPath, importPromise);
   }
-  return moduleRegistry.get(modulePath);
+  return moduleRegistry.get(versionedPath);
+}
+
+function bindTabHoverPrefetch() {
+  const tabButtons = document.querySelectorAll('[id$="-tab"]');
+  tabButtons.forEach((btn) => {
+    const tabKey = btn.id.replace(/-tab$/, "");
+    if (!PREFETCHABLE_TABS.has(tabKey)) {
+      return;
+    }
+    const prefetch = () => {
+      const targets = TAB_MODULE_MAP[tabKey] || [];
+      targets.forEach((path) => {
+        loadModule(path).catch(() => {});
+      });
+    };
+    btn.addEventListener("pointerenter", prefetch, { once: true, passive: true });
+    btn.addEventListener("focus", prefetch, { once: true, passive: true });
+  });
 }
 
 function updateRoleDisplay(userRole) {
@@ -97,8 +133,8 @@ async function handleOnline() {
 }
 
 function handleBeforeUnload() {
-  if (RealtimeManager && typeof RealtimeManager.removeAllChannels === "function") {
-    RealtimeManager.removeAllChannels();
+  if (RealtimeManager && typeof RealtimeManager.unsubscribeAll === "function") {
+    RealtimeManager.unsubscribeAll().catch(() => {});
   }
 }
 
@@ -141,10 +177,11 @@ async function initAdminPanel() {
   }
 
   bindLifecycleEvents();
+  bindTabHoverPrefetch();
 
   let initialTab = determineInitialTab(userRole);
 
-  if (userRole !== "PPD_UNIT") {
+  if (userRole !== "PPD_UNIT" && initialTab !== "dashboard") {
     loadModule("./dashboard.js")
       .then(() => {
         if (typeof window.fetchDashboardData === "function") {

@@ -1,6 +1,7 @@
 import { envReady } from "./config/config.js";
 import { APP_CONFIG } from "./config/app.config.js";
 import { initDatabaseClient } from "./core/db.js";
+import { IDBCache } from "./core/idb.js";
 import { RealtimeManager } from "./core/realtime.js";
 import { AchievementService } from "./services/achievement.service.js";
 import { SchoolService } from "./services/school.service.js";
@@ -11,6 +12,7 @@ let currentCategoryFilter = "SEMUA";
 let currentKodSekolah = "";
 let isPPDMode = false;
 let realtimeSubscribed = false;
+let cardRenderIndex = 0;
 
 function clearElement(el) {
   if (!el) {
@@ -109,8 +111,8 @@ function bindLifecycleEvents() {
   });
 
   const cleanup = () => {
-    if (RealtimeManager && typeof RealtimeManager.removeAllChannels === "function") {
-      RealtimeManager.removeAllChannels();
+    if (RealtimeManager && typeof RealtimeManager.unsubscribeAll === "function") {
+      RealtimeManager.unsubscribeAll().catch(() => {});
     }
   };
 
@@ -147,6 +149,19 @@ async function initGallery() {
     const headerNameEl = document.getElementById("headerSchoolName");
     const headerCodeEl = document.getElementById("headerSchoolCode");
 
+    const achievementsStore =
+      APP_CONFIG.IDB && APP_CONFIG.IDB.STORES
+        ? APP_CONFIG.IDB.STORES.ACHIEVEMENTS
+        : "achievements_cache";
+    const galleryCacheKey = `public_gallery_${kodSekolah}`;
+
+    const applyGalleryPayload = (rawRows) => {
+      allGalleryData = filterCategoryScope(rawRows);
+      renderDynamicFilters();
+      updateStats(allGalleryData);
+      window.renderGallery(currentCategoryFilter);
+    };
+
     if (isPPDMode) {
       const namaPpd =
         (APP_CONFIG.PPD_MAPPING && APP_CONFIG.PPD_MAPPING[kodSekolah]) ||
@@ -157,24 +172,59 @@ async function initGallery() {
       if (headerCodeEl) {
         headerCodeEl.textContent = kodSekolah;
       }
+
+      const initialRows =
+        IDBCache && typeof IDBCache.staleWhileRevalidate === "function"
+          ? await IDBCache.staleWhileRevalidate(
+              galleryCacheKey,
+              () => AchievementService.getBySchool(kodSekolah),
+              (freshRows) => applyGalleryPayload(freshRows),
+              60,
+              achievementsStore
+            )
+          : await AchievementService.getBySchool(kodSekolah);
+
+      applyGalleryPayload(initialRows);
     } else {
-      const sekolah = await SchoolService.getByCode(kodSekolah);
-      if (sekolah) {
-        if (headerNameEl) {
-          headerNameEl.textContent = sekolah.nama_sekolah || kodSekolah;
+      const schoolCacheKey = `public_school_meta_${kodSekolah}`;
+      const applySchoolHeader = (sekolah) => {
+        if (sekolah) {
+          if (headerNameEl) {
+            headerNameEl.textContent = sekolah.nama_sekolah || kodSekolah;
+          }
+          if (headerCodeEl) {
+            headerCodeEl.textContent = kodSekolah;
+          }
         }
-        if (headerCodeEl) {
-          headerCodeEl.textContent = kodSekolah;
-        }
-      }
+      };
+
+      const schoolTask =
+        IDBCache && typeof IDBCache.staleWhileRevalidate === "function"
+          ? IDBCache.staleWhileRevalidate(
+              schoolCacheKey,
+              () => SchoolService.getByCode(kodSekolah),
+              (freshSchool) => applySchoolHeader(freshSchool),
+              1440,
+              "query_cache"
+            )
+          : SchoolService.getByCode(kodSekolah);
+
+      const galleryTask =
+        IDBCache && typeof IDBCache.staleWhileRevalidate === "function"
+          ? IDBCache.staleWhileRevalidate(
+              galleryCacheKey,
+              () => AchievementService.getBySchool(kodSekolah),
+              (freshRows) => applyGalleryPayload(freshRows),
+              60,
+              achievementsStore
+            )
+          : AchievementService.getBySchool(kodSekolah);
+
+      const [sekolah, initialRows] = await Promise.all([schoolTask, galleryTask]);
+      applySchoolHeader(sekolah);
+      applyGalleryPayload(initialRows);
     }
 
-    const data = await AchievementService.getBySchool(kodSekolah);
-    allGalleryData = filterCategoryScope(data);
-
-    renderDynamicFilters();
-    updateStats(allGalleryData);
-    window.renderGallery("SEMUA");
     ensureRealtimeSync();
   } catch {
     const grid = document.getElementById("galleryGrid");
@@ -343,6 +393,7 @@ window.renderGallery = function (filterType) {
   const uniqueYears = [...new Set(filteredData.map((item) => item.tahun))].sort(
     (a, b) => b - a
   );
+  cardRenderIndex = 0;
   const fragment = document.createDocumentFragment();
 
   uniqueYears.forEach((year) => {
@@ -364,14 +415,15 @@ window.renderGallery = function (filterType) {
 
     const itemsInYear = filteredData.filter((item) => item.tahun === year);
     itemsInYear.forEach((item) => {
-      fragment.appendChild(createCardElement(item));
+      fragment.appendChild(createCardElement(item, cardRenderIndex));
+      cardRenderIndex += 1;
     });
   });
 
   grid.appendChild(fragment);
 };
 
-function createCardElement(item) {
+function createCardElement(item, index = 0) {
   const rawLink = item.pautan_bukti || "";
   const safeUrl = sanitizeExternalUrl(rawLink);
   let iconType = "fa-globe";
@@ -434,7 +486,8 @@ function createCardElement(item) {
     const img = document.createElement("img");
     img.src = `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}=s400`;
     img.alt = item.nama_pertandingan || "Bukti Pencapaian";
-    img.loading = "lazy";
+    img.loading = index < 4 ? "eager" : "lazy";
+    img.decoding = "async";
     img.className = "w-full h-full object-cover transform hover:scale-110 transition duration-700";
     img.addEventListener("error", () => {
       clearElement(thumbBox);
@@ -453,7 +506,8 @@ function createCardElement(item) {
     const img = document.createElement("img");
     img.src = `https://img.youtube.com/vi/${youtubeMatch[1]}/mqdefault.jpg`;
     img.alt = item.nama_pertandingan || "Video Bukti";
-    img.loading = "lazy";
+    img.loading = index < 4 ? "eager" : "lazy";
+    img.decoding = "async";
     img.className = "w-full h-full object-cover opacity-80 transition duration-500";
     img.addEventListener("error", () => {
       clearElement(thumbBox);

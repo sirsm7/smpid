@@ -5,9 +5,12 @@ import { IDBCache } from "./idb.js";
 const DEFAULT_CACHE_STORE = "query_cache";
 const DEFAULT_SUPABASE_SCHEMA = "nadim_data";
 const FOREGROUND_SYNC_COOLDOWN_MS = 3000;
+const EVENT_DEBOUNCE_MS = 250;
+const INITIAL_CONNECT_DELAY_MS = 300;
 
 const subscriptions = new Map();
 const syncHandlers = new Map();
+const changeDebounceTimers = new Map();
 let lifecycleInitialized = false;
 let lastForegroundSyncAt = 0;
 
@@ -131,7 +134,36 @@ async function detachChannel(client, channel) {
   } catch {}
 }
 
+function scheduleDebouncedChange(config, eventPayload) {
+  const debounceKey = config.key;
+  const existingTimer = changeDebounceTimers.get(debounceKey);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+  }
+
+  const timerId = setTimeout(async () => {
+    changeDebounceTimers.delete(debounceKey);
+    const targetStore = config.cacheStore || DEFAULT_CACHE_STORE;
+    const prefix = config.cachePrefix || config.table;
+    if (prefix && IDBCache && typeof IDBCache.invalidateByPrefix === "function") {
+      await IDBCache.invalidateByPrefix(prefix, targetStore);
+    }
+
+    if (typeof config.onChange === "function") {
+      try {
+        await config.onChange(eventPayload);
+      } catch {}
+    }
+  }, EVENT_DEBOUNCE_MS);
+
+  changeDebounceTimers.set(debounceKey, timerId);
+}
+
 async function createChannelSubscription(config) {
+  if (config.deferInitialConnect) {
+    await new Promise((resolve) => setTimeout(resolve, INITIAL_CONNECT_DELAY_MS));
+  }
+
   const activeEnvPromise =
     typeof window !== "undefined" && window.ENV_READY ? window.ENV_READY : envReady;
   await activeEnvPromise;
@@ -185,24 +217,14 @@ async function createChannelSubscription(config) {
         }
       }
 
-      const targetStore = config.cacheStore || DEFAULT_CACHE_STORE;
-      const prefix = config.cachePrefix || config.table;
-      if (prefix && IDBCache && typeof IDBCache.invalidateByPrefix === "function") {
-        await IDBCache.invalidateByPrefix(prefix, targetStore);
-      }
-
-      if (typeof config.onChange === "function") {
-        try {
-          await config.onChange({
-            eventType,
-            table: config.table,
-            schema,
-            newRecord,
-            oldRecord,
-            raw: payload
-          });
-        } catch {}
-      }
+      scheduleDebouncedChange(config, {
+        eventType,
+        table: config.table,
+        schema,
+        newRecord,
+        oldRecord,
+        raw: payload
+      });
     })
     .subscribe((status) => {
       if (typeof config.onStatusChange === "function") {
@@ -304,6 +326,7 @@ export const RealtimeManager = {
       primaryKey: options.primaryKey || "id",
       cachePrefix: options.cachePrefix || options.table,
       cacheStore: options.cacheStore || DEFAULT_CACHE_STORE,
+      deferInitialConnect: options.deferInitialConnect !== false,
       getCachedRecord: options.getCachedRecord || null,
       onChange: options.onChange || null,
       onSync: options.onSync || null,
@@ -326,6 +349,11 @@ export const RealtimeManager = {
     if (!entry) {
       return false;
     }
+    const pendingTimer = changeDebounceTimers.get(key);
+    if (pendingTimer) {
+      clearTimeout(pendingTimer);
+      changeDebounceTimers.delete(key);
+    }
     subscriptions.delete(key);
     const client = getDatabaseClient();
     await detachChannel(client, entry.channel);
@@ -334,6 +362,10 @@ export const RealtimeManager = {
 
   async unsubscribeAll() {
     const client = getDatabaseClient();
+    changeDebounceTimers.forEach((timerId) => {
+      clearTimeout(timerId);
+    });
+    changeDebounceTimers.clear();
     const entries = Array.from(subscriptions.values());
     subscriptions.clear();
 

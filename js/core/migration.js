@@ -240,6 +240,10 @@ function runWithTimeout(taskPromise, timeoutMs, fallbackValue = null) {
   });
 }
 
+function yieldToMainThread() {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 function resolveActiveSchema() {
   const runtimeEnv =
     getEnv() || (typeof window !== "undefined" ? window.__ENV : null);
@@ -1172,6 +1176,7 @@ export const MigrationManager = {
             superAdminContext.callerIdentifier,
             controller.signal
           );
+          await yieldToMainThread();
         }
 
         totalRestoredRows += rows.length;

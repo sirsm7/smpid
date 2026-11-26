@@ -195,7 +195,7 @@ export const IDBCache = {
 
           setTimeout(() => {
             this._sweepStaleCache(db);
-          }, 1500);
+          }, 4000);
           resolve(db);
         };
 
@@ -245,11 +245,20 @@ export const IDBCache = {
     } catch {}
   },
 
+  getMemoryCached(key, storeName = DEFAULT_STORE_NAME) {
+    return readFromMemory(storeName, key, Date.now());
+  },
+
   async getCache(key, storeName = DEFAULT_STORE_NAME) {
     const now = Date.now();
 
     if (useMemoryFallback || !checkIndexedDBSupport()) {
       return readFromMemory(storeName, key, now);
+    }
+
+    const memHit = readFromMemory(storeName, key, now);
+    if (memHit !== null && memHit !== undefined) {
+      return memHit;
     }
 
     try {
@@ -276,6 +285,7 @@ export const IDBCache = {
               resolve(null);
               return;
             }
+            writeToMemory(storeName, key, result);
             resolve(result.data);
           };
 
